@@ -24,11 +24,13 @@ HOST   := host.exe
 VPP_FLAGS := -t $(TARGET) --platform $(PLATFORM) -I kernels $(DEFS) --save-temps --temp_dir $(BUILD)/tmp_$(TAG)
 CXXFLAGS  := -std=c++17 -O2 -Wall -Wno-unknown-pragmas -Wno-unused-label $(DEFS)
 
-.PHONY: help csim hls xo xclbin host run clean
+.PHONY: help csim hls hls-all summary xo xclbin host run clean
 
 help:
 	@echo "make csim                               # g++ 功能驗證，不需 Vitis"
 	@echo "make hls KERNEL=trimul_v2               # 只跑 HLS 合成，看 latency/resource 報告"
+	@echo "make hls-all                            # v0~v4 全部合成（約數十分鐘）"
+	@echo "make summary                            # 把所有 HLS 報告整理成比較表（存成 hls_summary.csv）"
 	@echo "make xclbin KERNEL=trimul_v2 TARGET=hw  # 產生 FPGA bitstream（xclbin）"
 	@echo "make host                               # 編譯 host 程式（需要 XRT）"
 	@echo "make run KERNEL=trimul_v2 TARGET=hw_emu # 執行（emulation 或上板）"
@@ -43,6 +45,19 @@ csim:
 HLS_CMD := $(if $(shell command -v vitis_hls 2>/dev/null),vitis_hls -f,vitis-run --mode hls --tcl)
 hls:
 	KERNEL=$(KERNEL) DEFS="$(DEFS)" $(HLS_CMD) hls/run_hls.tcl
+
+# 一次合成全部版本；某一版失敗不會中斷其他版本
+KERNELS ?= trimul_v0 trimul_v1 trimul_v2 trimul_v3 trimul_v4
+hls-all:
+	@for k in $(KERNELS); do \
+		echo "===== $$k ====="; \
+		$(MAKE) --no-print-directory hls KERNEL=$$k > hls_$$k.log 2>&1 \
+			&& echo "  OK" || echo "  FAILED（看 hls_$$k.log 的最後幾行）"; \
+	done
+	@$(MAKE) --no-print-directory summary
+
+summary:
+	python3 scripts/hls_summary.py --csv hls_summary.csv
 
 # ---- 3. Vitis 編譯 + 連結 ----
 $(XO): kernels/$(KERNEL).cpp kernels/trimul.h

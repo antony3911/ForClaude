@@ -74,6 +74,21 @@ FPGA 程式分兩半：**kernel**（燒進 FPGA 做計算）＋ **host**（在 C
 - ✅ kernel 的算式和 ESMFold 內部計算完全一致（差值 0）
 - ❌ 尚未在 Vitis 工具上跑過、尚未上板 → 第一次跑可能要修小錯誤
 
+## 實際進度與結果
+
+### 環境（scd-lab-server63）
+- Vitis / Vivado **2025.2**，有 `v++`、`vitis-run`（2025.2 已沒有 `vitis_hls` 指令）
+- **這台沒有插 U55C 卡**，也沒有 XRT / U55C platform → 只能做 csim 和 HLS 合成
+- 待確認：U55C 在哪一台機器（問學長姐 / 助教）
+- 修過的 2025.2 相容問題：HLS 指令改用 `vitis-run`；專案要從 `hls_prj/` 內建立，否則找不到來源檔
+
+### 第一筆數據：v2 的 HLS 報告（L = 256）
+- 時脈：目標 3.33 ns（300 MHz），估計 2.431 ns → 達標
+- 總 latency：177,029,185 cycles ≈ **0.590 s** → 約 **7.3 GFLOP/s**（理論上限 9.6 的 76%）
+- 每次 `loop_k` = 671 cycles ≈ 載入 141（a、b 同時）＋ 計算 526
+  → 約 **21% 時間在等記憶體**
+- 預測：v3（double buffering）把載入藏到計算後面 → 每輪接近 530 cycles，約快 20%
+
 ## 接下來要做的事
 
 1. **登入 FPGA server，查環境**，把輸出貼給 Claude：

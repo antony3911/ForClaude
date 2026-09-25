@@ -52,28 +52,28 @@ MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK...
  輸入：胺基酸序列（長度 L）
           │
           ▼
- ┌─────────────────────────┐
+ ┌───────────────────────────┐
  │ ESM-2 語言模型（3B 參數） │  讀序列，產生每個胺基酸的特徵
- └─────────────────────────┘
+ └───────────────────────────┘
           │
           ▼
- ┌─────────────────────────────────────────────┐
- │ Folding trunk（48 個 block，反覆執行）         │
- │                                             │
- │   Sequence representation   s ∈ R^{L×1024}  │  ← 每個胺基酸一組特徵
- │   Pair representation       z ∈ R^{L×L×128} │  ← 每「一對」胺基酸一組特徵 ★
- │                                             │
+ ┌───────────────────────────────────────────────┐
+ │ Folding trunk（48 個 block，反覆執行）        │
+ │                                               │
+ │   Sequence representation   s ∈ R^{L×1024}    │  ← 每個胺基酸一組特徵
+ │   Pair representation       z ∈ R^{L×L×128}   │  ← 每「一對」胺基酸一組特徵 ★
+ │                                               │
  │   每個 block 內：                             │
- │     - Triangle Multiplication（outgoing）     │ ← 我們實作的就是這個
+ │     - Triangle Multiplication（outgoing）     │  ← 我們實作的就是這個
  │     - Triangle Multiplication（incoming）     │
  │     - Triangle Attention（starting / ending） │
- │     - 其他（MLP、sequence ↔ pair 的交流）      │
- └─────────────────────────────────────────────┘
+ │     - 其他（MLP、sequence ↔ pair 的交流）     │
+ └───────────────────────────────────────────────┘
           │
           ▼
- ┌─────────────────────────┐
- │ Structure module          │  把特徵轉成 3D 座標
- └─────────────────────────┘
+ ┌──────────────────┐
+ │ Structure module │  把特徵轉成 3D 座標
+ └──────────────────┘
           │
           ▼
  輸出：每個原子的 3D 座標

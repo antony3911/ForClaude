@@ -74,7 +74,7 @@
 | 14 | **v2 合成成功**（見第 6 節） | 第一筆數據 |
 | 15 | 新增 `scripts/hls_summary.py`、`make hls-all`、`make summary` | 一次合成全部版本並輸出比較表（`hls_summary.csv`） |
 | 16 | 使用者正在跑 `make hls-all` | **等待結果截圖** |
-| 17 | 使用者請求撰寫教學手冊 | `docs/manual/`（見第 8 節） |
+| 17 | 使用者請求撰寫教學手冊 | `docs/manual/` 6 章 + `manual.pdf`（見第 8 節） |
 
 ## 6. 已取得的數據
 
@@ -111,7 +111,10 @@
 ## 8. 教學手冊
 
 使用者要求一份鉅細靡遺的教學手冊（為何而做、為何可做、整體流程、工具原理），
-放在 `docs/manual/`，進度表在 `docs/manual/README.md`。完成後輸出 PDF。
+放在 `docs/manual/`，進度表在 `docs/manual/README.md`。
+**狀態：6 章全部完成，已輸出 `docs/manual/manual.pdf`（約 58 頁）。**
+之後若有新數據（例如 `make hls-all` 的比較表、上板結果），請更新第 3 章 3.11 節、第 2 章 2.6 節的預測驗證，
+並重跑 `build_pdf.py`。
 
 ## 9. 檔案索引
 

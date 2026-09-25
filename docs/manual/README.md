@@ -20,7 +20,7 @@
 | 4 | `04_tools.md` 工具原理：C++ 怎麼變電路 | ✅ 完成 | |
 | 5 | `05_research_method.md` 研究方法：之後讀 paper 可重複使用的步驟 | ✅ 完成 | |
 | 6 | `06_glossary.md` 術語表 | ✅ 完成 | |
-| — | `build_pdf.py` → `manual.pdf` | 🟡 撰寫中 | 所有章節完成後輸出 PDF |
+| — | `build_pdf.py` → `manual.pdf` | ✅ 完成 | 約 58 頁；修改內容後重跑 `python3 docs/manual/build_pdf.py` |
 
 狀態：⬜ 未開始　🟡 撰寫中　✅ 完成
 
@@ -96,6 +96,12 @@
 所有出現過的專有名詞，依主題分類，每個附一句白話解釋與「在本專題哪裡出現」。
 
 ---
+
+## 如何閱讀與更新
+- **直接看：** `manual.pdf`（排版版）或在 GitHub 上逐章看 `.md`。
+- **更新：** 修改各章 `.md` 後執行 `pip install markdown && python3 docs/manual/build_pdf.py`，
+  會重新產生 `manual.html` 與 `manual.pdf`（需要 Chrome/Chromium；找不到時只產生 HTML，可用瀏覽器列印成 PDF）。
+- **ASCII 圖：** 中文字在等寬區塊中算 2 格寬；畫方框時請照這個規則對齊。
 
 ## 撰寫風格（給接手的對話）
 - **繁體中文**，台灣用語（記憶體、軟體、程式碼、硬體）。

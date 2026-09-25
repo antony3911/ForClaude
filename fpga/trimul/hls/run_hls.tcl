@@ -5,8 +5,7 @@
 # 環境變數：
 #   KERNEL  要合成的 kernel（trimul_v0 ~ trimul_v4）
 #   DEFS    額外的編譯定義，例如 "-DTILE_I=16 -DTILE_J=16"
-#   CSIM    設為 1 才在 HLS 內跑 C simulation（預設跳過；功能驗證請用 `make csim`，
-#           Vitis 2025.2 的 csim 會漏編 top function 而連結失敗）
+#   CSIM    設為 1 才在 HLS 內跑 C simulation（預設跳過；功能驗證用 `make csim` 較快）
 #   COSIM   設為 1 會多跑 C/RTL co-simulation（較慢）
 set kernel $::env(KERNEL)
 set defs ""
@@ -14,15 +13,19 @@ if {[info exists ::env(DEFS)]} { set defs $::env(DEFS) }
 set do_csim  [expr {[info exists ::env(CSIM)]  && $::env(CSIM)  == 1}]
 set do_cosim [expr {[info exists ::env(COSIM)] && $::env(COSIM) == 1}]
 
+# 一律用絕對路徑：Vitis 2025.2 會把相對路徑改成相對於專案資料夾解析，導致找不到檔案
+set root [file normalize [pwd]]
+set inc "-I$root/kernels"
+
 open_project -reset hls_prj/$kernel
 set_top $kernel
-add_files kernels/$kernel.cpp -cflags "-Ikernels $defs"
+add_files $root/kernels/$kernel.cpp -cflags "$inc $defs"
 if {$do_csim || $do_cosim} {
     # testbench 會呼叫所有版本，所以其他 kernel 也要加入（當成一般 C++）
-    foreach f [glob kernels/trimul_v*.cpp] {
-        if {[file tail $f] ne "$kernel.cpp"} { add_files -tb $f -cflags "-Ikernels $defs -Wno-unknown-pragmas" }
+    foreach f [glob $root/kernels/trimul_v*.cpp] {
+        if {[file tail $f] ne "$kernel.cpp"} { add_files -tb $f -cflags "$inc $defs -Wno-unknown-pragmas" }
     }
-    add_files -tb tb/tb.cpp -cflags "-Ikernels $defs -Wno-unknown-pragmas"
+    add_files -tb $root/tb/tb.cpp -cflags "$inc $defs -Wno-unknown-pragmas"
 }
 
 open_solution -reset sol -flow_target vitis

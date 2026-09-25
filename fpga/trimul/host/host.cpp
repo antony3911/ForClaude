@@ -1,10 +1,12 @@
 // 上板（或 emulation）用的 host 程式，使用 XRT native C++ API
 //
 // 用法：
-//   ./host.exe <xclbin> <kernel> <L> [reps=3] [quant=token|tensor] [samples=2000]
+//   ./host.exe <xclbin> <kernel> <L> [reps=3] [quant=token|tensor] [samples=2000] [data_dir]
+// data_dir：python/dump_trimul_inputs.py 輸出的目錄；給了就用真實 ESMFold 資料（L 以檔案為準）
 // 例：
 //   ./host.exe build/hw/trimul_v2.xclbin trimul_v2 512
 //   ./host.exe build/hw/trimul_v4.xclbin trimul_v4 512 3 tensor
+//   ./host.exe build/hw/trimul_v2.xclbin trimul_v2 0 3 token 2000 ../../data/spike
 //
 // 最後一行會印出 CSV，方便收集成表格：
 //   CSV,kernel,L,time_ms,gflops,est_traffic_GB,est_GBps,hbm_footprint_MB,rel_l2,max_abs
@@ -21,7 +23,8 @@
 
 int main(int argc, char** argv) {
     if (argc < 4) {
-        std::printf("usage: %s <xclbin> <kernel> <L> [reps] [token|tensor] [samples]\n", argv[0]);
+        std::printf("usage: %s <xclbin> <kernel> <L> [reps] [token|tensor] [samples] [data_dir]\n",
+                    argv[0]);
         return 1;
     }
     std::string xclbin = argv[1], kname = argv[2];
@@ -29,6 +32,14 @@ int main(int argc, char** argv) {
     int reps = argc > 4 ? std::atoi(argv[4]) : 3;
     bool per_token = argc > 5 ? std::string(argv[5]) != "tensor" : true;
     int samples = argc > 6 ? std::atoi(argv[6]) : 2000;
+    std::string data_dir = argc > 7 ? argv[7] : "";
+
+    std::vector<float> a, b;
+    if (!data_dir.empty()) {
+        L = load_real_data(data_dir, a, b);
+        if (!L) return 1;
+        std::printf("使用真實資料 %s\n", data_dir.c_str());
+    }
     if (L % TI || L % TJ) {
         std::printf("L 必須是 TILE_I(%d) 與 TILE_J(%d) 的倍數\n", TI, TJ);
         return 1;
@@ -40,9 +51,11 @@ int main(int argc, char** argv) {
     std::printf("kernel=%s L=%d C=%d tile=%dx%d quant=%s\n", kname.c_str(), L, C, TI, TJ,
                 quant ? (per_token ? "per-token" : "per-tensor") : "none");
 
-    std::printf("產生測試資料...\n");
-    auto a = make_activation(L, 1);
-    auto b = make_activation(L, 2);
+    if (data_dir.empty()) {
+        std::printf("產生測試資料...\n");
+        a = make_activation(L, 1);
+        b = make_activation(L, 2);
+    }
     std::vector<float> z(T * C);
 
     xrt::device dev(0);

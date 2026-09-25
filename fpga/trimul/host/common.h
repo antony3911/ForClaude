@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <random>
+#include <string>
 #include <vector>
 
 #include "../kernels/trimul.h"
@@ -21,6 +23,33 @@ inline std::vector<float> make_activation(int L, unsigned seed, double outlier_r
         for (int c = 0; c < C; c++) x[t * C + c] = nd(rng) * s;
     }
     return x;
+}
+
+// 讀取 python/dump_trimul_inputs.py 產生的真實 ESMFold 資料（dir/a.bin、dir/b.bin）。
+// 回傳 L（由檔案大小推得），失敗回傳 0
+inline int load_real_data(const std::string& dir, std::vector<float>& a, std::vector<float>& b) {
+    auto load = [](const std::string& path, std::vector<float>& x) -> long {
+        FILE* f = std::fopen(path.c_str(), "rb");
+        if (!f) {
+            std::printf("無法開啟 %s\n", path.c_str());
+            return -1;
+        }
+        std::fseek(f, 0, SEEK_END);
+        long bytes = std::ftell(f);
+        std::fseek(f, 0, SEEK_SET);
+        x.resize(bytes / sizeof(float));
+        size_t n = std::fread(x.data(), sizeof(float), x.size(), f);
+        std::fclose(f);
+        return n == x.size() ? bytes : -1;
+    };
+    long ba = load(dir + "/a.bin", a), bb = load(dir + "/b.bin", b);
+    if (ba <= 0 || ba != bb) return 0;
+    int L = (int)std::lround(std::sqrt((double)a.size() / C));
+    if ((size_t)L * L * C != a.size()) {
+        std::printf("檔案大小不是 L*L*%d 個 float\n", C);
+        return 0;
+    }
+    return L;
 }
 
 // 對稱 INT8 量化。per_token = true：每個 token 一個 scale；false：整個 tensor 一個 scale

@@ -13,6 +13,8 @@ TAG      ?= $(KERNEL)
 # make run 的參數
 RUN_L    ?= 16
 RUN_ARGS ?=
+# 真實資料目錄（python/dump_trimul_inputs.py 的輸出）；設定後 RUN_L 會被忽略
+DATA     ?=
 
 BUILD  := build/$(TARGET)
 XO     := $(BUILD)/$(TAG).xo
@@ -34,7 +36,7 @@ help:
 # ---- 1. C simulation：只用 g++，任何電腦都能跑 ----
 csim:
 	g++ $(CXXFLAGS) tb/tb.cpp kernels/*.cpp -o csim.exe
-	./csim.exe 32
+	./csim.exe 32 $(DATA)
 
 # ---- 2. HLS 合成：報告在 hls_prj/$(KERNEL)/sol/syn/report/ ----
 hls:
@@ -59,10 +61,10 @@ $(HOST): host/host.cpp host/common.h kernels/trimul.h
 # ---- 5. 執行 ----
 run: $(XCLBIN) $(HOST)
 ifeq ($(TARGET),hw)
-	./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) $(RUN_ARGS)
+	./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) $(if $(DATA),3 token 2000 $(DATA),$(RUN_ARGS))
 else
 	emconfigutil --platform $(PLATFORM) --od .
-	XCL_EMULATION_MODE=$(TARGET) ./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) 1 $(RUN_ARGS)
+	XCL_EMULATION_MODE=$(TARGET) ./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) $(if $(DATA),1 token 2000 $(DATA),1 $(RUN_ARGS))
 endif
 
 clean:

@@ -7,13 +7,22 @@
 #include "../host/common.h"
 
 int main(int argc, char** argv) {
+    // 用法：csim.exe [L] [資料目錄]
+    //   給資料目錄時改用真實 ESMFold 資料（L 由檔案決定）
     int L = argc > 1 ? std::atoi(argv[1]) : 16;  // cosim 時必須 <= L_COSIM
+    std::vector<float> a, b;
+    if (argc > 2) {
+        L = load_real_data(argv[2], a, b);
+        if (!L) return 1;
+        std::printf("使用真實資料 %s，L = %d\n", argv[2], L);
+    } else {
+        a = make_activation(L, 1);
+        b = make_activation(L, 2);
+    }
     if (L % TI || L % TJ) {
         std::printf("L 必須是 TILE_I(%d) 與 TILE_J(%d) 的倍數\n", TI, TJ);
         return 1;
     }
-    auto a = make_activation(L, 1);
-    auto b = make_activation(L, 2);
     std::vector<float> z((size_t)L * L * C);
     int fail = 0;
 

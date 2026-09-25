@@ -58,6 +58,16 @@ make run KERNEL=trimul_v2 CFG=cfg/trimul_v2_onebank.cfg TAG=trimul_v2_onebank TA
 rm -f host.exe && make run KERNEL=trimul_v2 DEFS="-DTILE_I=16 -DTILE_J=16" TAG=v2_t16 TARGET=hw RUN_L=512
 ```
 
+### 使用真實蛋白質資料
+
+以上預設使用隨機資料（1% 的 token 被放大，模擬 outlier）。要改用真實 ESMFold 的
+activation，請先依照 [docs/real_protein_data.md](../../docs/real_protein_data.md) 產生資料，
+再加上 `DATA=`：
+
+```bash
+make run KERNEL=trimul_v2 TARGET=hw DATA=../../data/spike
+```
+
 host 程式最後一行會印出 CSV：
 
 ```
@@ -81,7 +91,8 @@ CSV,kernel,L,time_ms,gflops,est_traffic_GB,est_GBps,hbm_footprint_MB,rel_l2,max_
 - 已知 C-sim 結果（L=32、1% outlier token）：**per-token rel_l2 ≈ 1%，per-tensor ≈ 11%**，
   說明 outlier 存在時需要 token-wise 量化。
 - 容量：FP32 單一 tensor `L²·512 B`，INT8 只需 `L²·128 B`（加上 scale `L²·4 B`）。
-  在相同 HBM 預算下，INT8 可以支援約 2 倍長的序列。
+  v4 的輸出 z 仍是 FP32，所以總占用量約為 FP32 版本的一半，相同 HBM 預算下 L 約可多 1.4 倍；
+  若輸出也量化，才會接近 2 倍（可以當延伸題目）。
 
 ## 預期結果與誠實的限制
 

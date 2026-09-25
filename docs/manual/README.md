@@ -19,8 +19,8 @@
 | 3 | `03_workflow.md` 整體流程：做了什麼、產生什麼 | ✅ 完成 | |
 | 4 | `04_tools.md` 工具原理：C++ 怎麼變電路 | ✅ 完成 | |
 | 5 | `05_research_method.md` 研究方法：之後讀 paper 可重複使用的步驟 | ✅ 完成 | |
-| 6 | `06_glossary.md` 術語表 | 🟡 撰寫中 | |
-| — | `build_pdf.py` → `manual.pdf` | ⬜ 未開始 | 所有章節完成後輸出 PDF |
+| 6 | `06_glossary.md` 術語表 | ✅ 完成 | |
+| — | `build_pdf.py` → `manual.pdf` | 🟡 撰寫中 | 所有章節完成後輸出 PDF |
 
 狀態：⬜ 未開始　🟡 撰寫中　✅ 完成
 

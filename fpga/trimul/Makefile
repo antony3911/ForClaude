@@ -39,8 +39,10 @@ csim:
 	./csim.exe 32 $(DATA)
 
 # ---- 2. HLS 合成：報告在 hls_prj/$(KERNEL)/sol/syn/report/ ----
+# Vitis 2024.2 以後沒有 vitis_hls 指令，改用 vitis-run；這裡自動判斷
+HLS_CMD := $(if $(shell command -v vitis_hls 2>/dev/null),vitis_hls -f,vitis-run --mode hls --tcl)
 hls:
-	KERNEL=$(KERNEL) DEFS="$(DEFS)" vitis_hls -f hls/run_hls.tcl
+	KERNEL=$(KERNEL) DEFS="$(DEFS)" $(HLS_CMD) hls/run_hls.tcl
 
 # ---- 3. Vitis 編譯 + 連結 ----
 $(XO): kernels/$(KERNEL).cpp kernels/trimul.h

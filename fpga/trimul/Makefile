@@ -1,0 +1,69 @@
+# ===== 可調參數 =====
+# 平台名稱：用 `ls /opt/xilinx/platforms` 或 `xbutil examine` 確認你們 server 上的實際名稱
+PLATFORM ?= xilinx_u55c_gen3x16_xdma_3_202210_1
+# sw_emu：純軟體模擬（最快）；hw_emu：RTL 模擬（慢）；hw：實際上板（編譯 1~數小時）
+TARGET   ?= hw_emu
+KERNEL   ?= trimul_v2
+# HBM 連接設定，預設 cfg/$(KERNEL).cfg；可換成 cfg/trimul_v2_onebank.cfg 做對照
+CFG      ?= cfg/$(KERNEL).cfg
+# 額外編譯定義，例如 DEFS="-DTILE_I=16 -DTILE_J=16"（host 也要用相同設定）
+DEFS     ?=
+# 輸出檔名標籤（做不同實驗時避免互相覆蓋）
+TAG      ?= $(KERNEL)
+# make run 的參數
+RUN_L    ?= 16
+RUN_ARGS ?=
+
+BUILD  := build/$(TARGET)
+XO     := $(BUILD)/$(TAG).xo
+XCLBIN := $(BUILD)/$(TAG).xclbin
+HOST   := host.exe
+
+VPP_FLAGS := -t $(TARGET) --platform $(PLATFORM) -I kernels $(DEFS) --save-temps --temp_dir $(BUILD)/tmp_$(TAG)
+CXXFLAGS  := -std=c++17 -O2 -Wall -Wno-unknown-pragmas -Wno-unused-label $(DEFS)
+
+.PHONY: help csim hls xo xclbin host run clean
+
+help:
+	@echo "make csim                               # g++ 功能驗證，不需 Vitis"
+	@echo "make hls KERNEL=trimul_v2               # 只跑 HLS 合成，看 latency/resource 報告"
+	@echo "make xclbin KERNEL=trimul_v2 TARGET=hw  # 產生 FPGA bitstream（xclbin）"
+	@echo "make host                               # 編譯 host 程式（需要 XRT）"
+	@echo "make run KERNEL=trimul_v2 TARGET=hw_emu # 執行（emulation 或上板）"
+
+# ---- 1. C simulation：只用 g++，任何電腦都能跑 ----
+csim:
+	g++ $(CXXFLAGS) tb/tb.cpp kernels/*.cpp -o csim.exe
+	./csim.exe 32
+
+# ---- 2. HLS 合成：報告在 hls_prj/$(KERNEL)/sol/syn/report/ ----
+hls:
+	KERNEL=$(KERNEL) DEFS="$(DEFS)" vitis_hls -f hls/run_hls.tcl
+
+# ---- 3. Vitis 編譯 + 連結 ----
+$(XO): kernels/$(KERNEL).cpp kernels/trimul.h
+	mkdir -p $(BUILD)
+	v++ -c $(VPP_FLAGS) -k $(KERNEL) -o $@ $<
+
+$(XCLBIN): $(XO) $(CFG)
+	v++ -l $(VPP_FLAGS) --config $(CFG) -o $@ $(XO)
+
+xo: $(XO)
+xclbin: $(XCLBIN)
+
+# ---- 4. Host 程式（XRT） ----
+host: $(HOST)
+$(HOST): host/host.cpp host/common.h kernels/trimul.h
+	g++ $(CXXFLAGS) -I$(XILINX_XRT)/include host/host.cpp -L$(XILINX_XRT)/lib -lxrt_coreutil -pthread -o $@
+
+# ---- 5. 執行 ----
+run: $(XCLBIN) $(HOST)
+ifeq ($(TARGET),hw)
+	./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) $(RUN_ARGS)
+else
+	emconfigutil --platform $(PLATFORM) --od .
+	XCL_EMULATION_MODE=$(TARGET) ./$(HOST) $(XCLBIN) $(KERNEL) $(RUN_L) 1 $(RUN_ARGS)
+endif
+
+clean:
+	rm -rf build hls_prj *.exe emconfig.json *.log *.jou .run .Xil _x xrt.run_summary *.csv

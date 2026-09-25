@@ -17,8 +17,8 @@
 | 1 | `01_why.md` 為何而做：問題具體是什麼 | ✅ 完成 | |
 | 2 | `02_why_it_works.md` 為何可做：各解法的原理 | ✅ 完成 | |
 | 3 | `03_workflow.md` 整體流程：做了什麼、產生什麼 | ✅ 完成 | |
-| 4 | `04_tools.md` 工具原理：C++ 怎麼變電路 | 🟡 撰寫中 | |
-| 5 | `05_research_method.md` 研究方法：之後讀 paper 可重複使用的步驟 | ⬜ 未開始 | |
+| 4 | `04_tools.md` 工具原理：C++ 怎麼變電路 | ✅ 完成 | |
+| 5 | `05_research_method.md` 研究方法：之後讀 paper 可重複使用的步驟 | 🟡 撰寫中 | |
 | 6 | `06_glossary.md` 術語表 | ⬜ 未開始 | |
 | — | `build_pdf.py` → `manual.pdf` | ⬜ 未開始 | 所有章節完成後輸出 PDF |
 

@@ -14,56 +14,71 @@
 | 狀態 | 學校 | 規定摘要 |
 |---|---|---|
 | ✅ **明確允許** | **USC** | 允許第二碩士；外校碩士的課**不能重修**，學分也**不能抵** |
-| 🟡 **可申請，SOP 要說明理由** | **Stanford EE** | 已有 EE 碩士者仍可申請 MS，但申請時要清楚說明為什麼要再讀一個碩士，以及和職涯目標的關聯 |
-| 🟡 | **CMU ECE** | 已有研究所學位者歡迎申請，SOP 要說明再讀一個學位的理由 |
-| 🟡 | **Georgia Tech ECE** | 「強烈不建議」已有**美國** ECE／EE／CE 碩士的人申請；**台灣碩士不在這條限制裡**，但建議寫信確認 |
-| 🔴 **需充分理由，校方不鼓勵** | **UCLA** | 申請同級或較低學位要向系上提出「compelling cause」，研究生院會特別審查；已用於前一個學位的課不能重複計入 |
-| 🔴 **原則上不收** | **UC Berkeley EECS** | 已有 EE、CS 或相近領域碩士者，**不能申請 MS 或 MS/PhD，只能申請 PhD** |
-| 🔴 | **UC San Diego** | 原則上不允許重複取得同級學術學位；例外必須是「根本不同的領域」，而且要研究生院院長核准 |
-| 🔴 | **UIUC** | 原則上不允許同領域的第二碩士（除非兩個學程差異很大） |
-| 🔴 | **Michigan ECE** | 已有其他學校的 ECE 碩士或博士者，**不能申請同一學位** |
-| 🔴 | **NC State** | 研究生院禁止授予同領域的第二碩士；例外需要系所提出說明，並經研究生院院長核准 |
-| ❓ **未查到明確規定，要寫信問** | UT Austin、Columbia、Cornell（MEng）、Purdue、UW、Arizona State、Texas A&M、UT Dallas、NYU、Northeastern、Duke 等 | 用 [10](10-templates.md#1-詢問系所第二碩士資格的信) 的範本寫信給系所的研究生辦公室 |
+| ✅ | **Northeastern** | ECE 系明寫：擁有電機或相近領域**學士或碩士**的人，都可以申請 MSECE 或 PhD；已用於其他學位的課不能轉抵 |
+| 🟡 **看起來可以，建議寫信確認** | **Arizona State** | MSE（電機）的申請資格寫「任何領域的學士**或碩士**」都可以申請 |
+| 🟡 | **University of Florida** | 只規定「前一個碩士最多 9 學分可以抵到第二碩士」（需研究生院院長書面同意），沒有禁止第二碩士 |
+| 🟡 | **University of Utah** | 只要求每個碩士都要有完整、獨立的修課，課不能重複計算，沒有禁止同領域 |
+| 🟡 | **Portland State** | 只規定已用於其他碩士的學分不能再用，沒有禁止第二碩士 |
+| 🟡 **可申請，SOP 要說明理由** | **Stanford EE、CMU ECE** | 已有碩士者可以申請，但要說明為什麼要再讀一個碩士 |
+| 🟡 | **Georgia Tech ECE** | 只「強烈不建議」已有**美國** ECE 碩士的人申請，台灣碩士不在此限 |
+| 🔴 **需充分理由，校方不鼓勵** | **UCLA** | 要向系上提出「compelling cause」，研究生院會特別審查 |
+| 🔴 **原則上不收** | **UC Berkeley EECS、UC San Diego、UIUC、Michigan ECE、NC State、University of Arizona** | 原則上不收同領域第二碩士，或只接受極少數例外 |
+| ❓ **未查到，要寫信問** | Texas A&M、UT Dallas、San José State、Santa Clara、NYU Tandon、Virginia Tech、Oregon State、UT Austin、Columbia、Purdue、UW 等 | 用 [10](10-templates.md#1-詢問系所第二碩士資格的信) 的範本寫信給系所的研究生辦公室 |
 
 ### 補充說明
 
-- **UC 系統整體**：普遍不鼓勵重複取得同級學位（UC Irvine、UC Davis 等其他分校也要個別確認）。不過 UCLA 的規範文件提到「**專業學位不視為重複學術學位**」，所以 **MEng 這類專業學位**有可能是例外。Berkeley 的 MEng 是否適用，公開資料沒有寫清楚，要直接問
+- **UC 系統整體**：普遍不鼓勵重複取得同級學位，其他 UC 分校也要個別確認。UCLA 的規範提到「專業學位不視為重複學術學位」，所以 MEng 這類專業學位可能是例外，但要直接問
 - **「不同領域」的空間很小**：電機、電子、資工、電腦工程通常都被視為相近領域
-- **PhD 不受這個限制**：Berkeley 甚至明確要求已有碩士者改申請 PhD。所以對 🔴 的學校來說，**PhD 反而是唯一的入口**，這也是保留 PhD 備案的理由之一
 - **一定要拿到書面回覆**：寄信詢問後，把回覆存檔。規定和解讀都可能改變
 
 ---
 
-## 5.2 MS 候選學程
+## 5.2 你的選校名單（中山電機所、成績中上）
 
-只列 ✅、🟡 和 ❓ 的學校（🔴 的學校，除非你拿到系所的書面同意，否則不要花申請費）。
+**選校邏輯**：你要的不是排名，而是**「美國晶片業界認識、畢業生真的進得了晶片公司、錄取機會合理、第二碩士不會卡關」**的學校。
 
-### 已確認可以申請（✅／🟡）
+> ⚠️ 下面的分組是我依學校的整體競爭度做的**粗略判斷**，不是錄取機率。請搭配 PTT／Dcard／GradCafe 上的錄取紀錄交叉確認（搜尋「中山電機」「成大電機」「中興電機」加上學校名稱，參考背景相近的人）。
 
-| 學校 | 學程 | 特色 | 地點 | 學費等級 |
-|---|---|---|---|---|
-| **CMU** | MS ECE | **Applied**：3 學期，**實習必修**；**Advanced Studies**：4 學期，沒有實習；**Applied Advanced**：4 學期，實習必修（只在 Pittsburgh 校區）；計算機結構與 VLSI 很強 | Pittsburgh | 私立（高） |
-| **Stanford** | MS EE | 頂尖的課程與人脈，位於 Bay Area 產業中心；競爭極高 | Bay Area | 私立（極高） |
-| **USC** | MS ECE（有 VLSI Design 等方向） | Fall 2027 **不需要 GRE**；國際學生多、校友網路大 | Los Angeles | 私立（高） |
-| **Georgia Tech** | MS ECE | 30 學分，thesis／non-thesis 都有；**不需要 GRE**；Fall 2027 截止日為 12/16；計結與 VLSI 很強 | Atlanta | 公立（CP 值高） |
+### 主力名單（建議從這裡挑 7–9 所）
 
-> **CMU Applied 的實習必修設計**，比較符合 2026/08 SEVP 對 CPT 的新要求（實習必須是全體學生必修的課程要素）。不過學校實際怎麼處理，仍然要在申請時確認。
+| 學校 | 學程 | 第二碩士 | 為什麼適合你 | 地點與產業 | 學費 |
+|---|---|---|---|---|---|
+| **USC** | MS ECE（有 VLSI Design 方向） | ✅ | 業界名氣大、校友網路遍布西岸晶片公司；**不需要 GRE**；台灣學生多 | Los Angeles（南加州：Broadcom、Qualcomm 等） | 私立（高） |
+| **Arizona State** | MSE EE／MS CE | 🟡 | 大型電機系，**旁邊就是 Intel、TSMC Arizona、NXP、Microchip、onsemi**，實習與就業地利極佳 | Phoenix | 公立（中低） |
+| **Texas A&M** | MS／MEng CE、EE | ❓ | 德州電機重鎮，計算機工程強；晶片業界的校友多 | College Station（德州：往 Austin、Houston 都近） | 公立（中） |
+| **UT Dallas** | MSEE／MS CE | ❓ | **TI 總部就在達拉斯**，半導體課程完整；國際學生多 | Dallas（德州，沒有州所得稅） | 公立（中） |
+| **Northeastern** | MSECE（有 Hardware and Software for Machine Intelligence 方向） | ✅ | 系上明確接受碩士申請者；有 **AI 硬體相關方向**；co-op 文化強（但要注意 CPT 新規定） | Boston | 私立（高） |
+| **San José State** | MS EE／MS CE | ❓ | **就在矽谷正中央**，灣區晶片公司裡校友非常多；學費是灣區最低 | San José（Bay Area） | 公立（中低） |
+| **Santa Clara U** | MS ECE | ❓ | 同樣在矽谷，課程偏業界導向，很多在職工程師進修 | Santa Clara（Bay Area） | 私立（高） |
+| **Portland State** | MS ECE | 🟡 | **Intel 最大的研發基地就在旁邊（Hillsboro）**，和 Intel 關係緊密；花費低 | Portland | 公立（低） |
+| **University of Florida** | MS ECE | 🟡 | 電機系規模大、名氣穩；佛州沒有州所得稅 | Gainesville（本地產業少，要靠 career fair） | 公立（低） |
+| **University of Utah** | MS ECE | 🟡 | 研究型大學、花費低；生活品質好 | Salt Lake City | 公立（低） |
 
-### 要寫信確認資格（❓）
+### 可以丟 1–2 間試試的學校（不強求）
+| 學校 | 第二碩士 | 說明 |
+|---|---|---|
+| **Georgia Tech** MS ECE | 🟡 | 頂尖，但 MS 錄取人數多，**有論文加上 ASIC 經驗的話不是沒機會**；公立，CP 值高；不需要 GRE |
+| **CMU** MS ECE | 🟡 | 頂尖，MS 錄取人數也多；Applied 課程**實習必修**；私立，很貴 |
+| **Virginia Tech／NYU Tandon／Oregon State** | ❓ | 中上程度的電機系；Oregon State 和 Intel 關係也深 |
 
-| 學校 | 學程 | 為什麼值得問 | 地點 |
-|---|---|---|---|
-| **UT Austin** | MSE ECE | **晶片產業地利極佳**（Apple、AMD、Arm、NVIDIA、Samsung、Annapurna Labs 等） | Austin |
-| **Columbia** | MS EE | 30 學分，約 1–1.5 年；有 Carloni（SoC／加速器）、Seok（數位電路）等教授 | New York |
-| **Cornell** | MEng ECE | 1 年制專業碩士（沒有暑期實習的空檔）；Zhang、Batten 等教授很強 | Ithaca |
-| **Purdue** | MSECE | 計結與 VLSI 實力強；公立，花費較低 | West Lafayette |
-| **UW** | MS ECE | 不需要也不接受 GRE；Seattle 有雲端大廠的自研晶片團隊 | Seattle |
-| **Arizona State** | MS EE／CE | Intel、TSMC Arizona 就在附近；花費較低 | Phoenix |
-| **Texas A&M／UT Dallas** | MS CE／EE | 德州產業、花費較低；UT Dallas 靠近 TI | College Station／Dallas |
-| **NYU／Northeastern** | MS ECE | 東岸大城市；Northeastern 以 co-op 聞名（要注意 CPT 新規定的影響） | New York／Boston |
-| **Duke** | MEng ECE | 專業碩士 | Durham |
-| **Santa Clara U／San José State** | MS ECE／EE | **就在 Bay Area 晶片公司旁邊**；學術排名較低，但地利無可取代 | Bay Area |
-| **UC 系統的 MEng**（Berkeley 等） | MEng | 專業學位**可能**不受重複學位的限制 | 加州 |
+> 你說不需要找太頂的學校，這沒問題。不過 Georgia Tech 和 CMU 的 MS 每年收很多國際學生，**有研究、有 ASIC 實作、有業界經驗的申請者，常常比只看 GPA 的人有競爭力**。預算夠的話，丟一兩間不虧。
+
+### 建議配比（10–12 所）
+
+| 類型 | 數量 | 從哪裡挑 |
+|---|---|---|
+| 衝刺 | 1–2 | Georgia Tech、CMU |
+| 主力 | 6–7 | USC、ASU、Texas A&M、UT Dallas、Northeastern、SJSU、Santa Clara |
+| 穩健 | 2–3 | Portland State、UF、Utah |
+
+**❓ 的學校，一定要先寫信確認第二碩士資格，再決定要不要花申請費。**
+
+### 怎麼讓中山電機的背景更有競爭力
+MS 審查很看學校背景和 GPA，這兩項已經定了，**能拉開差距的是下面幾項**：
+1. **ASIC 實作**：synthesis + APR 的 PPA 數字，寫在 CV 最上面
+2. **研究成果**：有投稿（就算還在審）就寫；GitHub 上要有能看的東西
+3. **業界經驗**：服完兵役後在台灣 IC 設計公司工作，**同時是申請加分、推薦信來源，也能存學費**
+4. GPA 的呈現：照實填寫中山的 4.3 制成績；如果有班排或系排而且排名不錯，可以寫在 CV 上
 
 ---
 
@@ -93,10 +108,25 @@
 
 ---
 
-## 5.4 教授名單（RA、thesis 與 PhD 備案用）
+## 5.4 教授名單（找 RA 或 thesis 時參考）
 
-MS 學生想做 RA 或 thesis，或者要申請 PhD 備案時，參考這份名單。標 ✔ 的教授已在 **2026/09 查證**目前任職學校。
-**注意**：有些教授所在的學校不收第二碩士（見 5.1），和他們合作的管道可能只剩 PhD。
+MS 學生想做 RA 或 thesis 時，要找的是**你入學那所學校**裡做相關研究的教授。
+
+### 你的主力學校裡可以留意的教授（**未查證**，入學前請確認）
+
+| 學校 | 教授 | 方向 |
+|---|---|---|
+| Texas A&M | Paul Gratz、Jiang Hu | 計算機結構；EDA |
+| Northeastern | Yanzhi Wang、David Kaeli | 高效 DNN 與 FPGA；GPU 運算 |
+| University of Utah | Pierre-Emmanuel Gaillardon | 新興元件、電路與 EDA |
+| Arizona State | Chaitali Chakrabarti | VLSI、訊號處理架構 |
+| USC | Viktor Prasanna、Murali Annavaram、Massoud Pedram、Peter Beerel | FPGA 加速、ML 系統、低功耗、非同步電路 |
+
+其他學校用 5.4 最後的「自己找更多教授」方法找。
+
+### 領域內的代表性教授（多在頂尖學校，供了解領域與 PhD 備案參考）
+
+標 ✔ 的教授已在 **2026/09 查證**目前任職學校。
 
 ### A 類：AI 加速器架構與 HW/SW Co-design
 

@@ -10,12 +10,12 @@
 **什麼時候寄**：T−7 到 T−4（送件前半年左右），**保留書面回覆**。
 
 ```
-Subject: Eligibility question — applicant with a master's degree from Taiwan (MS ECE, Fall 2028)
+Subject: Eligibility question — applicant with a master's degree from Taiwan (MS ECE, Fall 2029)
 
 Dear [Program name] Graduate Admissions Committee,
 
 I am planning to apply to the MS in [Electrical and Computer Engineering] program
-for Fall 2028, and I would like to confirm my eligibility before applying.
+for Fall 2029, and I would like to confirm my eligibility before applying.
 
 I will hold (or currently hold) a Master of Science in [Electrical Engineering]
 from [University], Taiwan (expected [Month Year]). My master's research focused on
@@ -57,7 +57,7 @@ Best regards,
 
 | 學校 | 學程 | 截止日 | 推薦信提交方式 |
 |---|---|---|---|
-| ... | MS ECE | 2027/12/15 | 系統會寄連結給老師 |
+| ... | MS ECE | 2028/12/15 | 系統會寄連結給老師 |
 
 ## 2. 我們共事的經驗（請老師挑選適合的）
 - 時間：[起訖]
@@ -142,11 +142,11 @@ Best regards,
 **什麼時候寄**：錄取後到入學前（3–7 月）。**不要期待一定有回應**，有回應算是紅利。
 
 ```
-Subject: Incoming MS ECE student (Fall 2028) — interest in RA / thesis in your group
+Subject: Incoming MS ECE student (Fall 2029) — interest in RA / thesis in your group
 
 Dear Prof. [Last name],
 
-I am an incoming MS student in [Dept] at [University] (Fall 2028). Before joining,
+I am an incoming MS student in [Dept] at [University] (Fall 2029). Before joining,
 I completed a master's at [University], Taiwan, where I built an FPGA accelerator
 for long-sequence protein structure prediction and took its core engine through
 ASIC synthesis and place-and-route in [node].
@@ -221,7 +221,7 @@ City, State | email | phone | linkedin.com/in/xxx | github.com/xxx
 (Work authorization: F-1 student, eligible for CPT/OPT)
 
 EDUCATION
-[US University] — M.S. Electrical and Computer Engineering        Expected May 2030
+[US University] — M.S. Electrical and Computer Engineering        Expected May 2031
   Relevant: Advanced VLSI, ASIC Verification, Computer Architecture
 [Taiwan University] — M.S. Electrical Engineering, GPA x.xx/4.3   Jun 2028
 

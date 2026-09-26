@@ -96,3 +96,27 @@
 | Eastern (ET) | 東岸、密西根州、印第安納州、喬治亞州 | 台灣快 12／13 小時 |
 
 和家人通話的最佳時段：美國晚上 ≈ 台灣早上。
+
+---
+
+## 6.5 你的候選學校在哪裡
+
+| 學校 | 城市 | 所在區域的晶片產業 | 生活成本 | 氣候 | 需要車嗎 |
+|---|---|---|---|---|---|
+| **USC** | Los Angeles | 南加州：Broadcom（Irvine）、Qualcomm（San Diego）等，但 LA 本身的晶片公司不算密集 | 高 | 溫暖乾燥 | 最好有 |
+| **Arizona State** | Tempe（Phoenix 都會區） | **Intel（Chandler）、TSMC Arizona、NXP、Microchip、onsemi**：地利極佳 | 中 | 夏天酷熱 | 需要 |
+| **Texas A&M** | College Station | 在 Austin 和 Houston 之間（開車各約 1.5–2 小時）；本地產業少，靠 career fair 和校友 | 低 | 夏天炎熱 | 需要 |
+| **UT Dallas** | Richardson（Dallas 都會區） | **TI 總部**；德州也有 Austin 的晶片聚落 | 中低 | 夏天炎熱 | 需要 |
+| **Northeastern** | Boston | ADI、大廠東岸分部；co-op 文化 | 極高 | 冬天寒冷 | 不太需要 |
+| **San José State** | San José（矽谷） | **NVIDIA、Apple、AMD、Broadcom、Marvell 等全在附近** | 極高 | 溫和 | 最好有 |
+| **Santa Clara U** | Santa Clara（矽谷） | 同上，NVIDIA 總部就在同一個城市 | 極高 | 溫和 | 最好有 |
+| **Portland State** | Portland | **Intel Hillsboro（Intel 最大的研發基地）**、Siemens EDA | 中高 | 冬天多雨 | 市區不太需要 |
+| **University of Florida** | Gainesville | 本地晶片產業少，要靠 career fair | 低 | 濕熱 | 需要 |
+| **University of Utah** | Salt Lake City | TI 在 Lehi 有晶圓廠；晶片設計職缺不多 | 中 | 冬天下雪、乾燥 | 需要 |
+| Georgia Tech | Atlanta | 科技業成長中，晶片設計不算密集 | 中 | 夏天濕熱 | 最好有 |
+| CMU | Pittsburgh | 本地晶片業少，但 CMU 的名氣足以吸引各大公司來徵才 | 中 | 冬天寒冷 | 不太需要 |
+
+**讀地理位置的方式**：
+- **就在產業聚落裡**（SJSU、Santa Clara、ASU、Portland State）：學期中也能實習（視 CPT 規定），面試、networking 都方便
+- **在德州**（Texas A&M、UT Dallas）：德州整體晶片產業強，畢業後往 Austin 或 Dallas 找工作很自然；也沒有州所得稅
+- **產業較遠**（UF、Utah、Georgia Tech、CMU、Northeastern）：要更依賴 career fair、線上面試和校友內推

@@ -123,6 +123,12 @@
 - [CMU ECE：Graduate FAQs](https://www.ece.cmu.edu/admissions/graduate-faq.html)
 - [Georgia Tech ECE：Graduate Admissions](https://ece.gatech.edu/future-students/graduate-admissions)
 - [USC：Second Master's Degrees](https://www.cs.usc.edu/students/ms-students/second-masters-degrees/)
+- [Northeastern ECE：MS in Electrical and Computer Engineering](https://ece.northeastern.edu/academics/graduate-studies/ms-elee/)、[Northeastern Catalog：ECE](https://catalog.northeastern.edu/graduate/engineering/electrical-computer/)
+- [Arizona State：Electrical Engineering, MSE](https://degrees.asu.edu/masters-phd/major/ASU00/ESEEMSE/electrical-engineering-mse)
+- [University of Florida：Graduate Degrees](https://gradcatalog.ufl.edu/graduate/degrees/)
+- [University of Utah：Master's Degree Requirements](https://gradschool.utah.edu/navigating-grad-school/degree-requirements/masters.php)
+- [Portland State：ECE MS Requirements](https://www.pdx.edu/electrical-computer-engineering/ms-requirements)
+- [University of Arizona：Master's Degrees](https://grad.arizona.edu/degree-services/degree-requirements/masters-degrees)
 
 ### MS 學程細節
 - [USC Viterbi：MS ECE – VLSI Design](https://viterbigradadmission.usc.edu/programs/masters/msprograms/electrical-computer-engineering/ms-ece-vlsi-design/)、[USC Viterbi Master's FAQ](https://viterbigradadmission.usc.edu/programs/masters/faq/)
@@ -144,6 +150,12 @@
 - [移民署：役男赴國外就學出國申請須知](https://www.immigration.gov.tw/5385/7244/7250/7254/16054/16487/)
 - [全國法規資料庫：役男出境處理辦法](https://law.moj.gov.tw/LawClass/LawAll.aspx?PCode=D0040006)
 - [換日線：役齡前出境就學役男的真相](https://crossing.cw.com.tw/article/8767)
+- [內政部役政司：分階段常備兵役軍事訓練](https://dca.moi.gov.tw/chaspx/menulist.aspx?web=96)、[申請須知](https://dca.moi.gov.tw/stage/hp2/HP1-3.aspx)
+- [壹蘋新聞網：分階段軍事訓練開放申請，役男 2 年暑假完成 4 個月兵役（2026/08/15）](https://news.nextapple.com/politics/20260815/88CEC13F64CAF9154CCA9B1E81407D64)
+- [新北市政府：分階段軍事訓練相關法令與 QA](https://soldier.ntpc.gov.tw/mt8430)
+- [聯合新聞網：83 至 93 年次役男優先或延緩入營可線上申請](https://udn.com/news/story/10930/9492174)、[役政司：優先入營申請須知](https://dca.moi.gov.tw/chaspx/content.aspx?web=223)
+- [研發替代役制度概要（115 年 7 月）](https://rdss.moi.gov.tw/MND_NCA/downloadSysFileAction.do?fileID=2601)
+- [新竹市政府：後備軍人出國免召規定有變](https://www.hsinchu.gov.tw/News_Content.aspx?n=153&s=200397)、[後備軍人網路服務臺](https://afrc.mnd.gov.tw/EFR/index.aspx)
 
 ### 獎學金
 - [教育部與世界百大合作設置獎學金](https://www.scholarship.moe.gov.tw/top100)

@@ -1,11 +1,11 @@
-# 第 6 章　術語表
+# 附錄 A　術語表
 
 > 依主題分類。每個詞附上：**白話解釋**、**正式說明**、**在本專題哪裡出現**。
 > 忘記某個詞的意思時，回來這裡查。
 
 ---
 
-## 6.1 蛋白質與模型
+## A.1 蛋白質與模型
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -30,7 +30,7 @@
 | **HuggingFace** | 公開模型的平台 | 提供模型程式碼（transformers）與權重下載（Hub） | `dump_trimul_inputs.py` |
 | **UniProt / PDB** | 公開的蛋白質資料庫 | UniProt 存序列、PDB 存實驗測定的結構 | 下載測試序列 |
 
-## 6.2 效能與記憶體概念
+## A.2 效能與記憶體概念
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -54,10 +54,10 @@
 | **Amdahl's Law** | 改善的上限 | `加速 = 1 ÷ [(1−p) + p/s]` | v3 最多約 1.27 倍 |
 | **Memory layout** | 資料在記憶體中的排列 | 決定能否連續讀取 | `[row][col][channel]` |
 | **Stride** | 連續兩次存取的間距 | stride 大 → 無法 burst | v0 的 stride = 128 |
-| **Operator fusion** | 運算合併 | 中間值不寫回記憶體 | 第 2 章 2.9 節（未實作） |
-| **Recomputation** | 用計算換記憶體 | 不存中間值，需要時重算 | 第 2 章 2.9 節（未實作） |
+| **Operator fusion（融合）** | 運算合併 | 中間值不寫回記憶體 | 2.9 節、**第 6 章 6.4 節（本專題主策略）** |
+| **Recomputation（重算）** | 用計算換記憶體 | 不存中間值，需要時重算 | 2.9 節、6.5 節（重算 g） |
 
-## 6.3 量化
+## A.3 量化
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -68,14 +68,14 @@
 | **對稱量化** | 以 0 為中心 | 正負範圍相同，不需要 zero point | v4 的做法 |
 | **Per-tensor** | 整份共用一把尺 | 一個 scale 給整個張量 | 誤差約 11% |
 | **Per-token** | 每格一把尺 | 每個 token 一個 scale | 誤差約 1% |
-| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale（本專題未實作） | 第 3 章 3.4 節提到 |
+| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale（本專題未實作） | 第 4 章 4.4 節提到 |
 | **Outlier** | 特別大的值 | 少數數值遠大於其他值 | 模擬資料中 1% 的 token ×30 |
 | **Fake quantization** | 量化再還原 | 用浮點數模擬量化誤差 | Python 腳本評估誤差 |
 | **rel_l2** | 整體相對誤差 | `‖z − z_ref‖ ÷ ‖z_ref‖` | testbench、host |
 | **max_abs** | 最大單點誤差 | `max |z − z_ref|` | testbench、host |
 | **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization | 第 1 章 1.6 節 |
 
-## 6.4 FPGA 硬體
+## A.4 FPGA 硬體
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -96,7 +96,7 @@
 | **Bitstream** | FPGA 的設定檔 | 決定每個元件和連線的設定 | 包在 .xclbin 中 |
 | **廠商代號 10ee** | Xilinx 的 PCI ID | `lspci -d 10ee:` 可列出 Xilinx 裝置 | 確認 server63 沒有卡 |
 
-## 6.5 HLS 與硬體設計
+## A.5 HLS 與硬體設計
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -104,7 +104,7 @@
 | **RTL** | 電路的描述 | Register Transfer Level，用 Verilog/VHDL 撰寫 | HLS 的輸出 |
 | **Verilog / VHDL** | 硬體描述語言 | 描述電路結構與行為 | 我們不需要手寫 |
 | **Kernel** | 在 FPGA 上跑的函式 | 加速的核心運算 | `trimul_v0`～`v4` |
-| **Pragma** | 給 HLS 的指示 | `#pragma HLS ...`，不影響功能、只影響實作 | 第 4 章 4.3 節 |
+| **Pragma** | 給 HLS 的指示 | `#pragma HLS ...`，不影響功能、只影響實作 | 第 3 章 3.3 節 |
 | **Pipeline** | 流水線 | 多個迭代重疊執行 | 幾乎所有內層迴圈 |
 | **II（Initiation Interval）** | 流水線的節奏 | 連續兩次迭代開始的間隔，1 最好 | mac 迴圈 II = 1 |
 | **Iteration latency** | 一次迭代的長度 | 一次迭代從頭到尾的 cycle 數 | loop_k 為 671 |
@@ -112,8 +112,8 @@
 | **Loop-carried dependency** | 下一輪要等這一輪 | 跨迭代的資料相依，會拉高 II | v0 的 acc |
 | **Unroll（展開）** | 把迴圈複製成多份硬體 | 平行執行 | v2 的 16 lane |
 | **Array partition** | 把陣列拆開 | 讓多個元素能同時存取 | `ARRAY_PARTITION dim=2 complete` |
-| **Scheduling（排程）** | 決定何時做 | 把運算分配到 cycle | 第 4 章 4.3 節 |
-| **Binding（綁定）** | 決定用誰做 | 把運算分配到硬體單元 | 第 4 章 4.3 節 |
+| **Scheduling（排程）** | 決定何時做 | 把運算分配到 cycle | 第 3 章 3.3 節 |
+| **Binding（綁定）** | 決定用誰做 | 把運算分配到硬體單元 | 第 3 章 3.3 節 |
 | **FSM** | 狀態機 | 控制電路目前在做哪一步 | HLS 自動產生 |
 | **AXI4 / m_axi** | 讀寫記憶體的介面 | kernel 主動讀寫 HBM 的標準介面 | `INTERFACE m_axi` |
 | **AXI4-Lite / s_axilite** | 設定參數的介面 | host 寫入參數和 start 訊號 | L、位址 |
@@ -124,7 +124,7 @@
 | **Place & Route** | 擺放與繞線 | 決定元件位置與連線 | Vivado，耗時最久 |
 | **Netlist** | 元件清單＋連線 | 邏輯合成的輸出 | Vivado 內部 |
 
-## 6.6 AMD 工具鏈
+## A.6 AMD 工具鏈
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -136,19 +136,19 @@
 | **.xo** | 編譯好的 kernel | RTL ＋ kernel 描述 | `v++ -c` 輸出 |
 | **.xclbin** | 可以燒進 FPGA 的檔案 | bitstream ＋ metadata | `v++ -l` 輸出 |
 | **Platform / Shell** | 卡上的基礎設施 | PCIe、DMA、HBM 控制器等，由 AMD 提供 | `xilinx_u55c_gen3x16_xdma_3_202210_1` |
-| **Static / Dynamic region** | 固定區／可變區 | shell 在固定區，kernel 在可變區 | 第 4 章 4.6 節 |
+| **Static / Dynamic region** | 固定區／可變區 | shell 在固定區，kernel 在可變區 | 第 3 章 3.6 節 |
 | **XRT** | 控制卡片的軟體 | Xilinx Runtime：驅動程式＋函式庫 | `host.cpp` |
 | **`xbutil`** | XRT 的管理工具 | 查看卡片狀態、測試 | `xbutil examine` |
 | **Buffer object（bo）** | 卡上的一塊記憶體 | XRT 在 HBM 上配置的空間 | `xrt::bo` |
 | **Connectivity（.cfg）** | 接線設定 | 指定 kernel 參數接到哪些 HBM PC | `cfg/*.cfg` |
 | **sw_emu / hw_emu / hw** | 三種執行目標 | 軟體模擬／硬體模擬／實際上板 | `TARGET=` |
-| **csim / cosim** | 兩種 HLS 模擬 | C 模擬／C 與 RTL 協同模擬 | 第 4 章 4.4 節 |
+| **csim / cosim** | 兩種 HLS 模擬 | C 模擬／C 與 RTL 協同模擬 | 第 3 章 3.4 節 |
 | **xsim** | Vivado 的 RTL 模擬器 | cosim 與 hw_emu 使用 | 未使用 |
 | **csynth.rpt / csynth.xml** | HLS 報告 | 文字版／機器可讀版 | `hls_summary.py` 讀 xml |
 | **Tcl** | 工具的腳本語言 | AMD 工具用 Tcl 撰寫自動化流程 | `run_hls.tcl` |
 | **flexlm** | 授權管理 | 商用軟體的授權伺服器 | `/tools/Xilinx/flexlm` |
 
-## 6.7 軟體與開發工具
+## A.7 軟體與開發工具
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -168,5 +168,26 @@
 
 ---
 
-## 本章小結
+## A.8 架構評估與設計方法
+
+| 術語 | 白話 | 說明 | 本專題 |
+|---|---|---|---|
+| **Architectural simulation** | 用模型預測硬體表現 | 在做出硬體前，用分析模型、cycle 級模擬或合成報告評估設計 | 6.2 節 |
+| **分析模型（analytical model）** | 用公式算 cycle | 把迴圈次數、overhead 寫成公式，快速預測 | `make model`、6.8 節 |
+| **校正（calibration）** | 用實測數字定常數 | 從 HLS 報告反推公式裡的 overhead、pipeline 深度 | 6.8 節（77、14） |
+| **驗證（validation）** | 檢查模型準不準 | 用**沒拿來校正**的資料比對預測誤差 | 6.8 節 |
+| **DSE（設計空間探索）** | 試遍所有設定 | 掃過 tile、平行度、精度等組合，找最佳設計 | `make model`、6.9 節 |
+| **Pareto 前緣** | 無法同時更好的設計 | 找不到在所有指標都不輸、且至少一項更好的其他設計 | 6.9 節 |
+| **Ablation** | 拆掉一招看差多少 | 逐一加入或移除手法，量出每一招的貢獻 | v0～v4 |
+| **Producer / Consumer** | 產生者／使用者 | 產生資料的運算與使用資料的運算 | 6.4 節 |
+| **Reuse distance** | 產生到使用的距離 | 距離越短，越容易留在晶片內 | 6.4 節 |
+| **落地（materialize）** | 中間值寫回記憶體 | 融合的目的就是避免中間值落地 | 6.3 節 |
+| **Epilogue** | kernel 的收尾階段 | 主計算之後的處理（LayerNorm、linear、gating） | 6.4 節 |
+| **Welford 演算法** | 一次掃完算平均與變異數 | 數值穩定的線上統計方法 | 6.7 節 |
+| **Tile sweep** | 掃過不同 tile 大小 | 量測 tile 大小的 trade-off | `make hls-sweep` |
+| **容量模型** | 最多能處理多長 | `最大 L = sqrt(記憶體 ÷ 每個 L² 的 bytes)` | 6.10 節 |
+
+---
+
+## 本附錄小結
 遇到不懂的詞，先在這裡查白話解釋，再回到「本專題」欄位指出的章節看完整說明。

@@ -21,15 +21,18 @@ import sys
 import markdown
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# (檔案, 從這章開始的「部」標題；None 表示同一部)
 CHAPTERS = [
-    "01_why.md",
-    "02_why_it_works.md",
-    "03_workflow.md",
-    "04_tools.md",
-    "05_research_method.md",
-    "06_glossary.md",
-    "07_commands.md",
-    "08_new_strategy.md",
+    ("00_guide.md", None),
+    ("01_why.md", "第一部　背景與理論"),
+    ("02_why_it_works.md", None),
+    ("03_tools.md", "第二部　工具與實作"),
+    ("04_workflow.md", None),
+    ("05_commands.md", "第三部　動手操作"),
+    ("06_strategy.md", "第四部　專題策略"),
+    ("07_research_method.md", "第五部　研究方法"),
+    ("A_glossary.md", "附錄"),
+    ("B_answers.md", None),
 ]
 
 CSS = r"""
@@ -96,6 +99,10 @@ ul, ol { padding-left: 22px; margin: 6px 0; }
 li { margin: 2px 0; }
 hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 .chapter { page-break-before: always; break-before: page; }
+.part {
+  display: inline-block; font-size: 10pt; color: #fff; background: var(--accent);
+  padding: 3px 12px; border-radius: 12px; margin-bottom: 10px; letter-spacing: 1px;
+}
 .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
 .cover .title { font-size: 28pt; font-weight: bold; color: var(--accent); line-height: 1.3; }
 .cover .subtitle { font-size: 14pt; color: var(--muted); margin-top: 12px; }
@@ -178,9 +185,10 @@ def find_chrome():
 
 def main():
     bodies, tocs = [], []
-    for n, name in enumerate(CHAPTERS, 1):
+    for n, (name, part) in enumerate(CHAPTERS, 1):
         body, toc = render_chapter(n, os.path.join(HERE, name))
-        bodies.append(f'<section class="chapter">\n{body}\n</section>')
+        label = f'<div class="part">{part}</div>\n' if part else ""
+        bodies.append(f'<section class="chapter">\n{label}{body}\n</section>')
         tocs.append(toc)
 
     today = datetime.date.today().isoformat()

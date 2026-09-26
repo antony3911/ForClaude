@@ -65,6 +65,10 @@ ul, ol { padding-left: 22px; margin: 6px 0; }
 li { margin: 2px 0; }
 hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 .chapter { page-break-before: always; break-before: page; }
+.part {
+  display: inline-block; font-size: 10pt; color: #fff; background: var(--accent);
+  padding: 3px 12px; border-radius: 12px; margin-bottom: 10px; letter-spacing: 1px;
+}
 .cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
 .cover .title { font-size: 28pt; font-weight: bold; color: var(--accent); line-height: 1.3; }
 .cover .subtitle { font-size: 14pt; color: var(--muted); margin-top: 12px; }
@@ -87,128 +91,330 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   </div>
 </div>
 <div class="toc chapter"><h1>目錄</h1><ol>
-<li><a href="#ch1-第-1-章-為何而做-問題具體發生了什麼">第 1 章 為何而做：問題具體發生了什麼？</a>
+<li><a href="#ch1-導讀-如何使用本手冊">導讀：如何使用本手冊</a>
 <ol>
-<li><a href="#ch1-1-1-蛋白質結構預測在做什麼">1.1 蛋白質結構預測在做什麼？</a></li>
-<li><a href="#ch1-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</a></li>
-<li><a href="#ch1-1-3-Triangle-Multiplication-在做什麼">1.3 Triangle Multiplication 在做什麼？</a></li>
-<li><a href="#ch1-1-4-問題一-記憶體放不下">1.4 問題一：記憶體放不下</a></li>
-<li><a href="#ch1-1-5-問題二-搬資料比計算慢-memory-bound">1.5 問題二：搬資料比計算慢（memory-bound）</a></li>
-<li><a href="#ch1-1-6-LightNobel-的觀察與解法-高層次">1.6 LightNobel 的觀察與解法（高層次）</a></li>
-<li><a href="#ch1-1-7-我們的定位">1.7 我們的定位</a></li>
-<li><a href="#ch1-本章小結">本章小結</a></li>
+<li><a href="#ch1-手冊的結構">手冊的結構</a></li>
+<li><a href="#ch1-建議的閱讀路線">建議的閱讀路線</a></li>
+<li><a href="#ch1-閱讀慣例">閱讀慣例</a></li>
+<li><a href="#ch1-最短上手路徑-10-分鐘">最短上手路徑（10 分鐘）</a></li>
 </ol>
 </li>
-<li><a href="#ch2-第-2-章-為何可做-這些解法從什麼概念上解決問題">第 2 章 為何可做：這些解法從什麼概念上解決問題？</a>
+<li><a href="#ch2-第-1-章-為何而做-問題具體發生了什麼">第 1 章 為何而做：問題具體發生了什麼？</a>
 <ol>
-<li><a href="#ch2-2-1-一條公式看懂所有優化">2.1 一條公式看懂所有優化</a></li>
-<li><a href="#ch2-2-2-記憶體階層-為什麼-搬運-有成本">2.2 記憶體階層：為什麼「搬運」有成本</a></li>
-<li><a href="#ch2-2-3-主軸概念-算術強度與-Roofline-模型">2.3 主軸概念：算術強度與 Roofline 模型</a></li>
-<li><a href="#ch2-2-4-解法一-Tiling-資料重用-減少搬運總量-v0-v1">2.4 解法一：Tiling／資料重用 → 減少搬運總量（v0 → v1）</a></li>
-<li><a href="#ch2-2-5-解法二-寬位元與-burst-提高每次搬運的效率-v1-v2">2.5 解法二：寬位元與 burst → 提高每次搬運的效率（v1 → v2）</a></li>
-<li><a href="#ch2-2-6-解法三-Double-buffering-把等待時間藏起來-v2-v3">2.6 解法三：Double buffering → 把等待時間藏起來（v2 → v3）</a></li>
-<li><a href="#ch2-2-7-解法四-多通道-HBM-多條路同時搬-cfg-對照實驗">2.7 解法四：多通道 HBM → 多條路同時搬（cfg 對照實驗）</a></li>
-<li><a href="#ch2-2-8-解法五-量化-讓每筆資料變小-v2-v4">2.8 解法五：量化 → 讓每筆資料變小（v2 → v4）</a></li>
-<li><a href="#ch2-2-9-其他常見手法-本專題未實作-但報告中可以提">2.9 其他常見手法（本專題未實作，但報告中可以提）</a></li>
-<li><a href="#ch2-2-10-為什麼-效益可能不大-仍然算解法">2.10 為什麼「效益可能不大」仍然算解法？</a></li>
+<li><a href="#ch2-1-1-蛋白質結構預測在做什麼">1.1 蛋白質結構預測在做什麼？</a></li>
+<li><a href="#ch2-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</a></li>
+<li><a href="#ch2-1-3-Triangle-Multiplication-在做什麼">1.3 Triangle Multiplication 在做什麼？</a></li>
+<li><a href="#ch2-1-4-問題一-記憶體放不下">1.4 問題一：記憶體放不下</a></li>
+<li><a href="#ch2-1-5-問題二-搬資料比計算慢-memory-bound">1.5 問題二：搬資料比計算慢（memory-bound）</a></li>
+<li><a href="#ch2-1-6-LightNobel-的觀察與解法-高層次">1.6 LightNobel 的觀察與解法（高層次）</a></li>
+<li><a href="#ch2-1-7-我們的定位">1.7 我們的定位</a></li>
 <li><a href="#ch2-本章小結">本章小結</a></li>
+<li><a href="#ch2-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch3-第-3-章-整體流程-從頭到現在具體做了什麼">第 3 章 整體流程：從頭到現在具體做了什麼？</a>
+<li><a href="#ch3-第-2-章-為何可做-這些解法從什麼概念上解決問題">第 2 章 為何可做：這些解法從什麼概念上解決問題？</a>
 <ol>
-<li><a href="#ch3-3-1-全景圖">3.1 全景圖</a></li>
-<li><a href="#ch3-3-2-步驟一-界定範圍">3.2 步驟一：界定範圍</a></li>
-<li><a href="#ch3-3-3-步驟二-資料排列-memory-layout-與算式">3.3 步驟二：資料排列（memory layout）與算式</a></li>
-<li><a href="#ch3-3-4-步驟三-寫-5-個-kernel">3.4 步驟三：寫 5 個 kernel</a></li>
-<li><a href="#ch3-3-5-步驟四-正確性驗證-C-模擬">3.5 步驟四：正確性驗證（C 模擬）</a></li>
-<li><a href="#ch3-3-6-步驟五-host-程式">3.6 步驟五：host 程式</a></li>
-<li><a href="#ch3-3-7-步驟六-HBM-連接設定">3.7 步驟六：HBM 連接設定</a></li>
-<li><a href="#ch3-3-8-步驟七-Makefile">3.8 步驟七：Makefile</a></li>
-<li><a href="#ch3-3-9-步驟八-真實資料管線-加分項">3.9 步驟八：真實資料管線（加分項）</a></li>
-<li><a href="#ch3-3-10-步驟九-在實際-server-上除錯">3.10 步驟九：在實際 server 上除錯</a></li>
-<li><a href="#ch3-3-11-步驟十-讀懂-HLS-報告-以-v2-為例">3.11 步驟十：讀懂 HLS 報告（以 v2 為例）</a></li>
-<li><a href="#ch3-3-12-所有檔案總表">3.12 所有檔案總表</a></li>
+<li><a href="#ch3-2-1-一條公式看懂所有優化">2.1 一條公式看懂所有優化</a></li>
+<li><a href="#ch3-2-2-記憶體階層-為什麼-搬運-有成本">2.2 記憶體階層：為什麼「搬運」有成本</a></li>
+<li><a href="#ch3-2-3-主軸概念-算術強度與-Roofline-模型">2.3 主軸概念：算術強度與 Roofline 模型</a></li>
+<li><a href="#ch3-2-4-解法一-Tiling-資料重用-減少搬運總量-v0-v1">2.4 解法一：Tiling／資料重用 → 減少搬運總量（v0 → v1）</a></li>
+<li><a href="#ch3-2-5-解法二-寬位元與-burst-提高每次搬運的效率-v1-v2">2.5 解法二：寬位元與 burst → 提高每次搬運的效率（v1 → v2）</a></li>
+<li><a href="#ch3-2-6-解法三-Double-buffering-把等待時間藏起來-v2-v3">2.6 解法三：Double buffering → 把等待時間藏起來（v2 → v3）</a></li>
+<li><a href="#ch3-2-7-解法四-多通道-HBM-多條路同時搬-cfg-對照實驗">2.7 解法四：多通道 HBM → 多條路同時搬（cfg 對照實驗）</a></li>
+<li><a href="#ch3-2-8-解法五-量化-讓每筆資料變小-v2-v4">2.8 解法五：量化 → 讓每筆資料變小（v2 → v4）</a></li>
+<li><a href="#ch3-2-9-其他常見手法-本專題未實作-但報告中可以提">2.9 其他常見手法（本專題未實作，但報告中可以提）</a></li>
+<li><a href="#ch3-2-10-為什麼-效益可能不大-仍然算解法">2.10 為什麼「效益可能不大」仍然算解法？</a></li>
 <li><a href="#ch3-本章小結">本章小結</a></li>
+<li><a href="#ch3-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch4-第-4-章-工具原理-為何-C-可以變成電路">第 4 章 工具原理：為何 C++ 可以變成電路？</a>
+<li><a href="#ch4-第-3-章-工具原理-為何-C-可以變成電路">第 3 章 工具原理：為何 C++ 可以變成電路？</a>
 <ol>
-<li><a href="#ch4-4-1-FPGA-是什麼">4.1 FPGA 是什麼？</a></li>
-<li><a href="#ch4-4-2-為什麼-FPGA-適合做記憶體優化的實驗">4.2 為什麼 FPGA 適合做記憶體優化的實驗？</a></li>
-<li><a href="#ch4-4-3-HLS-C-是怎麼變成電路的">4.3 HLS：C++ 是怎麼變成電路的？</a></li>
-<li><a href="#ch4-4-4-為什麼-C-可以直接模擬">4.4 為什麼 C++ 可以直接模擬？</a></li>
-<li><a href="#ch4-4-5-Vivado-從-RTL-到-bitstream">4.5 Vivado：從 RTL 到 bitstream</a></li>
-<li><a href="#ch4-4-6-Vitis-與-v-把-kernel-接到板子上">4.6 Vitis 與 v++：把 kernel 接到板子上</a></li>
-<li><a href="#ch4-4-7-XRT-host-程式怎麼控制-FPGA">4.7 XRT：host 程式怎麼控制 FPGA</a></li>
-<li><a href="#ch4-4-8-Python-端-PyTorch-HuggingFace-ESMFold">4.8 Python 端：PyTorch、HuggingFace、ESMFold</a></li>
-<li><a href="#ch4-4-9-誰提供了什麼能力">4.9 誰提供了什麼能力？</a></li>
-<li><a href="#ch4-4-10-Claude-在這個對話中呼叫的工具">4.10 Claude 在這個對話中呼叫的工具</a></li>
+<li><a href="#ch4-3-1-FPGA-是什麼">3.1 FPGA 是什麼？</a></li>
+<li><a href="#ch4-3-2-為什麼-FPGA-適合做記憶體優化的實驗">3.2 為什麼 FPGA 適合做記憶體優化的實驗？</a></li>
+<li><a href="#ch4-3-3-HLS-C-是怎麼變成電路的">3.3 HLS：C++ 是怎麼變成電路的？</a></li>
+<li><a href="#ch4-3-4-為什麼-C-可以直接模擬">3.4 為什麼 C++ 可以直接模擬？</a></li>
+<li><a href="#ch4-3-5-Vivado-從-RTL-到-bitstream">3.5 Vivado：從 RTL 到 bitstream</a></li>
+<li><a href="#ch4-3-6-Vitis-與-v-把-kernel-接到板子上">3.6 Vitis 與 v++：把 kernel 接到板子上</a></li>
+<li><a href="#ch4-3-7-XRT-host-程式怎麼控制-FPGA">3.7 XRT：host 程式怎麼控制 FPGA</a></li>
+<li><a href="#ch4-3-8-Python-端-PyTorch-HuggingFace-ESMFold">3.8 Python 端：PyTorch、HuggingFace、ESMFold</a></li>
+<li><a href="#ch4-3-9-誰提供了什麼能力">3.9 誰提供了什麼能力？</a></li>
+<li><a href="#ch4-3-10-Claude-在這個對話中呼叫的工具">3.10 Claude 在這個對話中呼叫的工具</a></li>
 <li><a href="#ch4-本章小結">本章小結</a></li>
+<li><a href="#ch4-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch5-第-5-章-研究方法-之後可以重複使用的步驟">第 5 章 研究方法：之後可以重複使用的步驟</a>
+<li><a href="#ch5-第-4-章-整體流程-從頭到現在具體做了什麼">第 4 章 整體流程：從頭到現在具體做了什麼？</a>
 <ol>
-<li><a href="#ch5-5-1-整體流程">5.1 整體流程</a></li>
-<li><a href="#ch5-5-2-步驟一-讀-paper-的方法">5.2 步驟一：讀 paper 的方法</a></li>
-<li><a href="#ch5-5-3-步驟二-量化問題">5.3 步驟二：量化問題</a></li>
-<li><a href="#ch5-5-4-步驟三-縮小範圍">5.4 步驟三：縮小範圍</a></li>
-<li><a href="#ch5-5-5-步驟四-設計實驗">5.5 步驟四：設計實驗</a></li>
-<li><a href="#ch5-5-6-步驟五-實作與驗證">5.6 步驟五：實作與驗證</a></li>
-<li><a href="#ch5-5-7-步驟六-分析">5.7 步驟六：分析</a></li>
-<li><a href="#ch5-5-8-步驟七-呈現-報告要畫的圖">5.8 步驟七：呈現（報告要畫的圖）</a></li>
-<li><a href="#ch5-5-9-除錯的思路-以-2025-2-路徑-bug-為例">5.9 除錯的思路（以 2025.2 路徑 bug 為例）</a></li>
-<li><a href="#ch5-5-10-本專題套用這個流程的完整範例">5.10 本專題套用這個流程的完整範例</a></li>
+<li><a href="#ch5-4-1-全景圖">4.1 全景圖</a></li>
+<li><a href="#ch5-4-2-步驟一-界定範圍">4.2 步驟一：界定範圍</a></li>
+<li><a href="#ch5-4-3-步驟二-資料排列-memory-layout-與算式">4.3 步驟二：資料排列（memory layout）與算式</a></li>
+<li><a href="#ch5-4-4-步驟三-寫-5-個-kernel">4.4 步驟三：寫 5 個 kernel</a></li>
+<li><a href="#ch5-4-5-步驟四-正確性驗證-C-模擬">4.5 步驟四：正確性驗證（C 模擬）</a></li>
+<li><a href="#ch5-4-6-步驟五-host-程式">4.6 步驟五：host 程式</a></li>
+<li><a href="#ch5-4-7-步驟六-HBM-連接設定">4.7 步驟六：HBM 連接設定</a></li>
+<li><a href="#ch5-4-8-步驟七-Makefile">4.8 步驟七：Makefile</a></li>
+<li><a href="#ch5-4-9-步驟八-真實資料管線-加分項">4.9 步驟八：真實資料管線（加分項）</a></li>
+<li><a href="#ch5-4-10-步驟九-在實際-server-上除錯">4.10 步驟九：在實際 server 上除錯</a></li>
+<li><a href="#ch5-4-11-步驟十-讀懂-HLS-報告-以-v2-為例">4.11 步驟十：讀懂 HLS 報告（以 v2 為例）</a></li>
+<li><a href="#ch5-4-12-所有檔案總表">4.12 所有檔案總表</a></li>
 <li><a href="#ch5-本章小結">本章小結</a></li>
+<li><a href="#ch5-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch6-第-6-章-術語表">第 6 章 術語表</a>
+<li><a href="#ch6-第-5-章-指令手冊-做過的-可以做的-格式與用途">第 5 章 指令手冊：做過的、可以做的、格式與用途</a>
 <ol>
-<li><a href="#ch6-6-1-蛋白質與模型">6.1 蛋白質與模型</a></li>
-<li><a href="#ch6-6-2-效能與記憶體概念">6.2 效能與記憶體概念</a></li>
-<li><a href="#ch6-6-3-量化">6.3 量化</a></li>
-<li><a href="#ch6-6-4-FPGA-硬體">6.4 FPGA 硬體</a></li>
-<li><a href="#ch6-6-5-HLS-與硬體設計">6.5 HLS 與硬體設計</a></li>
-<li><a href="#ch6-6-6-AMD-工具鏈">6.6 AMD 工具鏈</a></li>
-<li><a href="#ch6-6-7-軟體與開發工具">6.7 軟體與開發工具</a></li>
+<li><a href="#ch6-5-1-先看懂指令的格式">5.1 先看懂指令的格式</a></li>
+<li><a href="#ch6-5-2-Linux-基本操作">5.2 Linux 基本操作</a></li>
+<li><a href="#ch6-5-3-環境調查與設定">5.3 環境調查與設定</a></li>
+<li><a href="#ch6-5-4-Git-取得與更新程式碼">5.4 Git：取得與更新程式碼</a></li>
+<li><a href="#ch6-5-5-tmux-斷線也不會中斷的終端機">5.5 tmux：斷線也不會中斷的終端機</a></li>
+<li><a href="#ch6-5-6-本專案的-make-指令-最重要">5.6 本專案的 make 指令（最重要）</a></li>
+<li><a href="#ch6-5-7-Vitis-工具的原始指令-Makefile-背後在做什麼">5.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</a></li>
+<li><a href="#ch6-5-8-看結果">5.8 看結果</a></li>
+<li><a href="#ch6-5-9-host-程式與-Python-腳本的參數">5.9 host 程式與 Python 腳本的參數</a></li>
+<li><a href="#ch6-5-10-目前為止實際執行過的指令-時間軸">5.10 目前為止實際執行過的指令（時間軸）</a></li>
+<li><a href="#ch6-5-11-常見錯誤與排查">5.11 常見錯誤與排查</a></li>
 <li><a href="#ch6-本章小結">本章小結</a></li>
+<li><a href="#ch6-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch7-第-7-章-指令手冊-做過的-可以做的-格式與用途">第 7 章 指令手冊：做過的、可以做的、格式與用途</a>
+<li><a href="#ch7-第-6-章-新策略-融合資料流-分析模型與設計空間探索">第 6 章 新策略：融合資料流、分析模型與設計空間探索</a>
 <ol>
-<li><a href="#ch7-7-1-先看懂指令的格式">7.1 先看懂指令的格式</a></li>
-<li><a href="#ch7-7-2-Linux-基本操作">7.2 Linux 基本操作</a></li>
-<li><a href="#ch7-7-3-環境調查與設定">7.3 環境調查與設定</a></li>
-<li><a href="#ch7-7-4-Git-取得與更新程式碼">7.4 Git：取得與更新程式碼</a></li>
-<li><a href="#ch7-7-5-tmux-斷線也不會中斷的終端機">7.5 tmux：斷線也不會中斷的終端機</a></li>
-<li><a href="#ch7-7-6-本專案的-make-指令-最重要">7.6 本專案的 make 指令（最重要）</a></li>
-<li><a href="#ch7-7-7-Vitis-工具的原始指令-Makefile-背後在做什麼">7.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</a></li>
-<li><a href="#ch7-7-8-看結果">7.8 看結果</a></li>
-<li><a href="#ch7-7-9-host-程式與-Python-腳本的參數">7.9 host 程式與 Python 腳本的參數</a></li>
-<li><a href="#ch7-7-10-目前為止實際執行過的指令-時間軸">7.10 目前為止實際執行過的指令（時間軸）</a></li>
-<li><a href="#ch7-7-11-常見錯誤與排查">7.11 常見錯誤與排查</a></li>
+<li><a href="#ch7-6-1-策略總覽-從-比較手法-到-提出架構">6.1 策略總覽：從「比較手法」到「提出架構」</a></li>
+<li><a href="#ch7-6-2-Architectural-simulation-是什麼">6.2 Architectural simulation 是什麼？</a></li>
+<li><a href="#ch7-6-3-完整的-Triangle-Multiplication-長什麼樣子">6.3 完整的 Triangle Multiplication 長什麼樣子</a></li>
+<li><a href="#ch7-6-4-Operator-fusion-運算融合-的理論">6.4 Operator fusion（運算融合）的理論</a></li>
+<li><a href="#ch7-6-5-用計算換記憶體-為什麼-g-要-重算">6.5 用計算換記憶體：為什麼 g 要「重算」</a></li>
+<li><a href="#ch7-6-6-為什麼這個融合特別適合-FPGA">6.6 為什麼這個融合特別適合 FPGA</a></li>
+<li><a href="#ch7-6-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">6.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</a></li>
+<li><a href="#ch7-6-8-分析模型-用公式預測硬體表現">6.8 分析模型：用公式預測硬體表現</a></li>
+<li><a href="#ch7-6-9-設計空間探索-DSE-與-Pareto-前緣">6.9 設計空間探索（DSE）與 Pareto 前緣</a></li>
+<li><a href="#ch7-6-10-容量模型-最多能處理多長的序列">6.10 容量模型：最多能處理多長的序列</a></li>
+<li><a href="#ch7-6-11-對應到海報-以及評審可能會問的問題">6.11 對應到海報，以及評審可能會問的問題</a></li>
+<li><a href="#ch7-6-12-參考資料">6.12 參考資料</a></li>
 <li><a href="#ch7-本章小結">本章小結</a></li>
+<li><a href="#ch7-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch8-第-8-章-新策略-融合資料流-分析模型與設計空間探索">第 8 章 新策略：融合資料流、分析模型與設計空間探索</a>
+<li><a href="#ch8-第-7-章-研究方法-之後可以重複使用的步驟">第 7 章 研究方法：之後可以重複使用的步驟</a>
 <ol>
-<li><a href="#ch8-8-1-策略總覽-從-比較手法-到-提出架構">8.1 策略總覽：從「比較手法」到「提出架構」</a></li>
-<li><a href="#ch8-8-2-Architectural-simulation-是什麼">8.2 Architectural simulation 是什麼？</a></li>
-<li><a href="#ch8-8-3-完整的-Triangle-Multiplication-長什麼樣子">8.3 完整的 Triangle Multiplication 長什麼樣子</a></li>
-<li><a href="#ch8-8-4-Operator-fusion-運算融合-的理論">8.4 Operator fusion（運算融合）的理論</a></li>
-<li><a href="#ch8-8-5-用計算換記憶體-為什麼-g-要-重算">8.5 用計算換記憶體：為什麼 g 要「重算」</a></li>
-<li><a href="#ch8-8-6-為什麼這個融合特別適合-FPGA">8.6 為什麼這個融合特別適合 FPGA</a></li>
-<li><a href="#ch8-8-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">8.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</a></li>
-<li><a href="#ch8-8-8-分析模型-用公式預測硬體表現">8.8 分析模型：用公式預測硬體表現</a></li>
-<li><a href="#ch8-8-9-設計空間探索-DSE-與-Pareto-前緣">8.9 設計空間探索（DSE）與 Pareto 前緣</a></li>
-<li><a href="#ch8-8-10-容量模型-最多能處理多長的序列">8.10 容量模型：最多能處理多長的序列</a></li>
-<li><a href="#ch8-8-11-對應到海報-以及評審可能會問的問題">8.11 對應到海報，以及評審可能會問的問題</a></li>
-<li><a href="#ch8-8-12-參考資料">8.12 參考資料</a></li>
+<li><a href="#ch8-7-1-整體流程">7.1 整體流程</a></li>
+<li><a href="#ch8-7-2-步驟一-讀-paper-的方法">7.2 步驟一：讀 paper 的方法</a></li>
+<li><a href="#ch8-7-3-步驟二-量化問題">7.3 步驟二：量化問題</a></li>
+<li><a href="#ch8-7-4-步驟三-縮小範圍">7.4 步驟三：縮小範圍</a></li>
+<li><a href="#ch8-7-5-步驟四-設計實驗">7.5 步驟四：設計實驗</a></li>
+<li><a href="#ch8-7-6-步驟五-實作與驗證">7.6 步驟五：實作與驗證</a></li>
+<li><a href="#ch8-7-7-步驟六-分析">7.7 步驟六：分析</a></li>
+<li><a href="#ch8-7-8-步驟七-呈現-報告要畫的圖">7.8 步驟七：呈現（報告要畫的圖）</a></li>
+<li><a href="#ch8-7-9-除錯的思路-以-2025-2-路徑-bug-為例">7.9 除錯的思路（以 2025.2 路徑 bug 為例）</a></li>
+<li><a href="#ch8-7-10-本專題套用這個流程的完整範例">7.10 本專題套用這個流程的完整範例</a></li>
 <li><a href="#ch8-本章小結">本章小結</a></li>
+<li><a href="#ch8-自我檢測">自我檢測</a></li>
+</ol>
+</li>
+<li><a href="#ch9-附錄-A-術語表">附錄 A 術語表</a>
+<ol>
+<li><a href="#ch9-A-1-蛋白質與模型">A.1 蛋白質與模型</a></li>
+<li><a href="#ch9-A-2-效能與記憶體概念">A.2 效能與記憶體概念</a></li>
+<li><a href="#ch9-A-3-量化">A.3 量化</a></li>
+<li><a href="#ch9-A-4-FPGA-硬體">A.4 FPGA 硬體</a></li>
+<li><a href="#ch9-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</a></li>
+<li><a href="#ch9-A-6-AMD-工具鏈">A.6 AMD 工具鏈</a></li>
+<li><a href="#ch9-A-7-軟體與開發工具">A.7 軟體與開發工具</a></li>
+<li><a href="#ch9-A-8-架構評估與設計方法">A.8 架構評估與設計方法</a></li>
+<li><a href="#ch9-本附錄小結">本附錄小結</a></li>
+</ol>
+</li>
+<li><a href="#ch10-附錄-B-自我檢測參考答案">附錄 B 自我檢測參考答案</a>
+<ol>
+<li><a href="#ch10-第-1-章-為何而做">第 1 章 為何而做</a></li>
+<li><a href="#ch10-第-2-章-為何可做">第 2 章 為何可做</a></li>
+<li><a href="#ch10-第-3-章-工具原理">第 3 章 工具原理</a></li>
+<li><a href="#ch10-第-4-章-整體流程">第 4 章 整體流程</a></li>
+<li><a href="#ch10-第-5-章-指令手冊">第 5 章 指令手冊</a></li>
+<li><a href="#ch10-第-6-章-新策略">第 6 章 新策略</a></li>
+<li><a href="#ch10-第-7-章-研究方法">第 7 章 研究方法</a></li>
 </ol>
 </li>
 </ol></div>
 <section class="chapter">
-<h1 id="ch1-第-1-章-為何而做-問題具體發生了什麼">第 1 章　為何而做：問題具體發生了什麼？</h1>
+<h1 id="ch1-導讀-如何使用本手冊">導讀：如何使用本手冊</h1>
+<blockquote>
+<p>這份手冊寫給<strong>完全沒有 FPGA 經驗</strong>、但要以 LightNobel（ISCA 2025）為起點做研究或專題的人。
+讀完後你應該能：說明問題的來源、解釋每個優化手法為什麼有效、看懂程式碼與 HLS 報告、自己下指令跑實驗，並用同樣的方法讀下一篇 paper。</p>
+</blockquote>
+<hr />
+<h2 id="ch1-手冊的結構">手冊的結構</h2>
+<table>
+<thead>
+<tr>
+<th>部分</th>
+<th>章</th>
+<th>內容</th>
+<th>讀完能做到</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>第一部 背景與理論</strong></td>
+<td>1 為何而做</td>
+<td>蛋白質結構預測、pair representation、記憶體問題、LightNobel</td>
+<td>說明「問題是什麼」</td>
+</tr>
+<tr>
+<td></td>
+<td>2 為何可做</td>
+<td>時間公式、roofline、五種記憶體優化的原理與推導</td>
+<td>說明「為什麼這些手法有效」</td>
+</tr>
+<tr>
+<td><strong>第二部 工具與實作</strong></td>
+<td>3 工具原理</td>
+<td>FPGA、HLS、Vivado、Vitis、XRT；誰提供了什麼能力</td>
+<td>知道每個工具在做什麼</td>
+</tr>
+<tr>
+<td></td>
+<td>4 整體流程</td>
+<td>從界定範圍到讀懂報告的十個步驟、程式碼逐段解說、除錯過程</td>
+<td>看懂本專題的程式與報告</td>
+</tr>
+<tr>
+<td><strong>第三部 動手操作</strong></td>
+<td>5 指令手冊</td>
+<td>指令格式、Linux、Git、tmux、make、看結果、排錯</td>
+<td>自己跑實驗</td>
+</tr>
+<tr>
+<td><strong>第四部 專題策略</strong></td>
+<td>6 新策略</td>
+<td>融合資料流、重算、分析模型、設計空間探索、評審 Q&amp;A</td>
+<td>說明「我們的貢獻」</td>
+</tr>
+<tr>
+<td><strong>第五部 研究方法</strong></td>
+<td>7 研究方法</td>
+<td>讀 paper、量化問題、設計實驗、分析、呈現</td>
+<td>把方法用在下一篇 paper</td>
+</tr>
+<tr>
+<td><strong>附錄</strong></td>
+<td>A 術語表</td>
+<td>所有專有名詞的白話解釋</td>
+<td>查詢</td>
+</tr>
+<tr>
+<td></td>
+<td>B 參考答案</td>
+<td>各章「自我檢測」的答案</td>
+<td>確認自己懂了</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch1-建議的閱讀路線">建議的閱讀路線</h2>
+<table>
+<thead>
+<tr>
+<th>你的情況</th>
+<th>路線</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>第一次接觸，想完整學會</strong></td>
+<td>1 → 2 → 3 → 4 → 5 → 6 → 7，每章做完自我檢測</td>
+</tr>
+<tr>
+<td><strong>要馬上開始跑實驗</strong></td>
+<td>5.1（指令格式）→ 5.6（make 指令）→ 4.11（讀報告），之後再回頭讀 1～4</td>
+</tr>
+<tr>
+<td><strong>要準備海報或報告</strong></td>
+<td>1 → 2.1～2.3 → 6 → 6.11（評審 Q&amp;A）</td>
+</tr>
+<tr>
+<td><strong>之後要讀新的 paper</strong></td>
+<td>7 → 1、2 當作範例</td>
+</tr>
+<tr>
+<td><strong>看到不懂的詞</strong></td>
+<td>附錄 A</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch1-先備知識">先備知識</h3>
+<ul>
+<li><strong>需要：</strong> 基本的程式概念（變數、迴圈、陣列）、高中程度的數學（次方、平方根、比例）。</li>
+<li><strong>不需要：</strong> FPGA、硬體設計、生物學、深度學習的背景；手冊會從頭解釋。</li>
+<li>看得懂一點 C/C++ 會比較輕鬆，但不是必要的（程式碼都有逐段說明）。</li>
+</ul>
+<hr />
+<h2 id="ch1-閱讀慣例">閱讀慣例</h2>
+<h3 id="ch1-每個概念的說明順序">每個概念的說明順序</h3>
+<ol>
+<li><strong>白話直覺</strong>：用比喻（例如「倉庫 vs 料理台」）先建立印象。</li>
+<li><strong>正式定義</strong>：公式或精確的說法。</li>
+<li><strong>本專題的例子</strong>：附上實際數字。</li>
+</ol>
+<h3 id="ch1-每章的固定結構">每章的固定結構</h3>
+<ul>
+<li>開頭的「<strong>本章重點</strong>」：先知道這章要講什麼。</li>
+<li>結尾的「<strong>本章小結</strong>」：複習。</li>
+<li>最後的「<strong>自我檢測</strong>」：答案在附錄 B。</li>
+</ul>
+<h3 id="ch1-指令的狀態圖示-第-5-章">指令的狀態圖示（第 5 章）</h3>
+<table>
+<thead>
+<tr>
+<th>圖示</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>✅</td>
+<td>已經做過</td>
+</tr>
+<tr>
+<td>🔜</td>
+<td>下一步會用到</td>
+</tr>
+<tr>
+<td>🟡</td>
+<td>進行中</td>
+</tr>
+<tr>
+<td>⬜</td>
+<td>之後可以做</td>
+</tr>
+<tr>
+<td>⚠️</td>
+<td>小心使用（可能刪除資料）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch1-其他">其他</h3>
+<ul>
+<li>程式碼區塊中的 <code>#</code> 後面是說明文字，不需要輸入。</li>
+<li>「L」一律代表<strong>蛋白質的長度</strong>（胺基酸個數），「C」代表 <strong>channel 數</strong>（本專題為 128）。</li>
+<li>數字若標示「估計」、「假設」，代表還沒有經過實際量測驗證。</li>
+<li>手冊中的狀態（例如「進行中」）以 <strong>2026-09-26</strong> 為準；最新進度請看 <code>docs/PROJECT_LOG.md</code>。</li>
+</ul>
+<hr />
+<h2 id="ch1-最短上手路徑-10-分鐘">最短上手路徑（10 分鐘）</h2>
+<p>如果你手上有 server 帳號，照著做就能跑出第一個結果：</p>
+<pre><code class="language-bash">git clone -b claude/lightnobel-memory-optimization-yhokyc https://github.com/antony3911/ForClaude.git
+cd ForClaude/fpga/trimul
+make csim                      # 幾秒：確認 5 個版本都算對（看到 ALL PASS）
+make hls KERNEL=trimul_v2      # 幾分鐘：產生 v2 的硬體報告
+head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
+</code></pre>
+<p>每一行在做什麼，見第 5 章；報告怎麼看，見 4.11 節。</p>
+</section><section class="chapter">
+<div class="part">第一部　背景與理論</div>
+<h1 id="ch2-第-1-章-為何而做-問題具體發生了什麼">第 1 章　為何而做：問題具體發生了什麼？</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
@@ -219,14 +425,14 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch1-1-1-蛋白質結構預測在做什麼">1.1 蛋白質結構預測在做什麼？</h2>
-<h3 id="ch1-白話直覺">白話直覺</h3>
+<h2 id="ch2-1-1-蛋白質結構預測在做什麼">1.1 蛋白質結構預測在做什麼？</h2>
+<h3 id="ch2-白話直覺">白話直覺</h3>
 <p>蛋白質是一條由胺基酸串成的「珠鍊」。胺基酸共有 20 種，用英文字母表示，所以一條蛋白質可以寫成一串字：</p>
 <pre><code>MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK...
 </code></pre>
 <p>這條珠鍊在細胞裡會<strong>自動摺疊</strong>成特定的 3D 形狀，而<strong>形狀決定功能</strong>：酵素能不能抓住受質、抗體能不能卡住病毒，都取決於形狀。</p>
 <p><strong>蛋白質結構預測</strong> = 輸入那串字母，輸出每個原子的 3D 座標。</p>
-<h3 id="ch1-為什麼重要">為什麼重要</h3>
+<h3 id="ch2-為什麼重要">為什麼重要</h3>
 <ul>
 <li>用實驗測定結構（X 光繞射、冷凍電顯）要花數月到數年，而且很貴。</li>
 <li>
@@ -237,7 +443,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <p>應用：藥物設計、理解疾病突變、設計新的酵素。</p>
 </li>
 </ul>
-<h3 id="ch1-本專題的關鍵變數-L">本專題的關鍵變數：L</h3>
+<h3 id="ch2-本專題的關鍵變數-L">本專題的關鍵變數：L</h3>
 <p><strong>L = 蛋白質的長度（胺基酸個數）</strong>。整份手冊都圍繞這個數字：</p>
 <table>
 <thead>
@@ -282,7 +488,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 </table>
 <p>大部分蛋白質在 1,000 以內，但<strong>很多重要的蛋白質比這長</strong>。另外，預測蛋白質複合體時常把多條鏈接起來一起算，L 會變得更大。</p>
 <hr />
-<h2 id="ch1-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</h2>
+<h2 id="ch2-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</h2>
 <p>我們的 reference（LightNobel）以這一類模型為對象，統稱 <strong>PPM（Protein structure Prediction Model）</strong>。
 我們實際對照的是 <strong>ESMFold</strong>（Meta，2022），因為它的結構比 AlphaFold2 簡單，而且公開在 HuggingFace 上。</p>
 <pre><code> 輸入：胺基酸序列（長度 L）
@@ -316,7 +522,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 </code></pre>
 <p>（AlphaFold2 的對應部分叫 <strong>Evoformer</strong>，也有 48 個 block，同樣有 pair representation。
 差別在於 AlphaFold2 用多序列比對（MSA）當輸入，ESMFold 改用語言模型。）</p>
-<h3 id="ch1-兩種-representation">兩種 representation</h3>
+<h3 id="ch2-兩種-representation">兩種 representation</h3>
 <table>
 <thead>
 <tr>
@@ -344,8 +550,8 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <p>Pair representation 可以想成一張 <strong>L × L 的表格，每一格放 128 個數字</strong>。
 第 (i, j) 格記錄模型對「i 和 j 距離多遠、有沒有交互作用」的理解。</p>
 <hr />
-<h2 id="ch1-1-3-Triangle-Multiplication-在做什麼">1.3 Triangle Multiplication 在做什麼？</h2>
-<h3 id="ch1-三角形-的直覺">「三角形」的直覺</h3>
+<h2 id="ch2-1-3-Triangle-Multiplication-在做什麼">1.3 Triangle Multiplication 在做什麼？</h2>
+<h3 id="ch2-三角形-的直覺">「三角形」的直覺</h3>
 <p>如果知道：</p>
 <ul>
 <li>胺基酸 <strong>i 離 k 很近</strong></li>
@@ -359,7 +565,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
     i ----- j   ← 可以推論：應該也不遠
 </code></pre>
 <p>Triangle Multiplication 就是把這個推理寫成數學：<strong>更新 (i, j) 格時，把所有第三者 k 都看過一遍</strong>。</p>
-<h3 id="ch1-算式-outgoing-版本">算式（outgoing 版本）</h3>
+<h3 id="ch2-算式-outgoing-版本">算式（outgoing 版本）</h3>
 <pre><code>z[i][j][c] = Σ_k  a[i][k][c] × b[j][k][c]        （k 從 0 到 L−1，c 從 0 到 127）
 </code></pre>
 <ul>
@@ -367,7 +573,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><code>z</code>：輸出，形狀也是 L × L × 128。</li>
 <li>對每個 channel c 來說，這其實是一個 <strong>L × L 的矩陣乘法</strong>，總共做 128 次。</li>
 </ul>
-<h3 id="ch1-具體例子-L-3-只看一個-channel">具體例子（L = 3，只看一個 channel）</h3>
+<h3 id="ch2-具體例子-L-3-只看一個-channel">具體例子（L = 3，只看一個 channel）</h3>
 <pre><code>a = | a00 a01 a02 |      b = | b00 b01 b02 |
     | a10 a11 a12 |          | b10 b11 b12 |
     | a20 a21 a22 |          | b20 b21 b22 |
@@ -378,15 +584,15 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 <p>也就是 <code>z = a × bᵀ</code>（a 乘以 b 的轉置）。</p>
 <blockquote>
 <p>我們已經用 HuggingFace 的 ESMFold 驗證：這個算式和 ESMFold 模組內部的計算<strong>完全一致（差值 0）</strong>
-（詳見第 3 章 3.9 節）。</p>
+（詳見第 4 章 4.9 節）。</p>
 </blockquote>
-<h3 id="ch1-Triangle-Attention-我們沒有實作-但-LightNobel-有處理">Triangle Attention（我們沒有實作，但 LightNobel 有處理）</h3>
+<h3 id="ch2-Triangle-Attention-我們沒有實作-但-LightNobel-有處理">Triangle Attention（我們沒有實作，但 LightNobel 有處理）</h3>
 <p>同一個 block 裡還有 Triangle Attention：對每一列 i，在 (j, k) 之間做 attention。
 它的中間值（attention logits）形狀是 <strong>L × L × L × heads</strong>，是<strong>立方</strong>成長，
 所以實作上一定要分塊（chunking）計算，否則 L = 1000 時光這個中間值就需要數十 GB。</p>
 <hr />
-<h2 id="ch1-1-4-問題一-記憶體放不下">1.4 問題一：記憶體放不下</h2>
-<h3 id="ch1-算一算-pair-representation-有多大">算一算 pair representation 有多大</h3>
+<h2 id="ch2-1-4-問題一-記憶體放不下">1.4 問題一：記憶體放不下</h2>
+<h3 id="ch2-算一算-pair-representation-有多大">算一算 pair representation 有多大</h3>
 <p>每個數字用 FP32（4 bytes），每格 128 個數字 → <strong>每格 512 bytes</strong>。</p>
 <pre><code>大小 = L × L × 128 × 4 bytes = L² × 512 bytes
 </code></pre>
@@ -432,7 +638,7 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 </tbody>
 </table>
 <p><strong>長度變 2 倍，資料變 4 倍；長度變 10 倍，資料變 100 倍。</strong></p>
-<h3 id="ch1-實際需要的不只一份">實際需要的不只一份</h3>
+<h3 id="ch2-實際需要的不只一份">實際需要的不只一份</h3>
 <p>計算一次 Triangle Multiplication 時，同時存在的資料至少有：</p>
 <table>
 <thead>
@@ -472,7 +678,7 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 </table>
 <p>粗估<strong>同時有 5～8 份</strong> pair 大小的資料。L = 2000 時，光這一步就可能需要 <strong>10～16 GB</strong>。
 再加上 Triangle Attention 的立方級中間值，GPU 記憶體很快就不夠用（Out of Memory, OOM）。</p>
-<h3 id="ch1-為什麼問題出在-activation-不是模型權重">為什麼問題出在 activation，不是模型權重</h3>
+<h3 id="ch2-為什麼問題出在-activation-不是模型權重">為什麼問題出在 activation，不是模型權重</h3>
 <table>
 <thead>
 <tr>
@@ -499,7 +705,7 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 </table>
 <p>L 小的時候，權重佔大頭；<strong>L 一大，activation 就遠遠超過權重</strong>。
 所以「把模型變小」幫助有限，真正要處理的是 activation。這正是 LightNobel 的切入點。</p>
-<h3 id="ch1-現在的解法與代價">現在的解法與代價</h3>
+<h3 id="ch2-現在的解法與代價">現在的解法與代價</h3>
 <p>常見做法是 <strong>chunking（分塊）</strong>：一次只算一部分，算完就丟。</p>
 <ul>
 <li>優點：記憶體峰值下降。</li>
@@ -510,8 +716,8 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 「<em>Sequence Length Limitation</em>」。</p>
 </blockquote>
 <hr />
-<h2 id="ch1-1-5-問題二-搬資料比計算慢-memory-bound">1.5 問題二：搬資料比計算慢（memory-bound）</h2>
-<h3 id="ch1-白話直覺-廚房比喻">白話直覺：廚房比喻</h3>
+<h2 id="ch2-1-5-問題二-搬資料比計算慢-memory-bound">1.5 問題二：搬資料比計算慢（memory-bound）</h2>
+<h3 id="ch2-白話直覺-廚房比喻">白話直覺：廚房比喻</h3>
 <ul>
 <li><strong>HBM / DRAM（主記憶體）= 遠處的倉庫</strong>：很大，但來回一趟很花時間。</li>
 <li><strong>晶片內記憶體（cache、BRAM、shared memory）= 手邊的料理台</strong>：拿取很快，但很小。</li>
@@ -520,15 +726,15 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 <p>如果廚師切一刀，就要等助手跑一趟倉庫拿下一個食材，那廚師大部分時間都在<strong>等</strong>。
 <strong>這時候瓶頸是「搬運」，不是「廚師的速度」。</strong> 這就叫 <strong>memory-bound</strong>。
 反過來，如果食材都在手邊，只是廚師切不完，就叫 <strong>compute-bound</strong>。</p>
-<h3 id="ch1-用數字判斷-算術強度-Arithmetic-Intensity">用數字判斷：算術強度（Arithmetic Intensity）</h3>
+<h3 id="ch2-用數字判斷-算術強度-Arithmetic-Intensity">用數字判斷：算術強度（Arithmetic Intensity）</h3>
 <pre><code>算術強度 = 運算次數（FLOP） ÷ 從主記憶體搬運的資料量（byte）
 </code></pre>
 <p>單位是 FLOP/byte，代表「每搬 1 byte 可以做幾次運算」。<strong>越高越好。</strong></p>
-<h3 id="ch1-例子-最直白的寫法-我們的-v0">例子：最直白的寫法（我們的 v0）</h3>
+<h3 id="ch2-例子-最直白的寫法-我們的-v0">例子：最直白的寫法（我們的 v0）</h3>
 <p>每算一次 <code>a × b</code> 並累加（2 次運算：一次乘、一次加），都要從記憶體讀一個 <code>a</code>（4 bytes）和一個 <code>b</code>（4 bytes）：</p>
 <pre><code>算術強度 = 2 FLOP ÷ 8 bytes = 0.25 FLOP/byte
 </code></pre>
-<h3 id="ch1-硬體能提供多少">硬體能提供多少？</h3>
+<h3 id="ch2-硬體能提供多少">硬體能提供多少？</h3>
 <table>
 <thead>
 <tr>
@@ -555,20 +761,20 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 </table>
 <p>以 GPU 為例，演算法的算術強度要<strong>超過約 10 FLOP/byte</strong>，才能把運算單元餵飽。
 v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等資料</strong>。</p>
-<h3 id="ch1-那-Triangle-Multiplication-本質上是-memory-bound-嗎">那 Triangle Multiplication 本質上是 memory-bound 嗎？</h3>
+<h3 id="ch2-那-Triangle-Multiplication-本質上是-memory-bound-嗎">那 Triangle Multiplication 本質上是 memory-bound 嗎？</h3>
 <p>不一定，取決於<strong>怎麼寫</strong>：</p>
 <ul>
 <li>理論上：總運算量是 <code>2·L³·C</code>，但資料只有 <code>3·L²·C</code> 個數字。如果每個數字只搬一次，算術強度可以非常高（L 越大越高）。</li>
 <li>實際上：晶片內的空間放不下整個 L×L×128，只能分批搬，而<strong>分批的方式決定要重複搬幾次</strong>。</li>
 </ul>
 <p><strong>這就是優化的空間所在：</strong> 同樣的計算，搬運方式不同，速度可以差幾十倍。
-第 2 章會用公式說明每種手法如何減少搬運；第 3 章會看到實際數字（v2 報告中約 21% 的時間在等記憶體）。</p>
+第 2 章會用公式說明每種手法如何減少搬運；第 4 章會看到實際數字（v2 報告中約 21% 的時間在等記憶體）。</p>
 <hr />
-<h2 id="ch1-1-6-LightNobel-的觀察與解法-高層次">1.6 LightNobel 的觀察與解法（高層次）</h2>
+<h2 id="ch2-1-6-LightNobel-的觀察與解法-高層次">1.6 LightNobel 的觀察與解法（高層次）</h2>
 <blockquote>
 <p>以下是概念層次的整理。<strong>具體數字、實驗設定與硬體細節請以原文為準。</strong></p>
 </blockquote>
-<h3 id="ch1-他們的觀察">他們的觀察</h3>
+<h3 id="ch2-他們的觀察">他們的觀察</h3>
 <ol>
 <li>PPM 的記憶體瓶頸主要來自 <strong>activation</strong>（尤其是 pair representation），而不是權重。</li>
 <li>
@@ -579,7 +785,7 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <p>如果整份資料共用同一個量化尺度，outlier 會讓其他數值的精度嚴重下降。</p>
 </li>
 </ol>
-<h3 id="ch1-他們的解法">他們的解法</h3>
+<h3 id="ch2-他們的解法">他們的解法</h3>
 <ol>
 <li>
 <p><strong>Token-wise Adaptive Activation Quantization（AAQ）</strong>：<strong>每個 token 各自決定量化方式</strong>（包含尺度，
@@ -593,7 +799,7 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <p>結果：大幅降低記憶體峰值，讓模型能處理<strong>比 GPU 基準長得多的序列</strong>，同時保持速度。</p>
 </li>
 </ol>
-<h3 id="ch1-和我們的關係">和我們的關係</h3>
+<h3 id="ch2-和我們的關係">和我們的關係</h3>
 <table>
 <thead>
 <tr>
@@ -623,27 +829,27 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <p>我們在模擬資料上已經重現了 LightNobel 的核心直覺：資料中有 1% 的 outlier token 時，
 <strong>per-token INT8 的誤差約 1%，per-tensor INT8 約 11%</strong>，相差約 10 倍。</p>
 <hr />
-<h2 id="ch1-1-7-我們的定位">1.7 我們的定位</h2>
-<h3 id="ch1-題目一句話">題目一句話</h3>
+<h2 id="ch2-1-7-我們的定位">1.7 我們的定位</h2>
+<h3 id="ch2-題目一句話">題目一句話</h3>
 <blockquote>
 <p>在 FPGA 上實作 PPM 中最吃記憶體的運算（Triangle Multiplication），
 逐一套用常見的 memory-bound 優化手法，<strong>量化每一招帶來多少改善、付出多少硬體代價</strong>。</p>
 </blockquote>
-<h3 id="ch1-為什麼選-Triangle-Multiplication">為什麼選 Triangle Multiplication</h3>
+<h3 id="ch2-為什麼選-Triangle-Multiplication">為什麼選 Triangle Multiplication</h3>
 <ol>
 <li><strong>它是 pair representation 的核心運算</strong>，直接受 L² 資料量影響。</li>
 <li>算式簡單（本質是矩陣乘法），容易驗證正確性。</li>
 <li>可以清楚展示「同樣的計算，不同搬運方式」的差異。</li>
 <li>量化的效果（per-token vs per-tensor）可以直接呼應 LightNobel。</li>
 </ol>
-<h3 id="ch1-為什麼用-FPGA">為什麼用 FPGA</h3>
+<h3 id="ch2-為什麼用-FPGA">為什麼用 FPGA</h3>
 <ul>
 <li>FPGA 可以<strong>自己決定記憶體怎麼接、資料怎麼搬、運算單元擺幾個</strong>，適合展示記憶體優化的每一個細節。</li>
 <li>U55C 有 HBM（多通道高頻寬記憶體），可以做多通道的實驗。</li>
 <li>GPU 上這些細節大多被硬體和驅動程式隱藏，比較難單獨觀察每一招的效果。</li>
 </ul>
 <hr />
-<h2 id="ch1-本章小結">本章小結</h2>
+<h2 id="ch2-本章小結">本章小結</h2>
 <table>
 <thead>
 <tr>
@@ -670,9 +876,19 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 </tr>
 </tbody>
 </table>
-<p><strong>下一章</strong>會解釋：為什麼 tiling、寬位元、double buffering、多通道、量化這些手法，可以從概念上解決（或緩解）這些問題。</p>
+<hr />
+<h2 id="ch2-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>L 從 1,000 變成 2,000，一份 pair tensor（FP32）從多大變成多大？為什麼是這個倍數？</li>
+<li>為什麼說長序列的瓶頸在 activation，而不是模型權重？</li>
+<li>v0 的算術強度是多少 FLOP/byte？這個數字代表什麼？</li>
+<li>Triangle Multiplication（outgoing）對單一 channel 來說，等同於什麼矩陣運算？</li>
+<li>per-tensor 和 per-token 量化差在哪裡？為什麼有 outlier 時 per-tensor 的誤差特別大？</li>
+</ol>
+<p><strong>下一章</strong>解釋：為什麼 tiling、寬位元、double buffering、多通道、量化這些手法，可以從概念上解決（或緩解）這些問題。</p>
 </section><section class="chapter">
-<h1 id="ch2-第-2-章-為何可做-這些解法從什麼概念上解決問題">第 2 章　為何可做：這些解法從什麼概念上解決問題？</h1>
+<h1 id="ch3-第-2-章-為何可做-這些解法從什麼概念上解決問題">第 2 章　為何可做：這些解法從什麼概念上解決問題？</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
@@ -689,7 +905,7 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch2-2-1-一條公式看懂所有優化">2.1 一條公式看懂所有優化</h2>
+<h2 id="ch3-2-1-一條公式看懂所有優化">2.1 一條公式看懂所有優化</h2>
 <p>一個 kernel 的執行時間，可以粗略拆成「計算」和「搬資料」兩部分：</p>
 <pre><code>如果計算和搬運「輪流」做（沒有重疊）：
     T  ≈  T_compute + T_memory
@@ -745,8 +961,8 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 </table>
 <p>接下來每一節都會回到這條公式。</p>
 <hr />
-<h2 id="ch2-2-2-記憶體階層-為什麼-搬運-有成本">2.2 記憶體階層：為什麼「搬運」有成本</h2>
-<h3 id="ch2-白話直覺">白話直覺</h3>
+<h2 id="ch3-2-2-記憶體階層-為什麼-搬運-有成本">2.2 記憶體階層：為什麼「搬運」有成本</h2>
+<h3 id="ch3-白話直覺">白話直覺</h3>
 <p>離運算單元越近的記憶體，<strong>越快但越小</strong>；越遠的記憶體，<strong>越大但越慢</strong>。</p>
 <pre><code>   速度快、容量小                                         速度慢、容量大
  ┌──────────┐   ┌──────────────┐   ┌────────────────┐   ┌─────────────┐
@@ -756,7 +972,7 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
    1 cycle        1～2 cycles        數十～數百 cycles    非常久
    約 330 KB      U55C 約 43 MB      U55C 16 GB           
 </code></pre>
-<h3 id="ch2-U55C-的具體數字">U55C 的具體數字</h3>
+<h3 id="ch3-U55C-的具體數字">U55C 的具體數字</h3>
 <table>
 <thead>
 <tr>
@@ -795,12 +1011,12 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 </table>
 <p><strong>關鍵：</strong> 一份 L = 1000 的 pair tensor 就有 512 MB，晶片內只有約 43 MB，<strong>不可能整份放進來</strong>，一定得分批從 HBM 搬。</p>
 <hr />
-<h2 id="ch2-2-3-主軸概念-算術強度與-Roofline-模型">2.3 主軸概念：算術強度與 Roofline 模型</h2>
-<h3 id="ch2-算術強度-Arithmetic-Intensity-AI">算術強度（Arithmetic Intensity, AI）</h3>
+<h2 id="ch3-2-3-主軸概念-算術強度與-Roofline-模型">2.3 主軸概念：算術強度與 Roofline 模型</h2>
+<h3 id="ch3-算術強度-Arithmetic-Intensity-AI">算術強度（Arithmetic Intensity, AI）</h3>
 <pre><code>AI = 運算次數 ÷ 從主記憶體搬運的 byte 數      （單位：FLOP/byte）
 </code></pre>
 <p>意義：<strong>每搬 1 byte，能做幾次運算</strong>。</p>
-<h3 id="ch2-Roofline-模型">Roofline 模型</h3>
+<h3 id="ch3-Roofline-模型">Roofline 模型</h3>
 <p>硬體有兩個上限：</p>
 <ol>
 <li><strong>運算上限</strong>（每秒最多做幾次運算）：一條水平線。</li>
@@ -825,10 +1041,10 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <li>在平衡點<strong>左邊</strong>：被頻寬限制（memory-bound）→ 要提高 AI 或頻寬。</li>
 <li>在平衡點<strong>右邊</strong>：被運算能力限制（compute-bound）→ 要增加運算單元。</li>
 </ul>
-<h3 id="ch2-可達效能的公式">可達效能的公式</h3>
+<h3 id="ch3-可達效能的公式">可達效能的公式</h3>
 <pre><code>可達效能 = min( 運算上限 ,  AI × 頻寬 )
 </code></pre>
-<h3 id="ch2-本專題的例子">本專題的例子</h3>
+<h3 id="ch3-本專題的例子">本專題的例子</h3>
 <table>
 <thead>
 <tr>
@@ -857,11 +1073,11 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 </table>
 <p><strong>畫 roofline 圖是報告中最重要的圖之一</strong>：可以一眼看出每一招讓 kernel 往哪個方向移動。</p>
 <hr />
-<h2 id="ch2-2-4-解法一-Tiling-資料重用-減少搬運總量-v0-v1">2.4 解法一：Tiling／資料重用 → 減少搬運總量（v0 → v1）</h2>
-<h3 id="ch2-白話直覺_1">白話直覺</h3>
+<h2 id="ch3-2-4-解法一-Tiling-資料重用-減少搬運總量-v0-v1">2.4 解法一：Tiling／資料重用 → 減少搬運總量（v0 → v1）</h2>
+<h3 id="ch3-白話直覺_1">白話直覺</h3>
 <p>v0 每用一次食材就跑一趟倉庫。
 v1 <strong>一次搬一批到料理台，把這批能做的菜都做完</strong>，再搬下一批。</p>
-<h3 id="ch2-為什麼能重用">為什麼能重用？</h3>
+<h3 id="ch3-為什麼能重用">為什麼能重用？</h3>
 <p>看算式 <code>z[i][j][c] = Σ_k a[i][k][c] × b[j][k][c]</code>：</p>
 <ul>
 <li><code>a[i][k][c]</code> 會被<strong>所有的 j</strong> 用到（L 次）。</li>
@@ -880,7 +1096,7 @@ v1 <strong>一次搬一批到料理台，把這批能做的菜都做完</strong>
     搬 b[j0..j0+TJ−1][k][:]   （TJ × C 個數）
     做 TI × TJ × C 次乘加     ← 每個 a 用 TJ 次、每個 b 用 TI 次
 </code></pre>
-<h3 id="ch2-公式推導-總搬運量">公式推導：總搬運量</h3>
+<h3 id="ch3-公式推導-總搬運量">公式推導：總搬運量</h3>
 <p><strong>v0（沒有重用）：</strong> 每次乘加讀一個 a 和一個 b。</p>
 <pre><code>讀取次數 = 2 × L³ × C    （每個 z[i][j][c] 要 L 次乘加）
 </code></pre>
@@ -907,7 +1123,7 @@ TI = TJ = 32 → 32 倍
 16×16 → 256 ÷ 64  = 4  FLOP/byte
 32×32 → 1024 ÷ 128 = 8 FLOP/byte
 </code></pre>
-<h3 id="ch2-代價-晶片內記憶體">代價：晶片內記憶體</h3>
+<h3 id="ch3-代價-晶片內記憶體">代價：晶片內記憶體</h3>
 <p>累加器要放下整個 tile 的輸出：<code>TI × TJ × C</code> 個 float。
 | Tile | 累加器大小 | 佔晶片內記憶體 |
 |---|---|---|
@@ -915,15 +1131,15 @@ TI = TJ = 32 → 32 倍
 | 16×16 | 32,768 個 = 128 KB | 少 |
 | 32×32 | 131,072 個 = 512 KB | 開始明顯 |</p>
 <p><strong>Tile 越大 → 搬運越少，但晶片內記憶體用越多。</strong> 這就是 tile size sweep 實驗要量的 trade-off。</p>
-<h3 id="ch2-這是-解法-的原因">這是「解法」的原因</h3>
+<h3 id="ch3-這是-解法-的原因">這是「解法」的原因</h3>
 <p>Tiling 不改變計算結果，只改變<strong>計算順序</strong>，卻讓<strong>搬運總量</strong>直接除以 4～16 倍。
 這是所有矩陣運算加速器（GPU 的 cuBLAS、TPU、LightNobel 的運算單元）都會用的基本手法。</p>
 <hr />
-<h2 id="ch2-2-5-解法二-寬位元與-burst-提高每次搬運的效率-v1-v2">2.5 解法二：寬位元與 burst → 提高每次搬運的效率（v1 → v2）</h2>
-<h3 id="ch2-白話直覺_2">白話直覺</h3>
+<h2 id="ch3-2-5-解法二-寬位元與-burst-提高每次搬運的效率-v1-v2">2.5 解法二：寬位元與 burst → 提高每次搬運的效率（v1 → v2）</h2>
+<h3 id="ch3-白話直覺_2">白話直覺</h3>
 <p>v1 雖然減少了趟數，但推車很小，一次只能載 <strong>1 個 float（32 bit）</strong>。
 v2 換成大推車，一次載 <strong>16 個 float（512 bit）</strong>，並且 16 個廚師同時切。</p>
-<h3 id="ch2-兩個不同的概念-頻寬-vs-延遲">兩個不同的概念：頻寬 vs 延遲</h3>
+<h3 id="ch3-兩個不同的概念-頻寬-vs-延遲">兩個不同的概念：頻寬 vs 延遲</h3>
 <table>
 <thead>
 <tr>
@@ -950,7 +1166,7 @@ v2 換成大推車，一次載 <strong>16 個 float（512 bit）</strong>，並�
   32-bit  × 300 MHz = 1.2 GB/s   （v1）
   512-bit × 300 MHz = 19.2 GB/s  （v2）← 16 倍
 </code></pre>
-<h3 id="ch2-Burst-連續搬運">Burst（連續搬運）</h3>
+<h3 id="ch3-Burst-連續搬運">Burst（連續搬運）</h3>
 <p>每次向 HBM 發出請求都要付一次延遲。如果<strong>要的資料在記憶體中是連續的</strong>，可以一次請求、連續拿很多筆，這叫 <strong>burst</strong>。</p>
 <pre><code>非 burst：請求 → 等 → 拿 1 筆 → 請求 → 等 → 拿 1 筆 → ...   （每筆都付一次延遲）
 Burst：   請求 → 等 → 拿 1 筆、1 筆、1 筆、1 筆 ...          （只付一次延遲）
@@ -958,19 +1174,19 @@ Burst：   請求 → 等 → 拿 1 筆、1 筆、1 筆、1 筆 ...          （
 <p><strong>這就是為什麼資料排列（memory layout）很重要：</strong> 我們把資料排成 <code>[row][col][channel]</code>，
 同一個 token 的 128 個 channel 是<strong>連續的</strong>，所以一次可以 burst 讀完。
 v0 在最內層迴圈改變 k，每次跳過 128 個數字（stride = C），<strong>無法形成有效的 burst</strong>，這也是它慢的原因之一。</p>
-<h3 id="ch2-Little-s-Law-要多少資料-在路上-才能用滿頻寬">Little's Law：要多少資料「在路上」才能用滿頻寬</h3>
+<h3 id="ch3-Little-s-Law-要多少資料-在路上-才能用滿頻寬">Little's Law：要多少資料「在路上」才能用滿頻寬</h3>
 <pre><code>在途資料量 = 頻寬 × 延遲
 </code></pre>
 <p>例：頻寬 19.2 GB/s、延遲約 64 cycles（300 MHz 下約 213 ns）
 → 需要約 4 KB 的資料同時在路上，才能讓頻寬不空轉。
 <strong>一次只要一小筆、等到了才要下一筆，永遠用不滿頻寬。</strong> 這也說明了 burst 和下一節 double buffering 的重要性。</p>
-<h3 id="ch2-這是-解法-的原因_1">這是「解法」的原因</h3>
+<h3 id="ch3-這是-解法-的原因_1">這是「解法」的原因</h3>
 <p>寬位元讓<strong>每個 cycle 能搬的量</strong>變 16 倍；burst 讓<strong>延遲只付一次</strong>。
 兩者結合，同樣的搬運量所需的時間大幅下降。同時，因為一次拿到 16 個數，也能讓 16 個運算單元同時工作，
 <strong>運算能力也跟著提高 16 倍</strong>（v2 理論上限 = 16 × 2 × 300 MHz = 9.6 GFLOP/s）。</p>
 <hr />
-<h2 id="ch2-2-6-解法三-Double-buffering-把等待時間藏起來-v2-v3">2.6 解法三：Double buffering → 把等待時間藏起來（v2 → v3）</h2>
-<h3 id="ch2-白話直覺_3">白話直覺</h3>
+<h2 id="ch3-2-6-解法三-Double-buffering-把等待時間藏起來-v2-v3">2.6 解法三：Double buffering → 把等待時間藏起來（v2 → v3）</h2>
+<h3 id="ch3-白話直覺_3">白話直覺</h3>
 <p>v2 的廚師：<strong>搬一批 → 煮一批 → 搬下一批 → 煮下一批</strong>，搬的時候廚師在等。
 v3 多準備一個料理台：<strong>廚師煮第 k 批的同時，助手把第 k+1 批搬到另一個料理台</strong>。</p>
 <pre><code>v2（沒有重疊）：
@@ -982,7 +1198,7 @@ v3（double buffering，兩組 buffer 輪流用）：
           [搬 k=1]  [搬 k=2]  [搬 k=3]
            ↑ 搬運藏在計算底下
 </code></pre>
-<h3 id="ch2-用實際數字看-v2-的-HLS-報告">用實際數字看：v2 的 HLS 報告</h3>
+<h3 id="ch3-用實際數字看-v2-的-HLS-報告">用實際數字看：v2 的 HLS 報告</h3>
 <p>每一輪 <code>loop_k</code>：
 | 步驟 | cycles |
 |---|---|
@@ -995,20 +1211,20 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
 
 時間減少 ≈ (671 − 530) ÷ 671 ≈ 21%     → 速度約 1.27 倍
 </code></pre>
-<h3 id="ch2-為什麼上限只有約-21">為什麼上限只有約 21%？</h3>
+<h3 id="ch3-為什麼上限只有約-21">為什麼上限只有約 21%？</h3>
 <p>因為<strong>搬運只佔 21% 的時間</strong>。即使把搬運完全藏起來，最多也只能省下這 21%。
 這是 <strong>Amdahl's Law</strong> 的例子（見 2.10 節）。</p>
-<h3 id="ch2-延伸觀察-141-cycles-裡大部分是-延遲">延伸觀察：141 cycles 裡大部分是「延遲」</h3>
+<h3 id="ch3-延伸觀察-141-cycles-裡大部分是-延遲">延伸觀察：141 cycles 裡大部分是「延遲」</h3>
 <p>v2 每輪只搬 2 × 64 = 128 個 512-bit word（a、b 各 64 個，兩個 port 並行），
 理想上只要約 64 cycles，但報告顯示 141 cycles。
 多出的時間大多是 <strong>HBM 的延遲</strong>（HLS 預設假設 64 cycles）和迴圈的啟動成本。
 <strong>Double buffering 對付的正是這種「延遲型」的等待</strong>：延遲再長，只要能和計算重疊，就不會影響總時間。</p>
-<h3 id="ch2-這是-解法-的原因_2">這是「解法」的原因</h3>
+<h3 id="ch3-這是-解法-的原因_2">這是「解法」的原因</h3>
 <p>Double buffering 不減少搬運量，也不提高頻寬，而是<strong>改變時間的結構</strong>：
 從「相加」變成「取最大值」。當計算和搬運的時間接近時，效果最好（最多快 2 倍）。</p>
 <hr />
-<h2 id="ch2-2-7-解法四-多通道-HBM-多條路同時搬-cfg-對照實驗">2.7 解法四：多通道 HBM → 多條路同時搬（cfg 對照實驗）</h2>
-<h3 id="ch2-U55C-的-HBM-結構">U55C 的 HBM 結構</h3>
+<h2 id="ch3-2-7-解法四-多通道-HBM-多條路同時搬-cfg-對照實驗">2.7 解法四：多通道 HBM → 多條路同時搬（cfg 對照實驗）</h2>
+<h3 id="ch3-U55C-的-HBM-結構">U55C 的 HBM 結構</h3>
 <pre><code>16 GB HBM2 = 32 個 pseudo-channel（PC），每個 512 MB、約 14 GB/s
             ┌────┬────┬────┬─────┬────┐
             │PC0 │PC1 │PC2 │ ... │PC31│
@@ -1016,7 +1232,7 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
              總頻寬約 460 GB/s（全部同時用的情況下）
 </code></pre>
 <p><strong>單一 PC 的頻寬和容量都不大</strong>，要同時使用多個 PC，才能發揮 HBM 的優勢。</p>
-<h3 id="ch2-本專題的兩種設定">本專題的兩種設定</h3>
+<h3 id="ch3-本專題的兩種設定">本專題的兩種設定</h3>
 <table>
 <thead>
 <tr>
@@ -1044,15 +1260,15 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
 </tr>
 </tbody>
 </table>
-<h3 id="ch2-這是-解法-的原因_3">這是「解法」的原因</h3>
+<h3 id="ch3-這是-解法-的原因_3">這是「解法」的原因</h3>
 <p>頻寬是「每條路的頻寬 × 同時使用的路數」。讓不同資料走不同的 PC，
 等於把公式中的 <code>頻寬</code> 乘上倍數；反之，全部擠在同一個 PC 會互相排隊。
 這個實驗需要<strong>上板</strong>才看得出效果（HLS 報告無法模擬 HBM 的真實行為）。</p>
 <hr />
-<h2 id="ch2-2-8-解法五-量化-讓每筆資料變小-v2-v4">2.8 解法五：量化 → 讓每筆資料變小（v2 → v4）</h2>
-<h3 id="ch2-白話直覺_4">白話直覺</h3>
+<h2 id="ch3-2-8-解法五-量化-讓每筆資料變小-v2-v4">2.8 解法五：量化 → 讓每筆資料變小（v2 → v4）</h2>
+<h3 id="ch3-白話直覺_4">白話直覺</h3>
 <p>把食材<strong>壓縮成原本的 1/4 再搬</strong>，搬到後再還原。會有一點失真，但搬運量少了 4 倍。</p>
-<h3 id="ch2-INT8-對稱量化的原理">INT8 對稱量化的原理</h3>
+<h3 id="ch3-INT8-對稱量化的原理">INT8 對稱量化的原理</h3>
 <p>把一組浮點數 <code>x</code> 轉成 -127～127 的整數 <code>q</code>：</p>
 <pre><code>scale s = max(|x|) ÷ 127         ← 讓最大的數剛好對應到 127
 q       = round(x ÷ s)           ← 四捨五入成整數，存 1 byte
@@ -1061,7 +1277,7 @@ q       = round(x ÷ s)           ← 四捨五入成整數，存 1 byte
 </code></pre>
 <p><strong>誤差的大小取決於 s</strong>：s 越大，每一格越粗，誤差越大。
 （在誤差均勻分布的假設下，均方根誤差約為 <code>s ÷ √12 ≈ 0.29 × s</code>。）</p>
-<h3 id="ch2-為什麼-outlier-是問題-per-tensor-vs-per-token">為什麼 outlier 是問題：per-tensor vs per-token</h3>
+<h3 id="ch3-為什麼-outlier-是問題-per-tensor-vs-per-token">為什麼 outlier 是問題：per-tensor vs per-token</h3>
 <p>我們的模擬資料：一般的數字大約落在 ±3 以內，但有 1% 的 token 被放大 30 倍（outlier，大約 ±80）。</p>
 <p><strong>Per-tensor（整份資料共用一把尺）：</strong></p>
 <pre><code>s = 84 ÷ 127 ≈ 0.66
@@ -1075,7 +1291,7 @@ outlier token：s ≈ 0.66，但它自己的數值本來就大，相對誤差一
 <p><strong>結論：</strong> per-tensor 時，<strong>少數 outlier 拖累了其他所有 token</strong>；per-token 讓每個 token 用適合自己的精度。
 我們的 C 模擬實測：<strong>per-token 輸出誤差約 1%，per-tensor 約 11%</strong>，與上面的推算方向一致。
 這正是 LightNobel「token-wise」量化的核心動機。</p>
-<h3 id="ch2-代價">代價</h3>
+<h3 id="ch3-代價">代價</h3>
 <table>
 <thead>
 <tr>
@@ -1102,13 +1318,13 @@ outlier token：s ≈ 0.66，但它自己的數值本來就大，相對誤差一
 </tr>
 </tbody>
 </table>
-<h3 id="ch2-算術強度-v4-8-8-tile">算術強度（v4，8×8 tile）</h3>
+<h3 id="ch3-算術強度-v4-8-8-tile">算術強度（v4，8×8 tile）</h3>
 <pre><code>資料量 = L³·C·(1/TI + 1/TJ) × 1 byte      （int8）
        + L³·(1/TI + 1/TJ) × 4 bytes        （scale）
 AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
    = 2·128 ÷ [(1/4)·132] ≈ 7.8 FLOP/byte     ← 約是 v2 的 3.9 倍
 </code></pre>
-<h3 id="ch2-容量上的好處">容量上的好處</h3>
+<h3 id="ch3-容量上的好處">容量上的好處</h3>
 <table>
 <thead>
 <tr>
@@ -1135,11 +1351,11 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 </table>
 <p>總佔用量<strong>約減半</strong> → 相同記憶體下，L 約可增加 √2 ≈ <strong>1.4 倍</strong>。
 （若輸出也量化，才會接近 2 倍，可以當延伸題目。）</p>
-<h3 id="ch2-這是-解法-的原因_4">這是「解法」的原因</h3>
+<h3 id="ch3-這是-解法-的原因_4">這是「解法」的原因</h3>
 <p>量化同時縮小兩件事：<strong>搬運量</strong>（公式中的分子）和<strong>記憶體佔用</strong>（決定 L 的上限）。
 這是唯一一個<strong>直接處理「序列長度受限」</strong>的手法，也是 LightNobel 的核心。</p>
 <hr />
-<h2 id="ch2-2-9-其他常見手法-本專題未實作-但報告中可以提">2.9 其他常見手法（本專題未實作，但報告中可以提）</h2>
+<h2 id="ch3-2-9-其他常見手法-本專題未實作-但報告中可以提">2.9 其他常見手法（本專題未實作，但報告中可以提）</h2>
 <table>
 <thead>
 <tr>
@@ -1183,8 +1399,8 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 </tbody>
 </table>
 <hr />
-<h2 id="ch2-2-10-為什麼-效益可能不大-仍然算解法">2.10 為什麼「效益可能不大」仍然算解法？</h2>
-<h3 id="ch2-Amdahl-s-Law">Amdahl's Law</h3>
+<h2 id="ch3-2-10-為什麼-效益可能不大-仍然算解法">2.10 為什麼「效益可能不大」仍然算解法？</h2>
+<h3 id="ch3-Amdahl-s-Law">Amdahl's Law</h3>
 <pre><code>整體加速 = 1 ÷ [ (1 − p) + p ÷ s ]
 
 p = 被改善的部分佔原本時間的比例
@@ -1193,7 +1409,7 @@ s = 那部分被加速的倍數
 <p>例：v3 只改善「等記憶體」那 21%（p = 0.21），即使讓它完全消失（s → ∞）：</p>
 <pre><code>整體加速 = 1 ÷ (1 − 0.21) ≈ 1.27 倍
 </code></pre>
-<h3 id="ch2-瓶頸轉移">瓶頸轉移</h3>
+<h3 id="ch3-瓶頸轉移">瓶頸轉移</h3>
 <p>每解決一個瓶頸，<strong>下一個瓶頸就會浮現</strong>：</p>
 <pre><code>v0：受限於記憶體（AI = 0.25）
  → v1 tiling：搬運量減少 8 倍，但每 cycle 只做 1 次乘加 → 變成受限於運算
@@ -1203,7 +1419,7 @@ s = 那部分被加速的倍數
 </code></pre>
 <p><strong>找出每一步的瓶頸在哪、為什麼轉移，本身就是有價值的分析。</strong>
 這也是為什麼報告中要畫 roofline：可以看到 kernel 在圖上一步步移動。</p>
-<h3 id="ch2-什麼叫-有解決到問題">什麼叫「有解決到問題」</h3>
+<h3 id="ch3-什麼叫-有解決到問題">什麼叫「有解決到問題」</h3>
 <table>
 <thead>
 <tr>
@@ -1241,7 +1457,7 @@ s = 那部分被加速的倍數
 </tbody>
 </table>
 <hr />
-<h2 id="ch2-本章小結">本章小結</h2>
+<h2 id="ch3-本章小結">本章小結</h2>
 <ul>
 <li>記住這條公式：<code>T ≈ T_compute + T_memory</code>（沒重疊）或 <code>max(...)</code>（有重疊），每一招都在縮小其中一項。</li>
 <li>用<strong>算術強度</strong>判斷 memory-bound 還是 compute-bound；用 <strong>roofline 圖</strong>呈現結果。</li>
@@ -1249,622 +1465,20 @@ s = 那部分被加速的倍數
 <li>Double buffering 的上限由搬運佔比決定（v2 約 21%），這是 Amdahl's Law。</li>
 <li>量化是唯一同時處理「頻寬」和「容量（序列長度）」的手法，per-token 可以避免 outlier 拖累精度。</li>
 </ul>
-<p><strong>下一章</strong>會一步一步回顧我們實際做了什麼、每一步為什麼做、產生了哪些檔案。</p>
+<hr />
+<h2 id="ch3-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>寫出「沒有重疊」與「完全重疊」時的執行時間公式。Double buffering 改變的是哪一點？</li>
+<li>TI = TJ = 16 時，tiling 後的讀取量是 v0 的幾分之一？算術強度是多少？</li>
+<li>v2 每輪 <code>loop_k</code> 671 cycles，其中載入 141 cycles。Double buffering 最多能快多少？為什麼不是 2 倍？</li>
+<li>頻寬和延遲有什麼不同？寬位元和 burst 分別改善哪一個？</li>
+<li>如果記憶體用量減半，可處理的最大序列長度 L 變成幾倍？</li>
+</ol>
+<p><strong>下一章</strong>先介紹工具背後的原理：FPGA 是什麼、C++ 怎麼變成電路、每個工具做了什麼。有了這些基礎，第 4 章看程式碼時會比較容易。</p>
 </section><section class="chapter">
-<h1 id="ch3-第-3-章-整體流程-從頭到現在具體做了什麼">第 3 章　整體流程：從頭到現在具體做了什麼？</h1>
-<blockquote>
-<p><strong>本章重點</strong></p>
-<ul>
-<li>我們的工作分成十個步驟：<strong>界定範圍 → 資料排列 → 寫 kernel → 驗證 → host → HBM 設定 → Makefile → 真實資料 → 上 server 除錯 → 讀報告</strong>。</li>
-<li>每一步都說明：<strong>為什麼做、怎麼做、有什麼效果、產生了什麼檔案</strong>。</li>
-<li>最後有一張所有檔案的總表。</li>
-</ul>
-</blockquote>
-<hr />
-<h2 id="ch3-3-1-全景圖">3.1 全景圖</h2>
-<pre><code> ┌───────────────────────────── 在任何電腦上都能做 ─────────────────────────────┐
- │                                                                              │
- │ [1] 界定範圍 ──► [2] 資料排列與算式 ──► [3] 寫 5 個 kernel（C++）            │
- │                                               │                              │
- │                                               ▼                              │
- │                    [4] C 模擬驗證（g++，make csim）──► ALL PASS              │
- │                                                                              │
- │ [8] 真實資料管線（Python + ESMFold，需要 GPU）── 加分項                      │
- └──────────────────────────────────────────────────────────────────────────────┘
-                                        │
- ┌─────────────────── 需要 Vitis（你們的 server63 上可以做） ───────────────────┐
- │                                                                              │
- │ [9] 上 server、修 2025.2 相容問題 ──► [10] HLS 合成（make hls）──► 報告      │
- │                                                                              │
- └──────────────────────────────────────────────────────────────────────────────┘
-                                        │
- ┌─────────────── 需要 U55C 卡 + XRT + platform（尚未找到機器） ────────────────┐
- │                                                                              │
- │ [5] host 程式 ＋ [6] HBM 設定 ＋ [7] Makefile ──► v++ 編譯 ──► 上板量測      │
- │     （程式已寫好，尚未實際執行）                                             │
- └──────────────────────────────────────────────────────────────────────────────┘
-</code></pre>
-<hr />
-<h2 id="ch3-3-2-步驟一-界定範圍">3.2 步驟一：界定範圍</h2>
-<h3 id="ch3-為什麼做">為什麼做</h3>
-<p>LightNobel 處理的是整個 PPM，還設計了專用硬體。專題要求「用常見手法比較」，
-所以要從中挑出<strong>一個能代表問題、又做得完</strong>的小範圍。</p>
-<h3 id="ch3-怎麼決定">怎麼決定</h3>
-<table>
-<thead>
-<tr>
-<th>考量</th>
-<th>Triangle Multiplication 的情況</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>能代表問題嗎？</td>
-<td>✅ 直接處理 L×L×128 的 pair representation</td>
-</tr>
-<tr>
-<td>算式簡單、容易驗證嗎？</td>
-<td>✅ 本質是 128 個矩陣乘法</td>
-</tr>
-<tr>
-<td>能展示多種記憶體手法嗎？</td>
-<td>✅ tiling、寬位元、重疊、多通道、量化都適用</td>
-</tr>
-<tr>
-<td>能呼應 LightNobel 嗎？</td>
-<td>✅ 可以比較 per-token vs per-tensor 量化</td>
-</tr>
-</tbody>
-</table>
-<h3 id="ch3-產出">產出</h3>
-<p>一句話的題目定義（見第 1 章 1.7 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。</p>
-<hr />
-<h2 id="ch3-3-3-步驟二-資料排列-memory-layout-與算式">3.3 步驟二：資料排列（memory layout）與算式</h2>
-<h3 id="ch3-為什麼做_1">為什麼做</h3>
-<p>資料在記憶體中怎麼排，決定了能不能做 <strong>burst</strong>（連續讀取，見第 2 章 2.5 節）。</p>
-<h3 id="ch3-我們的選擇">我們的選擇</h3>
-<pre><code>a、b、z 都是 L × L × C，排成 [row][col][channel]：
-index = (row × L + col) × C + c
-
-記憶體中的樣子（C = 128）：
-┌───────────────────┬───────────────────┬─────┬─────────────────────┬─────
-│ (0,0) 的 128 個數 │ (0,1) 的 128 個數 │ ... │ (0,L-1) 的 128 個數 │ (1,0) ...
-└───────────────────┴───────────────────┴─────┴─────────────────────┴─────
-  ↑ 同一個 token 的 128 個 channel 是連續的 → 可以一次 burst 讀完
-</code></pre>
-<h3 id="ch3-效果">效果</h3>
-<ul>
-<li>每個 token 的 128 個 float = 512 bytes = <strong>剛好 8 個 512-bit word</strong>，完美對齊寬位元傳輸。</li>
-<li>這也是 PyTorch 中 ESMFold 的預設排列（最後一維是 channel），所以從 Python 擷取的資料可以<strong>直接使用，不用轉換</strong>。</li>
-</ul>
-<h3 id="ch3-產出_1">產出</h3>
-<p><code>fpga/trimul/kernels/trimul.h</code>：定義 <code>C = 128</code>、tile 大小、<code>f16</code>（16 個 float 的 struct）、<code>q64</code>（64 個 int8 的 struct）等共用設定。</p>
-<hr />
-<h2 id="ch3-3-4-步驟三-寫-5-個-kernel">3.4 步驟三：寫 5 個 kernel</h2>
-<p>以下擷取每個版本最關鍵的部分，完整程式碼在 <code>fpga/trimul/kernels/</code>。</p>
-<h3 id="ch3-v0-最直白的寫法-trimul_v0-cpp">v0：最直白的寫法（<code>trimul_v0.cpp</code>）</h3>
-<pre><code class="language-cpp">for (int i = 0; i &lt; L; i++)
-  for (int j = 0; j &lt; L; j++)
-    for (int c = 0; c &lt; C; c++) {
-      float acc = 0.0f;
-      for (int k = 0; k &lt; L; k++) {
-#pragma HLS PIPELINE
-        acc += a[(i * L + k) * C + c] * b[(j * L + k) * C + c];   // 每次都讀 HBM
-      }
-      z[(i * L + j) * C + c] = acc;
-    }
-</code></pre>
-<p><strong>問題在哪：</strong></p>
-<ol>
-<li>每次乘加都從 HBM 讀兩個數，完全沒有重用。</li>
-<li>最內層的 k 每次跳 C 個位置（stride = 128），無法 burst。</li>
-<li><code>acc += ...</code> 下一次要等上一次加完（浮點加法需要好幾個 cycle），pipeline 無法每 cycle 開始一次。</li>
-</ol>
-<h3 id="ch3-v1-Tiling-trimul_v1-cpp">v1：Tiling（<code>trimul_v1.cpp</code>）</h3>
-<pre><code class="language-cpp">float acc[TI][TJ][C];          // 累加器留在晶片內（BRAM）
-float la[TI][C], lb[TJ][C];    // 本輪用到的 a、b
-
-for (i0 ...; i0 += TI)                    // 一次處理 TI 列
-  for (j0 ...; j0 += TJ) {                // 和 TJ 行
-    acc = 0
-    for (int k = 0; k &lt; L; k++) {
-      load_a: la[ii][c] = a[((i0 + ii) * L + k) * C + c];    // 搬 TI×C 個（連續）
-      load_b: lb[jj][c] = b[((j0 + jj) * L + k) * C + c];    // 搬 TJ×C 個（連續）
-      mac:    acc[ii][jj][c] += la[ii][c] * lb[jj][c];       // TI×TJ×C 次乘加
-    }
-    store: z[...] = acc[ii][jj][c];
-  }
-</code></pre>
-<p><strong>改善：</strong> 每個 <code>la</code> 用 TJ 次、每個 <code>lb</code> 用 TI 次（搬運量減 8 倍）；每次載入 C 個連續的數（可以 burst）。</p>
-<p><strong>一個細節：</strong> <code>mac</code> 迴圈裡加了</p>
-<pre><code class="language-cpp">#pragma HLS DEPENDENCE variable = acc inter false
-</code></pre>
-<p>意思是告訴 HLS：「同一個 <code>acc</code> 位置要隔 TI×TJ×C = 8192 次迭代才會再被更新，不用擔心前後相依」，
-這樣 HLS 才敢讓迴圈每個 cycle 開始一次新的迭代（II = 1）。</p>
-<h3 id="ch3-v2-寬位元-16-路平行-trimul_v2-cpp">v2：寬位元＋16 路平行（<code>trimul_v2.cpp</code>）</h3>
-<pre><code class="language-cpp">struct f16 { float v[16]; };     // 一個 512-bit word
-
-float acc[TI * TJ * CW][LANES];  // LANES = 16，CW = C/16 = 8
-#pragma HLS ARRAY_PARTITION variable = acc dim = 2 complete   // 16 個 lane 拆開成獨立的記憶體
-
-mac:
-for (int r = 0; r &lt; TI * TJ * CW; r++) {       // 512 次
-#pragma HLS PIPELINE II = 1
-  for (int l = 0; l &lt; LANES; l++)              // 這層會被完全展開 → 16 個乘加器同時做
-    acc[r][l] += la[...][l] * lb[...][l];
-}
-</code></pre>
-<p><strong>改善：</strong></p>
-<ul>
-<li>介面從 <code>float*</code> 改成 <code>f16*</code> → 每次讀 512 bit（16 個 float）。</li>
-<li><code>ARRAY_PARTITION</code> 把 16 個 lane 拆到不同的記憶體區塊，才能<strong>同一個 cycle 讀寫 16 個數</strong>。</li>
-<li>內層 <code>for l</code> 在 PIPELINE 裡會被自動展開成 16 份硬體。</li>
-</ul>
-<h3 id="ch3-v3-Double-buffering-trimul_v3-cpp">v3：Double buffering（<code>trimul_v3.cpp</code>）</h3>
-<pre><code class="language-cpp">float la0[...], lb0[...];   // 第一組 buffer
-float la1[...], lb1[...];   // 第二組 buffer
-
-load_ab(k = 0 → la0, lb0);
-for (int k = 0; k &lt; L; k++) {
-  if (k % 2 == 0) {
-    if (k + 1 &lt; L) load_ab(k + 1 → la1, lb1);   // 搬下一批到 buffer 1
-    mac(la0, lb0, acc);                          // 同時用 buffer 0 計算
-  } else {
-    if (k + 1 &lt; L) load_ab(k + 1 → la0, lb0);   // 搬下一批到 buffer 0
-    mac(la1, lb1, acc);                          // 同時用 buffer 1 計算
-  }
-}
-</code></pre>
-<p><strong>關鍵：</strong> <code>load_ab</code> 和 <code>mac</code> 是兩個獨立的函式（<code>#pragma HLS INLINE off</code>），而且使用<strong>不同的 buffer</strong>、
-彼此沒有資料相依，所以 HLS 可以讓它們<strong>同時執行</strong>。</p>
-<h3 id="ch3-v4-INT8-per-token-量化-trimul_v4-cpp">v4：INT8 per-token 量化（<code>trimul_v4.cpp</code>）</h3>
-<pre><code class="language-cpp">struct q64 { int8_t v[64]; };    // 一個 512-bit word = 64 個 int8
-
-// 每個 token 有自己的 scale：sa[i*L + k]、sb[j*L + k]
-mac:
-for (int r = 0; r &lt; TI * TJ * QW; r++) {
-#pragma HLS PIPELINE II = 1
-  float s = lsa[ii] * lsb[jj];                          // 兩個 token 的 scale 相乘
-  for (int l = 0; l &lt; 64; l++) {                        // 64 路平行
-    int16_t p = (int16_t)la[..][l] * (int16_t)lb[..][l];  // int8 × int8 → int16
-    acc[r][l] += (float)p * s;                          // 還原尺度後累加
-  }
-}
-</code></pre>
-<p><strong>改善：</strong> 每次搬 64 個數（FP32 時只有 16 個），搬運量變 1/4。
-<strong>為什麼 scale 不能提到迴圈外：</strong> 每個 k 的 token 不同，scale 也不同，所以每次都要乘。
-（如果改成 per-channel 量化，scale 就能提到外面，用純整數累加，但就不是 token-wise 了。）</p>
-<h3 id="ch3-產出_2">產出</h3>
-<p><code>kernels/trimul_v0.cpp</code> ～ <code>trimul_v4.cpp</code>，以及共用的 <code>trimul.h</code>。</p>
-<hr />
-<h2 id="ch3-3-5-步驟四-正確性驗證-C-模擬">3.5 步驟四：正確性驗證（C 模擬）</h2>
-<h3 id="ch3-為什麼做_2">為什麼做</h3>
-<p>上板編譯一次要 1～數小時。<strong>先用幾秒鐘確認程式算得對</strong>，才不會浪費時間。</p>
-<h3 id="ch3-怎麼做-tb-tb-cpp">怎麼做（<code>tb/tb.cpp</code>）</h3>
-<ol>
-<li>產生隨機資料 <code>a</code>、<code>b</code>（<code>host/common.h</code> 的 <code>make_activation</code>）：
-   - 一般 token：常態分布 N(0, 1)
-   - <strong>1% 的 token 放大 30 倍</strong>：模擬真實 activation 中的 outlier</li>
-<li>依序呼叫 v0～v4，把結果和 CPU 用 double 精度算出的正確答案比較。</li>
-<li>
-<p>印出兩種誤差：
-   <code>rel_l2  = ‖z − z_ref‖ ÷ ‖z_ref‖     （整體相對誤差）
-   max_abs = max |z − z_ref|             （最大的單點誤差）</code></p>
-</li>
-<li>
-<p>v0～v3 要求 rel_l2 &lt; 1e-5（只有浮點誤差）；v4 允許較大誤差（量化本來就有誤差）。</p>
-</li>
-</ol>
-<h3 id="ch3-結果">結果</h3>
-<pre><code>v0 naive                     rel_l2=1.141e-07   PASS
-v1 tiled                     rel_l2=1.141e-07   PASS
-v2 tiled+wide                rel_l2=1.141e-07   PASS
-v3 tiled+wide+pingpong       rel_l2=1.141e-07   PASS
-v4 int8 per-token            rel_l2=9.871e-03   PASS    ← 約 1%
-v4 int8 per-tensor           rel_l2=1.126e-01   PASS    ← 約 11%
-</code></pre>
-<ul>
-<li>v0～v3 的誤差完全一樣（1.1e-7），代表<strong>改寫沒有改變計算結果</strong>。</li>
-<li><strong>per-tensor 誤差約是 per-token 的 11 倍</strong>，這是本專題第一個可以放進報告的結論。</li>
-</ul>
-<h3 id="ch3-為什麼-g-能跑-HLS-程式">為什麼 g++ 能跑 HLS 程式？</h3>
-<p>因為 kernel 就是<strong>普通的 C++</strong>。<code>#pragma HLS ...</code> 對 g++ 來說是不認識的指示，會被忽略
-（我們加了 <code>-Wno-unknown-pragmas</code> 讓它不要警告）。詳見第 4 章 4.4 節。</p>
-<h3 id="ch3-產出_3">產出</h3>
-<p><code>tb/tb.cpp</code>、<code>host/common.h</code>；指令 <code>make csim</code>。</p>
-<hr />
-<h2 id="ch3-3-6-步驟五-host-程式">3.6 步驟五：host 程式</h2>
-<h3 id="ch3-為什麼做_3">為什麼做</h3>
-<p>FPGA 不會自己去拿資料。需要一個在 CPU 上執行的程式負責：
-<strong>準備資料 → 送進 FPGA 的 HBM → 啟動 kernel → 等它算完 → 取回結果 → 檢查、計時</strong>。</p>
-<h3 id="ch3-流程-host-host-cpp-使用-XRT-的-C-API">流程（<code>host/host.cpp</code>，使用 XRT 的 C++ API）</h3>
-<pre><code class="language-cpp">xrt::device dev(0);                              // 1. 打開第 0 張 FPGA 卡
-auto uuid = dev.load_xclbin(&quot;trimul_v2.xclbin&quot;); // 2. 把編譯好的電路燒進去
-xrt::kernel krnl(dev, uuid, &quot;trimul_v2&quot;);        // 3. 找到 kernel
-
-xrt::bo bo_a(dev, bytes, krnl.group_id(0));      // 4. 在 HBM 上配置記憶體
-bo_a.write(a.data());                            //    （group_id 決定放在哪個 PC）
-bo_a.sync(XCL_BO_SYNC_BO_TO_DEVICE);             // 5. 從 CPU 記憶體複製到 HBM
-
-run.start(); run.wait();                         // 6. 啟動 kernel 並等待完成（計時）
-
-bo_z.sync(XCL_BO_SYNC_BO_FROM_DEVICE);           // 7. 把結果複製回 CPU
-bo_z.read(z.data());
-</code></pre>
-<p>最後印出時間、GFLOP/s、估計的搬運量和頻寬、HBM 佔用量、誤差，以及一行 CSV 方便整理。</p>
-<h3 id="ch3-狀態">狀態</h3>
-<p>⚠️ 已寫好，並用假的 XRT header 確認<strong>可以編譯</strong>，但<strong>尚未在真的板子上執行過</strong>。</p>
-<h3 id="ch3-產出_4">產出</h3>
-<p><code>host/host.cpp</code>；指令 <code>make host</code>、<code>make run</code>。</p>
-<hr />
-<h2 id="ch3-3-7-步驟六-HBM-連接設定">3.7 步驟六：HBM 連接設定</h2>
-<h3 id="ch3-為什麼做_4">為什麼做</h3>
-<p>kernel 有好幾個 AXI 連接埠（a、b、z……），每個要接到 HBM 的哪個 pseudo-channel，
-是在<strong>連結（link）階段</strong>由設定檔決定的。</p>
-<h3 id="ch3-設定檔-cfg-trimul_v2-cfg">設定檔（<code>cfg/trimul_v2.cfg</code>）</h3>
-<pre><code class="language-ini">[connectivity]
-sp=trimul_v2_1.a:HBM[0:7]      # a 接到 PC 0～7（共 4 GB）
-sp=trimul_v2_1.b:HBM[8:15]     # b 接到 PC 8～15
-sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
-</code></pre>
-<ul>
-<li><code>trimul_v2_1</code>：kernel 的第一個實例（instance）。</li>
-<li><code>sp</code>：system port，指定「kernel 的某個參數要接到哪塊記憶體」。</li>
-<li>對照組 <code>trimul_v2_onebank.cfg</code>：全部接到 <code>HBM[0]</code>。</li>
-</ul>
-<h3 id="ch3-產出_5">產出</h3>
-<p><code>cfg/trimul_v0.cfg</code> ～ <code>trimul_v4.cfg</code>、<code>trimul_v2_onebank.cfg</code>。</p>
-<hr />
-<h2 id="ch3-3-8-步驟七-Makefile">3.8 步驟七：Makefile</h2>
-<h3 id="ch3-為什麼做_5">為什麼做</h3>
-<p>完整流程有很多步驟、每個指令都很長。Makefile 把它們包成短指令，參數也集中管理。</p>
-<h3 id="ch3-指令一覽">指令一覽</h3>
-<table>
-<thead>
-<tr>
-<th>指令</th>
-<th>做什麼</th>
-<th>需要什麼</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>make csim</code></td>
-<td>g++ 編譯並執行 testbench</td>
-<td>只要 g++</td>
-</tr>
-<tr>
-<td><code>make hls KERNEL=trimul_v2</code></td>
-<td>執行 <code>hls/run_hls.tcl</code>，產生合成報告</td>
-<td>Vitis</td>
-</tr>
-<tr>
-<td><code>make hls-all</code></td>
-<td>依序合成 v0～v4，最後呼叫 <code>make summary</code></td>
-<td>Vitis</td>
-</tr>
-<tr>
-<td><code>make summary</code></td>
-<td>執行 <code>scripts/hls_summary.py</code>，產生比較表與 <code>hls_summary.csv</code></td>
-<td>Python</td>
-</tr>
-<tr>
-<td><code>make xclbin KERNEL=... TARGET=hw</code></td>
-<td><code>v++ -c</code>（編譯）＋ <code>v++ -l</code>（連結）→ <code>.xclbin</code></td>
-<td>Vitis ＋ U55C platform</td>
-</tr>
-<tr>
-<td><code>make host</code></td>
-<td>編譯 host 程式</td>
-<td>XRT</td>
-</tr>
-<tr>
-<td><code>make run ...</code></td>
-<td>執行（emulation 或上板）</td>
-<td>XRT（上板還需要卡）</td>
-</tr>
-</tbody>
-</table>
-<h3 id="ch3-可調參數">可調參數</h3>
-<p><code>KERNEL</code>、<code>TARGET</code>（sw_emu / hw_emu / hw）、<code>PLATFORM</code>、<code>CFG</code>、<code>DEFS</code>（例如 tile 大小）、<code>TAG</code>、<code>RUN_L</code>、<code>DATA</code>。</p>
-<h3 id="ch3-產出_6">產出</h3>
-<p><code>Makefile</code>、<code>hls/run_hls.tcl</code>、<code>scripts/hls_summary.py</code>、<code>.gitignore</code>。</p>
-<hr />
-<h2 id="ch3-3-9-步驟八-真實資料管線-加分項">3.9 步驟八：真實資料管線（加分項）</h2>
-<h3 id="ch3-為什麼做_6">為什麼做</h3>
-<p>模擬資料的 outlier 是我們「假設」的。要證明結論在<strong>真實蛋白質</strong>上也成立，需要從 ESMFold 取出真正的 activation。</p>
-<h3 id="ch3-怎麼做-python-dump_trimul_inputs-py">怎麼做（<code>python/dump_trimul_inputs.py</code>）</h3>
-<ol>
-<li>下載序列（UniProt / PDB）或讀 FASTA。</li>
-<li>載入 HuggingFace 的 ESMFold（<code>facebook/esmfold_v1</code>）。</li>
-<li>
-<p><strong>把 <code>trunk.blocks[N].tri_mul_out._combine_projections</code> 換成我們的函式</strong>：
-   當模型執行到這裡時，把 <code>a</code>、<code>b</code> 存下來，然後丟出例外讓模型停止（後面的 block 不用跑，省時間）。</p>
-</li>
-<li>
-<p>計算 outlier 程度、per-token / per-tensor 的量化誤差。</p>
-</li>
-<li>補零到 32 的倍數，存成 <code>a.bin</code>、<code>b.bin</code>（float32，排列和 kernel 相同）。</li>
-</ol>
-<h3 id="ch3-驗證-差值-0-是怎麼來的">驗證：「差值 0」是怎麼來的</h3>
-<p>在隨機初始化的小型 ESMFold 上，擷取 <code>a</code>、<code>b</code> 後比較：</p>
-<pre><code class="language-python">ref  = tm._combine_projections(a, b)          # ESMFold 自己的計算
-ours = torch.einsum(&quot;ikc,jkc-&gt;ijc&quot;, a, b)     # 我們 kernel 的算式
-max diff = 0.0
-</code></pre>
-<p><strong>證明我們的 kernel 算的確實是 ESMFold 裡的那個運算。</strong></p>
-<h3 id="ch3-過程中發現的錯誤">過程中發現的錯誤</h3>
-<p>一開始用 tokenizer 產生輸入，結果模型報錯（index out of range）。原因是 ESMFold 的 <code>forward</code> 需要的是
-<strong>AlphaFold 的胺基酸編號</strong>，不是語言模型 tokenizer 的編號；要用 <code>model.infer(seq)</code> 才會正確轉換。</p>
-<h3 id="ch3-狀態_1">狀態</h3>
-<p>需要 GPU（或 Colab）才能跑正式模型；使用者沒有 GPU，所以目前是<strong>加分項</strong>。
-C 模擬、host 程式和 Makefile 都已支援讀取這些檔案（<code>DATA=...</code>）。</p>
-<h3 id="ch3-產出_7">產出</h3>
-<p><code>python/dump_trimul_inputs.py</code>、<code>python/requirements.txt</code>、<code>docs/real_protein_data.md</code>。</p>
-<hr />
-<h2 id="ch3-3-10-步驟九-在實際-server-上除錯">3.10 步驟九：在實際 server 上除錯</h2>
-<h3 id="ch3-環境調查">環境調查</h3>
-<table>
-<thead>
-<tr>
-<th>指令</th>
-<th>結果</th>
-<th>結論</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>which vivado vitis v++</code></td>
-<td>都在 <code>/tools/Xilinx/2025.2/</code></td>
-<td>工具齊全，版本很新</td>
-</tr>
-<tr>
-<td><code>which vitis_hls</code></td>
-<td>找不到</td>
-<td>2025.2 已移除，改用 <code>vitis-run</code></td>
-</tr>
-<tr>
-<td><code>lspci -d 10ee:</code></td>
-<td>空的</td>
-<td><strong>這台沒有 FPGA 卡</strong>（10ee 是 Xilinx 的廠商代號）</td>
-</tr>
-<tr>
-<td><code>xbutil</code>、<code>/opt/xilinx/platforms</code></td>
-<td>沒有</td>
-<td>沒有 XRT、沒有 U55C platform</td>
-</tr>
-</tbody>
-</table>
-<p>→ 這台可以做 C 模擬和 HLS 合成，<strong>不能上板</strong>。</p>
-<h3 id="ch3-除錯過程-一次失敗-三次修正">除錯過程：一次失敗、三次修正</h3>
-<p>這是一個很好的除錯範例，展示「<strong>從錯誤訊息推理出原因</strong>」的過程。</p>
-<p><strong>第 1 次失敗</strong></p>
-<pre><code>ld.lld: error: undefined symbol: trimul_v2
-</code></pre>
-<ul>
-<li>觀察：編譯清單裡有 tb、v0、v1、v3、v4，<strong>唯獨沒有 v2</strong>。</li>
-<li>當時的判斷：2025.2 的 C 模擬流程有問題 → 改成預設跳過 HLS 內建的 C 模擬（反正 <code>make csim</code> 已經驗證過）。</li>
-<li>（後來發現真正原因和第 2、3 次相同。）</li>
-</ul>
-<p><strong>第 2 次失敗</strong></p>
-<pre><code>WARNING: Cannot find source file ../kernels/trimul_v2.cpp; skipping it.
-ERROR: Cannot find any design unit to elaborate.
-</code></pre>
-<ul>
-<li>觀察：工具找不到來源檔。</li>
-<li>假設：相對路徑的問題 → 改用<strong>絕對路徑</strong>。</li>
-</ul>
-<p><strong>第 3 次失敗（相同錯誤）</strong></p>
-<ul>
-<li>
-<p>關鍵觀察：日誌中 <code>Adding design file '/home/anthony/.../trimul_v2.cpp'</code> 已經是絕對路徑，
-  但到了合成階段，工具<strong>又自己改寫成 <code>../kernels/trimul_v2.cpp</code></strong>。</p>
-</li>
-<li>
-<p>推理：
-  <code>專案位置：   fpga/trimul/hls_prj/trimul_v2/     （在目前資料夾往下 2 層）
-  正確的相對路徑：../../kernels/trimul_v2.cpp
-  工具算出來的：  ../kernels/trimul_v2.cpp        （只往上 1 層）</code>
-  → 工具<strong>假設專案只在目前資料夾的下一層</strong>。專案名稱含有 <code>/</code>（<code>hls_prj/trimul_v2</code>）時就會算錯。</p>
-</li>
-<li>
-<p>修正：先 <code>cd hls_prj</code>，再建立名為 <code>trimul_v2</code> 的專案（只差一層）。</p>
-</li>
-</ul>
-<p><strong>第 4 次：成功</strong> ✅</p>
-<h3 id="ch3-學到的除錯方法">學到的除錯方法</h3>
-<ol>
-<li><strong>仔細看完整的錯誤訊息</strong>，不只看 ERROR，也看前面的 WARNING。</li>
-<li><strong>比較「預期」和「實際」</strong>（編譯清單少了一個檔案、路徑少了一層）。</li>
-<li>修正後結果不變 → <strong>假設錯了</strong>，回頭找新的線索。</li>
-<li>用算的驗證假設（數路徑的層數）。</li>
-</ol>
-<h3 id="ch3-產出_8">產出</h3>
-<p>修改過的 <code>Makefile</code>（自動選 <code>vitis_hls</code> 或 <code>vitis-run</code>）與 <code>hls/run_hls.tcl</code>。</p>
-<hr />
-<h2 id="ch3-3-11-步驟十-讀懂-HLS-報告-以-v2-為例">3.11 步驟十：讀懂 HLS 報告（以 v2 為例）</h2>
-<p>報告位置：<code>hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt</code></p>
-<h3 id="ch3-①-基本資訊">① 基本資訊</h3>
-<pre><code>* Version:        2025.2
-* Solution:       sol (Vitis Kernel Flow Target)
-* Product family: virtexuplusHBM
-* Target device:  xcu55c-fsvh2892-2L-e     ← U55C 的晶片型號
-</code></pre>
-<h3 id="ch3-②-Timing-時脈">② Timing（時脈）</h3>
-<pre><code>| Clock  | Target  | Estimated | Uncertainty |
-| ap_clk | 3.33 ns | 2.431 ns  | 0.90 ns     |
-</code></pre>
-<table>
-<thead>
-<tr>
-<th>欄位</th>
-<th>意義</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Target</td>
-<td>我們要求的時脈週期（3.33 ns = 300 MHz）</td>
-</tr>
-<tr>
-<td>Estimated</td>
-<td>HLS 估計電路最慢的路徑需要多久</td>
-</tr>
-<tr>
-<td>Uncertainty</td>
-<td>保留給後續繞線的餘裕</td>
-</tr>
-</tbody>
-</table>
-<p><strong>判斷：</strong> Estimated + Uncertainty = 3.33 ns，剛好在目標內 → 通過。
-（最終能否達到 300 MHz，要等 Vivado 實際繞線後才知道。）</p>
-<h3 id="ch3-③-Latency-總時間">③ Latency（總時間）</h3>
-<pre><code>| Latency (cycles) | Latency (absolute) | Interval  |
-| 177,029,185      | 0.590 sec          | 177029186 |
-</code></pre>
-<ul>
-<li><strong>Latency</strong>：從開始到結束的 cycle 數。</li>
-<li><strong>absolute</strong>：cycle 數 × 時脈週期。</li>
-<li><strong>Interval</strong>：可以接受下一次呼叫的間隔（這裡和 latency 差不多，因為一次只跑一個）。</li>
-<li>⚠️ 這是在 <strong>L = 256</strong> 下的估計（由 <code>trimul.h</code> 的 <code>L_TRIP</code> 決定）。因為 L 是執行時才知道的參數，
-  HLS 需要 <code>LOOP_TRIPCOUNT</code> 告訴它迴圈大概跑幾次，才能估算。</li>
-</ul>
-<h3 id="ch3-④-Instance-子模組">④ Instance（子模組）</h3>
-<pre><code>| Module                     | Latency (cycles) |
-| trimul_v2_Pipeline_init    | 514 |   ← 清空累加器（512 次 + 啟動）
-| trimul_v2_Pipeline_load_a  | 141 |   ← 載入 a
-| trimul_v2_Pipeline_load_b  | 141 |   ← 載入 b
-| trimul_v2_Pipeline_store   | 586 |   ← 寫回結果
-| trimul_v2_Pipeline_mac     | 526 |   ← 計算（512 次 + pipeline 深度 14）
-</code></pre>
-<p>每個 pipeline 化的迴圈會變成一個獨立的硬體模組。</p>
-<h3 id="ch3-⑤-Loop-迴圈">⑤ Loop（迴圈）</h3>
-<pre><code>| Loop Name  | Latency     | Iteration Latency | Trip Count |
-| tile_i     | 177,029,184 | 5,532,162         | 32 |
-|  tile_j    | 5,532,160   | 172,880           | 32 |
-|   loop_k   | 171,776     | 671               | 256 |
-</code></pre>
-<p><strong>驗算：</strong></p>
-<pre><code>loop_k：256 次 × 671 = 171,776                          ✓
-tile_j 每次：171,776（loop_k）+ 514（init）+ 586（store）+ 4 ≈ 172,880   ✓
-tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
-總計：32 × 5,532,162 ≈ 177,029,184                       ✓
-</code></pre>
-<p><strong><code>loop_k</code> 的 671 cycles</strong> 就是第 2 章 2.6 節分析 double buffering 的依據：
-<code>load（141，a、b 並行）+ mac（526）+ 少量 ≈ 671</code>。</p>
-<h3 id="ch3-⑥-換算效能">⑥ 換算效能</h3>
-<pre><code>運算量 = 2 × 256³ × 128 ≈ 4.29 × 10⁹ FLOP
-時間   = 0.590 s
-效能   ≈ 7.3 GFLOP/s          （v2 理論上限 9.6 GFLOP/s 的 76%）
-</code></pre>
-<h3 id="ch3-⑦-資源用量-報告的下一段-尚未截圖">⑦ 資源用量（報告的下一段，尚未截圖）</h3>
-<p><code>Utilization Estimates</code> 段落會列出 BRAM_18K、DSP、FF、LUT、URAM 的用量和百分比。
-<code>make summary</code> 會自動把這些數字整理進比較表。</p>
-<hr />
-<h2 id="ch3-3-12-所有檔案總表">3.12 所有檔案總表</h2>
-<table>
-<thead>
-<tr>
-<th>檔案</th>
-<th>用途</th>
-<th>狀態</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>README.md</code></td>
-<td>repo 目錄</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>docs/PROJECT_LOG.md</code></td>
-<td>專題工作紀錄（交接用）</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>docs/conversation_notes.md</code></td>
-<td>白話筆記</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>docs/getting_started_u55c.md</code></td>
-<td>U55C 環境與開發流程</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>docs/real_protein_data.md</code></td>
-<td>真實資料流程</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>docs/manual/</code></td>
-<td>本教學手冊（含 <code>manual.pdf</code>）</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/kernels/trimul.h</code></td>
-<td>共用設定</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/kernels/trimul_v0~v4.cpp</code></td>
-<td>5 個 kernel</td>
-<td>✅ csim；v2 已合成</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/tb/tb.cpp</code></td>
-<td>C 模擬 testbench</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/host/common.h</code></td>
-<td>資料產生、量化、參考答案、讀檔</td>
-<td>✅</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/host/host.cpp</code></td>
-<td>XRT host 程式</td>
-<td>⚠️ 未上板</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/cfg/*.cfg</code></td>
-<td>HBM 連接</td>
-<td>⚠️ 未使用</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/hls/run_hls.tcl</code></td>
-<td>HLS 腳本</td>
-<td>✅（2025.2）</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/scripts/hls_summary.py</code></td>
-<td>報告整理成表</td>
-<td>✅（用假報告測過）</td>
-</tr>
-<tr>
-<td><code>fpga/trimul/Makefile</code></td>
-<td>指令捷徑</td>
-<td>✅ csim/hls；⚠️ xclbin/run</td>
-</tr>
-<tr>
-<td><code>python/dump_trimul_inputs.py</code></td>
-<td>擷取真實 activation</td>
-<td>✅（小模型測過）</td>
-</tr>
-</tbody>
-</table>
-<p>執行後會產生（不進 git）：<code>hls_prj/</code>（HLS 專案與報告）、<code>hls_*.log</code>、<code>hls_summary.csv</code>、<code>build/</code>（v++ 產物）、<code>*.exe</code>。</p>
-<hr />
-<h2 id="ch3-本章小結">本章小結</h2>
-<ul>
-<li>流程的核心精神：<strong>從快到慢驗證</strong>（C 模擬 → HLS → emulation → 上板），前一步沒過就不進下一步。</li>
-<li>每個 kernel 版本只改一件事，才能清楚歸因每一招的效果。</li>
-<li>除錯時，<strong>比較預期與實際、修正無效就換假設</strong>。</li>
-<li>目前進度：C 模擬全部通過、v2 合成成功，正在跑 v0～v4 全部合成；上板部分尚待找到有 U55C 的機器。</li>
-</ul>
-<p><strong>下一章</strong>解釋這些工具背後的原理：為什麼 C++ 可以變成電路、每個工具實際做了什麼、這些能力從哪裡來。</p>
-</section><section class="chapter">
-<h1 id="ch4-第-4-章-工具原理-為何-C-可以變成電路">第 4 章　工具原理：為何 C++ 可以變成電路？</h1>
+<div class="part">第二部　工具與實作</div>
+<h1 id="ch4-第-3-章-工具原理-為何-C-可以變成電路">第 3 章　工具原理：為何 C++ 可以變成電路？</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
@@ -1876,7 +1490,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch4-4-1-FPGA-是什麼">4.1 FPGA 是什麼？</h2>
+<h2 id="ch4-3-1-FPGA-是什麼">3.1 FPGA 是什麼？</h2>
 <h3 id="ch4-白話直覺">白話直覺</h3>
 <ul>
 <li><strong>CPU</strong> 像一位「什麼都會做的通才」：硬體固定，靠執行不同的指令完成不同工作。</li>
@@ -1968,7 +1582,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 </code></pre>
 <p>v2 的 16 路平行，就是<strong>真的放了 16 組這樣的硬體</strong>。</p>
 <hr />
-<h2 id="ch4-4-2-為什麼-FPGA-適合做記憶體優化的實驗">4.2 為什麼 FPGA 適合做記憶體優化的實驗？</h2>
+<h2 id="ch4-3-2-為什麼-FPGA-適合做記憶體優化的實驗">3.2 為什麼 FPGA 適合做記憶體優化的實驗？</h2>
 <table>
 <thead>
 <tr>
@@ -2002,7 +1616,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 </table>
 <p><strong>這讓我們能「一次只改一件事」，清楚量出每一招的效果。</strong></p>
 <hr />
-<h2 id="ch4-4-3-HLS-C-是怎麼變成電路的">4.3 HLS：C++ 是怎麼變成電路的？</h2>
+<h2 id="ch4-3-3-HLS-C-是怎麼變成電路的">3.3 HLS：C++ 是怎麼變成電路的？</h2>
 <p><strong>HLS（High-Level Synthesis，高階合成）</strong>：把 C/C++ 自動翻譯成硬體描述語言（Verilog/VHDL）。
 本專題用的是 AMD 的 <strong>Vitis HLS</strong>（2025.2 以 <code>vitis-run --mode hls</code> 執行）。</p>
 <h3 id="ch4-整體流程">整體流程</h3>
@@ -2147,7 +1761,7 @@ v1～v4 把迴圈順序換掉，讓相鄰的迭代更新<strong>不同的</stron
 | 大小不固定的陣列 | 同動態記憶體 |</p>
 <p>所以 kernel 裡的陣列大小都寫成常數（<code>TI</code>、<code>TJ</code>、<code>C</code>），而讀檔、印結果都放在 testbench 或 host。</p>
 <hr />
-<h2 id="ch4-4-4-為什麼-C-可以直接模擬">4.4 為什麼 C++ 可以直接模擬？</h2>
+<h2 id="ch4-3-4-為什麼-C-可以直接模擬">3.4 為什麼 C++ 可以直接模擬？</h2>
 <h3 id="ch4-核心觀念-C-程式就是-功能規格">核心觀念：C++ 程式就是「功能規格」</h3>
 <p>HLS 的承諾是：<strong>產生的電路，對同樣的輸入，會算出和 C++ 程式一樣的結果</strong>（在可合成的範圍內）。
 所以：</p>
@@ -2205,7 +1819,7 @@ g++ 不認識這些 pragma，直接忽略，所以可以照常編譯執行。</p
 <li>所以正式流程中，cosim 或 hw_emu 是重要的第二道防線。</li>
 </ul>
 <hr />
-<h2 id="ch4-4-5-Vivado-從-RTL-到-bitstream">4.5 Vivado：從 RTL 到 bitstream</h2>
+<h2 id="ch4-3-5-Vivado-從-RTL-到-bitstream">3.5 Vivado：從 RTL 到 bitstream</h2>
 <p>HLS 產生的是 Verilog（描述電路的程式碼），還不是 FPGA 能直接用的檔案。
 接下來由 <strong>Vivado</strong> 完成（在 Vitis 流程中由 <code>v++ -l</code> 自動呼叫）：</p>
 <table>
@@ -2254,7 +1868,7 @@ g++ 不認識這些 pragma，直接忽略，所以可以照常編譯執行。</p
 <p><strong>Timing 沒過會怎樣？</strong> 電路在目標時脈下可能算錯，工具會自動降低時脈，或需要修改設計。
 HLS 報告中的 <code>Estimated 2.431 ns</code> 只是估計，實際值要等 Vivado 繞線完才知道。</p>
 <hr />
-<h2 id="ch4-4-6-Vitis-與-v-把-kernel-接到板子上">4.6 Vitis 與 <code>v++</code>：把 kernel 接到板子上</h2>
+<h2 id="ch4-3-6-Vitis-與-v-把-kernel-接到板子上">3.6 Vitis 與 <code>v++</code>：把 kernel 接到板子上</h2>
 <h3 id="ch4-Platform-平台-是什麼">Platform（平台）是什麼</h3>
 <p>FPGA 卡上除了我們的 kernel，還需要很多「基礎設施」：PCIe 介面（和主機溝通）、DMA（搬資料）、
 HBM 控制器、時脈產生、卡片管理。這些由 AMD 預先做好，叫做 <strong>platform</strong> 或 <strong>shell</strong>。</p>
@@ -2283,7 +1897,7 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
   → host 程式中的 <code>krnl.group_id(0)</code> 就是從這裡查到「參數 0 接在哪塊記憶體」。</li>
 </ul>
 <hr />
-<h2 id="ch4-4-7-XRT-host-程式怎麼控制-FPGA">4.7 XRT：host 程式怎麼控制 FPGA</h2>
+<h2 id="ch4-3-7-XRT-host-程式怎麼控制-FPGA">3.7 XRT：host 程式怎麼控制 FPGA</h2>
 <p><strong>XRT（Xilinx Runtime）</strong> 是 AMD 提供的軟體：Linux 驅動程式＋使用者層的函式庫＋管理工具（<code>xbutil</code>）。</p>
 <table>
 <thead>
@@ -2329,7 +1943,7 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 </table>
 <p><strong>本專題的狀況：</strong> 你們的 server63 <strong>沒有安裝 XRT、也沒有插卡</strong>，所以這部分要在有 U55C 的機器上執行。</p>
 <hr />
-<h2 id="ch4-4-8-Python-端-PyTorch-HuggingFace-ESMFold">4.8 Python 端：PyTorch、HuggingFace、ESMFold</h2>
+<h2 id="ch4-3-8-Python-端-PyTorch-HuggingFace-ESMFold">3.8 Python 端：PyTorch、HuggingFace、ESMFold</h2>
 <table>
 <thead>
 <tr>
@@ -2369,7 +1983,7 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 <p><code>dump_trimul_inputs.py</code> 的做法是「<strong>攔截</strong>」：把 ESMFold 裡某個函式換成我們自己的版本，
 當模型執行到那裡時把資料存下來。模型本身完全沒有修改。</p>
 <hr />
-<h2 id="ch4-4-9-誰提供了什麼能力">4.9 誰提供了什麼能力？</h2>
+<h2 id="ch4-3-9-誰提供了什麼能力">3.9 誰提供了什麼能力？</h2>
 <p>這是你特別問的問題，這裡清楚劃分。</p>
 <h3 id="ch4-工具鏈-都是現成的軟體-不是-Claude-做的">工具鏈：都是現成的軟體，不是 Claude 做的</h3>
 <table>
@@ -2475,7 +2089,7 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 <p><strong>這也意味著 Claude 可能出錯：</strong> 例如一開始不知道 2025.2 已經移除 <code>vitis_hls</code>、也不知道路徑 bug，
 是看到你的截圖後才修正。所以每一步都需要在真實工具上驗證，這也是為什麼流程要「從快到慢」一步步確認。</p>
 <hr />
-<h2 id="ch4-4-10-Claude-在這個對話中呼叫的工具">4.10 Claude 在這個對話中呼叫的工具</h2>
+<h2 id="ch4-3-10-Claude-在這個對話中呼叫的工具">3.10 Claude 在這個對話中呼叫的工具</h2>
 <p>Claude 在一個<strong>與你的 server 完全隔離的雲端 Linux 容器</strong>裡工作。以下是實際用過的工具：</p>
 <table>
 <thead>
@@ -2586,1314 +2200,668 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 <li>C++ 能先模擬，是因為 HLS 保證電路與 C++ 的功能一致；pragma 只影響實作方式。</li>
 <li>每一層工具都有對應的驗證方式，<strong>越後面的步驟越慢，所以要先把前面的驗證做好</strong>。</li>
 </ul>
-<p><strong>下一章</strong>整理成可以重複使用的研究方法，讓你之後讀其他 paper 時也能照這個流程進行。</p>
+<hr />
+<h2 id="ch4-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>LUT 為什麼可以實現「任何」小型邏輯函數？</li>
+<li>什麼是 II（Initiation Interval）？v0 的累加迴圈為什麼做不到 II = 1？</li>
+<li>v2 為什麼一定要對 <code>la</code>、<code>lb</code>、<code>acc</code> 做 <code>ARRAY_PARTITION</code>？</li>
+<li>C 模擬（csim）通過，代表什麼？不代表什麼？</li>
+<li><code>.xo</code>、<code>.xclbin</code>、platform 分別是什麼？</li>
+</ol>
+<p><strong>下一章</strong>一步一步回顧我們實際做了什麼：每一步為什麼做、程式碼怎麼寫、產生了哪些檔案。</p>
 </section><section class="chapter">
-<h1 id="ch5-第-5-章-研究方法-之後可以重複使用的步驟">第 5 章　研究方法：之後可以重複使用的步驟</h1>
+<h1 id="ch5-第-4-章-整體流程-從頭到現在具體做了什麼">第 4 章　整體流程：從頭到現在具體做了什麼？</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
-<li>把這次「從一篇 paper 到可執行的實驗」的過程，整理成<strong>可以套用到任何架構／加速器 paper</strong> 的流程。</li>
-<li>每一步都附上 checklist，以及本專題的實際做法當範例。</li>
-<li>你之後的研究會從 LightNobel 延伸，這一章就是每次讀新 paper 時的操作手冊。</li>
+<li>我們的工作分成十個步驟：<strong>界定範圍 → 資料排列 → 寫 kernel → 驗證 → host → HBM 設定 → Makefile → 真實資料 → 上 server 除錯 → 讀報告</strong>。</li>
+<li>每一步都說明：<strong>為什麼做、怎麼做、有什麼效果、產生了什麼檔案</strong>。</li>
+<li>最後有一張所有檔案的總表。</li>
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch5-5-1-整體流程">5.1 整體流程</h2>
-<pre><code> ① 讀 paper：抓出「問題 → 觀察 → 解法 → 評估」
-        │
-        ▼
- ② 量化問題：算出資料量、運算量、算術強度
-        │
-        ▼
- ③ 縮小範圍：挑一個能代表問題、做得完的核心
-        │
-        ▼
- ④ 設計實驗：對照組 + 一次只改一個變數
-        │
-        ▼
- ⑤ 實作與驗證：從快到慢（模擬 → 合成 → 上板）
-        │
-        ▼
- ⑥ 分析：找瓶頸、解釋為什麼（roofline、Amdahl）
-        │
-        ▼
- ⑦ 呈現：圖表與結論
+<h2 id="ch5-4-1-全景圖">4.1 全景圖</h2>
+<pre><code> ┌───────────────────────────── 在任何電腦上都能做 ─────────────────────────────┐
+ │                                                                              │
+ │ [1] 界定範圍 ──► [2] 資料排列與算式 ──► [3] 寫 5 個 kernel（C++）            │
+ │                                               │                              │
+ │                                               ▼                              │
+ │                    [4] C 模擬驗證（g++，make csim）──► ALL PASS              │
+ │                                                                              │
+ │ [8] 真實資料管線（Python + ESMFold，需要 GPU）── 加分項                      │
+ └──────────────────────────────────────────────────────────────────────────────┘
+                                        │
+ ┌─────────────────── 需要 Vitis（你們的 server63 上可以做） ───────────────────┐
+ │                                                                              │
+ │ [9] 上 server、修 2025.2 相容問題 ──► [10] HLS 合成（make hls）──► 報告      │
+ │                                                                              │
+ └──────────────────────────────────────────────────────────────────────────────┘
+                                        │
+ ┌─────────────── 需要 U55C 卡 + XRT + platform（尚未找到機器） ────────────────┐
+ │                                                                              │
+ │ [5] host 程式 ＋ [6] HBM 設定 ＋ [7] Makefile ──► v++ 編譯 ──► 上板量測      │
+ │     （程式已寫好，尚未實際執行）                                             │
+ └──────────────────────────────────────────────────────────────────────────────┘
 </code></pre>
 <hr />
-<h2 id="ch5-5-2-步驟一-讀-paper-的方法">5.2 步驟一：讀 paper 的方法</h2>
-<h3 id="ch5-四個問題-每篇都要能回答">四個問題（每篇都要能回答）</h3>
+<h2 id="ch5-4-2-步驟一-界定範圍">4.2 步驟一：界定範圍</h2>
+<h3 id="ch5-為什麼做">為什麼做</h3>
+<p>LightNobel 處理的是整個 PPM，還設計了專用硬體。專題要求「用常見手法比較」，
+所以要從中挑出<strong>一個能代表問題、又做得完</strong>的小範圍。</p>
+<h3 id="ch5-怎麼決定">怎麼決定</h3>
 <table>
 <thead>
 <tr>
-<th>問題</th>
-<th>要找的內容</th>
-<th>LightNobel 的答案</th>
+<th>考量</th>
+<th>Triangle Multiplication 的情況</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>問題是什麼？</strong></td>
-<td>什麼東西不夠好？具體的限制</td>
-<td>PPM 無法處理長序列，因為 activation 記憶體隨 L² 成長</td>
+<td>能代表問題嗎？</td>
+<td>✅ 直接處理 L×L×128 的 pair representation</td>
 </tr>
 <tr>
-<td><strong>他們觀察到什麼？</strong></td>
-<td>讓解法成立的關鍵事實（通常有分析圖）</td>
-<td>瓶頸是 activation 不是權重；不同 token 的數值分布差異很大，有 outlier</td>
+<td>算式簡單、容易驗證嗎？</td>
+<td>✅ 本質是 128 個矩陣乘法</td>
 </tr>
 <tr>
-<td><strong>解法是什麼？</strong></td>
-<td>演算法 + 硬體</td>
-<td>Token-wise 自適應量化 + 專用加速器</td>
+<td>能展示多種記憶體手法嗎？</td>
+<td>✅ tiling、寬位元、重疊、多通道、量化都適用</td>
 </tr>
 <tr>
-<td><strong>怎麼證明有效？</strong></td>
-<td>比較對象、指標、資料集</td>
-<td>與 GPU 基準比較記憶體、速度、準確度、可支援的序列長度</td>
+<td>能呼應 LightNobel 嗎？</td>
+<td>✅ 可以比較 per-token vs per-tensor 量化</td>
 </tr>
 </tbody>
 </table>
-<h3 id="ch5-閱讀順序-不要從頭讀到尾">閱讀順序（不要從頭讀到尾）</h3>
-<ol>
-<li><strong>標題、摘要</strong>：一句話說出問題與解法。</li>
-<li><strong>Introduction 的最後一兩段</strong>：通常會列出貢獻（contributions）。</li>
-<li><strong>動機（Motivation）章節的圖</strong>：這裡是「觀察」，最重要。</li>
-<li><strong>評估（Evaluation）的主要圖表</strong>：看比較對象和提升幅度。</li>
-<li><strong>方法章節</strong>：前面都懂了，再看細節。</li>
-<li><strong>Related work</strong>：找出這個領域還有哪些相關論文，建立文獻地圖。</li>
-</ol>
-<h3 id="ch5-讀完要寫下的筆記模板">讀完要寫下的筆記模板</h3>
-<pre><code>論文：
-一句話摘要：
-問題（附具體數字）：
-關鍵觀察（附圖號）：
-解法：
-  - 演算法層面：
-  - 硬體層面：
-評估：
-  - 比較對象：
-  - 主要指標與結果：
-  - 資料集／模型：
-我可以重現／延伸的部分：
-我不確定的地方（要回原文確認）：
-</code></pre>
+<h3 id="ch5-產出">產出</h3>
+<p>一句話的題目定義（見第 1 章 1.7 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。</p>
 <hr />
-<h2 id="ch5-5-3-步驟二-量化問題">5.3 步驟二：量化問題</h2>
-<p><strong>任何「效能」問題，都先算這三個數字：</strong></p>
-<table>
-<thead>
-<tr>
-<th>數字</th>
-<th>怎麼算</th>
-<th>本專題的例子</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>資料量</strong></td>
-<td>每個張量的形狀 × 每個元素的 bytes</td>
-<td>pair tensor = L² × 128 × 4 bytes（L = 1000 時 512 MB）</td>
-</tr>
-<tr>
-<td><strong>運算量</strong></td>
-<td>數迴圈：每個輸出要幾次乘加</td>
-<td>2 × L³ × C FLOP（L = 1000 時約 2.6 × 10¹¹）</td>
-</tr>
-<tr>
-<td><strong>算術強度</strong></td>
-<td>運算量 ÷ 實際搬運量</td>
-<td>直白寫法 0.25，tiling 後 2～8 FLOP/byte</td>
-</tr>
-</tbody>
-</table>
-<p>然後和硬體比：</p>
-<pre><code>硬體平衡點 = 峰值運算能力 ÷ 記憶體頻寬
+<h2 id="ch5-4-3-步驟二-資料排列-memory-layout-與算式">4.3 步驟二：資料排列（memory layout）與算式</h2>
+<h3 id="ch5-為什麼做_1">為什麼做</h3>
+<p>資料在記憶體中怎麼排，決定了能不能做 <strong>burst</strong>（連續讀取，見第 2 章 2.5 節）。</p>
+<h3 id="ch5-我們的選擇">我們的選擇</h3>
+<pre><code>a、b、z 都是 L × L × C，排成 [row][col][channel]：
+index = (row × L + col) × C + c
 
-算術強度 &lt; 平衡點 → memory-bound → 優先減少搬運
-算術強度 &gt; 平衡點 → compute-bound → 優先增加運算單元
+記憶體中的樣子（C = 128）：
+┌───────────────────┬───────────────────┬─────┬─────────────────────┬─────
+│ (0,0) 的 128 個數 │ (0,1) 的 128 個數 │ ... │ (0,L-1) 的 128 個數 │ (1,0) ...
+└───────────────────┴───────────────────┴─────┴─────────────────────┴─────
+  ↑ 同一個 token 的 128 個 channel 是連續的 → 可以一次 burst 讀完
 </code></pre>
-<h3 id="ch5-Checklist">Checklist</h3>
+<h3 id="ch5-效果">效果</h3>
 <ul>
-<li>[ ] 找出最大的張量是哪一個，它隨什麼參數成長（L？L²？L³？）</li>
-<li>[ ] 找出運算量最大的運算</li>
-<li>[ ] 計算不同規模（L = 256、1000、4000）下的數字，做成表格</li>
-<li>[ ] 判斷是記憶體容量、記憶體頻寬還是運算能力的問題</li>
+<li>每個 token 的 128 個 float = 512 bytes = <strong>剛好 8 個 512-bit word</strong>，完美對齊寬位元傳輸。</li>
+<li>這也是 PyTorch 中 ESMFold 的預設排列（最後一維是 channel），所以從 Python 擷取的資料可以<strong>直接使用，不用轉換</strong>。</li>
 </ul>
+<h3 id="ch5-產出_1">產出</h3>
+<p><code>fpga/trimul/kernels/trimul.h</code>：定義 <code>C = 128</code>、tile 大小、<code>f16</code>（16 個 float 的 struct）、<code>q64</code>（64 個 int8 的 struct）等共用設定。</p>
 <hr />
-<h2 id="ch5-5-4-步驟三-縮小範圍">5.4 步驟三：縮小範圍</h2>
-<h3 id="ch5-好的範圍要滿足">好的範圍要滿足</h3>
-<table>
-<thead>
-<tr>
-<th>條件</th>
-<th>為什麼</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>能代表 paper 的問題</strong></td>
-<td>結論才有意義</td>
-<td>Triangle Multiplication 直接處理 L² 的 pair tensor</td>
-</tr>
-<tr>
-<td><strong>算式清楚、容易驗證</strong></td>
-<td>能確認做對了</td>
-<td>本質是矩陣乘法，可以用 CPU 算正確答案</td>
-</tr>
-<tr>
-<td><strong>能和原始模型對上</strong></td>
-<td>證明不是自己亂編的</td>
-<td>用 ESMFold 驗證算式差值 0</td>
-</tr>
-<tr>
-<td><strong>大小做得完</strong></td>
-<td>時間有限</td>
-<td>只做 einsum，不做 LayerNorm/gating</td>
-</tr>
-<tr>
-<td><strong>能展示多種手法</strong></td>
-<td>才有比較</td>
-<td>五種記憶體手法都適用</td>
-</tr>
-</tbody>
-</table>
-<h3 id="ch5-常見的縮小方式">常見的縮小方式</h3>
-<ul>
-<li><strong>只做一個運算</strong>（本專題的做法）</li>
-<li><strong>只做一種資料精度</strong></li>
-<li><strong>固定部分參數</strong>（例如固定 C = 128，只讓 L 變動）</li>
-<li><strong>用模擬資料代替真實資料</strong>，但要說明模擬資料的特性為什麼合理（例如我們加了 1% outlier）</li>
-</ul>
-<hr />
-<h2 id="ch5-5-5-步驟四-設計實驗">5.5 步驟四：設計實驗</h2>
-<h3 id="ch5-原則一-一定要有對照組-baseline">原則一：一定要有對照組（baseline）</h3>
-<p>沒有 baseline，「快了 3 倍」就沒有意義。本專題的 <strong>v0</strong> 就是 baseline：最直白、沒有任何優化。</p>
-<h3 id="ch5-原則二-一次只改一個變數">原則二：一次只改一個變數</h3>
-<pre><code>v0 ──(+ tiling)──► v1 ──(+ 寬位元)──► v2 ──(+ double buffering)──► v3
-                                        └──(+ 量化)──► v4
+<h2 id="ch5-4-4-步驟三-寫-5-個-kernel">4.4 步驟三：寫 5 個 kernel</h2>
+<p>以下擷取每個版本最關鍵的部分，完整程式碼在 <code>fpga/trimul/kernels/</code>。</p>
+<h3 id="ch5-v0-最直白的寫法-trimul_v0-cpp">v0：最直白的寫法（<code>trimul_v0.cpp</code>）</h3>
+<pre><code class="language-cpp">for (int i = 0; i &lt; L; i++)
+  for (int j = 0; j &lt; L; j++)
+    for (int c = 0; c &lt; C; c++) {
+      float acc = 0.0f;
+      for (int k = 0; k &lt; L; k++) {
+#pragma HLS PIPELINE
+        acc += a[(i * L + k) * C + c] * b[(j * L + k) * C + c];   // 每次都讀 HBM
+      }
+      z[(i * L + j) * C + c] = acc;
+    }
 </code></pre>
-<p>每一版只多一招，才能說「這個改善來自這一招」。
-<strong>v4 是從 v2 分出來的，不是從 v3。</strong> 這樣 v4 和 v2 的差異就只有量化。</p>
-<h3 id="ch5-原則三-掃描參數-不要只看一個點">原則三：掃描參數，不要只看一個點</h3>
-<table>
-<thead>
-<tr>
-<th>掃描</th>
-<th>看什麼</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Tile 大小（4、8、16、32）</td>
-<td>搬運量 vs 晶片內記憶體的 trade-off</td>
-</tr>
-<tr>
-<td>序列長度 L（128～2048）</td>
-<td>時間是否符合 L³、記憶體是否符合 L²</td>
-</tr>
-<tr>
-<td>HBM 設定（多通道 vs 單一）</td>
-<td>頻寬的影響</td>
-</tr>
-</tbody>
-</table>
-<h3 id="ch5-原則四-同時量-好處-和-代價">原則四：同時量「好處」和「代價」</h3>
-<table>
-<thead>
-<tr>
-<th>好處</th>
-<th>代價</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>時間、GFLOP/s、頻寬</td>
-<td>硬體資源（BRAM、DSP、LUT、FF）</td>
-</tr>
-<tr>
-<td>可支援的最大 L</td>
-<td>精度損失（rel_l2）</td>
-</tr>
-<tr>
-<td>記憶體佔用</td>
-<td>程式複雜度</td>
-</tr>
-</tbody>
-</table>
-<h3 id="ch5-Checklist_1">Checklist</h3>
-<ul>
-<li>[ ] 定義 baseline</li>
-<li>[ ] 每個版本只改一件事，並寫下「預期會改善什麼、為什麼」</li>
-<li>[ ] <strong>先預測再量測</strong>（例如：v3 預測快約 21%）</li>
-<li>[ ] 列出要掃描的參數</li>
-<li>[ ] 列出要記錄的指標（好處＋代價）</li>
-</ul>
-<hr />
-<h2 id="ch5-5-6-步驟五-實作與驗證">5.6 步驟五：實作與驗證</h2>
-<h3 id="ch5-從快到慢">從快到慢</h3>
-<table>
-<thead>
-<tr>
-<th>階段</th>
-<th>時間</th>
-<th>驗證什麼</th>
-<th>失敗了怎麼辦</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>C 模擬</td>
-<td>秒</td>
-<td>算得對不對</td>
-<td>修演算法</td>
-</tr>
-<tr>
-<td>HLS 合成</td>
-<td>分鐘</td>
-<td>能不能變成電路、速度和資源估計</td>
-<td>修 pragma、改寫法</td>
-</tr>
-<tr>
-<td>C/RTL 協同模擬</td>
-<td>分鐘～小時</td>
-<td>電路和 C++ 一致嗎</td>
-<td>檢查 DEPENDENCE 等宣告</td>
-</tr>
-<tr>
-<td>硬體模擬</td>
-<td>小時</td>
-<td>整個系統的介面</td>
-<td>修 host 或設定</td>
-</tr>
-<tr>
-<td>上板</td>
-<td>1～數小時編譯</td>
-<td>真實速度</td>
-<td>修時序、記憶體設定</td>
-</tr>
-</tbody>
-</table>
-<p><strong>前一步沒過，不進下一步。</strong></p>
-<h3 id="ch5-驗證正確性的技巧">驗證正確性的技巧</h3>
+<p><strong>問題在哪：</strong></p>
 <ol>
-<li><strong>用高精度（double）算參考答案</strong>。</li>
-<li><strong>用相對誤差</strong>（rel_l2）而不是絕對誤差，因為數值大小不一。</li>
-<li><strong>測試多種大小與設定</strong>：我們測了 L = 16、32、48、64，以及 8×8、16×4、32×32 的 tile。</li>
-<li><strong>刻意加入困難的情況</strong>：outlier 就是為了讓量化的差異顯現出來。</li>
-<li><strong>和原始模型對照</strong>：ESMFold 的「差值 0」驗證。</li>
+<li>每次乘加都從 HBM 讀兩個數，完全沒有重用。</li>
+<li>最內層的 k 每次跳 C 個位置（stride = 128），無法 burst。</li>
+<li><code>acc += ...</code> 下一次要等上一次加完（浮點加法需要好幾個 cycle），pipeline 無法每 cycle 開始一次。</li>
 </ol>
-<hr />
-<h2 id="ch5-5-7-步驟六-分析">5.7 步驟六：分析</h2>
-<h3 id="ch5-找瓶頸的方法">找瓶頸的方法</h3>
-<ol>
-<li>看報告中<strong>每個迴圈的 cycle 數</strong>，找出佔最多時間的部分。</li>
-<li>算出<strong>各部分的比例</strong>（例：v2 中載入佔 141 / 671 ≈ 21%）。</li>
-<li>用 <strong>Amdahl's Law</strong> 算出改善那一部分的上限。</li>
-<li>在 <strong>roofline 圖</strong>上標出位置，判斷是 memory-bound 還是 compute-bound。</li>
-</ol>
-<h3 id="ch5-解釋結果時要回答">解釋結果時要回答</h3>
-<ul>
-<li>結果和預測一致嗎？不一致的話，為什麼？</li>
-<li>瓶頸轉移到哪裡了？</li>
-<li>付出的代價（資源、精度）值得嗎？</li>
-<li>在真實情況下（更大的 L、真實資料）結論還成立嗎？</li>
-</ul>
-<hr />
-<h2 id="ch5-5-8-步驟七-呈現-報告要畫的圖">5.8 步驟七：呈現（報告要畫的圖）</h2>
-<table>
-<thead>
-<tr>
-<th>圖</th>
-<th>x 軸</th>
-<th>y 軸</th>
-<th>要傳達的訊息</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>動機圖</strong></td>
-<td>L</td>
-<td>記憶體（GB）</td>
-<td>記憶體隨 L² 爆炸（問題的嚴重性）</td>
-</tr>
-<tr>
-<td><strong>各版本比較</strong></td>
-<td>v0～v4</td>
-<td>時間（對數軸）或加速倍數</td>
-<td>每一招的效果</td>
-</tr>
-<tr>
-<td><strong>Roofline</strong></td>
-<td>算術強度（對數）</td>
-<td>GFLOP/s（對數）</td>
-<td>每一招讓 kernel 往哪裡移動</td>
-</tr>
-<tr>
-<td><strong>時間拆解</strong></td>
-<td>版本</td>
-<td>cycle（堆疊長條：載入／計算／其他）</td>
-<td>瓶頸在哪、怎麼轉移</td>
-</tr>
-<tr>
-<td><strong>Tile sweep</strong></td>
-<td>tile 大小</td>
-<td>時間 ＋ BRAM 用量（雙 y 軸）</td>
-<td>trade-off</td>
-</tr>
-<tr>
-<td><strong>量化精度</strong></td>
-<td>量化方式</td>
-<td>rel_l2</td>
-<td>per-token vs per-tensor</td>
-</tr>
-<tr>
-<td><strong>資源用量</strong></td>
-<td>版本</td>
-<td>BRAM／DSP／LUT 百分比</td>
-<td>代價</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="ch5-5-9-除錯的思路-以-2025-2-路徑-bug-為例">5.9 除錯的思路（以 2025.2 路徑 bug 為例）</h2>
-<pre><code>1. 讀完整的錯誤訊息（包括 WARNING）
-      ↓ 「Cannot find source file ../kernels/trimul_v2.cpp」
-2. 比較預期和實際
-      ↓ 預期是 kernels/trimul_v2.cpp，實際變成 ../kernels/...
-3. 提出假設並修正
-      ↓ 假設：相對路徑的問題 → 改成絕對路徑
-4. 修正無效 → 假設錯了，找新線索
-      ↓ 日誌顯示加入時是絕對路徑，但合成時又被改寫
-5. 用算的驗證新假設
-      ↓ 專案在下兩層，但工具只往上一層 → 工具假設專案只在下一層
-6. 針對根因修正
-      ↓ 從 hls_prj 裡面建立專案 → 成功
+<h3 id="ch5-v1-Tiling-trimul_v1-cpp">v1：Tiling（<code>trimul_v1.cpp</code>）</h3>
+<pre><code class="language-cpp">float acc[TI][TJ][C];          // 累加器留在晶片內（BRAM）
+float la[TI][C], lb[TJ][C];    // 本輪用到的 a、b
+
+for (i0 ...; i0 += TI)                    // 一次處理 TI 列
+  for (j0 ...; j0 += TJ) {                // 和 TJ 行
+    acc = 0
+    for (int k = 0; k &lt; L; k++) {
+      load_a: la[ii][c] = a[((i0 + ii) * L + k) * C + c];    // 搬 TI×C 個（連續）
+      load_b: lb[jj][c] = b[((j0 + jj) * L + k) * C + c];    // 搬 TJ×C 個（連續）
+      mac:    acc[ii][jj][c] += la[ii][c] * lb[jj][c];       // TI×TJ×C 次乘加
+    }
+    store: z[...] = acc[ii][jj][c];
+  }
 </code></pre>
-<h3 id="ch5-回報問題時的好習慣-對學長姐-助教或-Claude-都適用">回報問題時的好習慣（對學長姐、助教或 Claude 都適用）</h3>
+<p><strong>改善：</strong> 每個 <code>la</code> 用 TJ 次、每個 <code>lb</code> 用 TI 次（搬運量減 8 倍）；每次載入 C 個連續的數（可以 burst）。</p>
+<p><strong>一個細節：</strong> <code>mac</code> 迴圈裡加了</p>
+<pre><code class="language-cpp">#pragma HLS DEPENDENCE variable = acc inter false
+</code></pre>
+<p>意思是告訴 HLS：「同一個 <code>acc</code> 位置要隔 TI×TJ×C = 8192 次迭代才會再被更新，不用擔心前後相依」，
+這樣 HLS 才敢讓迴圈每個 cycle 開始一次新的迭代（II = 1）。</p>
+<h3 id="ch5-v2-寬位元-16-路平行-trimul_v2-cpp">v2：寬位元＋16 路平行（<code>trimul_v2.cpp</code>）</h3>
+<pre><code class="language-cpp">struct f16 { float v[16]; };     // 一個 512-bit word
+
+float acc[TI * TJ * CW][LANES];  // LANES = 16，CW = C/16 = 8
+#pragma HLS ARRAY_PARTITION variable = acc dim = 2 complete   // 16 個 lane 拆開成獨立的記憶體
+
+mac:
+for (int r = 0; r &lt; TI * TJ * CW; r++) {       // 512 次
+#pragma HLS PIPELINE II = 1
+  for (int l = 0; l &lt; LANES; l++)              // 這層會被完全展開 → 16 個乘加器同時做
+    acc[r][l] += la[...][l] * lb[...][l];
+}
+</code></pre>
+<p><strong>改善：</strong></p>
 <ul>
-<li>附上<strong>完整的指令</strong>和<strong>錯誤前後的 20～30 行輸出</strong>。</li>
-<li>說明<strong>預期會發生什麼</strong>。</li>
-<li>說明<strong>已經試過什麼</strong>。</li>
-<li>附上環境資訊（工具版本、作業系統）。</li>
+<li>介面從 <code>float*</code> 改成 <code>f16*</code> → 每次讀 512 bit（16 個 float）。</li>
+<li><code>ARRAY_PARTITION</code> 把 16 個 lane 拆到不同的記憶體區塊，才能<strong>同一個 cycle 讀寫 16 個數</strong>。</li>
+<li>內層 <code>for l</code> 在 PIPELINE 裡會被自動展開成 16 份硬體。</li>
 </ul>
+<h3 id="ch5-v3-Double-buffering-trimul_v3-cpp">v3：Double buffering（<code>trimul_v3.cpp</code>）</h3>
+<pre><code class="language-cpp">float la0[...], lb0[...];   // 第一組 buffer
+float la1[...], lb1[...];   // 第二組 buffer
+
+load_ab(k = 0 → la0, lb0);
+for (int k = 0; k &lt; L; k++) {
+  if (k % 2 == 0) {
+    if (k + 1 &lt; L) load_ab(k + 1 → la1, lb1);   // 搬下一批到 buffer 1
+    mac(la0, lb0, acc);                          // 同時用 buffer 0 計算
+  } else {
+    if (k + 1 &lt; L) load_ab(k + 1 → la0, lb0);   // 搬下一批到 buffer 0
+    mac(la1, lb1, acc);                          // 同時用 buffer 1 計算
+  }
+}
+</code></pre>
+<p><strong>關鍵：</strong> <code>load_ab</code> 和 <code>mac</code> 是兩個獨立的函式（<code>#pragma HLS INLINE off</code>），而且使用<strong>不同的 buffer</strong>、
+彼此沒有資料相依，所以 HLS 可以讓它們<strong>同時執行</strong>。</p>
+<h3 id="ch5-v4-INT8-per-token-量化-trimul_v4-cpp">v4：INT8 per-token 量化（<code>trimul_v4.cpp</code>）</h3>
+<pre><code class="language-cpp">struct q64 { int8_t v[64]; };    // 一個 512-bit word = 64 個 int8
+
+// 每個 token 有自己的 scale：sa[i*L + k]、sb[j*L + k]
+mac:
+for (int r = 0; r &lt; TI * TJ * QW; r++) {
+#pragma HLS PIPELINE II = 1
+  float s = lsa[ii] * lsb[jj];                          // 兩個 token 的 scale 相乘
+  for (int l = 0; l &lt; 64; l++) {                        // 64 路平行
+    int16_t p = (int16_t)la[..][l] * (int16_t)lb[..][l];  // int8 × int8 → int16
+    acc[r][l] += (float)p * s;                          // 還原尺度後累加
+  }
+}
+</code></pre>
+<p><strong>改善：</strong> 每次搬 64 個數（FP32 時只有 16 個），搬運量變 1/4。
+<strong>為什麼 scale 不能提到迴圈外：</strong> 每個 k 的 token 不同，scale 也不同，所以每次都要乘。
+（如果改成 per-channel 量化，scale 就能提到外面，用純整數累加，但就不是 token-wise 了。）</p>
+<h3 id="ch5-產出_2">產出</h3>
+<p><code>kernels/trimul_v0.cpp</code> ～ <code>trimul_v4.cpp</code>，以及共用的 <code>trimul.h</code>。</p>
 <hr />
-<h2 id="ch5-5-10-本專題套用這個流程的完整範例">5.10 本專題套用這個流程的完整範例</h2>
+<h2 id="ch5-4-5-步驟四-正確性驗證-C-模擬">4.5 步驟四：正確性驗證（C 模擬）</h2>
+<h3 id="ch5-為什麼做_2">為什麼做</h3>
+<p>上板編譯一次要 1～數小時。<strong>先用幾秒鐘確認程式算得對</strong>，才不會浪費時間。</p>
+<h3 id="ch5-怎麼做-tb-tb-cpp">怎麼做（<code>tb/tb.cpp</code>）</h3>
+<ol>
+<li>產生隨機資料 <code>a</code>、<code>b</code>（<code>host/common.h</code> 的 <code>make_activation</code>）：
+   - 一般 token：常態分布 N(0, 1)
+   - <strong>1% 的 token 放大 30 倍</strong>：模擬真實 activation 中的 outlier</li>
+<li>依序呼叫 v0～v4，把結果和 CPU 用 double 精度算出的正確答案比較。</li>
+<li>
+<p>印出兩種誤差：
+   <code>rel_l2  = ‖z − z_ref‖ ÷ ‖z_ref‖     （整體相對誤差）
+   max_abs = max |z − z_ref|             （最大的單點誤差）</code></p>
+</li>
+<li>
+<p>v0～v3 要求 rel_l2 &lt; 1e-5（只有浮點誤差）；v4 允許較大誤差（量化本來就有誤差）。</p>
+</li>
+</ol>
+<h3 id="ch5-結果">結果</h3>
+<pre><code>v0 naive                     rel_l2=1.141e-07   PASS
+v1 tiled                     rel_l2=1.141e-07   PASS
+v2 tiled+wide                rel_l2=1.141e-07   PASS
+v3 tiled+wide+pingpong       rel_l2=1.141e-07   PASS
+v4 int8 per-token            rel_l2=9.871e-03   PASS    ← 約 1%
+v4 int8 per-tensor           rel_l2=1.126e-01   PASS    ← 約 11%
+</code></pre>
+<ul>
+<li>v0～v3 的誤差完全一樣（1.1e-7），代表<strong>改寫沒有改變計算結果</strong>。</li>
+<li><strong>per-tensor 誤差約是 per-token 的 11 倍</strong>，這是本專題第一個可以放進報告的結論。</li>
+</ul>
+<h3 id="ch5-為什麼-g-能跑-HLS-程式">為什麼 g++ 能跑 HLS 程式？</h3>
+<p>因為 kernel 就是<strong>普通的 C++</strong>。<code>#pragma HLS ...</code> 對 g++ 來說是不認識的指示，會被忽略
+（我們加了 <code>-Wno-unknown-pragmas</code> 讓它不要警告）。詳見第 3 章 3.4 節。</p>
+<h3 id="ch5-產出_3">產出</h3>
+<p><code>tb/tb.cpp</code>、<code>host/common.h</code>；指令 <code>make csim</code>。</p>
+<hr />
+<h2 id="ch5-4-6-步驟五-host-程式">4.6 步驟五：host 程式</h2>
+<h3 id="ch5-為什麼做_3">為什麼做</h3>
+<p>FPGA 不會自己去拿資料。需要一個在 CPU 上執行的程式負責：
+<strong>準備資料 → 送進 FPGA 的 HBM → 啟動 kernel → 等它算完 → 取回結果 → 檢查、計時</strong>。</p>
+<h3 id="ch5-流程-host-host-cpp-使用-XRT-的-C-API">流程（<code>host/host.cpp</code>，使用 XRT 的 C++ API）</h3>
+<pre><code class="language-cpp">xrt::device dev(0);                              // 1. 打開第 0 張 FPGA 卡
+auto uuid = dev.load_xclbin(&quot;trimul_v2.xclbin&quot;); // 2. 把編譯好的電路燒進去
+xrt::kernel krnl(dev, uuid, &quot;trimul_v2&quot;);        // 3. 找到 kernel
+
+xrt::bo bo_a(dev, bytes, krnl.group_id(0));      // 4. 在 HBM 上配置記憶體
+bo_a.write(a.data());                            //    （group_id 決定放在哪個 PC）
+bo_a.sync(XCL_BO_SYNC_BO_TO_DEVICE);             // 5. 從 CPU 記憶體複製到 HBM
+
+run.start(); run.wait();                         // 6. 啟動 kernel 並等待完成（計時）
+
+bo_z.sync(XCL_BO_SYNC_BO_FROM_DEVICE);           // 7. 把結果複製回 CPU
+bo_z.read(z.data());
+</code></pre>
+<p>最後印出時間、GFLOP/s、估計的搬運量和頻寬、HBM 佔用量、誤差，以及一行 CSV 方便整理。</p>
+<h3 id="ch5-狀態">狀態</h3>
+<p>⚠️ 已寫好，並用假的 XRT header 確認<strong>可以編譯</strong>，但<strong>尚未在真的板子上執行過</strong>。</p>
+<h3 id="ch5-產出_4">產出</h3>
+<p><code>host/host.cpp</code>；指令 <code>make host</code>、<code>make run</code>。</p>
+<hr />
+<h2 id="ch5-4-7-步驟六-HBM-連接設定">4.7 步驟六：HBM 連接設定</h2>
+<h3 id="ch5-為什麼做_4">為什麼做</h3>
+<p>kernel 有好幾個 AXI 連接埠（a、b、z……），每個要接到 HBM 的哪個 pseudo-channel，
+是在<strong>連結（link）階段</strong>由設定檔決定的。</p>
+<h3 id="ch5-設定檔-cfg-trimul_v2-cfg">設定檔（<code>cfg/trimul_v2.cfg</code>）</h3>
+<pre><code class="language-ini">[connectivity]
+sp=trimul_v2_1.a:HBM[0:7]      # a 接到 PC 0～7（共 4 GB）
+sp=trimul_v2_1.b:HBM[8:15]     # b 接到 PC 8～15
+sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
+</code></pre>
+<ul>
+<li><code>trimul_v2_1</code>：kernel 的第一個實例（instance）。</li>
+<li><code>sp</code>：system port，指定「kernel 的某個參數要接到哪塊記憶體」。</li>
+<li>對照組 <code>trimul_v2_onebank.cfg</code>：全部接到 <code>HBM[0]</code>。</li>
+</ul>
+<h3 id="ch5-產出_5">產出</h3>
+<p><code>cfg/trimul_v0.cfg</code> ～ <code>trimul_v4.cfg</code>、<code>trimul_v2_onebank.cfg</code>。</p>
+<hr />
+<h2 id="ch5-4-8-步驟七-Makefile">4.8 步驟七：Makefile</h2>
+<h3 id="ch5-為什麼做_5">為什麼做</h3>
+<p>完整流程有很多步驟、每個指令都很長。Makefile 把它們包成短指令，參數也集中管理。</p>
+<h3 id="ch5-指令一覽">指令一覽</h3>
 <table>
 <thead>
 <tr>
-<th>步驟</th>
-<th>本專題的做法</th>
-<th>產出</th>
+<th>指令</th>
+<th>做什麼</th>
+<th>需要什麼</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>① 讀 paper</td>
-<td>LightNobel：長序列受限於 activation 記憶體；token-wise 量化</td>
-<td>第 1 章</td>
+<td><code>make csim</code></td>
+<td>g++ 編譯並執行 testbench</td>
+<td>只要 g++</td>
 </tr>
 <tr>
-<td>② 量化問題</td>
-<td>pair tensor L² × 512 B；AI = 0.25</td>
-<td>第 1、2 章的表格</td>
+<td><code>make hls KERNEL=trimul_v2</code></td>
+<td>執行 <code>hls/run_hls.tcl</code>，產生合成報告</td>
+<td>Vitis</td>
 </tr>
 <tr>
-<td>③ 縮小範圍</td>
-<td>只做 Triangle Multiplication 的 einsum</td>
-<td><code>trimul.h</code></td>
+<td><code>make hls-all</code></td>
+<td>依序合成 v0～v4，最後呼叫 <code>make summary</code></td>
+<td>Vitis</td>
 </tr>
 <tr>
-<td>④ 設計實驗</td>
-<td>v0 baseline ＋ 四種手法；tile sweep；HBM 對照；per-token vs per-tensor</td>
-<td>5 個 kernel、cfg</td>
+<td><code>make hls-sweep</code></td>
+<td>tile 大小掃描（4/8/16/32），各自存成不同專案</td>
+<td>Vitis</td>
 </tr>
 <tr>
-<td>⑤ 實作與驗證</td>
-<td>C 模擬全部通過 → v2 合成成功 → 其餘進行中</td>
-<td><code>make csim</code>、<code>make hls</code></td>
+<td><code>make model</code></td>
+<td>分析模型：預測、驗證、設計空間探索（見 6.8 節）</td>
+<td>Python</td>
 </tr>
 <tr>
-<td>⑥ 分析</td>
-<td>v2 載入佔 21% → 預測 v3 快約 21%</td>
-<td>第 2 章 2.6 節</td>
+<td><code>make summary</code></td>
+<td>執行 <code>scripts/hls_summary.py</code>，產生比較表與 <code>hls_summary.csv</code></td>
+<td>Python</td>
 </tr>
 <tr>
-<td>⑦ 呈現</td>
-<td>待完成全部數據後製作</td>
-<td><code>hls_summary.csv</code> → 圖表</td>
+<td><code>make xclbin KERNEL=... TARGET=hw</code></td>
+<td><code>v++ -c</code>（編譯）＋ <code>v++ -l</code>（連結）→ <code>.xclbin</code></td>
+<td>Vitis ＋ U55C platform</td>
+</tr>
+<tr>
+<td><code>make host</code></td>
+<td>編譯 host 程式</td>
+<td>XRT</td>
+</tr>
+<tr>
+<td><code>make run ...</code></td>
+<td>執行（emulation 或上板）</td>
+<td>XRT（上板還需要卡）</td>
 </tr>
 </tbody>
 </table>
+<h3 id="ch5-可調參數">可調參數</h3>
+<p><code>KERNEL</code>、<code>TARGET</code>（sw_emu / hw_emu / hw）、<code>PLATFORM</code>、<code>CFG</code>、<code>DEFS</code>（例如 tile 大小）、<code>TAG</code>、<code>RUN_L</code>、<code>DATA</code>。</p>
+<h3 id="ch5-產出_6">產出</h3>
+<p><code>Makefile</code>、<code>hls/run_hls.tcl</code>、<code>scripts/hls_summary.py</code>、<code>.gitignore</code>。</p>
+<hr />
+<h2 id="ch5-4-9-步驟八-真實資料管線-加分項">4.9 步驟八：真實資料管線（加分項）</h2>
+<h3 id="ch5-為什麼做_6">為什麼做</h3>
+<p>模擬資料的 outlier 是我們「假設」的。要證明結論在<strong>真實蛋白質</strong>上也成立，需要從 ESMFold 取出真正的 activation。</p>
+<h3 id="ch5-怎麼做-python-dump_trimul_inputs-py">怎麼做（<code>python/dump_trimul_inputs.py</code>）</h3>
+<ol>
+<li>下載序列（UniProt / PDB）或讀 FASTA。</li>
+<li>載入 HuggingFace 的 ESMFold（<code>facebook/esmfold_v1</code>）。</li>
+<li>
+<p><strong>把 <code>trunk.blocks[N].tri_mul_out._combine_projections</code> 換成我們的函式</strong>：
+   當模型執行到這裡時，把 <code>a</code>、<code>b</code> 存下來，然後丟出例外讓模型停止（後面的 block 不用跑，省時間）。</p>
+</li>
+<li>
+<p>計算 outlier 程度、per-token / per-tensor 的量化誤差。</p>
+</li>
+<li>補零到 32 的倍數，存成 <code>a.bin</code>、<code>b.bin</code>（float32，排列和 kernel 相同）。</li>
+</ol>
+<h3 id="ch5-驗證-差值-0-是怎麼來的">驗證：「差值 0」是怎麼來的</h3>
+<p>在隨機初始化的小型 ESMFold 上，擷取 <code>a</code>、<code>b</code> 後比較：</p>
+<pre><code class="language-python">ref  = tm._combine_projections(a, b)          # ESMFold 自己的計算
+ours = torch.einsum(&quot;ikc,jkc-&gt;ijc&quot;, a, b)     # 我們 kernel 的算式
+max diff = 0.0
+</code></pre>
+<p><strong>證明我們的 kernel 算的確實是 ESMFold 裡的那個運算。</strong></p>
+<h3 id="ch5-過程中發現的錯誤">過程中發現的錯誤</h3>
+<p>一開始用 tokenizer 產生輸入，結果模型報錯（index out of range）。原因是 ESMFold 的 <code>forward</code> 需要的是
+<strong>AlphaFold 的胺基酸編號</strong>，不是語言模型 tokenizer 的編號；要用 <code>model.infer(seq)</code> 才會正確轉換。</p>
+<h3 id="ch5-狀態_1">狀態</h3>
+<p>需要 GPU（或 Colab）才能跑正式模型；使用者沒有 GPU，所以目前是<strong>加分項</strong>。
+C 模擬、host 程式和 Makefile 都已支援讀取這些檔案（<code>DATA=...</code>）。</p>
+<h3 id="ch5-產出_7">產出</h3>
+<p><code>python/dump_trimul_inputs.py</code>、<code>python/requirements.txt</code>、<code>docs/real_protein_data.md</code>。</p>
+<hr />
+<h2 id="ch5-4-10-步驟九-在實際-server-上除錯">4.10 步驟九：在實際 server 上除錯</h2>
+<h3 id="ch5-環境調查">環境調查</h3>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>結果</th>
+<th>結論</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>which vivado vitis v++</code></td>
+<td>都在 <code>/tools/Xilinx/2025.2/</code></td>
+<td>工具齊全，版本很新</td>
+</tr>
+<tr>
+<td><code>which vitis_hls</code></td>
+<td>找不到</td>
+<td>2025.2 已移除，改用 <code>vitis-run</code></td>
+</tr>
+<tr>
+<td><code>lspci -d 10ee:</code></td>
+<td>空的</td>
+<td><strong>這台沒有 FPGA 卡</strong>（10ee 是 Xilinx 的廠商代號）</td>
+</tr>
+<tr>
+<td><code>xbutil</code>、<code>/opt/xilinx/platforms</code></td>
+<td>沒有</td>
+<td>沒有 XRT、沒有 U55C platform</td>
+</tr>
+</tbody>
+</table>
+<p>→ 這台可以做 C 模擬和 HLS 合成，<strong>不能上板</strong>。</p>
+<h3 id="ch5-除錯過程-一次失敗-三次修正">除錯過程：一次失敗、三次修正</h3>
+<p>這是一個很好的除錯範例，展示「<strong>從錯誤訊息推理出原因</strong>」的過程。</p>
+<p><strong>第 1 次失敗</strong></p>
+<pre><code>ld.lld: error: undefined symbol: trimul_v2
+</code></pre>
+<ul>
+<li>觀察：編譯清單裡有 tb、v0、v1、v3、v4，<strong>唯獨沒有 v2</strong>。</li>
+<li>當時的判斷：2025.2 的 C 模擬流程有問題 → 改成預設跳過 HLS 內建的 C 模擬（反正 <code>make csim</code> 已經驗證過）。</li>
+<li>（後來發現真正原因和第 2、3 次相同。）</li>
+</ul>
+<p><strong>第 2 次失敗</strong></p>
+<pre><code>WARNING: Cannot find source file ../kernels/trimul_v2.cpp; skipping it.
+ERROR: Cannot find any design unit to elaborate.
+</code></pre>
+<ul>
+<li>觀察：工具找不到來源檔。</li>
+<li>假設：相對路徑的問題 → 改用<strong>絕對路徑</strong>。</li>
+</ul>
+<p><strong>第 3 次失敗（相同錯誤）</strong></p>
+<ul>
+<li>
+<p>關鍵觀察：日誌中 <code>Adding design file '/home/anthony/.../trimul_v2.cpp'</code> 已經是絕對路徑，
+  但到了合成階段，工具<strong>又自己改寫成 <code>../kernels/trimul_v2.cpp</code></strong>。</p>
+</li>
+<li>
+<p>推理：
+  <code>專案位置：   fpga/trimul/hls_prj/trimul_v2/     （在目前資料夾往下 2 層）
+  正確的相對路徑：../../kernels/trimul_v2.cpp
+  工具算出來的：  ../kernels/trimul_v2.cpp        （只往上 1 層）</code>
+  → 工具<strong>假設專案只在目前資料夾的下一層</strong>。專案名稱含有 <code>/</code>（<code>hls_prj/trimul_v2</code>）時就會算錯。</p>
+</li>
+<li>
+<p>修正：先 <code>cd hls_prj</code>，再建立名為 <code>trimul_v2</code> 的專案（只差一層）。</p>
+</li>
+</ul>
+<p><strong>第 4 次：成功</strong> ✅</p>
+<h3 id="ch5-學到的除錯方法">學到的除錯方法</h3>
+<ol>
+<li><strong>仔細看完整的錯誤訊息</strong>，不只看 ERROR，也看前面的 WARNING。</li>
+<li><strong>比較「預期」和「實際」</strong>（編譯清單少了一個檔案、路徑少了一層）。</li>
+<li>修正後結果不變 → <strong>假設錯了</strong>，回頭找新的線索。</li>
+<li>用算的驗證假設（數路徑的層數）。</li>
+</ol>
+<h3 id="ch5-產出_8">產出</h3>
+<p>修改過的 <code>Makefile</code>（自動選 <code>vitis_hls</code> 或 <code>vitis-run</code>）與 <code>hls/run_hls.tcl</code>。</p>
+<hr />
+<h2 id="ch5-4-11-步驟十-讀懂-HLS-報告-以-v2-為例">4.11 步驟十：讀懂 HLS 報告（以 v2 為例）</h2>
+<p>報告位置：<code>hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt</code></p>
+<h3 id="ch5-①-基本資訊">① 基本資訊</h3>
+<pre><code>* Version:        2025.2
+* Solution:       sol (Vitis Kernel Flow Target)
+* Product family: virtexuplusHBM
+* Target device:  xcu55c-fsvh2892-2L-e     ← U55C 的晶片型號
+</code></pre>
+<h3 id="ch5-②-Timing-時脈">② Timing（時脈）</h3>
+<pre><code>| Clock  | Target  | Estimated | Uncertainty |
+| ap_clk | 3.33 ns | 2.431 ns  | 0.90 ns     |
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>意義</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Target</td>
+<td>我們要求的時脈週期（3.33 ns = 300 MHz）</td>
+</tr>
+<tr>
+<td>Estimated</td>
+<td>HLS 估計電路最慢的路徑需要多久</td>
+</tr>
+<tr>
+<td>Uncertainty</td>
+<td>保留給後續繞線的餘裕</td>
+</tr>
+</tbody>
+</table>
+<p><strong>判斷：</strong> Estimated + Uncertainty = 3.33 ns，剛好在目標內 → 通過。
+（最終能否達到 300 MHz，要等 Vivado 實際繞線後才知道。）</p>
+<h3 id="ch5-③-Latency-總時間">③ Latency（總時間）</h3>
+<pre><code>| Latency (cycles) | Latency (absolute) | Interval  |
+| 177,029,185      | 0.590 sec          | 177029186 |
+</code></pre>
+<ul>
+<li><strong>Latency</strong>：從開始到結束的 cycle 數。</li>
+<li><strong>absolute</strong>：cycle 數 × 時脈週期。</li>
+<li><strong>Interval</strong>：可以接受下一次呼叫的間隔（這裡和 latency 差不多，因為一次只跑一個）。</li>
+<li>⚠️ 這是在 <strong>L = 256</strong> 下的估計（由 <code>trimul.h</code> 的 <code>L_TRIP</code> 決定）。因為 L 是執行時才知道的參數，
+  HLS 需要 <code>LOOP_TRIPCOUNT</code> 告訴它迴圈大概跑幾次，才能估算。</li>
+</ul>
+<h3 id="ch5-④-Instance-子模組">④ Instance（子模組）</h3>
+<pre><code>| Module                     | Latency (cycles) |
+| trimul_v2_Pipeline_init    | 514 |   ← 清空累加器（512 次 + 啟動）
+| trimul_v2_Pipeline_load_a  | 141 |   ← 載入 a
+| trimul_v2_Pipeline_load_b  | 141 |   ← 載入 b
+| trimul_v2_Pipeline_store   | 586 |   ← 寫回結果
+| trimul_v2_Pipeline_mac     | 526 |   ← 計算（512 次 + pipeline 深度 14）
+</code></pre>
+<p>每個 pipeline 化的迴圈會變成一個獨立的硬體模組。</p>
+<h3 id="ch5-⑤-Loop-迴圈">⑤ Loop（迴圈）</h3>
+<pre><code>| Loop Name  | Latency     | Iteration Latency | Trip Count |
+| tile_i     | 177,029,184 | 5,532,162         | 32 |
+|  tile_j    | 5,532,160   | 172,880           | 32 |
+|   loop_k   | 171,776     | 671               | 256 |
+</code></pre>
+<p><strong>驗算：</strong></p>
+<pre><code>loop_k：256 次 × 671 = 171,776                          ✓
+tile_j 每次：171,776（loop_k）+ 514（init）+ 586（store）+ 4 ≈ 172,880   ✓
+tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
+總計：32 × 5,532,162 ≈ 177,029,184                       ✓
+</code></pre>
+<p><strong><code>loop_k</code> 的 671 cycles</strong> 就是第 2 章 2.6 節分析 double buffering 的依據：
+<code>load（141，a、b 並行）+ mac（526）+ 少量 ≈ 671</code>。</p>
+<h3 id="ch5-⑥-換算效能">⑥ 換算效能</h3>
+<pre><code>運算量 = 2 × 256³ × 128 ≈ 4.29 × 10⁹ FLOP
+時間   = 0.590 s
+效能   ≈ 7.3 GFLOP/s          （v2 理論上限 9.6 GFLOP/s 的 76%）
+</code></pre>
+<h3 id="ch5-⑦-資源用量-報告的下一段">⑦ 資源用量（報告的下一段）</h3>
+<p><code>Utilization Estimates</code> 段落會列出 BRAM_18K、DSP、FF、LUT、URAM 的用量和百分比。
+<code>make summary</code> 會自動把這些數字整理進比較表。</p>
+<hr />
+<h2 id="ch5-4-12-所有檔案總表">4.12 所有檔案總表</h2>
+<table>
+<thead>
+<tr>
+<th>檔案</th>
+<th>用途</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>README.md</code></td>
+<td>repo 目錄</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/PROJECT_LOG.md</code></td>
+<td>專題工作紀錄（交接用）</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/conversation_notes.md</code></td>
+<td>白話筆記</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/getting_started_u55c.md</code></td>
+<td>U55C 環境與開發流程</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/real_protein_data.md</code></td>
+<td>真實資料流程</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/manual/</code></td>
+<td>本教學手冊（含 <code>manual.pdf</code>）</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/three_week_plan.md</code></td>
+<td>三週計畫與海報大綱</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>docs/competition_directions.md</code></td>
+<td>競賽方向與文獻紀錄</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/kernels/trimul.h</code></td>
+<td>共用設定</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/kernels/trimul_v0~v4.cpp</code></td>
+<td>5 個 kernel</td>
+<td>✅ csim；v2 已合成</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/tb/tb.cpp</code></td>
+<td>C 模擬 testbench</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/host/common.h</code></td>
+<td>資料產生、量化、參考答案、讀檔</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/host/host.cpp</code></td>
+<td>XRT host 程式</td>
+<td>⚠️ 未上板</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/cfg/*.cfg</code></td>
+<td>HBM 連接</td>
+<td>⚠️ 未使用</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/hls/run_hls.tcl</code></td>
+<td>HLS 腳本</td>
+<td>✅（2025.2）</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/scripts/hls_summary.py</code></td>
+<td>報告整理成表</td>
+<td>✅（用假報告測過）</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/scripts/perf_model.py</code></td>
+<td>分析模型與設計空間探索（<code>make model</code>，見 6.8 節）</td>
+<td>✅（v2 已校正）</td>
+</tr>
+<tr>
+<td><code>fpga/trimul/Makefile</code></td>
+<td>指令捷徑</td>
+<td>✅ csim/hls；⚠️ xclbin/run</td>
+</tr>
+<tr>
+<td><code>python/dump_trimul_inputs.py</code></td>
+<td>擷取真實 activation</td>
+<td>✅（小模型測過）</td>
+</tr>
+</tbody>
+</table>
+<p>執行後會產生（不進 git）：<code>hls_prj/</code>（HLS 專案與報告）、<code>hls_*.log</code>、<code>hls_summary.csv</code>、<code>build/</code>（v++ 產物）、<code>*.exe</code>。</p>
 <hr />
 <h2 id="ch5-本章小結">本章小結</h2>
 <ul>
-<li><strong>讀 paper</strong>：問題 → 觀察 → 解法 → 評估，先看動機的圖。</li>
-<li><strong>量化</strong>：資料量、運算量、算術強度，和硬體平衡點比較。</li>
-<li><strong>實驗</strong>：有 baseline、一次改一件事、先預測再量測、同時記錄好處和代價。</li>
-<li><strong>驗證</strong>：從快到慢，前一步沒過不進下一步。</li>
-<li><strong>分析</strong>：找出比例、用 Amdahl 算上限、在 roofline 上看位置。</li>
+<li>流程的核心精神：<strong>從快到慢驗證</strong>（C 模擬 → HLS → emulation → 上板），前一步沒過就不進下一步。</li>
+<li>每個 kernel 版本只改一件事，才能清楚歸因每一招的效果。</li>
+<li>除錯時，<strong>比較預期與實際、修正無效就換假設</strong>。</li>
+<li>進度（截至 2026-09-26）：C 模擬全部通過、v2 合成成功，v0～v4 全部合成進行中；上板尚待找到有 U55C 的機器。最新進度見 <code>docs/PROJECT_LOG.md</code>。</li>
 </ul>
-<p><strong>下一章</strong>是術語表，把整份手冊出現過的專有名詞整理在一起。</p>
-</section><section class="chapter">
-<h1 id="ch6-第-6-章-術語表">第 6 章　術語表</h1>
-<blockquote>
-<p>依主題分類。每個詞附上：<strong>白話解釋</strong>、<strong>正式說明</strong>、<strong>在本專題哪裡出現</strong>。
-忘記某個詞的意思時，回來這裡查。</p>
-</blockquote>
 <hr />
-<h2 id="ch6-6-1-蛋白質與模型">6.1 蛋白質與模型</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>胺基酸（amino acid）</strong></td>
-<td>珠鍊上的一顆珠子</td>
-<td>蛋白質的基本單位，共 20 種，用一個英文字母表示</td>
-<td>序列中的每個字母</td>
-</tr>
-<tr>
-<td><strong>序列長度 L</strong></td>
-<td>珠子的數量</td>
-<td>蛋白質中胺基酸的個數</td>
-<td>整份手冊的核心變數</td>
-</tr>
-<tr>
-<td><strong>PPM</strong></td>
-<td>蛋白質結構預測模型</td>
-<td>Protein structure Prediction Model，例如 AlphaFold2、ESMFold</td>
-<td>LightNobel 的研究對象</td>
-</tr>
-<tr>
-<td><strong>AlphaFold2</strong></td>
-<td>DeepMind 的蛋白質結構預測模型</td>
-<td>2021 年發表，使用 MSA 與 Evoformer</td>
-<td>第 1 章</td>
-</tr>
-<tr>
-<td><strong>ESMFold</strong></td>
-<td>Meta 的蛋白質結構預測模型</td>
-<td>用 ESM-2 語言模型代替 MSA，結構較簡單</td>
-<td>我們驗證算式的對象</td>
-</tr>
-<tr>
-<td><strong>ESM-2</strong></td>
-<td>蛋白質的「語言模型」</td>
-<td>像讀文字一樣讀胺基酸序列，產生特徵</td>
-<td>ESMFold 的第一部分</td>
-</tr>
-<tr>
-<td><strong>MSA</strong></td>
-<td>多序列比對</td>
-<td>Multiple Sequence Alignment，把相似的蛋白質序列排在一起</td>
-<td>AlphaFold2 的輸入，ESMFold 不需要</td>
-</tr>
-<tr>
-<td><strong>Evoformer / Folding trunk</strong></td>
-<td>模型的主體</td>
-<td>由 48 個 block 組成，反覆更新兩種 representation</td>
-<td>第 1 章 1.2 節</td>
-</tr>
-<tr>
-<td><strong>Structure module</strong></td>
-<td>輸出座標的部分</td>
-<td>把特徵轉成 3D 原子座標</td>
-<td>第 1 章 1.2 節</td>
-</tr>
-<tr>
-<td><strong>Sequence representation</strong></td>
-<td>每個胺基酸的特徵</td>
-<td>形狀 L × 1024（ESMFold）</td>
-<td>第 1 章</td>
-</tr>
-<tr>
-<td><strong>Pair representation</strong></td>
-<td>每一對胺基酸之間的關係</td>
-<td>形狀 <strong>L × L × 128</strong>，隨 L² 成長</td>
-<td><strong>本專題處理的資料</strong></td>
-</tr>
-<tr>
-<td><strong>Triangle Multiplication</strong></td>
-<td>用「第三者」推論兩者關係</td>
-<td><code>z[i][j][c] = Σ_k a[i][k][c]·b[j][k][c]</code>（outgoing）</td>
-<td><strong>本專題實作的運算</strong></td>
-</tr>
-<tr>
-<td><strong>Outgoing / Incoming</strong></td>
-<td>兩種三角形方向</td>
-<td>outgoing 用 (i,k)、(j,k)；incoming 用 (k,i)、(k,j)</td>
-<td>我們做 outgoing</td>
-</tr>
-<tr>
-<td><strong>Triangle Attention</strong></td>
-<td>三角形版本的 attention</td>
-<td>中間值隨 L³ 成長，實作上需分塊</td>
-<td>第 1 章 1.3 節（未實作）</td>
-</tr>
-<tr>
-<td><strong>Token</strong></td>
-<td>一格資料</td>
-<td>在 pair representation 中指一個 (i, j) 位置的 128 個數字</td>
-<td>per-token 量化的單位</td>
-</tr>
-<tr>
-<td><strong>Channel（C）</strong></td>
-<td>每格的數字個數</td>
-<td>特徵維度，ESMFold 的 pair 為 128</td>
-<td><code>trimul.h</code> 的 <code>C = 128</code></td>
-</tr>
-<tr>
-<td><strong>LayerNorm / Linear / Gating</strong></td>
-<td>模型中的標準運算</td>
-<td>正規化、線性轉換、用 sigmoid 控制資訊流</td>
-<td>產生 a、b 的步驟（未實作）</td>
-</tr>
-<tr>
-<td><strong>Chunking</strong></td>
-<td>分批計算</td>
-<td>一次只算一部分以降低記憶體峰值，代價是時間</td>
-<td>第 2 章 2.9 節</td>
-</tr>
-<tr>
-<td><strong>HuggingFace</strong></td>
-<td>公開模型的平台</td>
-<td>提供模型程式碼（transformers）與權重下載（Hub）</td>
-<td><code>dump_trimul_inputs.py</code></td>
-</tr>
-<tr>
-<td><strong>UniProt / PDB</strong></td>
-<td>公開的蛋白質資料庫</td>
-<td>UniProt 存序列、PDB 存實驗測定的結構</td>
-<td>下載測試序列</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-2-效能與記憶體概念">6.2 效能與記憶體概念</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Memory-bound</strong></td>
-<td>等搬資料</td>
-<td>效能受限於記憶體頻寬或延遲，而非運算能力</td>
-<td>v0、v2 的載入部分</td>
-</tr>
-<tr>
-<td><strong>Compute-bound</strong></td>
-<td>廚師忙不過來</td>
-<td>效能受限於運算單元數量</td>
-<td>v2 的 mac 部分</td>
-</tr>
-<tr>
-<td><strong>Weights（權重）</strong></td>
-<td>模型學到的參數</td>
-<td>大小固定，與 L 無關</td>
-<td>第 1 章 1.4 節</td>
-</tr>
-<tr>
-<td><strong>Activation</strong></td>
-<td>計算中產生的中間資料</td>
-<td>隨輸入大小（L）成長</td>
-<td>LightNobel 要壓縮的對象</td>
-</tr>
-<tr>
-<td><strong>OOM</strong></td>
-<td>記憶體不夠</td>
-<td>Out of Memory</td>
-<td>長序列在 GPU 上的問題</td>
-</tr>
-<tr>
-<td><strong>FLOP</strong></td>
-<td>一次浮點運算</td>
-<td>一次乘法或一次加法</td>
-<td>一次乘加 = 2 FLOP</td>
-</tr>
-<tr>
-<td><strong>GFLOP/s</strong></td>
-<td>每秒十億次運算</td>
-<td>效能單位</td>
-<td>v2 約 7.3 GFLOP/s</td>
-</tr>
-<tr>
-<td><strong>頻寬（bandwidth）</strong></td>
-<td>每秒能搬多少</td>
-<td>GB/s</td>
-<td>單一 512-bit 埠 19.2 GB/s；U55C HBM 約 460 GB/s</td>
-</tr>
-<tr>
-<td><strong>延遲（latency）</strong></td>
-<td>等多久才開始有資料</td>
-<td>從請求到第一筆資料的時間</td>
-<td>v2 載入的 141 cycles 大多是延遲</td>
-</tr>
-<tr>
-<td><strong>算術強度（AI）</strong></td>
-<td>每搬 1 byte 做幾次運算</td>
-<td>FLOP ÷ byte</td>
-<td>v0 0.25、v2 2、v4 約 7.8</td>
-</tr>
-<tr>
-<td><strong>Roofline 模型</strong></td>
-<td>判斷瓶頸的圖</td>
-<td><code>可達效能 = min(運算上限, AI × 頻寬)</code></td>
-<td>第 2 章 2.3 節</td>
-</tr>
-<tr>
-<td><strong>Ridge point（平衡點）</strong></td>
-<td>roofline 的轉折點</td>
-<td>峰值運算 ÷ 頻寬</td>
-<td>判斷 memory/compute-bound</td>
-</tr>
-<tr>
-<td><strong>Tiling</strong></td>
-<td>分批搬、重複用</td>
-<td>把計算切成小塊，讓搬進來的資料被重用多次</td>
-<td>v1</td>
-</tr>
-<tr>
-<td><strong>資料重用（data reuse）</strong></td>
-<td>同一個食材做多道菜</td>
-<td>同一份資料被多次運算使用</td>
-<td>tile 中每個 a 用 TJ 次</td>
-</tr>
-<tr>
-<td><strong>Burst</strong></td>
-<td>一次請求連續拿很多筆</td>
-<td>只付一次延遲</td>
-<td>連續的 128 個 channel</td>
-</tr>
-<tr>
-<td><strong>Double buffering（ping-pong）</strong></td>
-<td>兩個料理台輪流用</td>
-<td>一個 buffer 計算時，另一個載入下一批</td>
-<td>v3</td>
-</tr>
-<tr>
-<td><strong>Little's Law</strong></td>
-<td>要多少資料在路上</td>
-<td>在途資料量 = 頻寬 × 延遲</td>
-<td>第 2 章 2.5 節</td>
-</tr>
-<tr>
-<td><strong>Amdahl's Law</strong></td>
-<td>改善的上限</td>
-<td><code>加速 = 1 ÷ [(1−p) + p/s]</code></td>
-<td>v3 最多約 1.27 倍</td>
-</tr>
-<tr>
-<td><strong>Memory layout</strong></td>
-<td>資料在記憶體中的排列</td>
-<td>決定能否連續讀取</td>
-<td><code>[row][col][channel]</code></td>
-</tr>
-<tr>
-<td><strong>Stride</strong></td>
-<td>連續兩次存取的間距</td>
-<td>stride 大 → 無法 burst</td>
-<td>v0 的 stride = 128</td>
-</tr>
-<tr>
-<td><strong>Operator fusion</strong></td>
-<td>運算合併</td>
-<td>中間值不寫回記憶體</td>
-<td>第 2 章 2.9 節（未實作）</td>
-</tr>
-<tr>
-<td><strong>Recomputation</strong></td>
-<td>用計算換記憶體</td>
-<td>不存中間值，需要時重算</td>
-<td>第 2 章 2.9 節（未實作）</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-3-量化">6.3 量化</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>量化（quantization）</strong></td>
-<td>把數字壓縮成較少的 bit</td>
-<td>例如 FP32（4 bytes）→ INT8（1 byte）</td>
-<td>v4</td>
-</tr>
-<tr>
-<td><strong>FP32 / FP16 / BF16</strong></td>
-<td>浮點格式</td>
-<td>32 / 16 / 16 bit 的浮點數</td>
-<td>kernel 用 FP32</td>
-</tr>
-<tr>
-<td><strong>INT8</strong></td>
-<td>8 bit 整數</td>
-<td>-128～127（對稱量化用 -127～127）</td>
-<td>v4</td>
-</tr>
-<tr>
-<td><strong>Scale（s）</strong></td>
-<td>量化的尺</td>
-<td><code>s = max|x| ÷ 127</code>，<code>x ≈ s × q</code></td>
-<td>每個 token 一個</td>
-</tr>
-<tr>
-<td><strong>對稱量化</strong></td>
-<td>以 0 為中心</td>
-<td>正負範圍相同，不需要 zero point</td>
-<td>v4 的做法</td>
-</tr>
-<tr>
-<td><strong>Per-tensor</strong></td>
-<td>整份共用一把尺</td>
-<td>一個 scale 給整個張量</td>
-<td>誤差約 11%</td>
-</tr>
-<tr>
-<td><strong>Per-token</strong></td>
-<td>每格一把尺</td>
-<td>每個 token 一個 scale</td>
-<td>誤差約 1%</td>
-</tr>
-<tr>
-<td><strong>Per-channel</strong></td>
-<td>每個 channel 一把尺</td>
-<td>每個 c 一個 scale（本專題未實作）</td>
-<td>第 3 章 3.4 節提到</td>
-</tr>
-<tr>
-<td><strong>Outlier</strong></td>
-<td>特別大的值</td>
-<td>少數數值遠大於其他值</td>
-<td>模擬資料中 1% 的 token ×30</td>
-</tr>
-<tr>
-<td><strong>Fake quantization</strong></td>
-<td>量化再還原</td>
-<td>用浮點數模擬量化誤差</td>
-<td>Python 腳本評估誤差</td>
-</tr>
-<tr>
-<td><strong>rel_l2</strong></td>
-<td>整體相對誤差</td>
-<td><code>‖z − z_ref‖ ÷ ‖z_ref‖</code></td>
-<td>testbench、host</td>
-</tr>
-<tr>
-<td><strong>max_abs</strong></td>
-<td>最大單點誤差</td>
-<td><code>max |z − z_ref|</code></td>
-<td>testbench、host</td>
-</tr>
-<tr>
-<td><strong>AAQ</strong></td>
-<td>LightNobel 的量化方法</td>
-<td>Token-wise Adaptive Activation Quantization</td>
-<td>第 1 章 1.6 節</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-4-FPGA-硬體">6.4 FPGA 硬體</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>FPGA</strong></td>
-<td>可以重新接線的晶片</td>
-<td>Field-Programmable Gate Array</td>
-<td>U55C</td>
-</tr>
-<tr>
-<td><strong>ASIC</strong></td>
-<td>專用晶片</td>
-<td>做好就不能改，最快最省電</td>
-<td>LightNobel 的加速器</td>
-</tr>
-<tr>
-<td><strong>U55C</strong></td>
-<td>我們的 FPGA 卡</td>
-<td>AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e</td>
-<td>整個專題</td>
-</tr>
-<tr>
-<td><strong>Alveo</strong></td>
-<td>AMD 資料中心 FPGA 卡系列</td>
-<td>插在伺服器的 PCIe 插槽</td>
-<td>U55C 屬於此系列</td>
-</tr>
-<tr>
-<td><strong>LUT</strong></td>
-<td>小真值表</td>
-<td>6 輸入，可實現任意邏輯</td>
-<td>報告的 LUT 用量</td>
-</tr>
-<tr>
-<td><strong>FF（Flip-Flop）</strong></td>
-<td>1 bit 暫存器</td>
-<td>每個時脈更新</td>
-<td>報告的 FF 用量</td>
-</tr>
-<tr>
-<td><strong>DSP</strong></td>
-<td>硬體乘法器</td>
-<td>DSP48E2，27×18 bit 乘法＋累加</td>
-<td>浮點乘法用</td>
-</tr>
-<tr>
-<td><strong>BRAM</strong></td>
-<td>小塊晶片內記憶體</td>
-<td>36 Kb（可拆成兩個 18 Kb），2 個讀寫埠</td>
-<td>acc、la、lb</td>
-</tr>
-<tr>
-<td><strong>URAM</strong></td>
-<td>大塊晶片內記憶體</td>
-<td>288 Kb</td>
-<td>大 tile 時可能用到</td>
-</tr>
-<tr>
-<td><strong>HBM</strong></td>
-<td>高頻寬記憶體</td>
-<td>High Bandwidth Memory，堆疊在晶片旁</td>
-<td>U55C 有 16 GB</td>
-</tr>
-<tr>
-<td><strong>Pseudo-channel（PC）</strong></td>
-<td>HBM 的一條通道</td>
-<td>U55C 有 32 個，每個 512 MB</td>
-<td>cfg 中的 <code>HBM[0:7]</code></td>
-</tr>
-<tr>
-<td><strong>PCIe</strong></td>
-<td>主機和卡之間的連線</td>
-<td>資料從 CPU 記憶體搬到 HBM 走這裡</td>
-<td>XRT 的 sync</td>
-</tr>
-<tr>
-<td><strong>時脈（clock）</strong></td>
-<td>電路的節拍</td>
-<td>300 MHz = 每 3.33 ns 一拍</td>
-<td><code>create_clock -period 3.33</code></td>
-</tr>
-<tr>
-<td><strong>Cycle</strong></td>
-<td>一拍</td>
-<td>一個時脈週期</td>
-<td>報告的 latency 單位</td>
-</tr>
-<tr>
-<td><strong>Bitstream</strong></td>
-<td>FPGA 的設定檔</td>
-<td>決定每個元件和連線的設定</td>
-<td>包在 .xclbin 中</td>
-</tr>
-<tr>
-<td><strong>廠商代號 10ee</strong></td>
-<td>Xilinx 的 PCI ID</td>
-<td><code>lspci -d 10ee:</code> 可列出 Xilinx 裝置</td>
-<td>確認 server63 沒有卡</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-5-HLS-與硬體設計">6.5 HLS 與硬體設計</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>HLS</strong></td>
-<td>C++ 轉電路</td>
-<td>High-Level Synthesis</td>
-<td>Vitis HLS</td>
-</tr>
-<tr>
-<td><strong>RTL</strong></td>
-<td>電路的描述</td>
-<td>Register Transfer Level，用 Verilog/VHDL 撰寫</td>
-<td>HLS 的輸出</td>
-</tr>
-<tr>
-<td><strong>Verilog / VHDL</strong></td>
-<td>硬體描述語言</td>
-<td>描述電路結構與行為</td>
-<td>我們不需要手寫</td>
-</tr>
-<tr>
-<td><strong>Kernel</strong></td>
-<td>在 FPGA 上跑的函式</td>
-<td>加速的核心運算</td>
-<td><code>trimul_v0</code>～<code>v4</code></td>
-</tr>
-<tr>
-<td><strong>Pragma</strong></td>
-<td>給 HLS 的指示</td>
-<td><code>#pragma HLS ...</code>，不影響功能、只影響實作</td>
-<td>第 4 章 4.3 節</td>
-</tr>
-<tr>
-<td><strong>Pipeline</strong></td>
-<td>流水線</td>
-<td>多個迭代重疊執行</td>
-<td>幾乎所有內層迴圈</td>
-</tr>
-<tr>
-<td><strong>II（Initiation Interval）</strong></td>
-<td>流水線的節奏</td>
-<td>連續兩次迭代開始的間隔，1 最好</td>
-<td>mac 迴圈 II = 1</td>
-</tr>
-<tr>
-<td><strong>Iteration latency</strong></td>
-<td>一次迭代的長度</td>
-<td>一次迭代從頭到尾的 cycle 數</td>
-<td>loop_k 為 671</td>
-</tr>
-<tr>
-<td><strong>Pipeline depth</strong></td>
-<td>流水線的長度</td>
-<td>一次迭代需要走過的級數</td>
-<td>mac 約 14</td>
-</tr>
-<tr>
-<td><strong>Loop-carried dependency</strong></td>
-<td>下一輪要等這一輪</td>
-<td>跨迭代的資料相依，會拉高 II</td>
-<td>v0 的 acc</td>
-</tr>
-<tr>
-<td><strong>Unroll（展開）</strong></td>
-<td>把迴圈複製成多份硬體</td>
-<td>平行執行</td>
-<td>v2 的 16 lane</td>
-</tr>
-<tr>
-<td><strong>Array partition</strong></td>
-<td>把陣列拆開</td>
-<td>讓多個元素能同時存取</td>
-<td><code>ARRAY_PARTITION dim=2 complete</code></td>
-</tr>
-<tr>
-<td><strong>Scheduling（排程）</strong></td>
-<td>決定何時做</td>
-<td>把運算分配到 cycle</td>
-<td>第 4 章 4.3 節</td>
-</tr>
-<tr>
-<td><strong>Binding（綁定）</strong></td>
-<td>決定用誰做</td>
-<td>把運算分配到硬體單元</td>
-<td>第 4 章 4.3 節</td>
-</tr>
-<tr>
-<td><strong>FSM</strong></td>
-<td>狀態機</td>
-<td>控制電路目前在做哪一步</td>
-<td>HLS 自動產生</td>
-</tr>
-<tr>
-<td><strong>AXI4 / m_axi</strong></td>
-<td>讀寫記憶體的介面</td>
-<td>kernel 主動讀寫 HBM 的標準介面</td>
-<td><code>INTERFACE m_axi</code></td>
-</tr>
-<tr>
-<td><strong>AXI4-Lite / s_axilite</strong></td>
-<td>設定參數的介面</td>
-<td>host 寫入參數和 start 訊號</td>
-<td>L、位址</td>
-</tr>
-<tr>
-<td><strong>Bundle</strong></td>
-<td>AXI 埠的名稱</td>
-<td>相同 bundle 共用一個埠</td>
-<td>gmem0、gmem1、gmem2</td>
-</tr>
-<tr>
-<td><strong>Trip count</strong></td>
-<td>迴圈次數</td>
-<td>告訴 HLS 以便估計 latency</td>
-<td><code>L_TRIP = 256</code></td>
-</tr>
-<tr>
-<td><strong>Timing（時序）</strong></td>
-<td>電路能否在一拍內完成</td>
-<td>Estimated 需小於 Target</td>
-<td>2.431 ns &lt; 3.33 ns</td>
-</tr>
-<tr>
-<td><strong>Synthesis（合成）</strong></td>
-<td>把設計轉成元件</td>
-<td>HLS 合成（C++→RTL）或邏輯合成（RTL→netlist）</td>
-<td>兩種都有</td>
-</tr>
-<tr>
-<td><strong>Place &amp; Route</strong></td>
-<td>擺放與繞線</td>
-<td>決定元件位置與連線</td>
-<td>Vivado，耗時最久</td>
-</tr>
-<tr>
-<td><strong>Netlist</strong></td>
-<td>元件清單＋連線</td>
-<td>邏輯合成的輸出</td>
-<td>Vivado 內部</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-6-AMD-工具鏈">6.6 AMD 工具鏈</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Vitis</strong></td>
-<td>AMD 的加速應用開發環境</td>
-<td>包含 HLS、<code>v++</code>、<code>vitis-run</code> 等</td>
-<td>2025.2</td>
-</tr>
-<tr>
-<td><strong>Vitis HLS</strong></td>
-<td>C++ → RTL 工具</td>
-<td>2024.2 起以 <code>vitis-run --mode hls</code> 執行</td>
-<td><code>make hls</code></td>
-</tr>
-<tr>
-<td><strong>Vivado</strong></td>
-<td>RTL → bitstream 工具</td>
-<td>合成、擺放、繞線、產生 bitstream</td>
-<td><code>v++ -l</code> 內部呼叫</td>
-</tr>
-<tr>
-<td><strong><code>v++</code></strong></td>
-<td>Vitis 的編譯器</td>
-<td><code>-c</code> 產生 .xo；<code>-l</code> 產生 .xclbin</td>
-<td><code>make xclbin</code></td>
-</tr>
-<tr>
-<td><strong><code>vitis-run</code></strong></td>
-<td>執行 Vitis 工具的指令</td>
-<td><code>--mode hls --tcl</code> 執行 HLS 腳本</td>
-<td><code>make hls</code></td>
-</tr>
-<tr>
-<td><strong>.xo</strong></td>
-<td>編譯好的 kernel</td>
-<td>RTL ＋ kernel 描述</td>
-<td><code>v++ -c</code> 輸出</td>
-</tr>
-<tr>
-<td><strong>.xclbin</strong></td>
-<td>可以燒進 FPGA 的檔案</td>
-<td>bitstream ＋ metadata</td>
-<td><code>v++ -l</code> 輸出</td>
-</tr>
-<tr>
-<td><strong>Platform / Shell</strong></td>
-<td>卡上的基礎設施</td>
-<td>PCIe、DMA、HBM 控制器等，由 AMD 提供</td>
-<td><code>xilinx_u55c_gen3x16_xdma_3_202210_1</code></td>
-</tr>
-<tr>
-<td><strong>Static / Dynamic region</strong></td>
-<td>固定區／可變區</td>
-<td>shell 在固定區，kernel 在可變區</td>
-<td>第 4 章 4.6 節</td>
-</tr>
-<tr>
-<td><strong>XRT</strong></td>
-<td>控制卡片的軟體</td>
-<td>Xilinx Runtime：驅動程式＋函式庫</td>
-<td><code>host.cpp</code></td>
-</tr>
-<tr>
-<td><strong><code>xbutil</code></strong></td>
-<td>XRT 的管理工具</td>
-<td>查看卡片狀態、測試</td>
-<td><code>xbutil examine</code></td>
-</tr>
-<tr>
-<td><strong>Buffer object（bo）</strong></td>
-<td>卡上的一塊記憶體</td>
-<td>XRT 在 HBM 上配置的空間</td>
-<td><code>xrt::bo</code></td>
-</tr>
-<tr>
-<td><strong>Connectivity（.cfg）</strong></td>
-<td>接線設定</td>
-<td>指定 kernel 參數接到哪些 HBM PC</td>
-<td><code>cfg/*.cfg</code></td>
-</tr>
-<tr>
-<td><strong>sw_emu / hw_emu / hw</strong></td>
-<td>三種執行目標</td>
-<td>軟體模擬／硬體模擬／實際上板</td>
-<td><code>TARGET=</code></td>
-</tr>
-<tr>
-<td><strong>csim / cosim</strong></td>
-<td>兩種 HLS 模擬</td>
-<td>C 模擬／C 與 RTL 協同模擬</td>
-<td>第 4 章 4.4 節</td>
-</tr>
-<tr>
-<td><strong>xsim</strong></td>
-<td>Vivado 的 RTL 模擬器</td>
-<td>cosim 與 hw_emu 使用</td>
-<td>未使用</td>
-</tr>
-<tr>
-<td><strong>csynth.rpt / csynth.xml</strong></td>
-<td>HLS 報告</td>
-<td>文字版／機器可讀版</td>
-<td><code>hls_summary.py</code> 讀 xml</td>
-</tr>
-<tr>
-<td><strong>Tcl</strong></td>
-<td>工具的腳本語言</td>
-<td>AMD 工具用 Tcl 撰寫自動化流程</td>
-<td><code>run_hls.tcl</code></td>
-</tr>
-<tr>
-<td><strong>flexlm</strong></td>
-<td>授權管理</td>
-<td>商用軟體的授權伺服器</td>
-<td><code>/tools/Xilinx/flexlm</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="ch6-6-7-軟體與開發工具">6.7 軟體與開發工具</h2>
-<table>
-<thead>
-<tr>
-<th>術語</th>
-<th>白話</th>
-<th>說明</th>
-<th>本專題</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>g++</strong></td>
-<td>C++ 編譯器</td>
-<td>GNU 的開源編譯器</td>
-<td><code>make csim</code></td>
-</tr>
-<tr>
-<td><strong>clang / LLVM</strong></td>
-<td>另一套編譯器</td>
-<td>Vitis HLS 的前端使用 clang</td>
-<td>HLS 日誌</td>
-</tr>
-<tr>
-<td><strong>Make / Makefile</strong></td>
-<td>指令捷徑</td>
-<td>把多個步驟寫成規則</td>
-<td><code>fpga/trimul/Makefile</code></td>
-</tr>
-<tr>
-<td><strong>Testbench</strong></td>
-<td>測試程式</td>
-<td>產生輸入、呼叫 kernel、檢查輸出</td>
-<td><code>tb/tb.cpp</code></td>
-</tr>
-<tr>
-<td><strong>Host 程式</strong></td>
-<td>CPU 端的控制程式</td>
-<td>準備資料、控制 FPGA</td>
-<td><code>host/host.cpp</code></td>
-</tr>
-<tr>
-<td><strong>git clone / pull / push</strong></td>
-<td>下載／更新／上傳</td>
-<td>Git 版本控制指令</td>
-<td>取得程式碼</td>
-</tr>
-<tr>
-<td><strong>分支（branch）</strong></td>
-<td>同一專案的不同版本</td>
-<td>修改先放在分支，再合併進 main</td>
-<td><code>claude/lightnobel-...</code></td>
-</tr>
-<tr>
-<td><strong>PR（Pull Request）</strong></td>
-<td>合併請求</td>
-<td>請求把分支合併進 main</td>
-<td>PR #1</td>
-</tr>
-<tr>
-<td><strong>Personal Access Token</strong></td>
-<td>GitHub 的鑰匙</td>
-<td>代替密碼的存取權杖</td>
-<td>clone private repo 時需要</td>
-</tr>
-<tr>
-<td><strong>tmux</strong></td>
-<td>不會斷線的終端機</td>
-<td>SSH 斷線後程式繼續跑</td>
-<td>跑 <code>make hls-all</code></td>
-</tr>
-<tr>
-<td><strong>PyTorch</strong></td>
-<td>深度學習框架</td>
-<td>張量運算</td>
-<td>Python 腳本</td>
-</tr>
-<tr>
-<td><strong>transformers</strong></td>
-<td>預訓練模型函式庫</td>
-<td>HuggingFace 的開源函式庫</td>
-<td><code>EsmForProteinFolding</code></td>
-</tr>
-<tr>
-<td><strong>Colab</strong></td>
-<td>免費的雲端 GPU</td>
-<td>Google 提供的筆記本環境</td>
-<td>沒有 GPU 時的替代方案</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="ch6-本章小結">本章小結</h2>
-<p>遇到不懂的詞，先在這裡查白話解釋，再回到「本專題」欄位指出的章節看完整說明。</p>
+<h2 id="ch5-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>為什麼把資料排成 <code>[row][col][channel]</code>？這對 burst 有什麼好處？</li>
+<li><code>rel_l2</code> 怎麼計算？testbench 為什麼對 v4 用比較寬鬆的門檻？</li>
+<li>Vitis 2025.2 找不到來源檔的根本原因是什麼？最後怎麼修？</li>
+<li>請用 v2 報告的數字驗算：<code>loop_k</code> 每輪 671 cycles 是怎麼組成的？</li>
+<li>host 程式的哪一步把資料從 CPU 記憶體搬到 HBM？</li>
+</ol>
+<p><strong>下一章</strong>是指令手冊：把用過和之後會用到的指令，整理成可以隨時查閱的參考。</p>
 </section><section class="chapter">
-<h1 id="ch7-第-7-章-指令手冊-做過的-可以做的-格式與用途">第 7 章　指令手冊：做過的、可以做的、格式與用途</h1>
+<div class="part">第三部　動手操作</div>
+<h1 id="ch6-第-5-章-指令手冊-做過的-可以做的-格式與用途">第 5 章　指令手冊：做過的、可以做的、格式與用途</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
@@ -3901,11 +2869,12 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 <li>依用途分成九類：Linux 基本操作、環境調查、Git、tmux、<strong>本專案的 make 指令</strong>、Vitis 工具、看結果、host 程式、Python 腳本。</li>
 <li>每個指令都標示：✅ <strong>已經做過</strong>、🔜 <strong>下一步會用到</strong>、⬜ <strong>之後可以做</strong>、⚠️ <strong>小心使用</strong>。</li>
 <li>本章最後有一張「目前為止實際執行過的指令」時間軸，以及常見錯誤的排查方法。</li>
+<li>圖示的狀態以 <strong>2026-09-26</strong> 為準，最新進度見 <code>docs/PROJECT_LOG.md</code>。</li>
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch7-7-1-先看懂指令的格式">7.1 先看懂指令的格式</h2>
-<h3 id="ch7-基本結構">基本結構</h3>
+<h2 id="ch6-5-1-先看懂指令的格式">5.1 先看懂指令的格式</h2>
+<h3 id="ch6-基本結構">基本結構</h3>
 <pre><code>指令名稱  [選項]          [參數]
 │         │               │
 ▼         ▼               ▼
@@ -3949,7 +2918,7 @@ make      hls             KERNEL=trimul_v2
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-組合指令的符號">組合指令的符號</h3>
+<h3 id="ch6-組合指令的符號">組合指令的符號</h3>
 <table>
 <thead>
 <tr>
@@ -4046,11 +3015,11 @@ make      hls             KERNEL=trimul_v2
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-變數的兩種用法">變數的兩種用法</h3>
+<h3 id="ch6-變數的兩種用法">變數的兩種用法</h3>
 <pre><code class="language-bash">KERNEL=trimul_v2 vitis-run ...     # ① 寫在指令前面：只對這一個指令有效（環境變數）
 make hls KERNEL=trimul_v2          # ② 寫在 make 後面：傳給 Makefile 的變數
 </code></pre>
-<h3 id="ch7-常用按鍵">常用按鍵</h3>
+<h3 id="ch6-常用按鍵">常用按鍵</h3>
 <table>
 <thead>
 <tr>
@@ -4085,13 +3054,13 @@ make hls KERNEL=trimul_v2          # ② 寫在 make 後面：傳給 Makefile �
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-忘記怎麼用時">忘記怎麼用時</h3>
+<h3 id="ch6-忘記怎麼用時">忘記怎麼用時</h3>
 <pre><code class="language-bash">指令 --help        # 大部分指令都有簡短說明
 man 指令           # 完整手冊（按 q 離開）
 make help          # 本專案的指令一覽
 </code></pre>
 <hr />
-<h2 id="ch7-7-2-Linux-基本操作">7.2 Linux 基本操作</h2>
+<h2 id="ch6-5-2-Linux-基本操作">5.2 Linux 基本操作</h2>
 <table>
 <thead>
 <tr>
@@ -4247,7 +3216,7 @@ make help          # 本專案的指令一覽
 <td><code>source</code></td>
 <td><code>source 檔案</code></td>
 <td>在目前的終端機執行設定檔（載入環境變數）</td>
-<td>見 7.3</td>
+<td>見 5.3</td>
 <td>🔜</td>
 </tr>
 </tbody>
@@ -4257,7 +3226,7 @@ make help          # 本專案的指令一覽
 想清掉本專案產生的檔案，改用 <code>make clean</code> 比較安全。</p>
 </blockquote>
 <hr />
-<h2 id="ch7-7-3-環境調查與設定">7.3 環境調查與設定</h2>
+<h2 id="ch6-5-3-環境調查與設定">5.3 環境調查與設定</h2>
 <table>
 <thead>
 <tr>
@@ -4324,7 +3293,7 @@ make help          # 本專案的指令一覽
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-載入環境-找到有-U55C-的機器後會用到">載入環境（找到有 U55C 的機器後會用到）</h3>
+<h3 id="ch6-載入環境-找到有-U55C-的機器後會用到">載入環境（找到有 U55C 的機器後會用到）</h3>
 <pre><code class="language-bash">source /tools/Xilinx/2025.2/Vitis/settings64.sh   # 載入 Vitis（server63 看起來已自動載入）
 source /opt/xilinx/xrt/setup.sh                   # 載入 XRT（有卡的機器才有）
 </code></pre>
@@ -4332,7 +3301,7 @@ source /opt/xilinx/xrt/setup.sh                   # 載入 XRT（有卡的機器
 <li>每次登入都要執行，或寫進 <code>~/.bashrc</code> 讓它自動執行。</li>
 <li>載入後 <code>echo $XILINX_XRT</code> 會顯示路徑，<code>make host</code> 需要這個變數。</li>
 </ul>
-<h3 id="ch7-在有-U55C-的機器上要跑的指令">在有 U55C 的機器上要跑的指令（🔜）</h3>
+<h3 id="ch6-在有-U55C-的機器上要跑的指令">在有 U55C 的機器上要跑的指令（🔜）</h3>
 <pre><code class="language-bash">lspci -d 10ee:                   # 應該看到兩行（U55C 有兩個 PCIe function）
 xbutil examine                   # 列出卡片與 BDF（例如 0000:3b:00.1）
 xbutil examine -d &lt;BDF&gt;          # 看這張卡目前的 shell（platform）名稱
@@ -4340,7 +3309,7 @@ xbutil validate -d &lt;BDF&gt;         # 板子自我檢測（約數分鐘）
 ls /opt/xilinx/platforms         # platform 資料夾名稱 = Makefile 的 PLATFORM
 </code></pre>
 <hr />
-<h2 id="ch7-7-4-Git-取得與更新程式碼">7.4 Git：取得與更新程式碼</h2>
+<h2 id="ch6-5-4-Git-取得與更新程式碼">5.4 Git：取得與更新程式碼</h2>
 <table>
 <thead>
 <tr>
@@ -4398,7 +3367,7 @@ ls /opt/xilinx/platforms         # platform 資料夾名稱 = Makefile 的 PLATF
 <p>本專案的 clone 指令：</p>
 <pre><code class="language-bash">git clone -b claude/lightnobel-memory-optimization-yhokyc https://github.com/antony3911/ForClaude.git
 </code></pre>
-<h3 id="ch7-git-pull-失敗時"><code>git pull</code> 失敗時</h3>
+<h3 id="ch6-git-pull-失敗時"><code>git pull</code> 失敗時</h3>
 <p>如果出現 <code>Your local changes would be overwritten</code>，代表你在 server 上改過某個檔案：</p>
 <pre><code class="language-bash">git status                  # 看是哪個檔案
 git stash                   # 先把你的修改暫存起來
@@ -4409,7 +3378,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 <p>⚠️ <strong>不要在 server 上執行 <code>git push</code>。</strong> 程式碼的修改由 Claude 推上 GitHub，server 只負責下載與執行。</p>
 </blockquote>
 <hr />
-<h2 id="ch7-7-5-tmux-斷線也不會中斷的終端機">7.5 tmux：斷線也不會中斷的終端機</h2>
+<h2 id="ch6-5-5-tmux-斷線也不會中斷的終端機">5.5 tmux：斷線也不會中斷的終端機</h2>
 <p>長時間的工作（<code>make hls-all</code>、上板編譯）一定要在 tmux 裡跑。</p>
 <table>
 <thead>
@@ -4453,9 +3422,9 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 </tbody>
 </table>
 <hr />
-<h2 id="ch7-7-6-本專案的-make-指令-最重要">7.6 本專案的 make 指令（最重要）</h2>
+<h2 id="ch6-5-6-本專案的-make-指令-最重要">5.6 本專案的 make 指令（最重要）</h2>
 <p>所有 make 指令都要在 <strong><code>ForClaude/fpga/trimul</code></strong> 資料夾裡執行。</p>
-<h3 id="ch7-格式">格式</h3>
+<h3 id="ch6-格式">格式</h3>
 <pre><code>make  目標  [變數=值 變數=值 ...]
 │     │     │
 │     │     └─ 調整參數（不給就用預設值）
@@ -4463,7 +3432,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 └─ 讀取目前資料夾的 Makefile
 </code></pre>
 <p>加上 <code>-n</code> 可以<strong>只顯示會執行哪些指令、但不真的執行</strong>，用來檢查：<code>make -n hls KERNEL=trimul_v3</code></p>
-<h3 id="ch7-目標一覽">目標一覽</h3>
+<h3 id="ch6-目標一覽">目標一覽</h3>
 <table>
 <thead>
 <tr>
@@ -4578,7 +3547,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 <p>⚠️ <code>make clean</code> 會刪掉 <code>hls_summary.csv</code> 和所有 HLS 報告。清之前先把要保留的結果複製到別的地方：
 <code>mkdir -p ~/results &amp;&amp; cp hls_summary.csv ~/results/</code></p>
 </blockquote>
-<h3 id="ch7-可以調整的變數">可以調整的變數</h3>
+<h3 id="ch6-可以調整的變數">可以調整的變數</h3>
 <table>
 <thead>
 <tr>
@@ -4651,7 +3620,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-常用組合-照實驗整理">常用組合（照實驗整理）</h3>
+<h3 id="ch6-常用組合-照實驗整理">常用組合（照實驗整理）</h3>
 <pre><code class="language-bash"># ── 功能驗證 ──
 make csim                                   # ✅ 隨機資料，L=32
 make csim DATA=../../data/hba               # ⬜ 真實資料（有 GPU／Colab 產生資料後）
@@ -4683,7 +3652,7 @@ for L in 128 256 512 1024; do
 done                                                                 # ⬜
 </code></pre>
 <hr />
-<h2 id="ch7-7-7-Vitis-工具的原始指令-Makefile-背後在做什麼">7.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</h2>
+<h2 id="ch6-5-7-Vitis-工具的原始指令-Makefile-背後在做什麼">5.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</h2>
 <p>平常用 make 就好。這一節讓你知道 make 實際呼叫了什麼，除錯時會用到。</p>
 <table>
 <thead>
@@ -4726,7 +3695,7 @@ done                                                                 # ⬜
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-v-常用選項"><code>v++</code> 常用選項</h3>
+<h3 id="ch6-v-常用選項"><code>v++</code> 常用選項</h3>
 <table>
 <thead>
 <tr>
@@ -4761,14 +3730,14 @@ done                                                                 # ⬜
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-run_hls-tcl-可用的環境變數"><code>run_hls.tcl</code> 可用的環境變數</h3>
+<h3 id="ch6-run_hls-tcl-可用的環境變數"><code>run_hls.tcl</code> 可用的環境變數</h3>
 <pre><code class="language-bash">KERNEL=trimul_v3 CSIM=1 vitis-run --mode hls --tcl hls/run_hls.tcl    # 合成前先在 HLS 裡跑 C 模擬
 KERNEL=trimul_v3 COSIM=1 vitis-run --mode hls --tcl hls/run_hls.tcl   # 合成後再跑 C/RTL 協同模擬（較慢）
 </code></pre>
 <p>也可以透過 make 傳：<code>make hls KERNEL=trimul_v3 COSIM=1</code>（make 會把命令列變數傳給子程式）。</p>
 <hr />
-<h2 id="ch7-7-8-看結果">7.8 看結果</h2>
-<h3 id="ch7-HLS-報告">HLS 報告</h3>
+<h2 id="ch6-5-8-看結果">5.8 看結果</h2>
+<h3 id="ch6-HLS-報告">HLS 報告</h3>
 <pre><code class="language-bash"># 報告位置
 ls hls_prj/trimul_v2/sol/syn/report/
 
@@ -4781,25 +3750,25 @@ grep -n -A 20 &quot;Utilization Estimates&quot; hls_prj/trimul_v2/sol/syn/report
 # 只看各迴圈的 latency 與 II                                          ⬜
 grep -n -A 15 &quot;\* Loop:&quot; hls_prj/trimul_v3/sol/syn/report/trimul_v3_csynth.rpt
 </code></pre>
-<h3 id="ch7-make-hls-all-的進度與錯誤">make hls-all 的進度與錯誤</h3>
+<h3 id="ch6-make-hls-all-的進度與錯誤">make hls-all 的進度與錯誤</h3>
 <pre><code class="language-bash">ls hls_*.log                       # 哪些版本跑過了
 tail -n 30 hls_trimul_v4.log       # 看某一版最後的輸出（失敗時截圖這個）   🔜
 grep -n &quot;ERROR&quot; hls_trimul_*.log   # 一次找出所有錯誤                      ⬜
 tail -f hls_trimul_v3.log          # 即時看正在跑的版本（Ctrl+C 離開）      ⬜
 </code></pre>
-<h3 id="ch7-比較表">比較表</h3>
+<h3 id="ch6-比較表">比較表</h3>
 <pre><code class="language-bash">make summary                                   # 印出表格並存成 hls_summary.csv   🔜
 column -s, -t &lt; hls_summary.csv                # 在終端機把 CSV 排整齊            ⬜
 python3 scripts/hls_summary.py --L 256         # 直接呼叫腳本（--L 要和 L_TRIP 一致）
 </code></pre>
-<h3 id="ch7-把結果帶回自己的電腦">把結果帶回自己的電腦</h3>
+<h3 id="ch6-把結果帶回自己的電腦">把結果帶回自己的電腦</h3>
 <p>在<strong>你自己的電腦</strong>（Windows 的 PowerShell 或命令提示字元）執行：</p>
 <pre><code class="language-powershell">scp anthony@scd-lab-server63:~/ForClaude/fpga/trimul/hls_summary.csv C:\ForClaude\
 </code></pre>
 <p><code>scp</code> 的格式是 <code>scp 來源 目的</code>，遠端路徑寫成 <code>帳號@主機:路徑</code>。</p>
 <hr />
-<h2 id="ch7-7-9-host-程式與-Python-腳本的參數">7.9 host 程式與 Python 腳本的參數</h2>
-<h3 id="ch7-host-exe-上板用"><code>host.exe</code>（上板用，⬜）</h3>
+<h2 id="ch6-5-9-host-程式與-Python-腳本的參數">5.9 host 程式與 Python 腳本的參數</h2>
+<h3 id="ch6-host-exe-上板用"><code>host.exe</code>（上板用，⬜）</h3>
 <pre><code>./host.exe  &lt;xclbin&gt;  &lt;kernel&gt;  &lt;L&gt;  [reps=3]  [token|tensor]  [samples=2000]  [data_dir]
 </code></pre>
 <table>
@@ -4843,18 +3812,18 @@ python3 scripts/hls_summary.py --L 256         # 直接呼叫腳本（--L 要和
 <p>輸出的最後一行是 CSV：</p>
 <pre><code>CSV,kernel,L,time_ms,gflops,est_traffic_GB,est_GBps,hbm_footprint_MB,rel_l2,max_abs
 </code></pre>
-<h3 id="ch7-python-dump_trimul_inputs-py-需要-GPU-或-Colab"><code>python/dump_trimul_inputs.py</code>（需要 GPU 或 Colab，⬜）</h3>
+<h3 id="ch6-python-dump_trimul_inputs-py-需要-GPU-或-Colab"><code>python/dump_trimul_inputs.py</code>（需要 GPU 或 Colab，⬜）</h3>
 <pre><code>python dump_trimul_inputs.py  (--uniprot ID | --pdb ID | --fasta 檔案 | --seq 序列)  --out 資料夾
                               [--block 0~47] [--max-len N] [--pad 32] [--device cuda|cpu]
                               [--chunk-size 64] [--eval-channels 16]
 </code></pre>
 <p>例：<code>python dump_trimul_inputs.py --uniprot P0DTC2 --out ../data/spike</code></p>
-<h3 id="ch7-docs-manual-build_pdf-py-重新產生這份手冊的-PDF"><code>docs/manual/build_pdf.py</code>（重新產生這份手冊的 PDF）</h3>
+<h3 id="ch6-docs-manual-build_pdf-py-重新產生這份手冊的-PDF"><code>docs/manual/build_pdf.py</code>（重新產生這份手冊的 PDF）</h3>
 <pre><code class="language-bash">pip install markdown
 python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual.pdf
 </code></pre>
 <hr />
-<h2 id="ch7-7-10-目前為止實際執行過的指令-時間軸">7.10 目前為止實際執行過的指令（時間軸）</h2>
+<h2 id="ch6-5-10-目前為止實際執行過的指令-時間軸">5.10 目前為止實際執行過的指令（時間軸）</h2>
 <table>
 <thead>
 <tr>
@@ -4964,7 +3933,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </tbody>
 </table>
 <hr />
-<h2 id="ch7-7-11-常見錯誤與排查">7.11 常見錯誤與排查</h2>
+<h2 id="ch6-5-11-常見錯誤與排查">5.11 常見錯誤與排查</h2>
 <table>
 <thead>
 <tr>
@@ -5002,7 +3971,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <tr>
 <td><code>Your local changes would be overwritten</code></td>
 <td>server 上的檔案被改過</td>
-<td>見 7.4 節的 <code>git stash</code></td>
+<td>見 5.4 節的 <code>git stash</code></td>
 </tr>
 <tr>
 <td><code>ERROR: [HLS ...]</code></td>
@@ -5026,7 +3995,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </tr>
 </tbody>
 </table>
-<h3 id="ch7-回報問題時請提供">回報問題時請提供</h3>
+<h3 id="ch6-回報問題時請提供">回報問題時請提供</h3>
 <ol>
 <li>完整的指令</li>
 <li>錯誤前後 20～30 行的輸出（<code>tail -n 30 xxx.log</code>）</li>
@@ -5034,15 +4003,27 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <li>已經試過什麼</li>
 </ol>
 <hr />
-<h2 id="ch7-本章小結">本章小結</h2>
+<h2 id="ch6-本章小結">本章小結</h2>
 <ul>
 <li>指令 = <strong>名稱 ＋ 選項 ＋ 參數</strong>；用 <code>|</code>、<code>&gt;</code>、<code>&amp;&amp;</code> 串接；忘了就 <code>--help</code>。</li>
 <li>本專案的所有操作都可以用 <strong><code>make 目標 變數=值</code></strong> 完成，<code>make -n</code> 可以預覽不執行。</li>
 <li><strong>現在最常用的四個指令：</strong> <code>git pull</code>、<code>make hls-all</code>、<code>tail -n 30 hls_*.log</code>、<code>make summary</code>。</li>
 <li>長時間工作用 <strong>tmux</strong>；刪除前先確認，<strong>不要在 server 上 <code>git push</code></strong>。</li>
 </ul>
+<hr />
+<h2 id="ch6-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li><code>lspci | grep -i xilinx</code> 中的 <code>|</code> 做了什麼？<code>-i</code> 是什麼意思？</li>
+<li>想知道 <code>make hls KERNEL=trimul_v3</code> 會執行哪些指令、但不要真的執行，要怎麼下？</li>
+<li>合成要跑很久，SSH 又可能斷線，該怎麼做？斷線後怎麼回到原本的畫面？</li>
+<li>想合成 16×16 tile 的 v4，但不要覆蓋 v4 預設設定的報告，指令怎麼寫？</li>
+<li>執行 <code>make clean</code> 之前應該先做什麼？</li>
+</ol>
+<p><strong>下一章</strong>介紹新的專題策略：融合資料流架構、分析模型與設計空間探索，以及背後的理論。</p>
 </section><section class="chapter">
-<h1 id="ch8-第-8-章-新策略-融合資料流-分析模型與設計空間探索">第 8 章　新策略：融合資料流、分析模型與設計空間探索</h1>
+<div class="part">第四部　專題策略</div>
+<h1 id="ch7-第-6-章-新策略-融合資料流-分析模型與設計空間探索">第 6 章　新策略：融合資料流、分析模型與設計空間探索</h1>
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
@@ -5054,8 +4035,8 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </ul>
 </blockquote>
 <hr />
-<h2 id="ch8-8-1-策略總覽-從-比較手法-到-提出架構">8.1 策略總覽：從「比較手法」到「提出架構」</h2>
-<h3 id="ch8-舊策略-vs-新策略">舊策略 vs 新策略</h3>
+<h2 id="ch7-6-1-策略總覽-從-比較手法-到-提出架構">6.1 策略總覽：從「比較手法」到「提出架構」</h2>
+<h3 id="ch7-舊策略-vs-新策略">舊策略 vs 新策略</h3>
 <table>
 <thead>
 <tr>
@@ -5092,7 +4073,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </tr>
 </tbody>
 </table>
-<h3 id="ch8-三根支柱">三根支柱</h3>
+<h3 id="ch7-三根支柱">三根支柱</h3>
 <pre><code>                 ┌─────────────────────────────────┐
                  │ 故事：突破 pair representation  │
                  │       的記憶體牆                │
@@ -5100,7 +4081,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
           ┌───────────────────────┼───────────────────────┐
           ▼                       ▼                       ▼
  ① 逐步優化的量測          ② 融合資料流架構           ③ 分析模型與 DSE
- v0 → v1 → ... → v4        （本章 8.3～8.7）          （本章 8.8～8.10）
+ v0 → v1 → ... → v4        （本章 6.3～6.7）          （本章 6.8～6.10）
  每一招解決哪個瓶頸         中間值不落地、             預測、驗證、
  （第 2、3 章）             量化在源頭完成              找最佳設定
 </code></pre>
@@ -5110,10 +4091,10 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <li><strong>③</strong> 是方法論：讓結果可信、可以推廣。</li>
 </ul>
 <hr />
-<h2 id="ch8-8-2-Architectural-simulation-是什麼">8.2 Architectural simulation 是什麼？</h2>
-<h3 id="ch8-白話直覺">白話直覺</h3>
+<h2 id="ch7-6-2-Architectural-simulation-是什麼">6.2 Architectural simulation 是什麼？</h2>
+<h3 id="ch7-白話直覺">白話直覺</h3>
 <p>在真正做出晶片之前，先用「<strong>模型</strong>」預測它會有多快、用多少資源。就像蓋大樓之前先做結構計算和模型，而不是直接蓋。</p>
-<h3 id="ch8-評估的四個層級">評估的四個層級</h3>
+<h3 id="ch7-評估的四個層級">評估的四個層級</h3>
 <table>
 <thead>
 <tr>
@@ -5161,11 +4142,11 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <li>用校正後的上層<strong>大量探索</strong>；</li>
 <li>挑幾個最好的設定，回到下層<strong>驗證</strong>。</li>
 </ol>
-<h3 id="ch8-學術界也這樣做">學術界也這樣做</h3>
+<h3 id="ch7-學術界也這樣做">學術界也這樣做</h3>
 <p>架構類論文（包括 LightNobel）大多用自己寫的<strong>cycle 級模擬器</strong>加上<strong>合成工具的面積、功耗估計</strong>來評估，而不是真的做出晶片。
 所以「HLS 報告＋分析模型」是正當的 architectural simulation，不是偷懶。</p>
 <hr />
-<h2 id="ch8-8-3-完整的-Triangle-Multiplication-長什麼樣子">8.3 完整的 Triangle Multiplication 長什麼樣子</h2>
+<h2 id="ch7-6-3-完整的-Triangle-Multiplication-長什麼樣子">6.3 完整的 Triangle Multiplication 長什麼樣子</h2>
 <p>先前我們只實作了中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣：</p>
 <pre><code>  z（輸入，L×L×128）
   │
@@ -5193,23 +4174,23 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </code></pre>
 <p>每一個箭頭的結果都是 <strong>L × L × 128</strong> 的張量。
 這些 linear 都是「<strong>每個 token 各自</strong>做 128×128 的矩陣乘法」，不同 token 之間互不相干。</p>
-<h3 id="ch8-一般實作會-落地-多少資料">一般實作會「落地」多少資料？</h3>
+<h3 id="ch7-一般實作會-落地-多少資料">一般實作會「落地」多少資料？</h3>
 <p>如果每個運算都是獨立的函式（PyTorch 預設的做法），每一步的結果都要<strong>寫回記憶體</strong>，下一步再讀出來。
 同一時間存在的 pair 張量，峰值大約是 <strong>7 份</strong>（z、z_ln、a、b、g、einsum 的結果、各種暫存）。
-GPU 上的融合實作分析也是這個量級（見第 8.12 節參考資料）。</p>
+GPU 上的融合實作分析也是這個量級（見第 6.12 節參考資料）。</p>
 <hr />
-<h2 id="ch8-8-4-Operator-fusion-運算融合-的理論">8.4 Operator fusion（運算融合）的理論</h2>
-<h3 id="ch8-白話直覺_1">白話直覺</h3>
+<h2 id="ch7-6-4-Operator-fusion-運算融合-的理論">6.4 Operator fusion（運算融合）的理論</h2>
+<h3 id="ch7-白話直覺_1">白話直覺</h3>
 <p><strong>不融合：</strong> 廚師切完洋蔥放回倉庫，另一個廚師再從倉庫拿出來炒。
 <strong>融合：</strong> 切完直接下鍋，洋蔥<strong>不回倉庫</strong>。</p>
-<h3 id="ch8-正式說法-producer-consumer">正式說法：producer–consumer</h3>
+<h3 id="ch7-正式說法-producer-consumer">正式說法：producer–consumer</h3>
 <ul>
 <li><strong>Producer</strong>：產生資料的運算（例如 linear_a_p）。</li>
 <li><strong>Consumer</strong>：使用資料的運算（例如 gating 的乘法）。</li>
 <li>如果 consumer 在 producer 產生資料後<strong>馬上</strong>用掉，資料就可以留在晶片內（暫存器、BRAM），不必寫回 HBM。</li>
 <li>這個「產生到使用之間的距離」叫做 <strong>reuse distance</strong>。距離越短，越容易融合。</li>
 </ul>
-<h3 id="ch8-為什麼-Triangle-Multiplication-適合融合">為什麼 Triangle Multiplication 適合融合</h3>
+<h3 id="ch7-為什麼-Triangle-Multiplication-適合融合">為什麼 Triangle Multiplication 適合融合</h3>
 <p>LayerNorm、5 個 linear、sigmoid、gating、量化，<strong>全部都是「每個 token 自己算自己的」</strong>：</p>
 <pre><code>token (i, k) 的 128 個數
    → LayerNorm（只需要這 128 個數的平均與變異數）
@@ -5217,7 +4198,7 @@ GPU 上的融合實作分析也是這個量級（見第 8.12 節參考資料）�
    → gating、mask、量化（只需要這個 token）
 </code></pre>
 <p>一個 token 的所有處理都可以在晶片內完成，<strong>只有最後的 a、b 需要寫出去</strong>（因為 einsum 需要跨 token 的資料）。</p>
-<h3 id="ch8-融合後的兩個-kernel">融合後的兩個 kernel</h3>
+<h3 id="ch7-融合後的兩個-kernel">融合後的兩個 kernel</h3>
 <pre><code>Kernel 1：Producer（逐 token 處理）
   讀 z（一次）
     → LayerNorm → 4 個 linear → sigmoid gating → mask
@@ -5230,7 +4211,7 @@ Kernel 2：Consumer（einsum ＋ epilogue）
     → 從 z 重新算 g = sigmoid(linear_g(LayerNorm(z))) → 相乘
   寫出：輸出
 </code></pre>
-<h3 id="ch8-用數字看效果-記憶體流量">用數字看效果：記憶體流量</h3>
+<h3 id="ch7-用數字看效果-記憶體流量">用數字看效果：記憶體流量</h3>
 <p>以「每個 L² 位置需要搬多少 bytes」計算（FP32、C = 128、每份張量 512 B/L²；einsum 以理想的最少讀取計算）：</p>
 <table>
 <thead>
@@ -5287,7 +4268,7 @@ Kernel 2：Consumer（einsum ＋ epilogue）
 <p>這是理想化的估算（einsum 的重複讀取已經在第 2 章的 tiling 分析過，這裡先不計），
 目的是說明量級：<strong>融合讓搬運量少了將近一個數量級</strong>。</p>
 </blockquote>
-<h3 id="ch8-用數字看效果-同時存在的資料量-容量">用數字看效果：同時存在的資料量（容量）</h3>
+<h3 id="ch7-用數字看效果-同時存在的資料量-容量">用數字看效果：同時存在的資料量（容量）</h3>
 <table>
 <thead>
 <tr>
@@ -5309,12 +4290,12 @@ Kernel 2：Consumer（einsum ＋ epilogue）
 </tr>
 </tbody>
 </table>
-<p>公式見 8.10 節。</p>
+<p>公式見 6.10 節。</p>
 <hr />
-<h2 id="ch8-8-5-用計算換記憶體-為什麼-g-要-重算">8.5 用計算換記憶體：為什麼 g 要「重算」</h2>
-<h3 id="ch8-問題">問題</h3>
+<h2 id="ch7-6-5-用計算換記憶體-為什麼-g-要-重算">6.5 用計算換記憶體：為什麼 g 要「重算」</h2>
+<h3 id="ch7-問題">問題</h3>
 <p>g = sigmoid(linear_g(LayerNorm(z))) 在最後才會用到。如果在 producer 算好存起來，就要多存一份 L×L×128。</p>
-<h3 id="ch8-做法-在-consumer-的-epilogue-從-z-重新算">做法：在 consumer 的 epilogue 從 z 重新算</h3>
+<h3 id="ch7-做法-在-consumer-的-epilogue-從-z-重新算">做法：在 consumer 的 epilogue 從 z 重新算</h3>
 <p><strong>多花的計算：</strong> 每個輸出位置要多做一次 128×128 的 linear。</p>
 <pre><code>重算 g 的運算量    = 2 × C² = 2 × 128 × 128 ≈ 32,768 FLOP / 每個輸出位置
 einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
@@ -5325,14 +4306,14 @@ einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
   L = 4096 → 約 3%
 </code></pre>
 <p><strong>序列越長，重算的代價越小</strong>，而省下的記憶體（每個 L² 512 bytes）越重要。這正好就是長序列的情境。</p>
-<h3 id="ch8-一般原則-Recomputation">一般原則：Recomputation</h3>
+<h3 id="ch7-一般原則-Recomputation">一般原則：Recomputation</h3>
 <p>「<strong>不存、需要時再算</strong>」是記憶體不夠時的常見手法（訓練大型模型時的 activation checkpointing 也是同樣的想法）。
 判斷值不值得的方法：</p>
 <pre><code>值得重算 ⇔ 重算的時間 &lt; 存取它所需的時間，或 記憶體容量是瓶頸
 </code></pre>
 <hr />
-<h2 id="ch8-8-6-為什麼這個融合特別適合-FPGA">8.6 為什麼這個融合特別適合 FPGA</h2>
-<h3 id="ch8-權重小-activation-大">權重小、activation 大</h3>
+<h2 id="ch7-6-6-為什麼這個融合特別適合-FPGA">6.6 為什麼這個融合特別適合 FPGA</h2>
+<h3 id="ch7-權重小-activation-大">權重小、activation 大</h3>
 <table>
 <thead>
 <tr>
@@ -5360,13 +4341,13 @@ einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
 </tbody>
 </table>
 <p><strong>權重可以一直放在晶片內，只有 activation 在流動。</strong> 這和大型語言模型相反（語言模型是權重大、activation 相對小）。</p>
-<h3 id="ch8-FPGA-的優勢">FPGA 的優勢</h3>
+<h3 id="ch7-FPGA-的優勢">FPGA 的優勢</h3>
 <ul>
 <li>可以把 LayerNorm → linear → gating → 量化做成<strong>一條管線</strong>，資料一路流過去，不需要中間的 buffer 寫回。</li>
 <li>每一級的平行度可以各自調整，讓整條管線速度平衡。</li>
 <li>GPU 做融合要手寫 CUDA，而且受限於 shared memory 的大小與 thread 的組織方式；FPGA 則是直接設計資料路徑。</li>
 </ul>
-<h3 id="ch8-硬體成本估算-producer">硬體成本估算（producer）</h3>
+<h3 id="ch7-硬體成本估算-producer">硬體成本估算（producer）</h3>
 <p>每個 token 要做 4 個 128×128 的 linear（a_p、a_g、b_p、b_g）＝ 4 × 16,384 = <strong>65,536 次乘加</strong>。
 如果要每 T 個 cycle 處理一個 token，需要 65,536 ÷ T 個乘加器：
 | 每個 token 的 cycle 數 T | 需要的乘加器 | FP32 約需 DSP（每個約 5） |
@@ -5376,8 +4357,8 @@ einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
 | 128 | 512 | 約 2,560 |</p>
 <p>U55C 有 9,024 個 DSP。這個表就是<strong>設計空間探索</strong>的一個維度：用多少資源換多少速度。</p>
 <hr />
-<h2 id="ch8-8-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">8.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</h2>
-<h3 id="ch8-LayerNorm-在硬體上怎麼做">LayerNorm 在硬體上怎麼做</h3>
+<h2 id="ch7-6-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">6.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</h2>
+<h3 id="ch7-LayerNorm-在硬體上怎麼做">LayerNorm 在硬體上怎麼做</h3>
 <pre><code>mean = Σ x_c / 128
 var  = Σ (x_c − mean)² / 128
 y_c  = (x_c − mean) / sqrt(var + ε) × γ_c + β_c
@@ -5387,20 +4368,20 @@ y_c  = (x_c − mean) / sqrt(var + ε) × γ_c + β_c
 <li><code>1 / sqrt(...)</code> 每個 token 只算一次，成本可以忽略。</li>
 <li>（另一種做法是 <strong>Welford 演算法</strong>，只掃一次就能同時算出平均與變異數，數值也比較穩定。）</li>
 </ul>
-<h3 id="ch8-量化在源頭完成">量化在源頭完成</h3>
+<h3 id="ch7-量化在源頭完成">量化在源頭完成</h3>
 <p>per-token 量化需要知道「這個 token 128 個數的最大絕對值」。
 在 producer 裡，a 的 128 個數<strong>剛算完、還在暫存器裡</strong>，順便取最大值、算 scale、轉成 INT8，<strong>不需要額外再掃一次資料</strong>。</p>
 <p>對比：如果量化是獨立的步驟，要先把 FP32 的 a 寫出去、再讀回來量化，等於多搬了 2 份資料。
 <strong>「在資料產生的地方就壓縮」是融合設計的另一個好處。</strong></p>
 <hr />
-<h2 id="ch8-8-8-分析模型-用公式預測硬體表現">8.8 分析模型：用公式預測硬體表現</h2>
-<h3 id="ch8-為什麼要做模型">為什麼要做模型</h3>
+<h2 id="ch7-6-8-分析模型-用公式預測硬體表現">6.8 分析模型：用公式預測硬體表現</h2>
+<h3 id="ch7-為什麼要做模型">為什麼要做模型</h3>
 <ol>
 <li><strong>快</strong>：一次 HLS 合成要幾分鐘到幾十分鐘，模型只要幾毫秒 → 可以探索上百種設定。</li>
 <li><strong>能解釋</strong>：公式直接告訴你時間花在哪裡。</li>
 <li><strong>能預測</strong>：還沒實作的設計（例如融合架構）也能先估計。</li>
 </ol>
-<h3 id="ch8-模型的結構-以-v2-為例">模型的結構（以 v2 為例）</h3>
+<h3 id="ch7-模型的結構-以-v2-為例">模型的結構（以 v2 為例）</h3>
 <pre><code>總 cycle    = tile 數 × 每個 tile 的 cycle
 tile 數     = (L / TI) × (L / TJ)
 每個 tile   = init ＋ L × loop_k ＋ store ＋ 少量額外
@@ -5409,14 +4390,14 @@ loop_k      = load ＋ mac ＋ 4                     （v2：輪流做）
 load        = max(TI, TJ) × C/16 ＋ 77             （77 = HBM 延遲與啟動成本）
 mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </code></pre>
-<h3 id="ch8-校正-calibration">校正（calibration）</h3>
+<h3 id="ch7-校正-calibration">校正（calibration）</h3>
 <p>公式裡有一些<strong>無法事先知道的常數</strong>（例如 77、14），要從實際的 HLS 報告反推：
 | 報告中的數字 | 公式 | 反推出的常數 |
 |---|---|---|
 | load = 141 | 8 × 8 ＋ overhead | overhead = <strong>77</strong> |
 | mac = 526 | 8 × 8 × 8 ＋ depth | depth = <strong>14</strong> |
 | store = 586 | 512 ＋ overhead | overhead = <strong>74</strong> |</p>
-<h3 id="ch8-驗證-validation">驗證（validation）</h3>
+<h3 id="ch7-驗證-validation">驗證（validation）</h3>
 <p>用校正好的模型預測 v2：<strong>177,029,120 cycles</strong>；HLS 報告：<strong>177,029,185 cycles</strong> → 誤差 &lt; 0.01%。</p>
 <p>⚠️ 注意：用同一份報告校正又驗證，當然會很準。<strong>真正的驗證</strong>是：</p>
 <ul>
@@ -5424,15 +4405,15 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>以及預測 <strong>v3、v4</strong>（<code>make hls-all</code> 的結果）。
 如果誤差在 10% 以內，模型就可信；誤差大的話，要找出是哪一項公式沒考慮到，這個過程本身也是很好的報告內容。</li>
 </ul>
-<h3 id="ch8-模型的限制-報告中要誠實寫出">模型的限制（報告中要誠實寫出）</h3>
+<h3 id="ch7-模型的限制-報告中要誠實寫出">模型的限制（報告中要誠實寫出）</h3>
 <ul>
 <li>HLS 報告本身也是估計值，實際上板可能因為 HBM 的真實延遲、時脈而不同。</li>
 <li>資源（DSP、BRAM）目前是粗估，只能看趨勢。</li>
 <li>沒有模擬 HBM 的頻寬競爭（多個 port 搶同一個通道的情況）。</li>
 </ul>
 <hr />
-<h2 id="ch8-8-9-設計空間探索-DSE-與-Pareto-前緣">8.9 設計空間探索（DSE）與 Pareto 前緣</h2>
-<h3 id="ch8-設計空間">設計空間</h3>
+<h2 id="ch7-6-9-設計空間探索-DSE-與-Pareto-前緣">6.9 設計空間探索（DSE）與 Pareto 前緣</h2>
+<h3 id="ch7-設計空間">設計空間</h3>
 <p>所有「可以調的旋鈕」組成的空間：
 | 旋鈕 | 可選值 |
 |---|---|
@@ -5441,7 +4422,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 | 平行度 | 16、32、64 lane |
 | 精度 | FP32、INT8、（INT4） |</p>
 <p>組合起來有上百種，每種都去合成太慢，所以用模型快速評估。</p>
-<h3 id="ch8-Pareto-前緣">Pareto 前緣</h3>
+<h3 id="ch7-Pareto-前緣">Pareto 前緣</h3>
 <p>通常沒有「各方面都最好」的設計：快的用比較多資源、省資源的比較慢。
 <strong>Pareto 最佳</strong>：找不到另一個設計在<strong>所有指標都一樣好、而且至少一項更好</strong>。</p>
 <pre><code> cycle 數
@@ -5459,19 +4440,19 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </code></pre>
 <p><code>make model</code> 目前的結果（模型值，v4 常數待校正）：
 <strong>Pareto 最佳：v2@8×8、v3@8×8、v3@16×16、v4@16×16、v4@32×32</strong></p>
-<h3 id="ch8-怎麼選">怎麼選</h3>
+<h3 id="ch7-怎麼選">怎麼選</h3>
 <ul>
 <li>資源很緊 → 選前緣左端（省資源）。</li>
 <li>要最快 → 選前緣右端。</li>
 <li>報告中可以說：「我們選 X，因為它在前緣的『膝點』（再多花資源，速度提升就很有限）」。</li>
 </ul>
 <hr />
-<h2 id="ch8-8-10-容量模型-最多能處理多長的序列">8.10 容量模型：最多能處理多長的序列</h2>
-<h3 id="ch8-公式">公式</h3>
+<h2 id="ch7-6-10-容量模型-最多能處理多長的序列">6.10 容量模型：最多能處理多長的序列</h2>
+<h3 id="ch7-公式">公式</h3>
 <pre><code>需要的記憶體 = L² × (每個 L² 位置的 bytes)
 最大 L      = sqrt(可用記憶體 ÷ 每個 L² 位置的 bytes)
 </code></pre>
-<h3 id="ch8-例子-U55C-的-16-GB-HBM">例子（U55C 的 16 GB HBM）</h3>
+<h3 id="ch7-例子-U55C-的-16-GB-HBM">例子（U55C 的 16 GB HBM）</h3>
 <table>
 <thead>
 <tr>
@@ -5493,15 +4474,15 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </tr>
 </tbody>
 </table>
-<h3 id="ch8-為什麼只提升-1-67-倍-不是-7-倍">為什麼只提升 1.67 倍，不是 7 倍？</h3>
+<h3 id="ch7-為什麼只提升-1-67-倍-不是-7-倍">為什麼只提升 1.67 倍，不是 7 倍？</h3>
 <p>因為記憶體和 L² 成正比，<strong>L 只和記憶體的平方根成正比</strong>：</p>
 <pre><code>L 的提升 = sqrt(記憶體減少的倍數) = sqrt(3,584 ÷ 1,288) = sqrt(2.78) ≈ 1.67
 </code></pre>
 <p>要讓 L 變 2 倍，記憶體要降到 1/4；要變 10 倍，記憶體要降到 1/100。
 這也是為什麼 LightNobel 要把 peak memory 降低到上百倍，才能大幅延長序列。</p>
 <hr />
-<h2 id="ch8-8-11-對應到海報-以及評審可能會問的問題">8.11 對應到海報，以及評審可能會問的問題</h2>
-<h3 id="ch8-每個成果對應海報的哪一塊">每個成果對應海報的哪一塊</h3>
+<h2 id="ch7-6-11-對應到海報-以及評審可能會問的問題">6.11 對應到海報，以及評審可能會問的問題</h2>
+<h3 id="ch7-每個成果對應海報的哪一塊">每個成果對應海報的哪一塊</h3>
 <table>
 <thead>
 <tr>
@@ -5514,7 +4495,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td>動機</td>
 <td>記憶體 vs L、約 7 份 pair 張量</td>
-<td>8.3、8.10</td>
+<td>6.3、6.10</td>
 </tr>
 <tr>
 <td>關鍵觀察</td>
@@ -5524,7 +4505,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td>架構</td>
 <td>融合資料流圖</td>
-<td>8.4～8.7</td>
+<td>6.4～6.7</td>
 </tr>
 <tr>
 <td>逐步優化</td>
@@ -5534,7 +4515,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td>DSE</td>
 <td>tile sweep、Pareto、模型誤差</td>
-<td>8.8、8.9</td>
+<td>6.8、6.9</td>
 </tr>
 <tr>
 <td>精度</td>
@@ -5544,11 +4525,11 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td>序列長度</td>
 <td>最大 L 的比較</td>
-<td>8.10</td>
+<td>6.10</td>
 </tr>
 </tbody>
 </table>
-<h3 id="ch8-評審可能問的問題">評審可能問的問題</h3>
+<h3 id="ch7-評審可能問的問題">評審可能問的問題</h3>
 <table>
 <thead>
 <tr>
@@ -5584,14 +4565,14 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </tbody>
 </table>
 <hr />
-<h2 id="ch8-8-12-參考資料">8.12 參考資料</h2>
+<h2 id="ch7-6-12-參考資料">6.12 參考資料</h2>
 <ul>
 <li>LightNobel：<a href="https://arxiv.org/abs/2505.05893">arXiv 2505.05893</a></li>
 <li>GPU 上的融合 Triangle Multiplication（工作空間約 7U → 約 4U，分塊後約 2.2U）：<a href="https://github.com/aqlaboratory/openfold-3/pull/318">openfold-3 PR #318</a></li>
 <li>長序列推論的分塊：<a href="https://arxiv.org/pdf/2401.10652">AutoChunk</a>、<a href="https://arxiv.org/pdf/2203.00854">FastFold</a></li>
 </ul>
 <hr />
-<h2 id="ch8-本章小結">本章小結</h2>
+<h2 id="ch7-本章小結">本章小結</h2>
 <ul>
 <li><strong>新策略 = 量測（v0～v4）＋ 自己的融合架構 ＋ 分析模型與 DSE。</strong> 不需要板子就能完成 architectural simulation。</li>
 <li><strong>融合</strong>：Triangle Multiplication 裡除了 einsum，全部都是逐 token 的運算，可以在晶片內一路做完；記憶體流量估計減少約 7 倍。</li>
@@ -5600,5 +4581,1493 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li><strong>分析模型</strong>：用 HLS 報告校正常數，再用不同設定驗證；用 Pareto 前緣挑設計。</li>
 <li><strong>容量</strong>：L 和記憶體是平方根關係，記憶體降到約 1/2.8，L 提升約 1.67 倍。</li>
 </ul>
+<hr />
+<h2 id="ch7-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>為什麼 Triangle Multiplication 裡除了 einsum 之外的運算都可以融合？</li>
+<li>L = 512 時，在 epilogue 重算 g 大約多花多少比例的計算？</li>
+<li>「量化在源頭完成」省下了什麼？</li>
+<li>分析模型用同一份報告校正又驗證，為什麼還不夠？應該怎麼驗證？</li>
+<li>Pareto 最佳的定義是什麼？</li>
+<li>每個 L² 位置的記憶體從 3,584 bytes 降到 1,288 bytes，最大序列長度提升幾倍？</li>
+</ol>
+<p><strong>下一章</strong>把整個過程整理成可以重複使用的研究方法，之後讀其他 paper 時也能照著做。</p>
+</section><section class="chapter">
+<div class="part">第五部　研究方法</div>
+<h1 id="ch8-第-7-章-研究方法-之後可以重複使用的步驟">第 7 章　研究方法：之後可以重複使用的步驟</h1>
+<blockquote>
+<p><strong>本章重點</strong></p>
+<ul>
+<li>把這次「從一篇 paper 到可執行的實驗」的過程，整理成<strong>可以套用到任何架構／加速器 paper</strong> 的流程。</li>
+<li>每一步都附上 checklist，以及本專題的實際做法當範例。</li>
+<li>你之後的研究會從 LightNobel 延伸，這一章就是每次讀新 paper 時的操作手冊。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="ch8-7-1-整體流程">7.1 整體流程</h2>
+<pre><code> ① 讀 paper：抓出「問題 → 觀察 → 解法 → 評估」
+        │
+        ▼
+ ② 量化問題：算出資料量、運算量、算術強度
+        │
+        ▼
+ ③ 縮小範圍：挑一個能代表問題、做得完的核心
+        │
+        ▼
+ ④ 設計實驗：對照組 + 一次只改一個變數
+        │
+        ▼
+ ⑤ 實作與驗證：從快到慢（模擬 → 合成 → 上板）
+        │
+        ▼
+ ⑥ 分析：找瓶頸、解釋為什麼（roofline、Amdahl）
+        │
+        ▼
+ ⑦ 呈現：圖表與結論
+</code></pre>
+<hr />
+<h2 id="ch8-7-2-步驟一-讀-paper-的方法">7.2 步驟一：讀 paper 的方法</h2>
+<h3 id="ch8-四個問題-每篇都要能回答">四個問題（每篇都要能回答）</h3>
+<table>
+<thead>
+<tr>
+<th>問題</th>
+<th>要找的內容</th>
+<th>LightNobel 的答案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>問題是什麼？</strong></td>
+<td>什麼東西不夠好？具體的限制</td>
+<td>PPM 無法處理長序列，因為 activation 記憶體隨 L² 成長</td>
+</tr>
+<tr>
+<td><strong>他們觀察到什麼？</strong></td>
+<td>讓解法成立的關鍵事實（通常有分析圖）</td>
+<td>瓶頸是 activation 不是權重；不同 token 的數值分布差異很大，有 outlier</td>
+</tr>
+<tr>
+<td><strong>解法是什麼？</strong></td>
+<td>演算法 + 硬體</td>
+<td>Token-wise 自適應量化 + 專用加速器</td>
+</tr>
+<tr>
+<td><strong>怎麼證明有效？</strong></td>
+<td>比較對象、指標、資料集</td>
+<td>與 GPU 基準比較記憶體、速度、準確度、可支援的序列長度</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-閱讀順序-不要從頭讀到尾">閱讀順序（不要從頭讀到尾）</h3>
+<ol>
+<li><strong>標題、摘要</strong>：一句話說出問題與解法。</li>
+<li><strong>Introduction 的最後一兩段</strong>：通常會列出貢獻（contributions）。</li>
+<li><strong>動機（Motivation）章節的圖</strong>：這裡是「觀察」，最重要。</li>
+<li><strong>評估（Evaluation）的主要圖表</strong>：看比較對象和提升幅度。</li>
+<li><strong>方法章節</strong>：前面都懂了，再看細節。</li>
+<li><strong>Related work</strong>：找出這個領域還有哪些相關論文，建立文獻地圖。</li>
+</ol>
+<h3 id="ch8-讀完要寫下的筆記模板">讀完要寫下的筆記模板</h3>
+<pre><code>論文：
+一句話摘要：
+問題（附具體數字）：
+關鍵觀察（附圖號）：
+解法：
+  - 演算法層面：
+  - 硬體層面：
+評估：
+  - 比較對象：
+  - 主要指標與結果：
+  - 資料集／模型：
+我可以重現／延伸的部分：
+我不確定的地方（要回原文確認）：
+</code></pre>
+<hr />
+<h2 id="ch8-7-3-步驟二-量化問題">7.3 步驟二：量化問題</h2>
+<p><strong>任何「效能」問題，都先算這三個數字：</strong></p>
+<table>
+<thead>
+<tr>
+<th>數字</th>
+<th>怎麼算</th>
+<th>本專題的例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>資料量</strong></td>
+<td>每個張量的形狀 × 每個元素的 bytes</td>
+<td>pair tensor = L² × 128 × 4 bytes（L = 1000 時 512 MB）</td>
+</tr>
+<tr>
+<td><strong>運算量</strong></td>
+<td>數迴圈：每個輸出要幾次乘加</td>
+<td>2 × L³ × C FLOP（L = 1000 時約 2.6 × 10¹¹）</td>
+</tr>
+<tr>
+<td><strong>算術強度</strong></td>
+<td>運算量 ÷ 實際搬運量</td>
+<td>直白寫法 0.25，tiling 後 2～8 FLOP/byte</td>
+</tr>
+</tbody>
+</table>
+<p>然後和硬體比：</p>
+<pre><code>硬體平衡點 = 峰值運算能力 ÷ 記憶體頻寬
+
+算術強度 &lt; 平衡點 → memory-bound → 優先減少搬運
+算術強度 &gt; 平衡點 → compute-bound → 優先增加運算單元
+</code></pre>
+<h3 id="ch8-Checklist">Checklist</h3>
+<ul>
+<li>[ ] 找出最大的張量是哪一個，它隨什麼參數成長（L？L²？L³？）</li>
+<li>[ ] 找出運算量最大的運算</li>
+<li>[ ] 計算不同規模（L = 256、1000、4000）下的數字，做成表格</li>
+<li>[ ] 判斷是記憶體容量、記憶體頻寬還是運算能力的問題</li>
+</ul>
+<hr />
+<h2 id="ch8-7-4-步驟三-縮小範圍">7.4 步驟三：縮小範圍</h2>
+<h3 id="ch8-好的範圍要滿足">好的範圍要滿足</h3>
+<table>
+<thead>
+<tr>
+<th>條件</th>
+<th>為什麼</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>能代表 paper 的問題</strong></td>
+<td>結論才有意義</td>
+<td>Triangle Multiplication 直接處理 L² 的 pair tensor</td>
+</tr>
+<tr>
+<td><strong>算式清楚、容易驗證</strong></td>
+<td>能確認做對了</td>
+<td>本質是矩陣乘法，可以用 CPU 算正確答案</td>
+</tr>
+<tr>
+<td><strong>能和原始模型對上</strong></td>
+<td>證明不是自己亂編的</td>
+<td>用 ESMFold 驗證算式差值 0</td>
+</tr>
+<tr>
+<td><strong>大小做得完</strong></td>
+<td>時間有限</td>
+<td>只做 einsum，不做 LayerNorm/gating</td>
+</tr>
+<tr>
+<td><strong>能展示多種手法</strong></td>
+<td>才有比較</td>
+<td>五種記憶體手法都適用</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-常見的縮小方式">常見的縮小方式</h3>
+<ul>
+<li><strong>只做一個運算</strong>（本專題的做法）</li>
+<li><strong>只做一種資料精度</strong></li>
+<li><strong>固定部分參數</strong>（例如固定 C = 128，只讓 L 變動）</li>
+<li><strong>用模擬資料代替真實資料</strong>，但要說明模擬資料的特性為什麼合理（例如我們加了 1% outlier）</li>
+</ul>
+<hr />
+<h2 id="ch8-7-5-步驟四-設計實驗">7.5 步驟四：設計實驗</h2>
+<h3 id="ch8-原則一-一定要有對照組-baseline">原則一：一定要有對照組（baseline）</h3>
+<p>沒有 baseline，「快了 3 倍」就沒有意義。本專題的 <strong>v0</strong> 就是 baseline：最直白、沒有任何優化。</p>
+<h3 id="ch8-原則二-一次只改一個變數">原則二：一次只改一個變數</h3>
+<pre><code>v0 ──(+ tiling)──► v1 ──(+ 寬位元)──► v2 ──(+ double buffering)──► v3
+                                        └──(+ 量化)──► v4
+</code></pre>
+<p>每一版只多一招，才能說「這個改善來自這一招」。
+<strong>v4 是從 v2 分出來的，不是從 v3。</strong> 這樣 v4 和 v2 的差異就只有量化。</p>
+<h3 id="ch8-原則三-掃描參數-不要只看一個點">原則三：掃描參數，不要只看一個點</h3>
+<table>
+<thead>
+<tr>
+<th>掃描</th>
+<th>看什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tile 大小（4、8、16、32）</td>
+<td>搬運量 vs 晶片內記憶體的 trade-off</td>
+</tr>
+<tr>
+<td>序列長度 L（128～2048）</td>
+<td>時間是否符合 L³、記憶體是否符合 L²</td>
+</tr>
+<tr>
+<td>HBM 設定（多通道 vs 單一）</td>
+<td>頻寬的影響</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-原則四-同時量-好處-和-代價">原則四：同時量「好處」和「代價」</h3>
+<table>
+<thead>
+<tr>
+<th>好處</th>
+<th>代價</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>時間、GFLOP/s、頻寬</td>
+<td>硬體資源（BRAM、DSP、LUT、FF）</td>
+</tr>
+<tr>
+<td>可支援的最大 L</td>
+<td>精度損失（rel_l2）</td>
+</tr>
+<tr>
+<td>記憶體佔用</td>
+<td>程式複雜度</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-Checklist_1">Checklist</h3>
+<ul>
+<li>[ ] 定義 baseline</li>
+<li>[ ] 每個版本只改一件事，並寫下「預期會改善什麼、為什麼」</li>
+<li>[ ] <strong>先預測再量測</strong>（例如：v3 預測快約 21%）</li>
+<li>[ ] 列出要掃描的參數</li>
+<li>[ ] 列出要記錄的指標（好處＋代價）</li>
+</ul>
+<hr />
+<h2 id="ch8-7-6-步驟五-實作與驗證">7.6 步驟五：實作與驗證</h2>
+<h3 id="ch8-從快到慢">從快到慢</h3>
+<table>
+<thead>
+<tr>
+<th>階段</th>
+<th>時間</th>
+<th>驗證什麼</th>
+<th>失敗了怎麼辦</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C 模擬</td>
+<td>秒</td>
+<td>算得對不對</td>
+<td>修演算法</td>
+</tr>
+<tr>
+<td>HLS 合成</td>
+<td>分鐘</td>
+<td>能不能變成電路、速度和資源估計</td>
+<td>修 pragma、改寫法</td>
+</tr>
+<tr>
+<td>C/RTL 協同模擬</td>
+<td>分鐘～小時</td>
+<td>電路和 C++ 一致嗎</td>
+<td>檢查 DEPENDENCE 等宣告</td>
+</tr>
+<tr>
+<td>硬體模擬</td>
+<td>小時</td>
+<td>整個系統的介面</td>
+<td>修 host 或設定</td>
+</tr>
+<tr>
+<td>上板</td>
+<td>1～數小時編譯</td>
+<td>真實速度</td>
+<td>修時序、記憶體設定</td>
+</tr>
+</tbody>
+</table>
+<p><strong>前一步沒過，不進下一步。</strong></p>
+<h3 id="ch8-驗證正確性的技巧">驗證正確性的技巧</h3>
+<ol>
+<li><strong>用高精度（double）算參考答案</strong>。</li>
+<li><strong>用相對誤差</strong>（rel_l2）而不是絕對誤差，因為數值大小不一。</li>
+<li><strong>測試多種大小與設定</strong>：我們測了 L = 16、32、48、64，以及 8×8、16×4、32×32 的 tile。</li>
+<li><strong>刻意加入困難的情況</strong>：outlier 就是為了讓量化的差異顯現出來。</li>
+<li><strong>和原始模型對照</strong>：ESMFold 的「差值 0」驗證。</li>
+</ol>
+<hr />
+<h2 id="ch8-7-7-步驟六-分析">7.7 步驟六：分析</h2>
+<h3 id="ch8-找瓶頸的方法">找瓶頸的方法</h3>
+<ol>
+<li>看報告中<strong>每個迴圈的 cycle 數</strong>，找出佔最多時間的部分。</li>
+<li>算出<strong>各部分的比例</strong>（例：v2 中載入佔 141 / 671 ≈ 21%）。</li>
+<li>用 <strong>Amdahl's Law</strong> 算出改善那一部分的上限。</li>
+<li>在 <strong>roofline 圖</strong>上標出位置，判斷是 memory-bound 還是 compute-bound。</li>
+</ol>
+<h3 id="ch8-解釋結果時要回答">解釋結果時要回答</h3>
+<ul>
+<li>結果和預測一致嗎？不一致的話，為什麼？</li>
+<li>瓶頸轉移到哪裡了？</li>
+<li>付出的代價（資源、精度）值得嗎？</li>
+<li>在真實情況下（更大的 L、真實資料）結論還成立嗎？</li>
+</ul>
+<hr />
+<h2 id="ch8-7-8-步驟七-呈現-報告要畫的圖">7.8 步驟七：呈現（報告要畫的圖）</h2>
+<table>
+<thead>
+<tr>
+<th>圖</th>
+<th>x 軸</th>
+<th>y 軸</th>
+<th>要傳達的訊息</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>動機圖</strong></td>
+<td>L</td>
+<td>記憶體（GB）</td>
+<td>記憶體隨 L² 爆炸（問題的嚴重性）</td>
+</tr>
+<tr>
+<td><strong>各版本比較</strong></td>
+<td>v0～v4</td>
+<td>時間（對數軸）或加速倍數</td>
+<td>每一招的效果</td>
+</tr>
+<tr>
+<td><strong>Roofline</strong></td>
+<td>算術強度（對數）</td>
+<td>GFLOP/s（對數）</td>
+<td>每一招讓 kernel 往哪裡移動</td>
+</tr>
+<tr>
+<td><strong>時間拆解</strong></td>
+<td>版本</td>
+<td>cycle（堆疊長條：載入／計算／其他）</td>
+<td>瓶頸在哪、怎麼轉移</td>
+</tr>
+<tr>
+<td><strong>Tile sweep</strong></td>
+<td>tile 大小</td>
+<td>時間 ＋ BRAM 用量（雙 y 軸）</td>
+<td>trade-off</td>
+</tr>
+<tr>
+<td><strong>量化精度</strong></td>
+<td>量化方式</td>
+<td>rel_l2</td>
+<td>per-token vs per-tensor</td>
+</tr>
+<tr>
+<td><strong>資源用量</strong></td>
+<td>版本</td>
+<td>BRAM／DSP／LUT 百分比</td>
+<td>代價</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch8-7-9-除錯的思路-以-2025-2-路徑-bug-為例">7.9 除錯的思路（以 2025.2 路徑 bug 為例）</h2>
+<pre><code>1. 讀完整的錯誤訊息（包括 WARNING）
+      ↓ 「Cannot find source file ../kernels/trimul_v2.cpp」
+2. 比較預期和實際
+      ↓ 預期是 kernels/trimul_v2.cpp，實際變成 ../kernels/...
+3. 提出假設並修正
+      ↓ 假設：相對路徑的問題 → 改成絕對路徑
+4. 修正無效 → 假設錯了，找新線索
+      ↓ 日誌顯示加入時是絕對路徑，但合成時又被改寫
+5. 用算的驗證新假設
+      ↓ 專案在下兩層，但工具只往上一層 → 工具假設專案只在下一層
+6. 針對根因修正
+      ↓ 從 hls_prj 裡面建立專案 → 成功
+</code></pre>
+<h3 id="ch8-回報問題時的好習慣-對學長姐-助教或-Claude-都適用">回報問題時的好習慣（對學長姐、助教或 Claude 都適用）</h3>
+<ul>
+<li>附上<strong>完整的指令</strong>和<strong>錯誤前後的 20～30 行輸出</strong>。</li>
+<li>說明<strong>預期會發生什麼</strong>。</li>
+<li>說明<strong>已經試過什麼</strong>。</li>
+<li>附上環境資訊（工具版本、作業系統）。</li>
+</ul>
+<hr />
+<h2 id="ch8-7-10-本專題套用這個流程的完整範例">7.10 本專題套用這個流程的完整範例</h2>
+<table>
+<thead>
+<tr>
+<th>步驟</th>
+<th>本專題的做法</th>
+<th>產出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① 讀 paper</td>
+<td>LightNobel：長序列受限於 activation 記憶體；token-wise 量化</td>
+<td>第 1 章</td>
+</tr>
+<tr>
+<td>② 量化問題</td>
+<td>pair tensor L² × 512 B；AI = 0.25</td>
+<td>第 1、2 章的表格</td>
+</tr>
+<tr>
+<td>③ 縮小範圍</td>
+<td>只做 Triangle Multiplication 的 einsum</td>
+<td><code>trimul.h</code></td>
+</tr>
+<tr>
+<td>④ 設計實驗</td>
+<td>v0 baseline ＋ 四種手法；tile sweep；HBM 對照；per-token vs per-tensor</td>
+<td>5 個 kernel、cfg</td>
+</tr>
+<tr>
+<td>⑤ 實作與驗證</td>
+<td>C 模擬全部通過 → v2 合成成功 → 其餘進行中（截至 2026-09-26）</td>
+<td><code>make csim</code>、<code>make hls</code></td>
+</tr>
+<tr>
+<td>⑥ 分析</td>
+<td>v2 載入佔 21% → 預測 v3 快約 21%</td>
+<td>第 2 章 2.6 節</td>
+</tr>
+<tr>
+<td>⑦ 呈現</td>
+<td>待完成全部數據後製作</td>
+<td><code>hls_summary.csv</code> → 圖表</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch8-本章小結">本章小結</h2>
+<ul>
+<li><strong>讀 paper</strong>：問題 → 觀察 → 解法 → 評估，先看動機的圖。</li>
+<li><strong>量化</strong>：資料量、運算量、算術強度，和硬體平衡點比較。</li>
+<li><strong>實驗</strong>：有 baseline、一次改一件事、先預測再量測、同時記錄好處和代價。</li>
+<li><strong>驗證</strong>：從快到慢，前一步沒過不進下一步。</li>
+<li><strong>分析</strong>：找出比例、用 Amdahl 算上限、在 roofline 上看位置。</li>
+</ul>
+<hr />
+<h2 id="ch8-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>讀一篇架構 paper 時，一定要能回答哪四個問題？</li>
+<li>為什麼 v4 是從 v2 改出來，而不是從 v3？</li>
+<li>設計實驗時，為什麼要「先預測、再量測」？</li>
+<li>修正之後錯誤訊息完全沒變，代表什麼？下一步該怎麼做？</li>
+</ol>
+<p><strong>附錄 A</strong> 是術語表；<strong>附錄 B</strong> 是各章自我檢測的參考答案。</p>
+</section><section class="chapter">
+<div class="part">附錄</div>
+<h1 id="ch9-附錄-A-術語表">附錄 A　術語表</h1>
+<blockquote>
+<p>依主題分類。每個詞附上：<strong>白話解釋</strong>、<strong>正式說明</strong>、<strong>在本專題哪裡出現</strong>。
+忘記某個詞的意思時，回來這裡查。</p>
+</blockquote>
+<hr />
+<h2 id="ch9-A-1-蛋白質與模型">A.1 蛋白質與模型</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>胺基酸（amino acid）</strong></td>
+<td>珠鍊上的一顆珠子</td>
+<td>蛋白質的基本單位，共 20 種，用一個英文字母表示</td>
+<td>序列中的每個字母</td>
+</tr>
+<tr>
+<td><strong>序列長度 L</strong></td>
+<td>珠子的數量</td>
+<td>蛋白質中胺基酸的個數</td>
+<td>整份手冊的核心變數</td>
+</tr>
+<tr>
+<td><strong>PPM</strong></td>
+<td>蛋白質結構預測模型</td>
+<td>Protein structure Prediction Model，例如 AlphaFold2、ESMFold</td>
+<td>LightNobel 的研究對象</td>
+</tr>
+<tr>
+<td><strong>AlphaFold2</strong></td>
+<td>DeepMind 的蛋白質結構預測模型</td>
+<td>2021 年發表，使用 MSA 與 Evoformer</td>
+<td>第 1 章</td>
+</tr>
+<tr>
+<td><strong>ESMFold</strong></td>
+<td>Meta 的蛋白質結構預測模型</td>
+<td>用 ESM-2 語言模型代替 MSA，結構較簡單</td>
+<td>我們驗證算式的對象</td>
+</tr>
+<tr>
+<td><strong>ESM-2</strong></td>
+<td>蛋白質的「語言模型」</td>
+<td>像讀文字一樣讀胺基酸序列，產生特徵</td>
+<td>ESMFold 的第一部分</td>
+</tr>
+<tr>
+<td><strong>MSA</strong></td>
+<td>多序列比對</td>
+<td>Multiple Sequence Alignment，把相似的蛋白質序列排在一起</td>
+<td>AlphaFold2 的輸入，ESMFold 不需要</td>
+</tr>
+<tr>
+<td><strong>Evoformer / Folding trunk</strong></td>
+<td>模型的主體</td>
+<td>由 48 個 block 組成，反覆更新兩種 representation</td>
+<td>第 1 章 1.2 節</td>
+</tr>
+<tr>
+<td><strong>Structure module</strong></td>
+<td>輸出座標的部分</td>
+<td>把特徵轉成 3D 原子座標</td>
+<td>第 1 章 1.2 節</td>
+</tr>
+<tr>
+<td><strong>Sequence representation</strong></td>
+<td>每個胺基酸的特徵</td>
+<td>形狀 L × 1024（ESMFold）</td>
+<td>第 1 章</td>
+</tr>
+<tr>
+<td><strong>Pair representation</strong></td>
+<td>每一對胺基酸之間的關係</td>
+<td>形狀 <strong>L × L × 128</strong>，隨 L² 成長</td>
+<td><strong>本專題處理的資料</strong></td>
+</tr>
+<tr>
+<td><strong>Triangle Multiplication</strong></td>
+<td>用「第三者」推論兩者關係</td>
+<td><code>z[i][j][c] = Σ_k a[i][k][c]·b[j][k][c]</code>（outgoing）</td>
+<td><strong>本專題實作的運算</strong></td>
+</tr>
+<tr>
+<td><strong>Outgoing / Incoming</strong></td>
+<td>兩種三角形方向</td>
+<td>outgoing 用 (i,k)、(j,k)；incoming 用 (k,i)、(k,j)</td>
+<td>我們做 outgoing</td>
+</tr>
+<tr>
+<td><strong>Triangle Attention</strong></td>
+<td>三角形版本的 attention</td>
+<td>中間值隨 L³ 成長，實作上需分塊</td>
+<td>第 1 章 1.3 節（未實作）</td>
+</tr>
+<tr>
+<td><strong>Token</strong></td>
+<td>一格資料</td>
+<td>在 pair representation 中指一個 (i, j) 位置的 128 個數字</td>
+<td>per-token 量化的單位</td>
+</tr>
+<tr>
+<td><strong>Channel（C）</strong></td>
+<td>每格的數字個數</td>
+<td>特徵維度，ESMFold 的 pair 為 128</td>
+<td><code>trimul.h</code> 的 <code>C = 128</code></td>
+</tr>
+<tr>
+<td><strong>LayerNorm / Linear / Gating</strong></td>
+<td>模型中的標準運算</td>
+<td>正規化、線性轉換、用 sigmoid 控制資訊流</td>
+<td>產生 a、b 的步驟（未實作）</td>
+</tr>
+<tr>
+<td><strong>Chunking</strong></td>
+<td>分批計算</td>
+<td>一次只算一部分以降低記憶體峰值，代價是時間</td>
+<td>第 2 章 2.9 節</td>
+</tr>
+<tr>
+<td><strong>HuggingFace</strong></td>
+<td>公開模型的平台</td>
+<td>提供模型程式碼（transformers）與權重下載（Hub）</td>
+<td><code>dump_trimul_inputs.py</code></td>
+</tr>
+<tr>
+<td><strong>UniProt / PDB</strong></td>
+<td>公開的蛋白質資料庫</td>
+<td>UniProt 存序列、PDB 存實驗測定的結構</td>
+<td>下載測試序列</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-2-效能與記憶體概念">A.2 效能與記憶體概念</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Memory-bound</strong></td>
+<td>等搬資料</td>
+<td>效能受限於記憶體頻寬或延遲，而非運算能力</td>
+<td>v0、v2 的載入部分</td>
+</tr>
+<tr>
+<td><strong>Compute-bound</strong></td>
+<td>廚師忙不過來</td>
+<td>效能受限於運算單元數量</td>
+<td>v2 的 mac 部分</td>
+</tr>
+<tr>
+<td><strong>Weights（權重）</strong></td>
+<td>模型學到的參數</td>
+<td>大小固定，與 L 無關</td>
+<td>第 1 章 1.4 節</td>
+</tr>
+<tr>
+<td><strong>Activation</strong></td>
+<td>計算中產生的中間資料</td>
+<td>隨輸入大小（L）成長</td>
+<td>LightNobel 要壓縮的對象</td>
+</tr>
+<tr>
+<td><strong>OOM</strong></td>
+<td>記憶體不夠</td>
+<td>Out of Memory</td>
+<td>長序列在 GPU 上的問題</td>
+</tr>
+<tr>
+<td><strong>FLOP</strong></td>
+<td>一次浮點運算</td>
+<td>一次乘法或一次加法</td>
+<td>一次乘加 = 2 FLOP</td>
+</tr>
+<tr>
+<td><strong>GFLOP/s</strong></td>
+<td>每秒十億次運算</td>
+<td>效能單位</td>
+<td>v2 約 7.3 GFLOP/s</td>
+</tr>
+<tr>
+<td><strong>頻寬（bandwidth）</strong></td>
+<td>每秒能搬多少</td>
+<td>GB/s</td>
+<td>單一 512-bit 埠 19.2 GB/s；U55C HBM 約 460 GB/s</td>
+</tr>
+<tr>
+<td><strong>延遲（latency）</strong></td>
+<td>等多久才開始有資料</td>
+<td>從請求到第一筆資料的時間</td>
+<td>v2 載入的 141 cycles 大多是延遲</td>
+</tr>
+<tr>
+<td><strong>算術強度（AI）</strong></td>
+<td>每搬 1 byte 做幾次運算</td>
+<td>FLOP ÷ byte</td>
+<td>v0 0.25、v2 2、v4 約 7.8</td>
+</tr>
+<tr>
+<td><strong>Roofline 模型</strong></td>
+<td>判斷瓶頸的圖</td>
+<td><code>可達效能 = min(運算上限, AI × 頻寬)</code></td>
+<td>第 2 章 2.3 節</td>
+</tr>
+<tr>
+<td><strong>Ridge point（平衡點）</strong></td>
+<td>roofline 的轉折點</td>
+<td>峰值運算 ÷ 頻寬</td>
+<td>判斷 memory/compute-bound</td>
+</tr>
+<tr>
+<td><strong>Tiling</strong></td>
+<td>分批搬、重複用</td>
+<td>把計算切成小塊，讓搬進來的資料被重用多次</td>
+<td>v1</td>
+</tr>
+<tr>
+<td><strong>資料重用（data reuse）</strong></td>
+<td>同一個食材做多道菜</td>
+<td>同一份資料被多次運算使用</td>
+<td>tile 中每個 a 用 TJ 次</td>
+</tr>
+<tr>
+<td><strong>Burst</strong></td>
+<td>一次請求連續拿很多筆</td>
+<td>只付一次延遲</td>
+<td>連續的 128 個 channel</td>
+</tr>
+<tr>
+<td><strong>Double buffering（ping-pong）</strong></td>
+<td>兩個料理台輪流用</td>
+<td>一個 buffer 計算時，另一個載入下一批</td>
+<td>v3</td>
+</tr>
+<tr>
+<td><strong>Little's Law</strong></td>
+<td>要多少資料在路上</td>
+<td>在途資料量 = 頻寬 × 延遲</td>
+<td>第 2 章 2.5 節</td>
+</tr>
+<tr>
+<td><strong>Amdahl's Law</strong></td>
+<td>改善的上限</td>
+<td><code>加速 = 1 ÷ [(1−p) + p/s]</code></td>
+<td>v3 最多約 1.27 倍</td>
+</tr>
+<tr>
+<td><strong>Memory layout</strong></td>
+<td>資料在記憶體中的排列</td>
+<td>決定能否連續讀取</td>
+<td><code>[row][col][channel]</code></td>
+</tr>
+<tr>
+<td><strong>Stride</strong></td>
+<td>連續兩次存取的間距</td>
+<td>stride 大 → 無法 burst</td>
+<td>v0 的 stride = 128</td>
+</tr>
+<tr>
+<td><strong>Operator fusion（融合）</strong></td>
+<td>運算合併</td>
+<td>中間值不寫回記憶體</td>
+<td>2.9 節、<strong>第 6 章 6.4 節（本專題主策略）</strong></td>
+</tr>
+<tr>
+<td><strong>Recomputation（重算）</strong></td>
+<td>用計算換記憶體</td>
+<td>不存中間值，需要時重算</td>
+<td>2.9 節、6.5 節（重算 g）</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-3-量化">A.3 量化</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>量化（quantization）</strong></td>
+<td>把數字壓縮成較少的 bit</td>
+<td>例如 FP32（4 bytes）→ INT8（1 byte）</td>
+<td>v4</td>
+</tr>
+<tr>
+<td><strong>FP32 / FP16 / BF16</strong></td>
+<td>浮點格式</td>
+<td>32 / 16 / 16 bit 的浮點數</td>
+<td>kernel 用 FP32</td>
+</tr>
+<tr>
+<td><strong>INT8</strong></td>
+<td>8 bit 整數</td>
+<td>-128～127（對稱量化用 -127～127）</td>
+<td>v4</td>
+</tr>
+<tr>
+<td><strong>Scale（s）</strong></td>
+<td>量化的尺</td>
+<td><code>s = max|x| ÷ 127</code>，<code>x ≈ s × q</code></td>
+<td>每個 token 一個</td>
+</tr>
+<tr>
+<td><strong>對稱量化</strong></td>
+<td>以 0 為中心</td>
+<td>正負範圍相同，不需要 zero point</td>
+<td>v4 的做法</td>
+</tr>
+<tr>
+<td><strong>Per-tensor</strong></td>
+<td>整份共用一把尺</td>
+<td>一個 scale 給整個張量</td>
+<td>誤差約 11%</td>
+</tr>
+<tr>
+<td><strong>Per-token</strong></td>
+<td>每格一把尺</td>
+<td>每個 token 一個 scale</td>
+<td>誤差約 1%</td>
+</tr>
+<tr>
+<td><strong>Per-channel</strong></td>
+<td>每個 channel 一把尺</td>
+<td>每個 c 一個 scale（本專題未實作）</td>
+<td>第 4 章 4.4 節提到</td>
+</tr>
+<tr>
+<td><strong>Outlier</strong></td>
+<td>特別大的值</td>
+<td>少數數值遠大於其他值</td>
+<td>模擬資料中 1% 的 token ×30</td>
+</tr>
+<tr>
+<td><strong>Fake quantization</strong></td>
+<td>量化再還原</td>
+<td>用浮點數模擬量化誤差</td>
+<td>Python 腳本評估誤差</td>
+</tr>
+<tr>
+<td><strong>rel_l2</strong></td>
+<td>整體相對誤差</td>
+<td><code>‖z − z_ref‖ ÷ ‖z_ref‖</code></td>
+<td>testbench、host</td>
+</tr>
+<tr>
+<td><strong>max_abs</strong></td>
+<td>最大單點誤差</td>
+<td><code>max |z − z_ref|</code></td>
+<td>testbench、host</td>
+</tr>
+<tr>
+<td><strong>AAQ</strong></td>
+<td>LightNobel 的量化方法</td>
+<td>Token-wise Adaptive Activation Quantization</td>
+<td>第 1 章 1.6 節</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-4-FPGA-硬體">A.4 FPGA 硬體</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>FPGA</strong></td>
+<td>可以重新接線的晶片</td>
+<td>Field-Programmable Gate Array</td>
+<td>U55C</td>
+</tr>
+<tr>
+<td><strong>ASIC</strong></td>
+<td>專用晶片</td>
+<td>做好就不能改，最快最省電</td>
+<td>LightNobel 的加速器</td>
+</tr>
+<tr>
+<td><strong>U55C</strong></td>
+<td>我們的 FPGA 卡</td>
+<td>AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e</td>
+<td>整個專題</td>
+</tr>
+<tr>
+<td><strong>Alveo</strong></td>
+<td>AMD 資料中心 FPGA 卡系列</td>
+<td>插在伺服器的 PCIe 插槽</td>
+<td>U55C 屬於此系列</td>
+</tr>
+<tr>
+<td><strong>LUT</strong></td>
+<td>小真值表</td>
+<td>6 輸入，可實現任意邏輯</td>
+<td>報告的 LUT 用量</td>
+</tr>
+<tr>
+<td><strong>FF（Flip-Flop）</strong></td>
+<td>1 bit 暫存器</td>
+<td>每個時脈更新</td>
+<td>報告的 FF 用量</td>
+</tr>
+<tr>
+<td><strong>DSP</strong></td>
+<td>硬體乘法器</td>
+<td>DSP48E2，27×18 bit 乘法＋累加</td>
+<td>浮點乘法用</td>
+</tr>
+<tr>
+<td><strong>BRAM</strong></td>
+<td>小塊晶片內記憶體</td>
+<td>36 Kb（可拆成兩個 18 Kb），2 個讀寫埠</td>
+<td>acc、la、lb</td>
+</tr>
+<tr>
+<td><strong>URAM</strong></td>
+<td>大塊晶片內記憶體</td>
+<td>288 Kb</td>
+<td>大 tile 時可能用到</td>
+</tr>
+<tr>
+<td><strong>HBM</strong></td>
+<td>高頻寬記憶體</td>
+<td>High Bandwidth Memory，堆疊在晶片旁</td>
+<td>U55C 有 16 GB</td>
+</tr>
+<tr>
+<td><strong>Pseudo-channel（PC）</strong></td>
+<td>HBM 的一條通道</td>
+<td>U55C 有 32 個，每個 512 MB</td>
+<td>cfg 中的 <code>HBM[0:7]</code></td>
+</tr>
+<tr>
+<td><strong>PCIe</strong></td>
+<td>主機和卡之間的連線</td>
+<td>資料從 CPU 記憶體搬到 HBM 走這裡</td>
+<td>XRT 的 sync</td>
+</tr>
+<tr>
+<td><strong>時脈（clock）</strong></td>
+<td>電路的節拍</td>
+<td>300 MHz = 每 3.33 ns 一拍</td>
+<td><code>create_clock -period 3.33</code></td>
+</tr>
+<tr>
+<td><strong>Cycle</strong></td>
+<td>一拍</td>
+<td>一個時脈週期</td>
+<td>報告的 latency 單位</td>
+</tr>
+<tr>
+<td><strong>Bitstream</strong></td>
+<td>FPGA 的設定檔</td>
+<td>決定每個元件和連線的設定</td>
+<td>包在 .xclbin 中</td>
+</tr>
+<tr>
+<td><strong>廠商代號 10ee</strong></td>
+<td>Xilinx 的 PCI ID</td>
+<td><code>lspci -d 10ee:</code> 可列出 Xilinx 裝置</td>
+<td>確認 server63 沒有卡</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HLS</strong></td>
+<td>C++ 轉電路</td>
+<td>High-Level Synthesis</td>
+<td>Vitis HLS</td>
+</tr>
+<tr>
+<td><strong>RTL</strong></td>
+<td>電路的描述</td>
+<td>Register Transfer Level，用 Verilog/VHDL 撰寫</td>
+<td>HLS 的輸出</td>
+</tr>
+<tr>
+<td><strong>Verilog / VHDL</strong></td>
+<td>硬體描述語言</td>
+<td>描述電路結構與行為</td>
+<td>我們不需要手寫</td>
+</tr>
+<tr>
+<td><strong>Kernel</strong></td>
+<td>在 FPGA 上跑的函式</td>
+<td>加速的核心運算</td>
+<td><code>trimul_v0</code>～<code>v4</code></td>
+</tr>
+<tr>
+<td><strong>Pragma</strong></td>
+<td>給 HLS 的指示</td>
+<td><code>#pragma HLS ...</code>，不影響功能、只影響實作</td>
+<td>第 3 章 3.3 節</td>
+</tr>
+<tr>
+<td><strong>Pipeline</strong></td>
+<td>流水線</td>
+<td>多個迭代重疊執行</td>
+<td>幾乎所有內層迴圈</td>
+</tr>
+<tr>
+<td><strong>II（Initiation Interval）</strong></td>
+<td>流水線的節奏</td>
+<td>連續兩次迭代開始的間隔，1 最好</td>
+<td>mac 迴圈 II = 1</td>
+</tr>
+<tr>
+<td><strong>Iteration latency</strong></td>
+<td>一次迭代的長度</td>
+<td>一次迭代從頭到尾的 cycle 數</td>
+<td>loop_k 為 671</td>
+</tr>
+<tr>
+<td><strong>Pipeline depth</strong></td>
+<td>流水線的長度</td>
+<td>一次迭代需要走過的級數</td>
+<td>mac 約 14</td>
+</tr>
+<tr>
+<td><strong>Loop-carried dependency</strong></td>
+<td>下一輪要等這一輪</td>
+<td>跨迭代的資料相依，會拉高 II</td>
+<td>v0 的 acc</td>
+</tr>
+<tr>
+<td><strong>Unroll（展開）</strong></td>
+<td>把迴圈複製成多份硬體</td>
+<td>平行執行</td>
+<td>v2 的 16 lane</td>
+</tr>
+<tr>
+<td><strong>Array partition</strong></td>
+<td>把陣列拆開</td>
+<td>讓多個元素能同時存取</td>
+<td><code>ARRAY_PARTITION dim=2 complete</code></td>
+</tr>
+<tr>
+<td><strong>Scheduling（排程）</strong></td>
+<td>決定何時做</td>
+<td>把運算分配到 cycle</td>
+<td>第 3 章 3.3 節</td>
+</tr>
+<tr>
+<td><strong>Binding（綁定）</strong></td>
+<td>決定用誰做</td>
+<td>把運算分配到硬體單元</td>
+<td>第 3 章 3.3 節</td>
+</tr>
+<tr>
+<td><strong>FSM</strong></td>
+<td>狀態機</td>
+<td>控制電路目前在做哪一步</td>
+<td>HLS 自動產生</td>
+</tr>
+<tr>
+<td><strong>AXI4 / m_axi</strong></td>
+<td>讀寫記憶體的介面</td>
+<td>kernel 主動讀寫 HBM 的標準介面</td>
+<td><code>INTERFACE m_axi</code></td>
+</tr>
+<tr>
+<td><strong>AXI4-Lite / s_axilite</strong></td>
+<td>設定參數的介面</td>
+<td>host 寫入參數和 start 訊號</td>
+<td>L、位址</td>
+</tr>
+<tr>
+<td><strong>Bundle</strong></td>
+<td>AXI 埠的名稱</td>
+<td>相同 bundle 共用一個埠</td>
+<td>gmem0、gmem1、gmem2</td>
+</tr>
+<tr>
+<td><strong>Trip count</strong></td>
+<td>迴圈次數</td>
+<td>告訴 HLS 以便估計 latency</td>
+<td><code>L_TRIP = 256</code></td>
+</tr>
+<tr>
+<td><strong>Timing（時序）</strong></td>
+<td>電路能否在一拍內完成</td>
+<td>Estimated 需小於 Target</td>
+<td>2.431 ns &lt; 3.33 ns</td>
+</tr>
+<tr>
+<td><strong>Synthesis（合成）</strong></td>
+<td>把設計轉成元件</td>
+<td>HLS 合成（C++→RTL）或邏輯合成（RTL→netlist）</td>
+<td>兩種都有</td>
+</tr>
+<tr>
+<td><strong>Place &amp; Route</strong></td>
+<td>擺放與繞線</td>
+<td>決定元件位置與連線</td>
+<td>Vivado，耗時最久</td>
+</tr>
+<tr>
+<td><strong>Netlist</strong></td>
+<td>元件清單＋連線</td>
+<td>邏輯合成的輸出</td>
+<td>Vivado 內部</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-6-AMD-工具鏈">A.6 AMD 工具鏈</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Vitis</strong></td>
+<td>AMD 的加速應用開發環境</td>
+<td>包含 HLS、<code>v++</code>、<code>vitis-run</code> 等</td>
+<td>2025.2</td>
+</tr>
+<tr>
+<td><strong>Vitis HLS</strong></td>
+<td>C++ → RTL 工具</td>
+<td>2024.2 起以 <code>vitis-run --mode hls</code> 執行</td>
+<td><code>make hls</code></td>
+</tr>
+<tr>
+<td><strong>Vivado</strong></td>
+<td>RTL → bitstream 工具</td>
+<td>合成、擺放、繞線、產生 bitstream</td>
+<td><code>v++ -l</code> 內部呼叫</td>
+</tr>
+<tr>
+<td><strong><code>v++</code></strong></td>
+<td>Vitis 的編譯器</td>
+<td><code>-c</code> 產生 .xo；<code>-l</code> 產生 .xclbin</td>
+<td><code>make xclbin</code></td>
+</tr>
+<tr>
+<td><strong><code>vitis-run</code></strong></td>
+<td>執行 Vitis 工具的指令</td>
+<td><code>--mode hls --tcl</code> 執行 HLS 腳本</td>
+<td><code>make hls</code></td>
+</tr>
+<tr>
+<td><strong>.xo</strong></td>
+<td>編譯好的 kernel</td>
+<td>RTL ＋ kernel 描述</td>
+<td><code>v++ -c</code> 輸出</td>
+</tr>
+<tr>
+<td><strong>.xclbin</strong></td>
+<td>可以燒進 FPGA 的檔案</td>
+<td>bitstream ＋ metadata</td>
+<td><code>v++ -l</code> 輸出</td>
+</tr>
+<tr>
+<td><strong>Platform / Shell</strong></td>
+<td>卡上的基礎設施</td>
+<td>PCIe、DMA、HBM 控制器等，由 AMD 提供</td>
+<td><code>xilinx_u55c_gen3x16_xdma_3_202210_1</code></td>
+</tr>
+<tr>
+<td><strong>Static / Dynamic region</strong></td>
+<td>固定區／可變區</td>
+<td>shell 在固定區，kernel 在可變區</td>
+<td>第 3 章 3.6 節</td>
+</tr>
+<tr>
+<td><strong>XRT</strong></td>
+<td>控制卡片的軟體</td>
+<td>Xilinx Runtime：驅動程式＋函式庫</td>
+<td><code>host.cpp</code></td>
+</tr>
+<tr>
+<td><strong><code>xbutil</code></strong></td>
+<td>XRT 的管理工具</td>
+<td>查看卡片狀態、測試</td>
+<td><code>xbutil examine</code></td>
+</tr>
+<tr>
+<td><strong>Buffer object（bo）</strong></td>
+<td>卡上的一塊記憶體</td>
+<td>XRT 在 HBM 上配置的空間</td>
+<td><code>xrt::bo</code></td>
+</tr>
+<tr>
+<td><strong>Connectivity（.cfg）</strong></td>
+<td>接線設定</td>
+<td>指定 kernel 參數接到哪些 HBM PC</td>
+<td><code>cfg/*.cfg</code></td>
+</tr>
+<tr>
+<td><strong>sw_emu / hw_emu / hw</strong></td>
+<td>三種執行目標</td>
+<td>軟體模擬／硬體模擬／實際上板</td>
+<td><code>TARGET=</code></td>
+</tr>
+<tr>
+<td><strong>csim / cosim</strong></td>
+<td>兩種 HLS 模擬</td>
+<td>C 模擬／C 與 RTL 協同模擬</td>
+<td>第 3 章 3.4 節</td>
+</tr>
+<tr>
+<td><strong>xsim</strong></td>
+<td>Vivado 的 RTL 模擬器</td>
+<td>cosim 與 hw_emu 使用</td>
+<td>未使用</td>
+</tr>
+<tr>
+<td><strong>csynth.rpt / csynth.xml</strong></td>
+<td>HLS 報告</td>
+<td>文字版／機器可讀版</td>
+<td><code>hls_summary.py</code> 讀 xml</td>
+</tr>
+<tr>
+<td><strong>Tcl</strong></td>
+<td>工具的腳本語言</td>
+<td>AMD 工具用 Tcl 撰寫自動化流程</td>
+<td><code>run_hls.tcl</code></td>
+</tr>
+<tr>
+<td><strong>flexlm</strong></td>
+<td>授權管理</td>
+<td>商用軟體的授權伺服器</td>
+<td><code>/tools/Xilinx/flexlm</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="ch9-A-7-軟體與開發工具">A.7 軟體與開發工具</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>g++</strong></td>
+<td>C++ 編譯器</td>
+<td>GNU 的開源編譯器</td>
+<td><code>make csim</code></td>
+</tr>
+<tr>
+<td><strong>clang / LLVM</strong></td>
+<td>另一套編譯器</td>
+<td>Vitis HLS 的前端使用 clang</td>
+<td>HLS 日誌</td>
+</tr>
+<tr>
+<td><strong>Make / Makefile</strong></td>
+<td>指令捷徑</td>
+<td>把多個步驟寫成規則</td>
+<td><code>fpga/trimul/Makefile</code></td>
+</tr>
+<tr>
+<td><strong>Testbench</strong></td>
+<td>測試程式</td>
+<td>產生輸入、呼叫 kernel、檢查輸出</td>
+<td><code>tb/tb.cpp</code></td>
+</tr>
+<tr>
+<td><strong>Host 程式</strong></td>
+<td>CPU 端的控制程式</td>
+<td>準備資料、控制 FPGA</td>
+<td><code>host/host.cpp</code></td>
+</tr>
+<tr>
+<td><strong>git clone / pull / push</strong></td>
+<td>下載／更新／上傳</td>
+<td>Git 版本控制指令</td>
+<td>取得程式碼</td>
+</tr>
+<tr>
+<td><strong>分支（branch）</strong></td>
+<td>同一專案的不同版本</td>
+<td>修改先放在分支，再合併進 main</td>
+<td><code>claude/lightnobel-...</code></td>
+</tr>
+<tr>
+<td><strong>PR（Pull Request）</strong></td>
+<td>合併請求</td>
+<td>請求把分支合併進 main</td>
+<td>PR #1</td>
+</tr>
+<tr>
+<td><strong>Personal Access Token</strong></td>
+<td>GitHub 的鑰匙</td>
+<td>代替密碼的存取權杖</td>
+<td>clone private repo 時需要</td>
+</tr>
+<tr>
+<td><strong>tmux</strong></td>
+<td>不會斷線的終端機</td>
+<td>SSH 斷線後程式繼續跑</td>
+<td>跑 <code>make hls-all</code></td>
+</tr>
+<tr>
+<td><strong>PyTorch</strong></td>
+<td>深度學習框架</td>
+<td>張量運算</td>
+<td>Python 腳本</td>
+</tr>
+<tr>
+<td><strong>transformers</strong></td>
+<td>預訓練模型函式庫</td>
+<td>HuggingFace 的開源函式庫</td>
+<td><code>EsmForProteinFolding</code></td>
+</tr>
+<tr>
+<td><strong>Colab</strong></td>
+<td>免費的雲端 GPU</td>
+<td>Google 提供的筆記本環境</td>
+<td>沒有 GPU 時的替代方案</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch9-A-8-架構評估與設計方法">A.8 架構評估與設計方法</h2>
+<table>
+<thead>
+<tr>
+<th>術語</th>
+<th>白話</th>
+<th>說明</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architectural simulation</strong></td>
+<td>用模型預測硬體表現</td>
+<td>在做出硬體前，用分析模型、cycle 級模擬或合成報告評估設計</td>
+<td>6.2 節</td>
+</tr>
+<tr>
+<td><strong>分析模型（analytical model）</strong></td>
+<td>用公式算 cycle</td>
+<td>把迴圈次數、overhead 寫成公式，快速預測</td>
+<td><code>make model</code>、6.8 節</td>
+</tr>
+<tr>
+<td><strong>校正（calibration）</strong></td>
+<td>用實測數字定常數</td>
+<td>從 HLS 報告反推公式裡的 overhead、pipeline 深度</td>
+<td>6.8 節（77、14）</td>
+</tr>
+<tr>
+<td><strong>驗證（validation）</strong></td>
+<td>檢查模型準不準</td>
+<td>用<strong>沒拿來校正</strong>的資料比對預測誤差</td>
+<td>6.8 節</td>
+</tr>
+<tr>
+<td><strong>DSE（設計空間探索）</strong></td>
+<td>試遍所有設定</td>
+<td>掃過 tile、平行度、精度等組合，找最佳設計</td>
+<td><code>make model</code>、6.9 節</td>
+</tr>
+<tr>
+<td><strong>Pareto 前緣</strong></td>
+<td>無法同時更好的設計</td>
+<td>找不到在所有指標都不輸、且至少一項更好的其他設計</td>
+<td>6.9 節</td>
+</tr>
+<tr>
+<td><strong>Ablation</strong></td>
+<td>拆掉一招看差多少</td>
+<td>逐一加入或移除手法，量出每一招的貢獻</td>
+<td>v0～v4</td>
+</tr>
+<tr>
+<td><strong>Producer / Consumer</strong></td>
+<td>產生者／使用者</td>
+<td>產生資料的運算與使用資料的運算</td>
+<td>6.4 節</td>
+</tr>
+<tr>
+<td><strong>Reuse distance</strong></td>
+<td>產生到使用的距離</td>
+<td>距離越短，越容易留在晶片內</td>
+<td>6.4 節</td>
+</tr>
+<tr>
+<td><strong>落地（materialize）</strong></td>
+<td>中間值寫回記憶體</td>
+<td>融合的目的就是避免中間值落地</td>
+<td>6.3 節</td>
+</tr>
+<tr>
+<td><strong>Epilogue</strong></td>
+<td>kernel 的收尾階段</td>
+<td>主計算之後的處理（LayerNorm、linear、gating）</td>
+<td>6.4 節</td>
+</tr>
+<tr>
+<td><strong>Welford 演算法</strong></td>
+<td>一次掃完算平均與變異數</td>
+<td>數值穩定的線上統計方法</td>
+<td>6.7 節</td>
+</tr>
+<tr>
+<td><strong>Tile sweep</strong></td>
+<td>掃過不同 tile 大小</td>
+<td>量測 tile 大小的 trade-off</td>
+<td><code>make hls-sweep</code></td>
+</tr>
+<tr>
+<td><strong>容量模型</strong></td>
+<td>最多能處理多長</td>
+<td><code>最大 L = sqrt(記憶體 ÷ 每個 L² 的 bytes)</code></td>
+<td>6.10 節</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch9-本附錄小結">本附錄小結</h2>
+<p>遇到不懂的詞，先在這裡查白話解釋，再回到「本專題」欄位指出的章節看完整說明。</p>
+</section><section class="chapter">
+<h1 id="ch10-附錄-B-自我檢測參考答案">附錄 B　自我檢測參考答案</h1>
+<blockquote>
+<p>先自己想過再看答案。答不出來的題目，回到括號裡標示的章節重讀。</p>
+</blockquote>
+<hr />
+<h2 id="ch10-第-1-章-為何而做">第 1 章　為何而做</h2>
+<ol>
+<li><strong>512 MB → 2 GB（4 倍）。</strong> 大小是 <code>L² × 128 × 4 bytes</code>，L 變 2 倍，L² 變 4 倍。（1.4）</li>
+<li>權重大小<strong>固定</strong>（ESMFold 約 7～8 GB），和 L 無關；activation 隨 <strong>L²</strong>（pair representation）甚至 <strong>L³</strong>（Triangle Attention 的中間值）成長。L 一大，activation 就遠超過權重。（1.4）</li>
+<li><strong>0.25 FLOP/byte</strong>：每做 2 次運算要讀 8 bytes。以 GPU 約 10 FLOP/byte 的平衡點來看，運算單元大約 97% 的時間都在等資料。（1.5）</li>
+<li><strong><code>z = a × bᵀ</code></strong>：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）</li>
+<li>per-tensor 整份資料共用一個 scale；per-token 每個 token 各自一個 scale。有 outlier 時，per-tensor 的 scale 被 outlier 撐大，一般的數值只能用到很少幾個整數，誤差變大。模擬結果：per-token 約 1%，per-tensor 約 11%。（1.6、2.8）</li>
+</ol>
+<h2 id="ch10-第-2-章-為何可做">第 2 章　為何可做</h2>
+<ol>
+<li>沒有重疊：<code>T ≈ T_compute + T_memory</code>；完全重疊：<code>T ≈ max(T_compute, T_memory)</code>。Double buffering 把「相加」變成「取最大值」。（2.1、2.6）</li>
+<li>v0 讀取量 <code>2·L³·C</code>；tiling 後 <code>L³·C·(1/16 + 1/16) = L³·C / 8</code>，是 v0 的 <strong>1/16</strong>。算術強度 <code>16·16 ÷ (2·32) =</code> <strong>4 FLOP/byte</strong>。（2.4）</li>
+<li>每輪最多從 671 降到約 530 cycles，<strong>約快 1.27 倍</strong>。因為載入只佔 21%，就算完全藏起來也只能省下這 21%（Amdahl's Law）。（2.6、2.10）</li>
+<li>頻寬是「每秒能搬多少」，延遲是「從請求到拿到第一筆要等多久」。寬位元提高<strong>頻寬</strong>（每 cycle 搬 16 個 float）；burst 減少<strong>延遲</strong>的影響（一次請求連續拿很多筆，延遲只付一次）。（2.5）</li>
+<li><strong>√2 ≈ 1.41 倍</strong>。記憶體和 L² 成正比，所以 L 和記憶體的平方根成正比。（2.8、6.10）</li>
+</ol>
+<h2 id="ch10-第-3-章-工具原理">第 3 章　工具原理</h2>
+<ol>
+<li>LUT 本質上是一塊 64 格的小記憶體，6 個輸入當作地址、存在裡面的 0/1 就是輸出，所以寫入不同的內容就能變成任何 6 輸入的邏輯函數。（3.1）</li>
+<li>II 是連續兩次迭代開始的間隔。v0 的 <code>acc += a*b</code> 下一次要等上一次的浮點加法做完（loop-carried dependency），所以 II 至少等於加法的延遲。（3.3）</li>
+<li>一塊 BRAM 只有 2 個讀寫埠，一個 cycle 最多讀寫 2 次；v2 每個 cycle 要同時讀寫 16 個值，必須把陣列切成 16 塊，讓每塊各自存取。（3.3）</li>
+<li>代表<strong>演算法（功能）是對的</strong>；不代表時序正確、也不代表 pragma 宣告（例如 <code>DEPENDENCE</code>）沒有錯。要靠 cosim 或 hw_emu 驗證。（3.4）</li>
+<li><code>.xo</code>：kernel 編譯後的結果（RTL ＋ 參數描述）；<code>.xclbin</code>：可以燒進 FPGA 的檔案（bitstream ＋ metadata）；platform：卡上預先做好的基礎設施（PCIe、DMA、HBM 控制器），kernel 要接在它上面。（3.6）</li>
+</ol>
+<h2 id="ch10-第-4-章-整體流程">第 4 章　整體流程</h2>
+<ol>
+<li>同一個 token 的 128 個 channel 在記憶體中是連續的，一次 burst 就能讀完，而且剛好是 8 個 512-bit word。這也和 PyTorch 的排列一致，真實資料不用轉換。（4.3）</li>
+<li><code>rel_l2 = ‖z − z_ref‖ ÷ ‖z_ref‖</code>。v4 使用量化，本來就會有誤差，所以只檢查誤差在合理範圍內（功能正確），而不是要求和浮點結果一樣。（4.5）</li>
+<li>專案名稱含有 <code>/</code>（<code>hls_prj/trimul_v2</code>，在目前資料夾下兩層），但 2025.2 改寫來源路徑時假設專案只在下一層，算出錯的 <code>../kernels/...</code>。修法是先 <code>cd hls_prj</code>，再建立名稱不含 <code>/</code> 的專案。（4.10）</li>
+<li>載入 a、b <strong>141</strong>（兩個 port 並行，只算一次）＋ 計算 <strong>526</strong>（512 ＋ pipeline 深度 14）＋ 額外 <strong>4</strong> = <strong>671</strong>。（4.11）</li>
+<li><code>bo.sync(XCL_BO_SYNC_BO_TO_DEVICE)</code>：透過 PCIe DMA 把資料從主機記憶體複製到 HBM。（4.6、3.7）</li>
+</ol>
+<h2 id="ch10-第-5-章-指令手冊">第 5 章　指令手冊</h2>
+<ol>
+<li><code>|</code> 把 <code>lspci</code> 的輸出交給 <code>grep</code>，只留下含 xilinx 的行；<code>-i</code> 表示不分大小寫。（5.1）</li>
+<li><code>make -n hls KERNEL=trimul_v3</code>。（5.6）</li>
+<li>在 <code>tmux</code> 裡執行；按 <code>Ctrl + B</code> 再按 <code>D</code> 可以暫時離開，重新登入後用 <code>tmux attach</code> 回來。（5.5）</li>
+<li><code>make hls KERNEL=trimul_v4 DEFS="-DTILE_I=16 -DTILE_J=16" TAG=trimul_v4_t16</code>，或 <code>make hls-sweep SWEEP_KERNEL=trimul_v4 TILES="16"</code>。（5.6）</li>
+<li>把要保留的結果（例如 <code>hls_summary.csv</code>、報告）複製到別的地方，因為 <code>make clean</code> 會刪除 <code>hls_prj/</code>、log 和 csv。（5.6）</li>
+</ol>
+<h2 id="ch10-第-6-章-新策略">第 6 章　新策略</h2>
+<ol>
+<li>LayerNorm、linear、sigmoid、gating、量化都是「<strong>每個 token 只用自己的 128 個數</strong>」的運算，一個 token 可以在晶片內一路處理完；只有 einsum 需要跨 token 的資料，才必須把 a、b 寫出去。（6.4）</li>
+<li>比例是 <code>128 ÷ L</code>，L = 512 時約 <strong>25%</strong>。（6.5）</li>
+<li>省下「把 FP32 的 a、b 寫出去、再讀回來量化」的兩趟搬運：a 的 128 個數剛算完還在暫存器裡，就順便算 scale、轉成 INT8。（6.7）</li>
+<li>同一份資料校正又驗證，當然會很準，無法證明模型能<strong>預測</strong>沒看過的情況。應該用 v2 8×8 校正，去預測 16×16、32×32，以及 v3、v4 的報告，看誤差是否在 10% 以內。（6.8）</li>
+<li>找不到另一個設計在<strong>所有指標都一樣好、而且至少一項更好</strong>。（6.9）</li>
+<li><code>√(3,584 ÷ 1,288) ≈ √2.78 ≈</code> <strong>1.67 倍</strong>（約 2,190 → 3,650）。（6.10）</li>
+</ol>
+<h2 id="ch10-第-7-章-研究方法">第 7 章　研究方法</h2>
+<ol>
+<li><strong>問題是什麼、他們觀察到什麼、解法是什麼、怎麼證明有效。</strong>（7.2）</li>
+<li>這樣 v4 和 v2 之間<strong>只差「量化」一件事</strong>，才能把效果歸因給量化；如果從 v3 改，差異就混進了 double buffering。（7.5）</li>
+<li>預測逼你先想清楚「為什麼會有效」；量測後比對預測，吻合代表理解正確，不吻合就是新的發現（例如 v3 應該快約 1.27 倍）。（7.5、2.6）</li>
+<li>代表<strong>假設錯了</strong>（例如路徑 bug 改成絕對路徑後仍失敗），要回頭找新的線索，例如比較日誌中「加入時的路徑」和「合成時的路徑」。（7.9）</li>
+</ol>
 </section>
 </body></html>

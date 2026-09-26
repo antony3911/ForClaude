@@ -1,57 +1,55 @@
 # 03. 讀博、教職、研究員
 
+> **篩選條件**：只看英語系國家與台灣。歐陸的有薪 PhD 已移到 [archive](archive/)。
 > **核心發現**：
-> 1. **歐洲的 PhD 是一份有薪水的工作**，不是學生身分。你已經有碩士，正好符合申請門檻
-> 2. **台灣博士的經濟條件比以前好很多**（企業與學校的獎學金），而且可以用千里馬計畫出國做研究一年
-> 3. **教職很難、薪水也遠低於業界**，要是真心喜歡教學與研究才值得走
+> 1. **英語系國家的 PhD 大多有資助**：美國全額、英國 UKRI 有 30% 名額給國際生、加拿大與澳洲的研究型學位都有生活津貼
+> 2. **台灣博士的經濟條件比以前好很多**，而且可以用千里馬計畫到英語系國家的頂尖實驗室研究一年
+> 3. **教職很難、薪水遠低於業界**，要真心喜歡教學與研究才值得走
 > 資料狀態：2026/09。
 
 ---
 
-## 1. PhD 的幾種選擇
+## 1. PhD 的選擇
 
-| | 台灣博士（土博） | 歐洲 PhD | 美國 PhD | 韓國 KAIST | 日本博士 |
+| | 🇺🇸 美國 | 🇬🇧 英國 | 🇨🇦 加拿大 | 🇦🇺 澳洲 | 🇹🇼 台灣 |
 |---|---|---|---|---|---|
-| 身分 | 學生 | **員工**（有勞動契約，多數國家有社會保險） | 學生（RA/TA） | 學生 | 學生 |
-| 年限 | 4–6 年 | **3–4 年**（因為入學前要有碩士） | 5–6 年 | 約 4 年 | 3 年 |
-| 經濟 | 企業與學校獎學金，每月約 3–6 萬元不等 | 荷蘭每月 **€2,872（第一年）→ €3,670（第四年）**，稅前；ETH 年薪中位數約 **CHF 6.85 萬** | 年薪約 US$3–5 萬多 | 免學費，另有每月生活津貼 | 交流協會獎學金每月約 ¥14.5 萬 |
-| 申請方式 | 考試或甄試，跟指導教授談 | **申請特定職缺**（像找工作一樣） | 系所委員會加上教授 | 系所 | 教授 |
-| 適合你嗎 | 你已經在台灣的研究圈 | **非常適合：已經有碩士、想要閱歷、想要錢不太緊** | 需要頂尖的研究紀錄 | 做你的研究題目很強（LightNobel 出自 KAIST） | 喜歡日本、想學日文 |
+| 年限 | 5–6 年 | **3–4 年**（通常要先有碩士） | 約 4 年（也可以先讀 MASc） | 3–4 年 | 4–6 年 |
+| 資助 | 通常全額（RA／TA），年薪約 US$3–5 萬多 | **UKRI 獎學金**：2026/27 年最低生活津貼 £21,805（倫敦 £23,805）；最多 30% 名額給國際生；**學費只補到本地生水準，差額要逐校確認** | 例如 UofT ECE：補學費，另給每年最低生活津貼（MASc 為 CAD 20,500；PhD 的金額另查） | **RTP 獎學金（不限國籍）**：2026 年每年約 A$3.4–4.3 萬 | 企業與學校獎學金，每月約 3–6 萬元不等 |
+| 頂尖獎學金 | Knight-Hennessy（史丹佛） | Gates Cambridge、Clarendon（牛津） | — | — | 聯電、台積電博士獎學金 |
+| 晶片產業 | 世界中心 | Arm 等 | Toronto 聚落 | 少 | **世界中心之一** |
+| 適合你嗎 | 需要頂尖研究紀錄 | **你已經有碩士，3–4 年就能完成** | **UofT 是 FPGA 研究重鎮** | 研究資助好，但產業弱 | 留在熟悉的研究圈 |
 
 ---
 
-## 2. 🇪🇺 歐洲 PhD：可能是你最沒想過、但最適合你的路
+## 2. 英語系國家的 PhD 重點
 
-### 為什麼特別適合你
-- **有薪水**：不用花錢，還能存一點錢；而且是正式工作，累積的是真正的工作經歷
-- **3–4 年**：比美國短
-- **你有碩士**：歐洲 PhD 通常要求申請者有碩士，這正是你的優勢
-- **閱歷**：在歐洲生活 3–4 年，周末可以去其他國家
-- **畢業後的出路**：留在歐洲業界（ASML、NXP、Infineon、imec、Arm 等）、回台灣，或去美國做 postdoc 或進業界
+### 🇬🇧 英國：短、有聲望，但國際生的資助要仔細確認
+- **3–4 年**就能完成，因為入學前通常要有碩士，**你的台灣碩士正好符合**
+- **UKRI 獎學金**：2026/27 年最低生活津貼 **£21,805**（倫敦 £23,805）；國際生最多佔 30%
+- **注意學費差額**：UKRI 只補到英國本地生的學費，國際生的差額，**有些學校會吸收、有些要自付**
+- **頂尖獎學金**：Gates Cambridge、Oxford 的 Clarendon（見 [11](11-prestige-scholarships.md)）
+- **和你背景相關的英國實驗室（範例）**：Imperial College 的 **George Constantinides**（高階合成、計算機算術、在 FPGA 上做高效率神經網路推論的 LUTNet）、**Christos Bouganis**（fpgaConvNet，自動把 CNN 映射到 FPGA）
+- **畢業後**：PhD 畢業的 Graduate Route 仍然是 **3 年**（碩士從 2027 年起縮短為 18 個月）
 
-### 代表機構
+### 🇨🇦 加拿大：研究型碩士與博士都有資助
+- **UofT ECE**：MASc 學生每年至少 **CAD 20,500，外加學費與雜費**（最多 2 年）；PhD 也有保證資助（金額另查）
+- **UofT 的 FPGA 研究陣容**：Vaughn Betz（FPGA 架構、CAD、ML 加速）、Jason Anderson（FPGA、HLS）、Andreas Moshovos（ML 加速器、計算機結構）
+- **路徑彈性**：可以先讀 MASc，表現好再轉 PhD
+- **畢業後**：3 年 PGWP → Express Entry 永久居留
 
-| 機構 | 地點 | 特色 |
-|---|---|---|
-| **imec**（與 KU Leuven、UGent 等合作） | 比利時 Leuven | 全球頂尖的半導體研究中心；有超過 800 名來自 40 多個國家的 PhD 學生；**下一輪 PhD 申請預計 2026 年秋天開放，有 150 多個職缺** |
-| **ETH Zurich** | 瑞士 | 世界頂尖；薪水高，但生活費也極高 |
-| **EPFL** | 瑞士 Lausanne | 同上 |
-| **TU Delft、TU Eindhoven** | 荷蘭 | 靠近 ASML、NXP |
-| **TU Munich、TU Dresden、RWTH Aachen、KIT** | 德國 | Dresden 有 ESMC、GlobalFoundries、Infineon |
-| **KTH、Chalmers、Lund** | 瑞典 | 生活品質高 |
-| **DTU** | 丹麥 | 同上 |
+### 🇦🇺 澳洲：RTP 獎學金
+- **不限國籍**，研究型碩士（MPhil）和 PhD 都可以申請
+- 2026 年生活津貼依學校不同：Sydney 大學 A$42,754、Melbourne A$39,500、ANU A$39,069、UQ 約 A$37,500–39,220
+- 直接向學校申請
 
-### 怎麼找職缺
-- 各大學的職缺頁面（例如荷蘭大學的「vacancies」頁面）
-- **academicpositions.com**、**EURAXESS**、**FindAPhD**
-- 直接看你喜歡的教授實驗室網站的「open positions」
-- **時間彈性**：職缺全年都會開，不像美國有固定的申請季
+### 🇺🇸 美國
+- 通常全額資助，但競爭最激烈、年限最長。詳見 `study-abroad-manual/`
 
 ---
 
-## 3. 🇹🇼 台灣博士：比你想像的好，但要想清楚目的
+## 3. 🇹🇼 台灣博士：比你想像的好，而且可以出國
 
-### 經濟條件已經改善
+### 經濟條件
 
 | 來源 | 內容 |
 |---|---|
@@ -60,13 +58,10 @@
 | **陽明交大博士生獎學金** | 第一年最高可以拿到 72 萬元 |
 | **各校的校級博士生獎學金** | 包含國科會核配與教育部的博士生獎學金 |
 
-### 千里馬計畫：讀台灣博士，也能出國一年
-- **國科會「補助博士生赴國外研究」**：在台灣讀博士滿一年以上，就可以申請出國到國外實驗室做研究，國科會補助費用
-- 每年約 6–7 月申請（例如 115 年度的申請時間是 114/06/01–07/28），隔年出國
-- **這是「閱歷」加上「研究」的組合**：你可以去美國、歐洲、日本的頂尖實驗室待一段時間，還能拿到國外教授的推薦信
-
-### 兵役
-- 你會在碩士畢業後先服完 4 個月兵役，所以讀博期間不會有兵役問題
+### 到英語系國家做研究的兩種方式
+- **國科會千里馬計畫**：在台灣讀博士滿一年以上，就可以申請到國外實驗室做研究，國科會補助費用。每年約 6–7 月申請（例如 115 年度是 114/06/01–07/28），隔年出國
+- **Fulbright 博士論文研究獎助**：台灣的博士生赴美研究 5–10 個月（見 [11](11-prestige-scholarships.md)）
+- **這是「主動提升」加上「英語系國家經驗」的低成本組合**：你可以去美國、英國、加拿大的頂尖實驗室，還能拿到國外教授的推薦信
 
 ---
 
@@ -76,15 +71,15 @@
 - 台大電機的張耀文教授在媒體上指出：半導體龍頭廠的**碩士年薪約 200–250 萬元，博士約 300–500 萬元**，而**新進助理教授年薪約 113 萬元**
 - 所以選擇教職，**幾乎一定是為了薪水以外的理由**：教學、研究自由、學術影響力、生活節奏
 
-### 台灣教職的一般觀察（沒有找到精確統計，以下是業界常見的看法）
-- **少子化**：台灣大學生人數持續下降，很多私立大學在縮編甚至退場，教職總量在減少
-- **頂尖國立大學的電機系**：競爭激烈，常見的候選人背景是國外博士、博士後，以及頂會論文
-- **半導體相關領域**：因為政府與企業大力投入（例如各校的半導體學院），相關教職需求相對比其他領域穩定
+### 台灣教職的一般觀察（沒有找到精確統計，以下是常見的看法）
+- **少子化**：大學生人數持續下降，很多私立大學在縮編甚至退場
+- **頂尖國立大學的電機系**：常見的候選人背景是國外博士、博士後，以及頂會論文
+- **半導體相關領域**：因為政府與企業大力投入，相關教職需求相對穩定
 - **「土博」走教職**：不是不可能，但通常需要非常強的論文紀錄，或者國外博士後經驗來補強
 
 ### 如果你真的想走教職
-- 更常見的路徑是：**國外博士（歐美）→ 博士後 → 回台灣任教**，或者**台灣博士 + 千里馬出國 + 國外博士後**
-- 或者換個角度：**「教書」不一定要在大學**。業界的內部訓練講師、TSRI 的教育訓練課程、線上課程、技術寫作、高中的科學教育，都是和「教」有關的工作
+- 常見路徑：**英語系國家的博士 → 博士後 → 回台灣任教**，或者**台灣博士 + 千里馬 + 國外博士後**
+- **「教」不一定要在大學**：企業內訓、TSRI 的教育訓練、線上課程、技術寫作，都是和「教」有關的工作
 
 ---
 
@@ -92,30 +87,29 @@
 
 | 機構 | 地點 | 碩士能進嗎 | 特色 |
 |---|---|---|---|
-| **工研院（ITRI）** | 新竹等地 | ✅ | 碩士新人月薪約 5–6 萬（依地點與單位不同）；做產業導向的研究 |
-| **TSRI（國研院台灣半導體研究中心）** | 新竹、台南 | ✅ | 提供全國學界的晶片下線與 EDA 服務；接觸很多研究團隊 |
+| **工研院（ITRI）** | 新竹等地 | ✅ | 碩士新人月薪約 5–6 萬；產業導向的研究 |
+| **TSRI（國研院台灣半導體研究中心）** | 新竹、台南 | ✅ | 提供全國學界的晶片下線與 EDA 服務 |
 | **中研院** | 台北 | 研究助理 | 很多人在中研院當 1–2 年研究助理，再申請國外 PhD |
-| **imec** | 比利時 | ✅（也有工程師職缺） | 全球頂尖的半導體研究中心 |
-| **Fraunhofer** | 德國 | ✅ | 德國最大的應用研究機構 |
-| **CEA-Leti** | 法國 Grenoble | ✅ | 歐洲重要的微電子研究機構 |
-| **A\*STAR IME** | 新加坡 | ✅ | 新加坡的微電子研究所 |
+| **Tyndall National Institute** | 愛爾蘭 Cork | 依職缺 | 愛爾蘭的國家級微電子研究所（職缺條件未查證） |
+| **A\*STAR IME** | 新加坡（邊界選項） | 依職缺 | 新加坡的微電子研究所 |
 | **企業研究部門** | NVIDIA Research、Google、IBM Research 等 | 多數要博士 | 研究類職位幾乎都要求博士 |
 
 ---
 
 ## 6. 我的觀察
 
-1. **如果你對研究有一點興趣，歐洲 PhD 是 CP 值非常高的「閱歷 + 職涯」組合**：有薪水、只要 3–4 年、你的碩士剛好符合資格，畢業後的選擇也很廣
-2. **「台灣博士 + 千里馬計畫」**是另一種低成本的閱歷路線，而且可以留在熟悉的研究圈
-3. **教職不要當成預設目標**：先確認自己是真心喜歡教學與研究，而不是「不知道要做什麼」
-4. **研究員不一定要博士**：工研院、TSRI、imec 都有碩士可以進的職位
+1. **英國 PhD 對你特別有效率**：你已經有碩士，3–4 年就能拿到博士，畢業後還有 3 年的工作簽證；搭配 Gates 或 Clarendon 更好
+2. **加拿大 UofT 可以「先 MASc、再 PhD」**：有資助、FPGA 研究頂尖、移民路徑清楚
+3. **「台灣博士 + 千里馬」**是另一種低成本的主動提升路線，而且可以留在熟悉的研究圈
+4. **教職不要當成預設目標**：先確認自己是真心喜歡教學與研究
 
 ---
 
 ## 來源
-- 歐洲 PhD：[Netherlands PhD Salary 2026](https://expatnetherlandshub.com/guides/finance/phd-netherlands-international-researchers-2026/)、[Academic Positions：Netherlands salaries](https://academicpositions.com/career-advice/phd-postdoc-and-professor-salaries-in-the-netherlands)、[ETH Zurich PhD Student Salary（Levels.fyi）](https://www.levels.fyi/companies/eth-zurich/salaries/phd-student)、[ETH：Doctoral salary increase 2026](https://ethz.ch/staffnet/en/news-and-events/internal-news/archive/2025/12/increase-in-salary-rates-for-doctoral-students-standard-and-rate-2.html)、[imec：PhD at imec](https://www.imec-int.com/en/work-at-imec/job-opportunities/phd-at-imec)
+- 英國：[FindAPhD：UKRI Studentships](https://www.findaphd.com/guides/phd-study-in-uk/research-council-studentships)、[Prospects：Research Council funding](https://www.prospects.ac.uk/postgraduate-study/funding-postgraduate-study/research-council-funding/)、[AcademicJobs：UKRI Stipend 2026](https://www.academicjobs.com/higher-education-news/ukri-phd-stipend-increase-2026-new-21805-rates-academicjobs-3618)、[The PIE News：Graduate Route 2027](https://thepienews.com/shorter-graduate-route-from-january-2027-uk-govt-confirms/)、[Imperial：George Constantinides](https://www.imperial.ac.uk/news/109969/profile-dr-george-constantinides-custom-computing/)、[Imperial：Christos-Savvas Bouganis](https://www.imperial.ac.uk/people/christos-savvas.bouganis)
+- 加拿大：[UofT ECE：Funding Packages 2025-26](https://www.ece.utoronto.ca/graduates/financial-support/graduate-student-funding-2025-26/)、[Vaughn Betz](https://www.eecg.utoronto.ca/~vaughn/)、[Jason Anderson（Google Scholar）](https://scholar.google.com/citations?user=xT_nR_MAAAAJ&hl=en)
+- 澳洲：[Department of Education：RTP](https://www.education.gov.au/research-block-grants/research-training-program)、[UniMelb：Graduate Research Scholarships](https://scholarships.unimelb.edu.au/awards/graduate-research-scholarships)、[RTP Scholarship Australia 2026](https://australiaawardshub.com/rtp-scholarship-australia)
 - 台灣博士：[聯電劉炯朗博士生獎學金](https://www.umc.com/zh-TW/Html/scholarships)、[台積電博士獎學金 2026](https://www.tsmc.com/english/node/231)、[陽明交大博士生獎學金](https://exam.nycu.edu.tw/dr/113/%E5%8D%9A%E5%A3%AB%E7%94%9F%E7%8D%8E%E5%AD%B8%E9%87%91.pdf)、[台大校級博士生獎學金](https://www.aca.ntu.edu.tw/w/aca/GAADService_21071211271211713)
-- 千里馬：[國科會補助博士生赴國外研究作業要點（114 年申請、115 年出國）](https://www.nstc.gov.tw/sci/ch/detail/e2ae0e63-a26c-4f6b-82c5-f5201aa386e2)、[中山大學研發處：千里馬計畫](https://ora.nsysu.edu.tw/p/412-1045-17368.php?Lang=zh-tw)、[海洋大學：115 年度徵求公告](https://research.ntou.edu.tw/p/405-1021-113268,c9802.php?Lang=zh-tw)
+- 千里馬：[國科會補助博士生赴國外研究作業要點（114 年申請、115 年出國）](https://www.nstc.gov.tw/sci/ch/detail/e2ae0e63-a26c-4f6b-82c5-f5201aa386e2)、[中山大學研發處：千里馬計畫](https://ora.nsysu.edu.tw/p/412-1045-17368.php?Lang=zh-tw)
 - 教職：[TVBS：半導體碩士年薪 250 萬，大學助理教授僅 113 萬](https://news.tvbs.com.tw/life/3190459)
-- 韓國與日本：[KAIST Scholarship](https://admission.kaist.ac.kr/intl-graduate/FinancialSupport/Scholarship/KAISTScholarship)、[日本台灣交流協會：2027 年度碩博士獎學金](https://www.koryu.or.jp/Portals/0/taipei/2026/0202/CH_guideline_2027.pdf)
-- 研究機構：[工研院薪資（比薪水）](https://salary.tw/c/X3z9)
+- 研究機構：[工研院薪資（比薪水）](https://salary.tw/c/X3z9)、[IDA Ireland：Semiconductors](https://www.idaireland.com/latest-news/insights/ireland-is-home-to-14-of-the-world%E2%80%99s-top-semiconductor-companies)

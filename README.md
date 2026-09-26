@@ -4,6 +4,7 @@
 在 AMD Alveo U55C 上比較常見的 memory-bound 優化手法。
 
 - [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md)：**專題工作紀錄（交接用）**：做過什麼、數據、下一步
+- [docs/competition_directions.md](docs/competition_directions.md)：進階競賽方向（融合、簡化版 AAQ、分析模型等）
 - [docs/manual/](docs/manual/)：教學手冊（為何而做、為何可做、流程、工具原理）
 - [docs/conversation_notes.md](docs/conversation_notes.md)：**先看這份**，專題在做什麼、各檔案用途、下一步
 - [docs/getting_started_u55c.md](docs/getting_started_u55c.md)：U55C 環境設定與開發流程（從零開始看這份）

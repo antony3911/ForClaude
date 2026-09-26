@@ -108,6 +108,11 @@
 - `make csim` 用的是系統 g++，與 HLS 無關；功能正確性以它為準。
 - HLS 內建 csim 預設關閉；若要開（`CSIM=1`），路徑 bug 已修，應可運作但未驗證。
 
+## 7.5 競賽方向升級（2026-09-26）
+使用者覺得原題目偏敷衍，已整理 `docs/competition_directions.md`：
+A 融合版 Triangle Multiplication（主推）、B FPGA 簡化版 AAQ、C 分析模型＋DSE、D 真實 activation 分析、E 多 CU。
+建議 A＋C＋D。**待使用者回覆：競賽名稱、截止日期、評分偏好、U55C 位置。**
+
 ## 8. 教學手冊
 
 使用者要求一份鉅細靡遺的教學手冊（為何而做、為何可做、整體流程、工具原理），

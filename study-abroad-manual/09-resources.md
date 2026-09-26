@@ -154,6 +154,7 @@
 - [壹蘋新聞網：分階段軍事訓練開放申請，役男 2 年暑假完成 4 個月兵役（2026/08/15）](https://news.nextapple.com/politics/20260815/88CEC13F64CAF9154CCA9B1E81407D64)
 - [新北市政府：分階段軍事訓練相關法令與 QA](https://soldier.ntpc.gov.tw/mt8430)
 - [聯合新聞網：83 至 93 年次役男優先或延緩入營可線上申請](https://udn.com/news/story/10930/9492174)、[役政司：優先入營申請須知](https://dca.moi.gov.tw/chaspx/content.aspx?web=223)
+- [內政部：關心畢業役男服役安排，開放自選入營機制](https://www.moi.gov.tw/News_Content.aspx?n=4&s=337954)、[聯合新聞網：優先、延緩入營申請時間](https://udn.com/news/story/10930/9464756)、[役政司：役男入營時程須知](https://dca.moi.gov.tw/chaspx/content.aspx?web=222)
 - [研發替代役制度概要（115 年 7 月）](https://rdss.moi.gov.tw/MND_NCA/downloadSysFileAction.do?fileID=2601)
 - [新竹市政府：後備軍人出國免召規定有變](https://www.hsinchu.gov.tw/News_Content.aspx?n=153&s=200397)、[後備軍人網路服務臺](https://afrc.mnd.gov.tw/EFR/index.aspx)
 

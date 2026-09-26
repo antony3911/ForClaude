@@ -223,14 +223,16 @@ City, State | email | phone | linkedin.com/in/xxx | github.com/xxx
 EDUCATION
 [US University] — M.S. Electrical and Computer Engineering        Expected May 2031
   Relevant: Advanced VLSI, ASIC Verification, Computer Architecture
-[Taiwan University] — M.S. Electrical Engineering, GPA x.xx/4.3   Jun 2028
+[Taiwan University] — M.S. Electrical Engineering, GPA x.xx/4.3   Jun 2027
 
 SKILLS
   RTL/HLS: SystemVerilog, Verilog, Vitis HLS | Verification: SVA, UVM, cocotb
   EDA: Design Compiler, PrimeTime, Innovus, VCS, Vivado | Languages: Python, C++, Tcl
 
 EXPERIENCE / RESEARCH
-[Lab / Company] — Graduate Researcher                              Sep 2026 – Jun 2028
+[Taiwan IC Company] — Digital Design Engineer                      Dec 2027 – Jul 2029
+  • Owned RTL for …; closed timing at … MHz; …
+[NSYSU Lab] — Graduate Researcher                                 Sep 2025 – Jun 2027
   • Designed …, achieving … (quantified)
   • Implemented … in 16nm: … MHz, … mm², … mW
   • Verified … with …, reaching …% functional coverage

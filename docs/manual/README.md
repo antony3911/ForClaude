@@ -21,6 +21,7 @@
 | 5 | `05_research_method.md` 研究方法：之後讀 paper 可重複使用的步驟 | ✅ 完成 | |
 | 6 | `06_glossary.md` 術語表 | ✅ 完成 | |
 | 7 | `07_commands.md` 指令手冊：做過的、可以做的、格式與用途 | ✅ 完成 | 新增指令時請更新 7.10 時間軸 |
+| 8 | `08_new_strategy.md` 新策略：融合資料流、分析模型、DSE、評審 Q&A | ✅ 完成 | 拿到 hls-all 結果後更新 8.8、8.9 |
 | — | `build_pdf.py` → `manual.pdf` | ✅ 完成 | 約 58 頁；修改內容後重跑 `python3 docs/manual/build_pdf.py` |
 
 狀態：⬜ 未開始　🟡 撰寫中　✅ 完成

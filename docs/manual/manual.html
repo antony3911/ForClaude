@@ -189,6 +189,23 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch7-本章小結">本章小結</a></li>
 </ol>
 </li>
+<li><a href="#ch8-第-8-章-新策略-融合資料流-分析模型與設計空間探索">第 8 章 新策略：融合資料流、分析模型與設計空間探索</a>
+<ol>
+<li><a href="#ch8-8-1-策略總覽-從-比較手法-到-提出架構">8.1 策略總覽：從「比較手法」到「提出架構」</a></li>
+<li><a href="#ch8-8-2-Architectural-simulation-是什麼">8.2 Architectural simulation 是什麼？</a></li>
+<li><a href="#ch8-8-3-完整的-Triangle-Multiplication-長什麼樣子">8.3 完整的 Triangle Multiplication 長什麼樣子</a></li>
+<li><a href="#ch8-8-4-Operator-fusion-運算融合-的理論">8.4 Operator fusion（運算融合）的理論</a></li>
+<li><a href="#ch8-8-5-用計算換記憶體-為什麼-g-要-重算">8.5 用計算換記憶體：為什麼 g 要「重算」</a></li>
+<li><a href="#ch8-8-6-為什麼這個融合特別適合-FPGA">8.6 為什麼這個融合特別適合 FPGA</a></li>
+<li><a href="#ch8-8-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">8.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</a></li>
+<li><a href="#ch8-8-8-分析模型-用公式預測硬體表現">8.8 分析模型：用公式預測硬體表現</a></li>
+<li><a href="#ch8-8-9-設計空間探索-DSE-與-Pareto-前緣">8.9 設計空間探索（DSE）與 Pareto 前緣</a></li>
+<li><a href="#ch8-8-10-容量模型-最多能處理多長的序列">8.10 容量模型：最多能處理多長的序列</a></li>
+<li><a href="#ch8-8-11-對應到海報-以及評審可能會問的問題">8.11 對應到海報，以及評審可能會問的問題</a></li>
+<li><a href="#ch8-8-12-參考資料">8.12 參考資料</a></li>
+<li><a href="#ch8-本章小結">本章小結</a></li>
+</ol>
+</li>
 </ol></div>
 <section class="chapter">
 <h1 id="ch1-第-1-章-為何而做-問題具體發生了什麼">第 1 章　為何而做：問題具體發生了什麼？</h1>
@@ -5023,6 +5040,565 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <li>本專案的所有操作都可以用 <strong><code>make 目標 變數=值</code></strong> 完成，<code>make -n</code> 可以預覽不執行。</li>
 <li><strong>現在最常用的四個指令：</strong> <code>git pull</code>、<code>make hls-all</code>、<code>tail -n 30 hls_*.log</code>、<code>make summary</code>。</li>
 <li>長時間工作用 <strong>tmux</strong>；刪除前先確認，<strong>不要在 server 上 <code>git push</code></strong>。</li>
+</ul>
+</section><section class="chapter">
+<h1 id="ch8-第-8-章-新策略-融合資料流-分析模型與設計空間探索">第 8 章　新策略：融合資料流、分析模型與設計空間探索</h1>
+<blockquote>
+<p><strong>本章重點</strong></p>
+<ul>
+<li>新策略有三根支柱：<strong>① 逐步優化的量測（v0～v4）</strong>、<strong>② 自己提出的融合資料流架構</strong>、<strong>③ 經過驗證的分析模型與設計空間探索</strong>。</li>
+<li><strong>Architectural simulation</strong> 不一定要上板：HLS 合成報告加上校正過的分析模型，就是正統的架構評估方法。</li>
+<li><strong>融合（fusion）</strong> 的核心：讓中間值不寫回記憶體。以本章的估算，Triangle Multiplication 一步的記憶體流量可以減少約 7 倍，同時存在的資料量從約 7 份降到約 2.5 份。</li>
+<li><strong>分析模型</strong> 讓我們能在幾秒內評估上百種設計，並用 <strong>Pareto 前緣</strong> 挑出最佳設定。</li>
+<li>最後一節整理了評審可能會問的問題和回答方向。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="ch8-8-1-策略總覽-從-比較手法-到-提出架構">8.1 策略總覽：從「比較手法」到「提出架構」</h2>
+<h3 id="ch8-舊策略-vs-新策略">舊策略 vs 新策略</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>舊策略</th>
+<th>新策略</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>主軸</td>
+<td>比較 5 個常見手法</td>
+<td>提出一個<strong>融合資料流架構</strong>，並用常見手法當作 ablation</td>
+</tr>
+<tr>
+<td>範圍</td>
+<td>只有 einsum 核心</td>
+<td>完整的 Triangle Multiplication（LayerNorm、投影、gating、量化、輸出）</td>
+</tr>
+<tr>
+<td>評估</td>
+<td>5 個數據點</td>
+<td><strong>分析模型</strong>：可以預測任意設定，做<strong>設計空間探索</strong></td>
+</tr>
+<tr>
+<td>和 LightNobel 的關係</td>
+<td>模仿它的量化</td>
+<td>從「<strong>融合</strong>」這個不同的角度處理同一個問題，並和量化結合</td>
+</tr>
+<tr>
+<td>需要板子？</td>
+<td>最後要上板才完整</td>
+<td><strong>不需要</strong>，HLS ＋ 模型就是完整的架構評估</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-三根支柱">三根支柱</h3>
+<pre><code>                 ┌─────────────────────────────────┐
+                 │ 故事：突破 pair representation  │
+                 │       的記憶體牆                │
+                 └────────────────┬────────────────┘
+          ┌───────────────────────┼───────────────────────┐
+          ▼                       ▼                       ▼
+ ① 逐步優化的量測          ② 融合資料流架構           ③ 分析模型與 DSE
+ v0 → v1 → ... → v4        （本章 8.3～8.7）          （本章 8.8～8.10）
+ 每一招解決哪個瓶頸         中間值不落地、             預測、驗證、
+ （第 2、3 章）             量化在源頭完成              找最佳設定
+</code></pre>
+<ul>
+<li><strong>①</strong> 是基礎：證明我們懂每一招在做什麼（已完成大半）。</li>
+<li><strong>②</strong> 是亮點：我們自己的設計。</li>
+<li><strong>③</strong> 是方法論：讓結果可信、可以推廣。</li>
+</ul>
+<hr />
+<h2 id="ch8-8-2-Architectural-simulation-是什麼">8.2 Architectural simulation 是什麼？</h2>
+<h3 id="ch8-白話直覺">白話直覺</h3>
+<p>在真正做出晶片之前，先用「<strong>模型</strong>」預測它會有多快、用多少資源。就像蓋大樓之前先做結構計算和模型，而不是直接蓋。</p>
+<h3 id="ch8-評估的四個層級">評估的四個層級</h3>
+<table>
+<thead>
+<tr>
+<th>層級</th>
+<th>方法</th>
+<th>速度</th>
+<th>準確度</th>
+<th>本專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>分析模型</strong></td>
+<td>用公式算（cycle = 迴圈次數 × 每次的 cycle）</td>
+<td>毫秒</td>
+<td>中（要校正）</td>
+<td><code>make model</code></td>
+</tr>
+<tr>
+<td><strong>Cycle 級模擬</strong></td>
+<td>模擬器或 HLS 排程結果</td>
+<td>分鐘</td>
+<td>高</td>
+<td><code>make hls</code> 的報告</td>
+</tr>
+<tr>
+<td><strong>RTL 模擬</strong></td>
+<td>模擬實際的電路</td>
+<td>小時</td>
+<td>很高</td>
+<td><code>COSIM=1</code>（可選）</td>
+</tr>
+<tr>
+<td><strong>上板量測</strong></td>
+<td>真的在硬體上跑</td>
+<td>編譯要數小時</td>
+<td>最高（真實值）</td>
+<td>第二階段</td>
+</tr>
+</tbody>
+</table>
+<p><strong>越上面越快、越能大量探索；越下面越準、但越慢。</strong> 好的做法是：</p>
+<ol>
+<li>用下層（HLS 報告）<strong>校正</strong>上層（分析模型）；</li>
+<li>用校正後的上層<strong>大量探索</strong>；</li>
+<li>挑幾個最好的設定，回到下層<strong>驗證</strong>。</li>
+</ol>
+<h3 id="ch8-學術界也這樣做">學術界也這樣做</h3>
+<p>架構類論文（包括 LightNobel）大多用自己寫的<strong>cycle 級模擬器</strong>加上<strong>合成工具的面積、功耗估計</strong>來評估，而不是真的做出晶片。
+所以「HLS 報告＋分析模型」是正當的 architectural simulation，不是偷懶。</p>
+<hr />
+<h2 id="ch8-8-3-完整的-Triangle-Multiplication-長什麼樣子">8.3 完整的 Triangle Multiplication 長什麼樣子</h2>
+<p>先前我們只實作了中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣：</p>
+<pre><code>  z（輸入，L×L×128）
+  │
+  ├─ LayerNorm ─────────────────► z_ln
+  │                                 │
+  │        ┌────────────┬───────────┼───────────┬────────────┐
+  │        ▼            ▼           ▼           ▼            ▼
+  │    linear_a_p   linear_a_g  linear_b_p  linear_b_g    linear_g
+  │        │            │ sigmoid   │           │ sigmoid    │ sigmoid
+  │        └──── × ─────┘           └──── × ────┘            │
+  │              │ × mask                 │ × mask           │
+  │              ▼                        ▼                  │
+  │              a                        b                  │
+  │              └───────── einsum ───────┘                  │
+  │                  z_ij = Σ_k a_ik · b_jk                  │
+  │                           │                              │
+  │                     LayerNorm_out                        │
+  │                           │                              │
+  │                       linear_z                           │
+  │                           └────────────── × ─────────────┘
+  │                                           │
+  └──────────────────────── + ◄───────────────┘   （residual，在 block 外面加）
+                                              ▼
+                                            輸出
+</code></pre>
+<p>每一個箭頭的結果都是 <strong>L × L × 128</strong> 的張量。
+這些 linear 都是「<strong>每個 token 各自</strong>做 128×128 的矩陣乘法」，不同 token 之間互不相干。</p>
+<h3 id="ch8-一般實作會-落地-多少資料">一般實作會「落地」多少資料？</h3>
+<p>如果每個運算都是獨立的函式（PyTorch 預設的做法），每一步的結果都要<strong>寫回記憶體</strong>，下一步再讀出來。
+同一時間存在的 pair 張量，峰值大約是 <strong>7 份</strong>（z、z_ln、a、b、g、einsum 的結果、各種暫存）。
+GPU 上的融合實作分析也是這個量級（見第 8.12 節參考資料）。</p>
+<hr />
+<h2 id="ch8-8-4-Operator-fusion-運算融合-的理論">8.4 Operator fusion（運算融合）的理論</h2>
+<h3 id="ch8-白話直覺_1">白話直覺</h3>
+<p><strong>不融合：</strong> 廚師切完洋蔥放回倉庫，另一個廚師再從倉庫拿出來炒。
+<strong>融合：</strong> 切完直接下鍋，洋蔥<strong>不回倉庫</strong>。</p>
+<h3 id="ch8-正式說法-producer-consumer">正式說法：producer–consumer</h3>
+<ul>
+<li><strong>Producer</strong>：產生資料的運算（例如 linear_a_p）。</li>
+<li><strong>Consumer</strong>：使用資料的運算（例如 gating 的乘法）。</li>
+<li>如果 consumer 在 producer 產生資料後<strong>馬上</strong>用掉，資料就可以留在晶片內（暫存器、BRAM），不必寫回 HBM。</li>
+<li>這個「產生到使用之間的距離」叫做 <strong>reuse distance</strong>。距離越短，越容易融合。</li>
+</ul>
+<h3 id="ch8-為什麼-Triangle-Multiplication-適合融合">為什麼 Triangle Multiplication 適合融合</h3>
+<p>LayerNorm、5 個 linear、sigmoid、gating、量化，<strong>全部都是「每個 token 自己算自己的」</strong>：</p>
+<pre><code>token (i, k) 的 128 個數
+   → LayerNorm（只需要這 128 個數的平均與變異數）
+   → 5 個 128×128 linear（只需要這個 token ＋ 權重）
+   → gating、mask、量化（只需要這個 token）
+</code></pre>
+<p>一個 token 的所有處理都可以在晶片內完成，<strong>只有最後的 a、b 需要寫出去</strong>（因為 einsum 需要跨 token 的資料）。</p>
+<h3 id="ch8-融合後的兩個-kernel">融合後的兩個 kernel</h3>
+<pre><code>Kernel 1：Producer（逐 token 處理）
+  讀 z（一次）
+    → LayerNorm → 4 個 linear → sigmoid gating → mask
+    → token-wise INT8 量化（per-token scale 當場算出）
+  寫出：a、b（INT8 ＋ scale）
+
+Kernel 2：Consumer（einsum ＋ epilogue）
+  讀 a、b（INT8，tiling 後的 v4 kernel）
+    → einsum → LayerNorm_out → linear_z
+    → 從 z 重新算 g = sigmoid(linear_g(LayerNorm(z))) → 相乘
+  寫出：輸出
+</code></pre>
+<h3 id="ch8-用數字看效果-記憶體流量">用數字看效果：記憶體流量</h3>
+<p>以「每個 L² 位置需要搬多少 bytes」計算（FP32、C = 128、每份張量 512 B/L²；einsum 以理想的最少讀取計算）：</p>
+<table>
+<thead>
+<tr>
+<th>步驟</th>
+<th>不融合（每步都讀寫 HBM）</th>
+<th>融合</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LayerNorm</td>
+<td>讀 z 512 ＋ 寫 z_ln 512</td>
+<td>─</td>
+</tr>
+<tr>
+<td>5 個 linear</td>
+<td>5 × (讀 512 ＋ 寫 512) = 5,120</td>
+<td>─</td>
+</tr>
+<tr>
+<td>兩個 gating</td>
+<td>2 × (讀 1,024 ＋ 寫 512) = 3,072</td>
+<td>─</td>
+</tr>
+<tr>
+<td><strong>Producer</strong></td>
+<td></td>
+<td>讀 z 512 ＋ 寫 a、b 的 INT8 264 = <strong>776</strong></td>
+</tr>
+<tr>
+<td>einsum</td>
+<td>讀 a、b 1,024 ＋ 寫 512 = 1,536</td>
+<td>讀 a、b 264</td>
+</tr>
+<tr>
+<td>LayerNorm_out ＋ linear_z</td>
+<td>2 × 1,024 = 2,048</td>
+<td>─</td>
+</tr>
+<tr>
+<td>× g</td>
+<td>讀 1,024 ＋ 寫 512 = 1,536</td>
+<td>讀 z 512 ＋ 寫輸出 512</td>
+</tr>
+<tr>
+<td><strong>合計</strong></td>
+<td><strong>約 14,300 B/L²</strong></td>
+<td><strong>約 2,060 B/L²（約 1/7）</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>這是理想化的估算（einsum 的重複讀取已經在第 2 章的 tiling 分析過，這裡先不計），
+目的是說明量級：<strong>融合讓搬運量少了將近一個數量級</strong>。</p>
+</blockquote>
+<h3 id="ch8-用數字看效果-同時存在的資料量-容量">用數字看效果：同時存在的資料量（容量）</h3>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>每個 L² 的 bytes</th>
+<th>U55C 16 GB 可處理的最大 L</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>典型實作（約 7 份 FP32）</td>
+<td>3,584</td>
+<td>約 2,190</td>
+</tr>
+<tr>
+<td>融合 ＋ INT8 中間值</td>
+<td>1,288（z 輸入、輸出各 512，a、b 各 132）</td>
+<td>約 3,650（<strong>約 1.67 倍</strong>）</td>
+</tr>
+</tbody>
+</table>
+<p>公式見 8.10 節。</p>
+<hr />
+<h2 id="ch8-8-5-用計算換記憶體-為什麼-g-要-重算">8.5 用計算換記憶體：為什麼 g 要「重算」</h2>
+<h3 id="ch8-問題">問題</h3>
+<p>g = sigmoid(linear_g(LayerNorm(z))) 在最後才會用到。如果在 producer 算好存起來，就要多存一份 L×L×128。</p>
+<h3 id="ch8-做法-在-consumer-的-epilogue-從-z-重新算">做法：在 consumer 的 epilogue 從 z 重新算</h3>
+<p><strong>多花的計算：</strong> 每個輸出位置要多做一次 128×128 的 linear。</p>
+<pre><code>重算 g 的運算量    = 2 × C² = 2 × 128 × 128 ≈ 32,768 FLOP / 每個輸出位置
+einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
+
+比例 = 32,768 ÷ (256 × L) = 128 ÷ L
+  L = 256  → 50%
+  L = 1024 → 12.5%
+  L = 4096 → 約 3%
+</code></pre>
+<p><strong>序列越長，重算的代價越小</strong>，而省下的記憶體（每個 L² 512 bytes）越重要。這正好就是長序列的情境。</p>
+<h3 id="ch8-一般原則-Recomputation">一般原則：Recomputation</h3>
+<p>「<strong>不存、需要時再算</strong>」是記憶體不夠時的常見手法（訓練大型模型時的 activation checkpointing 也是同樣的想法）。
+判斷值不值得的方法：</p>
+<pre><code>值得重算 ⇔ 重算的時間 &lt; 存取它所需的時間，或 記憶體容量是瓶頸
+</code></pre>
+<hr />
+<h2 id="ch8-8-6-為什麼這個融合特別適合-FPGA">8.6 為什麼這個融合特別適合 FPGA</h2>
+<h3 id="ch8-權重小-activation-大">權重小、activation 大</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>大小</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5 個 128×128 的 linear 權重（FP32）</td>
+<td>5 × 64 KB = <strong>320 KB</strong></td>
+</tr>
+<tr>
+<td>LayerNorm 參數</td>
+<td>幾 KB</td>
+</tr>
+<tr>
+<td>U55C 晶片內記憶體</td>
+<td>約 <strong>43 MB</strong></td>
+</tr>
+<tr>
+<td>一份 pair 張量（L = 2000）</td>
+<td><strong>2 GB</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>權重可以一直放在晶片內，只有 activation 在流動。</strong> 這和大型語言模型相反（語言模型是權重大、activation 相對小）。</p>
+<h3 id="ch8-FPGA-的優勢">FPGA 的優勢</h3>
+<ul>
+<li>可以把 LayerNorm → linear → gating → 量化做成<strong>一條管線</strong>，資料一路流過去，不需要中間的 buffer 寫回。</li>
+<li>每一級的平行度可以各自調整，讓整條管線速度平衡。</li>
+<li>GPU 做融合要手寫 CUDA，而且受限於 shared memory 的大小與 thread 的組織方式；FPGA 則是直接設計資料路徑。</li>
+</ul>
+<h3 id="ch8-硬體成本估算-producer">硬體成本估算（producer）</h3>
+<p>每個 token 要做 4 個 128×128 的 linear（a_p、a_g、b_p、b_g）＝ 4 × 16,384 = <strong>65,536 次乘加</strong>。
+如果要每 T 個 cycle 處理一個 token，需要 65,536 ÷ T 個乘加器：
+| 每個 token 的 cycle 數 T | 需要的乘加器 | FP32 約需 DSP（每個約 5） |
+|---|---|---|
+| 1,024 | 64 | 約 320 |
+| 256 | 256 | 約 1,280 |
+| 128 | 512 | 約 2,560 |</p>
+<p>U55C 有 9,024 個 DSP。這個表就是<strong>設計空間探索</strong>的一個維度：用多少資源換多少速度。</p>
+<hr />
+<h2 id="ch8-8-7-兩個硬體細節-LayerNorm-與-量化在源頭完成">8.7 兩個硬體細節：LayerNorm 與「量化在源頭完成」</h2>
+<h3 id="ch8-LayerNorm-在硬體上怎麼做">LayerNorm 在硬體上怎麼做</h3>
+<pre><code>mean = Σ x_c / 128
+var  = Σ (x_c − mean)² / 128
+y_c  = (x_c − mean) / sqrt(var + ε) × γ_c + β_c
+</code></pre>
+<ul>
+<li>一個 token 只有 128 個數，<strong>整個放在晶片內</strong>，所以可以掃兩次（第一次算平均、第二次算變異數），不會多花 HBM 流量。</li>
+<li><code>1 / sqrt(...)</code> 每個 token 只算一次，成本可以忽略。</li>
+<li>（另一種做法是 <strong>Welford 演算法</strong>，只掃一次就能同時算出平均與變異數，數值也比較穩定。）</li>
+</ul>
+<h3 id="ch8-量化在源頭完成">量化在源頭完成</h3>
+<p>per-token 量化需要知道「這個 token 128 個數的最大絕對值」。
+在 producer 裡，a 的 128 個數<strong>剛算完、還在暫存器裡</strong>，順便取最大值、算 scale、轉成 INT8，<strong>不需要額外再掃一次資料</strong>。</p>
+<p>對比：如果量化是獨立的步驟，要先把 FP32 的 a 寫出去、再讀回來量化，等於多搬了 2 份資料。
+<strong>「在資料產生的地方就壓縮」是融合設計的另一個好處。</strong></p>
+<hr />
+<h2 id="ch8-8-8-分析模型-用公式預測硬體表現">8.8 分析模型：用公式預測硬體表現</h2>
+<h3 id="ch8-為什麼要做模型">為什麼要做模型</h3>
+<ol>
+<li><strong>快</strong>：一次 HLS 合成要幾分鐘到幾十分鐘，模型只要幾毫秒 → 可以探索上百種設定。</li>
+<li><strong>能解釋</strong>：公式直接告訴你時間花在哪裡。</li>
+<li><strong>能預測</strong>：還沒實作的設計（例如融合架構）也能先估計。</li>
+</ol>
+<h3 id="ch8-模型的結構-以-v2-為例">模型的結構（以 v2 為例）</h3>
+<pre><code>總 cycle    = tile 數 × 每個 tile 的 cycle
+tile 數     = (L / TI) × (L / TJ)
+每個 tile   = init ＋ L × loop_k ＋ store ＋ 少量額外
+loop_k      = load ＋ mac ＋ 4                     （v2：輪流做）
+            = max(load, mac) ＋ 4                  （v3：重疊）
+load        = max(TI, TJ) × C/16 ＋ 77             （77 = HBM 延遲與啟動成本）
+mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
+</code></pre>
+<h3 id="ch8-校正-calibration">校正（calibration）</h3>
+<p>公式裡有一些<strong>無法事先知道的常數</strong>（例如 77、14），要從實際的 HLS 報告反推：
+| 報告中的數字 | 公式 | 反推出的常數 |
+|---|---|---|
+| load = 141 | 8 × 8 ＋ overhead | overhead = <strong>77</strong> |
+| mac = 526 | 8 × 8 × 8 ＋ depth | depth = <strong>14</strong> |
+| store = 586 | 512 ＋ overhead | overhead = <strong>74</strong> |</p>
+<h3 id="ch8-驗證-validation">驗證（validation）</h3>
+<p>用校正好的模型預測 v2：<strong>177,029,120 cycles</strong>；HLS 報告：<strong>177,029,185 cycles</strong> → 誤差 &lt; 0.01%。</p>
+<p>⚠️ 注意：用同一份報告校正又驗證，當然會很準。<strong>真正的驗證</strong>是：</p>
+<ul>
+<li>用 v2（8×8）校正，去預測 <strong>v2 的 16×16、32×32</strong>（<code>make hls-sweep</code> 的結果）；</li>
+<li>以及預測 <strong>v3、v4</strong>（<code>make hls-all</code> 的結果）。
+如果誤差在 10% 以內，模型就可信；誤差大的話，要找出是哪一項公式沒考慮到，這個過程本身也是很好的報告內容。</li>
+</ul>
+<h3 id="ch8-模型的限制-報告中要誠實寫出">模型的限制（報告中要誠實寫出）</h3>
+<ul>
+<li>HLS 報告本身也是估計值，實際上板可能因為 HBM 的真實延遲、時脈而不同。</li>
+<li>資源（DSP、BRAM）目前是粗估，只能看趨勢。</li>
+<li>沒有模擬 HBM 的頻寬競爭（多個 port 搶同一個通道的情況）。</li>
+</ul>
+<hr />
+<h2 id="ch8-8-9-設計空間探索-DSE-與-Pareto-前緣">8.9 設計空間探索（DSE）與 Pareto 前緣</h2>
+<h3 id="ch8-設計空間">設計空間</h3>
+<p>所有「可以調的旋鈕」組成的空間：
+| 旋鈕 | 可選值 |
+|---|---|
+| 版本 | v2、v3、v4、融合 |
+| Tile 大小 | 4、8、16、32 |
+| 平行度 | 16、32、64 lane |
+| 精度 | FP32、INT8、（INT4） |</p>
+<p>組合起來有上百種，每種都去合成太慢，所以用模型快速評估。</p>
+<h3 id="ch8-Pareto-前緣">Pareto 前緣</h3>
+<p>通常沒有「各方面都最好」的設計：快的用比較多資源、省資源的比較慢。
+<strong>Pareto 最佳</strong>：找不到另一個設計在<strong>所有指標都一樣好、而且至少一項更好</strong>。</p>
+<pre><code> cycle 數
+ （越低越好）
+   │  ●  v2@4
+   │
+   │        ● v2@8
+   │                    ● v2@32       ← 被 v3@16 支配（更慢、用更多 BRAM）
+   │     ○ v3@8
+   │          ○ v3@16
+   │                 ○ v4@16
+   │                          ○ v4@32
+   └──────────────────────────────────── BRAM 用量（越低越好）
+   ○ = Pareto 最佳（連起來就是 Pareto 前緣）
+</code></pre>
+<p><code>make model</code> 目前的結果（模型值，v4 常數待校正）：
+<strong>Pareto 最佳：v2@8×8、v3@8×8、v3@16×16、v4@16×16、v4@32×32</strong></p>
+<h3 id="ch8-怎麼選">怎麼選</h3>
+<ul>
+<li>資源很緊 → 選前緣左端（省資源）。</li>
+<li>要最快 → 選前緣右端。</li>
+<li>報告中可以說：「我們選 X，因為它在前緣的『膝點』（再多花資源，速度提升就很有限）」。</li>
+</ul>
+<hr />
+<h2 id="ch8-8-10-容量模型-最多能處理多長的序列">8.10 容量模型：最多能處理多長的序列</h2>
+<h3 id="ch8-公式">公式</h3>
+<pre><code>需要的記憶體 = L² × (每個 L² 位置的 bytes)
+最大 L      = sqrt(可用記憶體 ÷ 每個 L² 位置的 bytes)
+</code></pre>
+<h3 id="ch8-例子-U55C-的-16-GB-HBM">例子（U55C 的 16 GB HBM）</h3>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>bytes / L²</th>
+<th>最大 L</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>典型實作（約 7 份 FP32）</td>
+<td>7 × 512 = 3,584</td>
+<td>sqrt(16 × 2³⁰ ÷ 3,584) ≈ <strong>2,190</strong></td>
+</tr>
+<tr>
+<td>融合 ＋ INT8 中間值</td>
+<td>2 × 512 ＋ 2 × 132 = 1,288</td>
+<td>≈ <strong>3,650</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-為什麼只提升-1-67-倍-不是-7-倍">為什麼只提升 1.67 倍，不是 7 倍？</h3>
+<p>因為記憶體和 L² 成正比，<strong>L 只和記憶體的平方根成正比</strong>：</p>
+<pre><code>L 的提升 = sqrt(記憶體減少的倍數) = sqrt(3,584 ÷ 1,288) = sqrt(2.78) ≈ 1.67
+</code></pre>
+<p>要讓 L 變 2 倍，記憶體要降到 1/4；要變 10 倍，記憶體要降到 1/100。
+這也是為什麼 LightNobel 要把 peak memory 降低到上百倍，才能大幅延長序列。</p>
+<hr />
+<h2 id="ch8-8-11-對應到海報-以及評審可能會問的問題">8.11 對應到海報，以及評審可能會問的問題</h2>
+<h3 id="ch8-每個成果對應海報的哪一塊">每個成果對應海報的哪一塊</h3>
+<table>
+<thead>
+<tr>
+<th>海報區塊</th>
+<th>內容</th>
+<th>來源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>動機</td>
+<td>記憶體 vs L、約 7 份 pair 張量</td>
+<td>8.3、8.10</td>
+</tr>
+<tr>
+<td>關鍵觀察</td>
+<td>memory-bound（roofline）、outlier</td>
+<td>第 2 章、csim 結果</td>
+</tr>
+<tr>
+<td>架構</td>
+<td>融合資料流圖</td>
+<td>8.4～8.7</td>
+</tr>
+<tr>
+<td>逐步優化</td>
+<td>v0～v4 加速倍數與時間拆解</td>
+<td><code>hls-all</code></td>
+</tr>
+<tr>
+<td>DSE</td>
+<td>tile sweep、Pareto、模型誤差</td>
+<td>8.8、8.9</td>
+</tr>
+<tr>
+<td>精度</td>
+<td>per-token vs per-tensor</td>
+<td>csim</td>
+</tr>
+<tr>
+<td>序列長度</td>
+<td>最大 L 的比較</td>
+<td>8.10</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch8-評審可能問的問題">評審可能問的問題</h3>
+<table>
+<thead>
+<tr>
+<th>問題</th>
+<th>回答方向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>為什麼用 FPGA，不用 GPU？</td>
+<td>可以自訂資料流與記憶體階層，適合展示融合與量化；權重小、activation 大的特性很適合 FPGA 的管線化設計。</td>
+</tr>
+<tr>
+<td>HLS 的估計準嗎？</td>
+<td>HLS 是 cycle 級的排程結果；我們用它校正分析模型，並用不同設定交叉驗證（附誤差表）。上板是下一步。</td>
+</tr>
+<tr>
+<td>量化會不會影響預測結構的準確度？</td>
+<td>在 einsum 輸出的誤差約 1%（per-token）；完整模型的結構準確度需要真實資料驗證，列為未來工作。</td>
+</tr>
+<tr>
+<td>和 LightNobel 差在哪？</td>
+<td>LightNobel 是 ASIC ＋ 精細的混合精度量化；我們在現成 FPGA 上，從<strong>融合</strong>這個互補的角度處理同一個問題，並量化融合與量化各自的貢獻。</td>
+</tr>
+<tr>
+<td>為什麼只做 Triangle Multiplication？</td>
+<td>它是 pair representation 最核心、最吃記憶體的運算之一；方法可以推廣到 Triangle Attention（列為未來工作）。</td>
+</tr>
+<tr>
+<td>1.67 倍看起來不多？</td>
+<td>L 和記憶體是平方根關係；這個提升來自融合，還可以和更激進的量化（INT4、outlier 分離）疊加。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch8-8-12-參考資料">8.12 參考資料</h2>
+<ul>
+<li>LightNobel：<a href="https://arxiv.org/abs/2505.05893">arXiv 2505.05893</a></li>
+<li>GPU 上的融合 Triangle Multiplication（工作空間約 7U → 約 4U，分塊後約 2.2U）：<a href="https://github.com/aqlaboratory/openfold-3/pull/318">openfold-3 PR #318</a></li>
+<li>長序列推論的分塊：<a href="https://arxiv.org/pdf/2401.10652">AutoChunk</a>、<a href="https://arxiv.org/pdf/2203.00854">FastFold</a></li>
+</ul>
+<hr />
+<h2 id="ch8-本章小結">本章小結</h2>
+<ul>
+<li><strong>新策略 = 量測（v0～v4）＋ 自己的融合架構 ＋ 分析模型與 DSE。</strong> 不需要板子就能完成 architectural simulation。</li>
+<li><strong>融合</strong>：Triangle Multiplication 裡除了 einsum，全部都是逐 token 的運算，可以在晶片內一路做完；記憶體流量估計減少約 7 倍。</li>
+<li><strong>重算 g</strong>：用 128/L 比例的額外計算，換掉一整份 pair 張量，序列越長越划算。</li>
+<li><strong>量化在源頭完成</strong>：在 producer 裡順便算 scale，不必多掃一次資料。</li>
+<li><strong>分析模型</strong>：用 HLS 報告校正常數，再用不同設定驗證；用 Pareto 前緣挑設計。</li>
+<li><strong>容量</strong>：L 和記憶體是平方根關係，記憶體降到約 1/2.8，L 提升約 1.67 倍。</li>
 </ul>
 </section>
 </body></html>

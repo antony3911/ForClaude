@@ -29,9 +29,8 @@ def to_int(s):
 
 def parse(xml_path, L):
     r = ET.parse(xml_path).getroot()
-    name = text(r, "UserAssignments/TopModelName") or os.path.basename(
-        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(xml_path))))
-    )
+    # 用專案資料夾名稱（例如 trimul_v2_t16），才分得出同一個 kernel 的不同設定
+    name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(xml_path)))))
     target = float(text(r, "UserAssignments/TargetClockPeriod", "3.33"))
     est = float(text(r, "PerformanceEstimates/SummaryOfTimingAnalysis/EstimatedClockPeriod", "nan"))
     lat = to_int(text(r, "PerformanceEstimates/SummaryOfOverallLatency/Worst-caseLatency"))

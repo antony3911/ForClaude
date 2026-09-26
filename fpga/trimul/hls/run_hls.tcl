@@ -7,7 +7,10 @@
 #   DEFS    額外的編譯定義，例如 "-DTILE_I=16 -DTILE_J=16"
 #   CSIM    設為 1 才在 HLS 內跑 C simulation（預設跳過；功能驗證用 `make csim` 較快）
 #   COSIM   設為 1 會多跑 C/RTL co-simulation（較慢）
+#   PRJ     專案名稱（預設同 KERNEL）；做 tile sweep 時用不同名稱避免覆蓋報告
 set kernel $::env(KERNEL)
+set prj $kernel
+if {[info exists ::env(PRJ)] && $::env(PRJ) ne ""} { set prj $::env(PRJ) }
 set defs ""
 if {[info exists ::env(DEFS)]} { set defs $::env(DEFS) }
 set do_csim  [expr {[info exists ::env(CSIM)]  && $::env(CSIM)  == 1}]
@@ -21,7 +24,7 @@ set inc "-I$root/kernels"
 file mkdir $root/hls_prj
 cd $root/hls_prj
 
-open_project -reset $kernel
+open_project -reset $prj
 set_top $kernel
 add_files $root/kernels/$kernel.cpp -cflags "$inc $defs"
 if {$do_csim || $do_cosim} {

@@ -24,13 +24,15 @@ HOST   := host.exe
 VPP_FLAGS := -t $(TARGET) --platform $(PLATFORM) -I kernels $(DEFS) --save-temps --temp_dir $(BUILD)/tmp_$(TAG)
 CXXFLAGS  := -std=c++17 -O2 -Wall -Wno-unknown-pragmas -Wno-unused-label $(DEFS)
 
-.PHONY: help csim hls hls-all summary xo xclbin host run clean
+.PHONY: help csim hls hls-all hls-sweep model summary xo xclbin host run clean
 
 help:
 	@echo "make csim                               # g++ 功能驗證，不需 Vitis"
 	@echo "make hls KERNEL=trimul_v2               # 只跑 HLS 合成，看 latency/resource 報告"
 	@echo "make hls-all                            # v0~v4 全部合成（約數十分鐘）"
 	@echo "make summary                            # 把所有 HLS 報告整理成比較表（存成 hls_summary.csv）"
+	@echo "make hls-sweep                          # v2 的 tile 大小掃描（4/8/16/32）"
+	@echo "make model                              # 分析模型：預測 cycle、資源、最大 L，並和 HLS 報告比對"
 	@echo "make xclbin KERNEL=trimul_v2 TARGET=hw  # 產生 FPGA bitstream（xclbin）"
 	@echo "make host                               # 編譯 host 程式（需要 XRT）"
 	@echo "make run KERNEL=trimul_v2 TARGET=hw_emu # 執行（emulation 或上板）"
@@ -40,11 +42,11 @@ csim:
 	g++ $(CXXFLAGS) tb/tb.cpp kernels/*.cpp -o csim.exe
 	./csim.exe 32 $(DATA)
 
-# ---- 2. HLS 合成：報告在 hls_prj/$(KERNEL)/sol/syn/report/ ----
+# ---- 2. HLS 合成：報告在 hls_prj/$(TAG)/sol/syn/report/（TAG 預設 = KERNEL）----
 # Vitis 2024.2 以後沒有 vitis_hls 指令，改用 vitis-run；這裡自動判斷
 HLS_CMD := $(if $(shell command -v vitis_hls 2>/dev/null),vitis_hls -f,vitis-run --mode hls --tcl)
 hls:
-	KERNEL=$(KERNEL) DEFS="$(DEFS)" $(HLS_CMD) hls/run_hls.tcl
+	KERNEL=$(KERNEL) PRJ=$(TAG) DEFS="$(DEFS)" $(HLS_CMD) hls/run_hls.tcl
 
 # 一次合成全部版本；某一版失敗不會中斷其他版本
 KERNELS ?= trimul_v0 trimul_v1 trimul_v2 trimul_v3 trimul_v4
@@ -56,8 +58,23 @@ hls-all:
 	done
 	@$(MAKE) --no-print-directory summary
 
+# Tile 大小掃描：每組設定存在不同的專案（hls_prj/<kernel>_t<N>），不會互相覆蓋
+SWEEP_KERNEL ?= trimul_v2
+TILES        ?= 4 8 16 32
+hls-sweep:
+	@for t in $(TILES); do \
+		echo "===== $(SWEEP_KERNEL) tile $$t x $$t ====="; \
+		$(MAKE) --no-print-directory hls KERNEL=$(SWEEP_KERNEL) TAG=$(SWEEP_KERNEL)_t$$t \
+			DEFS="-DTILE_I=$$t -DTILE_J=$$t" > hls_$(SWEEP_KERNEL)_t$$t.log 2>&1 \
+			&& echo "  OK" || echo "  FAILED（看 hls_$(SWEEP_KERNEL)_t$$t.log 的最後幾行）"; \
+	done
+	@$(MAKE) --no-print-directory summary
+
 summary:
 	python3 scripts/hls_summary.py --csv hls_summary.csv
+
+model:
+	python3 scripts/perf_model.py --csv model_dse.csv
 
 # ---- 3. Vitis 編譯 + 連結 ----
 $(XO): kernels/$(KERNEL).cpp kernels/trimul.h

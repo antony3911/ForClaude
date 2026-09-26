@@ -204,6 +204,8 @@ make  目標  [變數=值 變數=值 ...]
 | `make hls KERNEL=...` | 合成一個版本，產生 cycle 數與資源報告 | Vitis | 數分鐘～數十分鐘 | `hls_prj/<kernel>/sol/syn/report/` | ✅（v2） |
 | `make hls-all` | 依序合成 v0～v4，最後自動 `make summary` | Vitis | 數十分鐘以上 | `hls_<kernel>.log`、`hls_summary.csv` | 🟡 進行中 |
 | `make summary` | 讀取所有報告，印出比較表 | Python 3 | 秒 | `hls_summary.csv` | 🔜 |
+| `make hls-sweep` | v2 的 tile 大小掃描（4/8/16/32），各自存成 `hls_prj/trimul_v2_t<N>` | Vitis | 數十分鐘 | 4 份報告 | 🔜 |
+| `make model` | 分析模型：預測 cycle、資源、最大 L，並和 HLS 報告比對誤差 | Python 3 | 秒 | `model_dse.csv` | 🔜 |
 | `make xo KERNEL=... TARGET=hw` | `v++ -c`：把 kernel 編成 .xo | Vitis ＋ platform | 數分鐘 | `build/hw/<tag>.xo` | ⬜ |
 | `make xclbin KERNEL=... TARGET=hw` | `v++ -l`：接上 platform 產生 bitstream | Vitis ＋ platform | **1～數小時** | `build/hw/<tag>.xclbin` | ⬜ |
 | `make host` | 編譯 host 程式 | XRT | 秒 | `host.exe` | ⬜ |
@@ -239,8 +241,9 @@ make hls-all KERNELS="trimul_v3 trimul_v4"  # ⬜ 只重跑失敗或新增的版
 make summary                                # 🔜 重新整理比較表
 
 # ── 實驗 B：tile 大小 ──
-make hls KERNEL=trimul_v2 DEFS="-DTILE_I=16 -DTILE_J=16"   # ⬜
-#   注意：同一個 KERNEL 的報告會被覆蓋，跑下一組前先把數字記下來或執行 make summary
+make hls-sweep                                             # 🔜 一次跑 4/8/16/32
+make hls-sweep SWEEP_KERNEL=trimul_v4 TILES="8 16"         # ⬜ 換版本或尺寸
+make model                                                 # 🔜 模型 vs 報告、設計空間探索
 
 # ── 上板（找到有 U55C 的機器後） ──
 make xclbin KERNEL=trimul_v2 TARGET=hw PLATFORM=<實際名稱>    # ⬜ 1～數小時

@@ -111,7 +111,11 @@
 ## 7.5 競賽方向升級（2026-09-26）
 使用者覺得原題目偏敷衍，已整理 `docs/competition_directions.md`：
 A 融合版 Triangle Multiplication（主推）、B FPGA 簡化版 AAQ、C 分析模型＋DSE、D 真實 activation 分析、E 多 CU。
-建議 A＋C＋D。**待使用者回覆：競賽名稱、截止日期、評分偏好、U55C 位置。**
+建議 A＋C＋D。
+**使用者回覆：** 校內專題小競賽；**三週內（約 10/17）交 architectural simulation 結果＋海報**，再一個月後口頭報告；
+評分偏好不明確，「至少不要太敷衍」。→ 計畫見 `docs/three_week_plan.md`（第 1 週量測＋校正模型、第 2 週融合 producer kernel、第 3 週圖表海報）。
+新增工具：`make hls-sweep`（tile 4/8/16/32，專案名 `<kernel>_t<N>`）、`make model`（`scripts/perf_model.py`，
+已用 v2 報告校正，誤差 < 0.01%；v0/v1/v3/v4 常數為假設值待校正）。HLS 專案名稱改用 `TAG`（`PRJ` 環境變數）。
 
 ## 8. 教學手冊
 

@@ -133,7 +133,7 @@ Best regards,
 
 | 學校 | 學程 | 第二碩士資格 | 書面確認 | 長度 | 實習必修？ | 總花費（估） | 截止日 | 申請費 | TOEFL 門檻 | GRE | 就業報告重點 | 下線／ASIC 課程 | 地點 | 感興趣的教授 | 送件 | 結果 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Example U | MS ECE | 🟡 SOP 要說明 | ✔ 2027/06 回信 | 3 學期 | 是 | US$12 萬 | 12/15 | $90 | 100 | 不需要 | NVIDIA、Apple… | 有 | TX | Prof. A | ✔ | |
+| Example U | MS ECE | 🟡 SOP 要說明 | ✔ 已書面回覆 | 3 學期 | 是 | US$12 萬 | 12/15 | $90 | 100 | 不需要 | NVIDIA、Apple… | 有 | TX | Prof. A | ✔ | |
 
 ---
 
@@ -223,16 +223,16 @@ City, State | email | phone | linkedin.com/in/xxx | github.com/xxx
 EDUCATION
 [US University] — M.S. Electrical and Computer Engineering        Expected May 2031
   Relevant: Advanced VLSI, ASIC Verification, Computer Architecture
-[Taiwan University] — M.S. Electrical Engineering, GPA x.xx/4.3   Jun 2027
+[Taiwan University] — M.S. Electrical Engineering, GPA x.xx/4.3   [Mon Year]
 
 SKILLS
   RTL/HLS: SystemVerilog, Verilog, Vitis HLS | Verification: SVA, UVM, cocotb
   EDA: Design Compiler, PrimeTime, Innovus, VCS, Vivado | Languages: Python, C++, Tcl
 
 EXPERIENCE / RESEARCH
-[Taiwan IC Company] — Digital Design Engineer                      Dec 2027 – Jul 2029
+[Taiwan IC Company] — Digital Design Engineer                      [Mon Year] – [Mon Year]
   • Owned RTL for …; closed timing at … MHz; …
-[NSYSU Lab] — Graduate Researcher                                 Sep 2025 – Jun 2027
+[NSYSU Lab] — Graduate Researcher                                 Sep 2025 – [Mon Year]
   • Designed …, achieving … (quantified)
   • Implemented … in 16nm: … MHz, … mm², … mW
   • Verified … with …, reaching …% functional coverage

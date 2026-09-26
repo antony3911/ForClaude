@@ -91,16 +91,24 @@
 - v0～v3 rel_l2 ≈ 1e-7（浮點誤差）
 - v4 per-token rel_l2 ≈ **9.9e-3**，per-tensor ≈ **1.1e-1**
 
-## 7. 下一步（依序）
+## 7. 下一步（依序；2026-09-26 讀原文後修訂，詳見 `docs/three_week_plan.md`）
 
+**第 1 週（9/26～10/3）：量測、校正、驗證假設**
 1. 取得 `make hls-all` 的比較表（v0～v4），分析：
-   - v0→v1 資料重用的效果、v1→v2 平行度、v2→v3 是否符合 ~20% 預測、v4 的資源代價
+   - v0→v1 資料重用的效果、v1→v2 平行度、v2→v3 是否符合 ~1.27× 預測、v4 的資源代價
    - 若某版 FAILED：`tail -n 30 hls_trimul_vN.log`
-2. Tile sweep（例：`make hls KERNEL=trimul_v2 DEFS="-DTILE_I=16 -DTILE_J=16"`；注意不同 DEFS 會覆蓋同名專案，需要另外記錄）
-3. 找到 U55C 機器 → `make xclbin TARGET=hw`、`make run`（檢查 platform 名稱，預設 `xilinx_u55c_gen3x16_xdma_3_202210_1`；也要確認該 platform 支援 Vitis 2025.2）
-4. 上板實驗：v2 多通道 vs. onebank、L 掃描、FP32 vs INT8
-5. （加分）Colab 跑 `dump_trimul_inputs.py` 取得真實 activation 的量化誤差
-6. 報告圖表：roofline、各版本長條圖、tile sweep trade-off、量化誤差、記憶體 vs L 曲線
+2. `make hls-sweep`（tile 4/8/16/32）→ `make model` 校正常數、做模型 vs HLS 誤差表
+3. **真實 activation（方向 D）**：Colab 或 server（`--device cpu`、短序列）跑 `dump_trimul_inputs.py`，
+   看 `paper_group_C_check`（a、b 是否接近論文 C 組：平均絕對值 3.85、3σ outlier 0.64 個）與 `rel_l2_grid`（INT8／INT4 × token／channel／tensor）
+
+**第 2 週（10/4～10/10）：論文導向的延伸**
+4. **v5：INT4 per-token einsum kernel**（Claude 寫；512-bit word = 128 個 INT4 = 一個 token）→ csim → HLS → 加進 perf_model
+5. 融合架構只做設計圖 ＋ 分析模型（producer kernel 移到第二階段）
+
+**第 3 週（10/11～10/17）：圖表與海報**（清單見 three_week_plan.md 第 3 節）
+
+**第二階段：** 找到 U55C → `make xclbin TARGET=hw`、`make run`（platform 預設 `xilinx_u55c_gen3x16_xdma_3_202210_1`，需確認支援 2025.2）；
+上板實驗（v2 多通道 vs onebank、v4／v5）；融合 producer kernel；Triangle Attention 的初步設計。
 
 ### 已知風險 / 注意事項
 - 程式在 2025.2 上只驗證過 **v2 的 HLS 合成**；v0/v1/v3/v4 的合成、cosim、`v++`、XRT host 都**還沒實際跑過**。
@@ -137,6 +145,13 @@ A 融合版 Triangle Multiplication（主推）、B FPGA 簡化版 AAQ、C 分�
 a、b 屬 C 組 → 我們的 INT8 是保守選擇，INT4 是自然延伸（方向 B 已改寫）。
 評估方法：Python cycle-accurate 模擬器，和 RTL 交叉驗證誤差平均 3.30%（對應我們的「模型 ↔ HLS」驗證）。
 120× 是和「不分塊」GPU 比；和分塊比 1.26～5.05×；量化本身（Table 1）121.39 → 73.50 GB ≈ 1.65×。
+
+**策略修訂（同日，使用者要求「所有誤判與新策略都訂好、手冊要有一體性」）：**
+- 主軸改為「逐步拆解每一招（v0～v5）」；方向 B 改成只做 INT4 per-token（v5，依論文 C 組）；方向 D 升級為驗證關鍵假設；
+  方向 A（融合）降為設計＋分析模型；新增方向 F（Triangle Attention，未來工作）。見 `docs/competition_directions.md`。
+- 標題改為「拆解 Pair Representation 的記憶體牆…」（`docs/three_week_plan.md`）。
+- `dump_trimul_inputs.py` 新增 `paper_group_C_check`（平均絕對值、3σ outlier 數）與 `rel_l2_grid`（INT8／INT4 × token／channel／tensor），已用隨機小模型測過可執行。
+- 手冊通讀一遍並同步修改：速覽、第 1、2、4、5、6、7 章（新增 7.11 誤判案例）、附錄 A、B。
 
 ## 9. 檔案索引
 

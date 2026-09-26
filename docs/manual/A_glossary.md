@@ -57,7 +57,7 @@
 | **Amdahl's Law** | 改善的上限 | `加速 = 1 ÷ [(1−p) + p/s]` | v3 最多約 1.27 倍 |
 | **Memory layout** | 資料在記憶體中的排列 | 決定能否連續讀取 | `[row][col][channel]` |
 | **Stride** | 連續兩次存取的間距 | stride 大 → 無法 burst | v0 的 stride = 128 |
-| **Operator fusion（融合）** | 運算合併 | 中間值不寫回記憶體 | 2.9 節、**第 6 章 6.4 節（本專題主策略）** |
+| **Operator fusion（融合）** | 運算合併 | 中間值不寫回記憶體 | 2.9 節、第 6 章 6.4 節（原則來自 LightNobel；本專題做設計與分析） |
 | **Recomputation（重算）** | 用計算換記憶體 | 不存中間值，需要時重算 | 2.9 節、6.5 節（重算 g） |
 
 ## A.3 量化
@@ -71,14 +71,16 @@
 | **對稱量化** | 以 0 為中心 | 正負範圍相同，不需要 zero point | v4 的做法 |
 | **Per-tensor** | 整份共用一把尺 | 一個 scale 給整個張量 | 誤差約 11% |
 | **Per-token** | 每格一把尺 | 每個 token 一個 scale | 誤差約 1% |
-| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale（本專題未實作） | 第 4 章 4.4 節提到 |
+| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale；LLM 常用，但 PPM 的 channel 之間差異小，LightNobel 改用 per-token（kernel 未實作，真實資料的誤差表有比較） | 2.8、4.4、6.7 節 |
 | **Outlier** | 特別大的值 | 少數數值遠大於其他值 | 模擬資料中 1% 的 token ×30 |
 | **Fake quantization** | 量化再還原 | 用浮點數模擬量化誤差 | Python 腳本評估誤差 |
 | **rel_l2** | 整體相對誤差 | `‖z − z_ref‖ ÷ ‖z_ref‖` | testbench、host |
 | **max_abs** | 最大單點誤差 | `max |z − z_ref|` | testbench、host |
 | **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：每個 token 一個 scale；activation 依位置分 A、B、C 三組（INT8＋4 outlier／INT4＋4 outlier／INT4）；outlier 用 INT16、執行時 top-k 挑出 | 1.6 節、速覽 |
 | **Inlier** | 一般大小的值 | 用低精度量化的部分 | 速覽 |
-| **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值 | 速覽 |
+| **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值（LightNobel：A、B 組 k = 4，用 INT16） | 速覽 |
+| **3σ 法則** | 判斷 outlier 的常用規則 | 和平均值相差超過 3 個標準差的值視為 outlier | 速覽、6.7 節 |
+| **INT4** | 4 bit 整數 | −7～7（對稱量化）；兩個數擠在一個 byte，資料量是 INT8 的一半 | 6.7 節（v5） |
 | **Dequantization（反量化）** | 把整數還原成實數 | `x̂ = s × q` | 2.8 節 |
 
 ## A.4 FPGA 硬體

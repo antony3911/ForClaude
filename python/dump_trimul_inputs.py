@@ -62,13 +62,31 @@ class StopCapture(Exception):
     pass
 
 
-def int8_quant(x, per_token):
-    """對稱 INT8 量化再還原（fake quant），x: [L, L, C]"""
-    if per_token:
-        s = x.abs().amax(dim=-1, keepdim=True).clamp_min(1e-12) / 127.0
+def fake_quant(x, bits=8, gran="token"):
+    """對稱量化再還原（fake quant），x: [L, L, C]
+    gran：token（每個 (i,j) 一個 scale，LightNobel / v4 的做法）、channel（每個 c 一個 scale，LLM 常用）、tensor（整份一個 scale）"""
+    qmax = 2 ** (bits - 1) - 1
+    if gran == "token":
+        m = x.abs().amax(dim=-1, keepdim=True)
+    elif gran == "channel":
+        m = x.abs().amax(dim=(0, 1), keepdim=True)
     else:
-        s = x.abs().amax().clamp_min(1e-12) / 127.0
-    return torch.clamp(torch.round(x / s), -127, 127) * s
+        m = x.abs().amax()
+    s = m.clamp_min(1e-12) / qmax
+    return torch.clamp(torch.round(x / s), -qmax, qmax) * s
+
+
+def int8_quant(x, per_token):
+    return fake_quant(x, 8, "token" if per_token else "tensor")
+
+
+def paper_stats(x):
+    """和 LightNobel Fig. 6(c) 對照的統計：每個 token 的平均絕對值、每個 token 超出 3σ 的值有幾個。
+    註：3σ 以整份 activation 的平均與標準差計算；論文的確切定義可能略有不同，比較量級即可。"""
+    mu, sd = x.mean(), x.std()
+    n_out = ((x - mu).abs() > 3 * sd).sum(dim=-1).float()
+    return {"avg_abs": float(x.abs().mean()), "outliers_per_token_3sigma": float(n_out.mean()),
+            "tokens_with_outlier_pct": float((n_out > 0).float().mean() * 100)}
 
 
 def trimul_ref(a, b, channels):
@@ -155,6 +173,16 @@ def main():
     for per_token, tag in [(True, "per_token"), (False, "per_tensor")]:
         z = trimul_ref(int8_quant(a, per_token), int8_quant(b, per_token), ch)
         stats[f"int8_{tag}_rel_l2"] = float((z - ref).norm() / ref.norm())
+    # 和論文對照：a、b 屬於 AAQ 的 C 組（論文：平均絕對值 3.85、平均 outlier 0.64 個）
+    stats["paper_group_C_check"] = {"a": paper_stats(a), "b": paper_stats(b),
+                                    "paper_group_C": {"avg_abs": 3.85, "outliers_per_token": 0.64}}
+    # 精度 × 量化粒度的誤差表（einsum 輸出的 rel_l2），對應手冊 6.7 節「該用幾個 bit」
+    grid = {}
+    for bits in (8, 4):
+        for gran in ("token", "channel", "tensor"):
+            z = trimul_ref(fake_quant(a, bits, gran), fake_quant(b, bits, gran), ch)
+            grid[f"int{bits}_{gran}"] = float((z - ref).norm() / ref.norm())
+    stats["rel_l2_grid"] = grid
     print(json.dumps(stats, indent=2))
 
     # ---- 補零到 pad 的倍數（補的 token 全為 0，不影響結果）----

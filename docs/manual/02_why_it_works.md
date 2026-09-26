@@ -319,6 +319,7 @@ Double buffering 不減少搬運量，也不提高頻寬，而是**改變時間�
 
 ### 白話直覺
 把食材**壓縮成原本的 1/4 再搬**，搬到後再還原。會有一點失真，但搬運量少了 4 倍。
+（1/4 是相對我們的 FP32；LightNobel 的基準是 FP16，INT8 相對 FP16 是 1/2、INT4 是 1/4。）
 
 ### INT8 對稱量化的原理
 把一組浮點數 `x` 轉成 -127～127 的整數 `q`：
@@ -352,13 +353,24 @@ outlier token：s ≈ 0.66，但它自己的數值本來就大，相對誤差一
 我們的 C 模擬實測：**per-token 輸出誤差約 1%，per-tensor 約 11%**，與上面的推算方向一致。
 這正是 LightNobel「token-wise」量化的核心動機。
 
+### 那 per-channel 呢？
+LLM 常用 **per-channel**（每個 channel 一把尺），因為 LLM 的 activation 是「某幾個 channel 特別大」。
+LightNobel 觀察到 PPM 相反：**channel 之間差異小、token 之間差異大**，outlier 集中在特定位置的 token（1.6 節），
+所以選 per-token。另一個好處是硬體：linear、LayerNorm 都是逐 token 做的，per-token 的 scale 剛好跟著 token 走，
+per-channel 則要在每個 token 內逐一反量化。第 6 章 6.7 節會用真實資料比較這三種粒度。
+
+### 位元數越少越好嗎？
+INT4 只有 −7～7 共 15 個整數，scale 是 INT8 的約 18 倍，誤差也大約大 18 倍。
+所以 INT4 只適合**數值分布平均、outlier 少**的資料。LightNobel 就是依這個原則分組：
+outlier 多的 A 組用 INT8，outlier 少的 C 組用 INT4（速覽第 2 節）。
+
 ### 代價
 | 項目 | 代價 |
 |---|---|
 | 精度 | 約 1% 的相對誤差（per-token） |
 | 額外資料 | 每個 token 多存一個 scale（4 bytes / 128 bytes ≈ 3%） |
 | 額外運算 | 每次乘加要多乘上 `s_a × s_b`（v4 的 mac 迴圈） |
-| 量化本身 | 要先算出每個 token 的最大值（我們在 host 端做，沒有計入 kernel 時間） |
+| 量化本身 | 要先算出每個 token 的最大值（我們在 host 端做，沒有計入 kernel 時間；LightNobel 在硬體裡「執行時」做，見 6.7 節） |
 
 ### 算術強度（v4，8×8 tile）
 ```
@@ -381,17 +393,19 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 
 ### 這是「解法」的原因
 量化同時縮小兩件事：**搬運量**（公式中的分子）和**記憶體佔用**（決定 L 的上限）。
-這是唯一一個**直接處理「序列長度受限」**的手法，也是 LightNobel 的核心。
+在 v0～v4 裡，這是唯一一個**直接處理「序列長度受限」**的手法，也是 LightNobel 的核心。
+（另一類處理容量的手法是「不存中間值」：融合、重算、LightNobel 的 token-wise attention，見 2.9 節與第 6 章。）
 
 ---
 
-## 2.9 其他常見手法（本專題未實作，但報告中可以提）
+## 2.9 其他常見手法（v0～v4 沒有用到，第 6 章的設計會用到其中幾個）
 
 | 手法 | 原理 | 代價 | 在 PPM 的例子 |
 |---|---|---|---|
 | **Chunking（分塊）** | 一次只算一部分，算完就丟 | 時間變長 | AlphaFold2/ESMFold 內建 chunk size 設定 |
-| **Recomputation（重算）** | 不存中間值，需要時重新算 | 多花計算 | 訓練時常用的 activation checkpointing |
-| **Operator fusion（運算融合）** | 把連續幾個運算合成一個，中間值不寫回記憶體 | 程式較複雜 | LayerNorm + Linear + gating 合併 |
+| **Recomputation（重算）** | 不存中間值，需要時重新算 | 多花計算 | 訓練時常用的 activation checkpointing；第 6 章 6.5 節的「重算 g」 |
+| **Operator fusion（運算融合）** | 把連續幾個運算合成一個，中間值不寫回記憶體 | 程式較複雜 | LayerNorm + Linear + gating 合併（第 6 章）；LightNobel 的 RMPU → VVPU 管線 |
+| **Token-wise attention** | attention 一次處理一部分 token，不存整個 score matrix | 要線上追蹤最大值 | LightNobel 的 Triangle Attention（類似 FlashAttention） |
 | **低精度浮點（FP16/BF16）** | 每個數用 2 bytes | 範圍或精度下降 | 語言模型部分常用 FP16 |
 | **稀疏化** | 跳過接近 0 的值 | 需要不規則存取 | 距離很遠的 (i, j) 對 |
 
@@ -431,6 +445,7 @@ v0：受限於記憶體（AI = 0.25）
 | 等待延遲 | Double buffering | 讓搬運和計算重疊 |
 | 頻寬不夠 | 多通道 | 同時使用多條路 |
 | 資料太大、放不下 | 量化 | 每筆資料變小，同時降低容量與頻寬需求 |
+| 中間值太多 | 融合、重算（第 6 章） | 中間值不寫回記憶體 |
 
 ---
 
@@ -440,7 +455,7 @@ v0：受限於記憶體（AI = 0.25）
 - 用**算術強度**判斷 memory-bound 還是 compute-bound；用 **roofline 圖**呈現結果。
 - 本專題五個版本的 AI：**0.25 → 2 → 2 → 2 → 約 7.8**（FLOP/byte）。
 - Double buffering 的上限由搬運佔比決定（v2 約 21%），這是 Amdahl's Law。
-- 量化是唯一同時處理「頻寬」和「容量（序列長度）」的手法，per-token 可以避免 outlier 拖累精度。
+- 在 v0～v4 中，量化是唯一同時處理「頻寬」和「容量（序列長度）」的手法；per-token 可以避免 outlier 拖累精度，位元數要依資料的分布選。
 
 ---
 

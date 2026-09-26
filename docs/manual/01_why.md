@@ -4,7 +4,7 @@
 > - 蛋白質結構預測模型（AlphaFold2、ESMFold）內部有一份 **L × L × 128** 的巨大資料（pair representation）。
 > - 蛋白質越長（L 越大），這份資料**以平方成長**：長度加倍，資料變 4 倍。
 > - 這造成兩個具體問題：**① 記憶體放不下**（序列長度受限），**② 搬資料比計算還慢**（memory-bound）。
-> - LightNobel 針對這兩個問題提出解法；我們的專題則是在 FPGA 上，用常見手法處理其中最關鍵的一個運算。
+> - LightNobel 針對這兩個問題提出解法；我們的專題則是在 FPGA 上實作其中一個運算（Triangle Multiplication），逐步拆解每一種手法的貢獻。
 
 ---
 
@@ -137,7 +137,8 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 ### Triangle Attention（我們沒有實作，但 LightNobel 有處理）
 同一個 block 裡還有 Triangle Attention：對每一列 i，在 (j, k) 之間做 attention。
 它的中間值（attention logits）形狀是 **L × L × L × heads**，是**立方**成長，
-所以實作上一定要分塊（chunking）計算，否則 L = 1000 時光這個中間值就需要數十 GB。
+所以 GPU 上一定要分塊（chunking）計算，否則 L = 1000 時光這個中間值就需要數十 GB。
+LightNobel 則改用 token-wise 的 attention（類似 FlashAttention），根本不把整個 score matrix 存下來。
 
 **它才是長序列時最花時間的運算。** LightNobel 在 H100 上量測 ESMFold（不分塊）的執行時間（論文 Fig. 3）：
 
@@ -158,7 +159,8 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 每個數字用 FP32（4 bytes），每格 128 個數字 → **每格 512 bytes**。
 
 > **精度說明：** 本專題的 kernel 用 FP32（HLS 裡最直接）。LightNobel 的比較基準（ESMFold）是 **FP16**，
-> 大小是下表的一半。和論文比較時要用 FP16 當基準，否則量化的效果會被**高估 2 倍**（6.10 節）。
+> 大小是下表的一半。和論文比較時要用 FP16 當基準，否則量化省下的比例會被誇大
+> （INT8 相對 FP32 是 1/4，相對 FP16 只有 1/2；見 6.10 節）。
 
 ```
 大小 = L × L × 128 × 4 bytes = L² × 512 bytes
@@ -204,6 +206,7 @@ L 小的時候，權重佔大頭；**L 一大，activation 就遠遠超過權重
 常見做法是 **chunking（分塊）**：一次只算一部分，算完就丟。
 - 優點：記憶體峰值下降。
 - 代價：要重複讀資料、無法完全平行，**時間變長**。
+- LightNobel 的 GPU 比較對象就有「不分塊」和「分塊（Chunk4）」兩種；分塊後 GPU 能跑更長的序列，但慢很多。
 
 > **小結：** 序列長度被記憶體容量卡住，這就是 LightNobel 標題裡的
 > 「*Sequence Length Limitation*」。
@@ -288,11 +291,11 @@ v0 只有 0.25，也就是說**運算單元大約 97% 的時間都在等資料**
 ## 1.7 我們的定位
 
 ### 題目一句話
-> 在 FPGA 上實作 PPM 的 pair representation 運算之一（Triangle Multiplication），採用**融合資料流 ＋ token-wise 量化**，
-> 並用逐步優化（v0～v4）與分析模型，**量化每一招帶來多少改善、付出多少硬體代價**。
+> 在 FPGA 上實作 PPM 的 pair representation 運算之一（Triangle Multiplication），用逐步優化（v0～v5）與分析模型，
+> **量化每一招（包括依論文設定的 token-wise 低位元量化）帶來多少改善、付出多少硬體代價**。
 
-和 LightNobel 的關係：**繼承**它的問題定義、token-wise 量化與管線化（中間值不落地）的原則，**簡化**成單一 INT8 與單一運算，
-**新增** FPGA 實作、逐步 ablation 與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。
+和 LightNobel 的關係：**繼承**它的問題定義、token-wise 量化與管線化（中間值不落地）的原則，**簡化**成單一運算、單一精度，
+**新增** FPGA 實作、逐步 ablation、真實資料驗證與分析模型。完整對照見「速覽」第 6 節，策略細節見第 6 章。
 
 ### 為什麼選 Triangle Multiplication
 1. **它是 pair representation 的運算**，直接受 L² 資料量影響；短序列時它佔執行時間最多（36.1%）。

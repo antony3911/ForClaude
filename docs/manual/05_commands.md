@@ -359,13 +359,17 @@ scp anthony@scd-lab-server63:~/ForClaude/fpga/trimul/hls_summary.csv C:\ForClaud
 CSV,kernel,L,time_ms,gflops,est_traffic_GB,est_GBps,hbm_footprint_MB,rel_l2,max_abs
 ```
 
-### `python/dump_trimul_inputs.py`（需要 GPU 或 Colab，⬜）
+### `python/dump_trimul_inputs.py`（GPU／Colab，或記憶體夠大的電腦用 CPU 跑短序列，🔜 第 1 週）
 ```
 python dump_trimul_inputs.py  (--uniprot ID | --pdb ID | --fasta 檔案 | --seq 序列)  --out 資料夾
                               [--block 0~47] [--max-len N] [--pad 32] [--device cuda|cpu]
                               [--chunk-size 64] [--eval-channels 16]
 ```
 例：`python dump_trimul_inputs.py --uniprot P0DTC2 --out ../data/spike`
+
+沒有 GPU 時可以用 CPU 跑短序列（較慢，需要約 16 GB 以上的記憶體）：
+`python dump_trimul_inputs.py --uniprot P69905 --device cpu --out ../data/hba`
+（P69905 是 142 個胺基酸的血紅素 α 鏈。）輸出的 JSON 要看 `paper_group_C_check` 和 `rel_l2_grid`，怎麼解讀見 6.7 節。
 
 ### `docs/manual/build_pdf.py`（重新產生這份手冊的 PDF）
 ```bash
@@ -439,4 +443,4 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 4. 想合成 16×16 tile 的 v4，但不要覆蓋 v4 預設設定的報告，指令怎麼寫？
 5. 執行 `make clean` 之前應該先做什麼？
 
-**下一章**介紹新的專題策略：融合資料流架構、分析模型與設計空間探索，以及背後的理論。
+**下一章**介紹新的專題策略：逐步拆解、融合與量化設計、分析模型與設計空間探索，以及背後的理論。

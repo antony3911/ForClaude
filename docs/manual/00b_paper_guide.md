@@ -25,8 +25,8 @@
  LightNobel（ISCA 2025）：token-wise 自適應量化 ＋ 專用加速器（ASIC）
           │  軟硬體協同設計，峰值記憶體最多降約 120 倍
           ▼
- 本專題：在現成的 FPGA（U55C）上，用「融合資料流 ＋ token-wise 量化」
-         處理同一個瓶頸，並用分析模型做設計空間探索
+ 本專題：在現成的 FPGA（U55C）上實作其中的 Triangle Multiplication，
+         逐步拆解每一招（含 token-wise 量化）的貢獻，並用分析模型做設計空間探索
 ```
 
 ---
@@ -66,12 +66,12 @@
 
 ## 3. LightNobel 的三個創新，白話版
 
-### 創新一：量化的單位是「token」，而且每個 token 的待遇不同
+### 創新一：量化的單位是「token」，而且不同位置的 activation 待遇不同
 - 一般量化是「整份資料一把尺」（per-tensor），少數特別大的值（outlier）會拖垮其他值的精度。
 - LightNobel 讓**每個 token 有自己的尺**（scale），再依 activation **在模型中的位置**分成三組：接 residual 的數值大、outlier 多，給 INT8；其他給 INT4（見上表）。
-- 白話：不是全班穿同一個尺寸的制服，而是量身訂做，還依體型分成三種版型。
+- 白話：不是全班穿同一個尺寸的制服，而是每個人量身訂做（per-token scale），不同場合（位置）再用不同的布料（位元數）。
 - 本專題的對應：v4 做了最基本的「每個 token 一把尺」（INT8 per-token），模擬資料上誤差約 1%，per-tensor 約 11%。（詳見 2.8 節）
-- 值得注意：Triangle Multiplication 裡的 a、b 是 linear 之後的值，依定義屬於 **C 組**（論文用 INT4、不處理 outlier）。也就是說，我們的 INT8 對 a、b 其實是**保守**的選擇，INT4 是合理的延伸。
+- 值得注意：Triangle Multiplication 裡的 a、b 是 linear 之後的值，依定義屬於 **C 組**（論文用 INT4、不處理 outlier）。也就是說，我們的 INT8 對 a、b 其實是**保守**的選擇，INT4 是下一步（v5，見 6.7 節）。
 
 ### 創新二：outlier 另外存，而且格式對硬體友善
 - 每個 token 裡絕對值最大的 k 個值（A、B 組 k = 4）當作 outlier，**用 INT16 另外存**；其他值（inlier）用 INT4 或 INT8。
@@ -122,7 +122,7 @@
 | 通用 LLM 量化 | SmoothQuant、LLM.int8()、AWQ | outlier 分離 | outlier 以外都用同一精度；GPU 上 activation 量化常常反而變慢（W4A4 比 FP16 慢） |
 | 融合 kernel | OpenFold3 的 GPU 融合實作 | 中間值不落地，工作空間約 7U → 4U（分塊後約 2.2U） | 要手寫 kernel，受 GPU 架構限制 |
 | **專用加速器** | **LightNobel** | 量化 ＋ 專用硬體 ＋ 管線化資料流，記憶體與速度一起改善 | 以模擬器評估，沒有流片；ASIC 做出來後無法修改 |
-| **FPGA 加速** | **本專題** | 融合 ＋ 量化，實際可跑的可重組硬體 | 絕對速度不如 GPU；目前以架構模擬評估 |
+| **FPGA 加速** | **本專題** | 逐步拆解各手法的貢獻；可重組、可實際部署的硬體 | 只做一個運算；絕對速度不如 GPU；目前以架構模擬評估 |
 
 > 搜尋「FPGA ＋ AlphaFold／Evoformer／Triangle Multiplication」**沒有找到公開的 FPGA 實作**，這是本專題的切入點之一（建議再用 Google Scholar 確認）。
 > 參考：[FastFold](https://arxiv.org/pdf/2203.00854)、[AutoChunk](https://arxiv.org/pdf/2401.10652)、[MEFold](https://ieeexplore.ieee.org/document/10651470/)、[OpenFold3 PR #318](https://github.com/aqlaboratory/openfold-3/pull/318)
@@ -139,7 +139,7 @@
 | | 峰值記憶體、可處理的序列長度作為指標 | 容量模型（6.10 節） |
 | | **管線化、執行時量化**（中間值不落地） | LightNobel 的 RMPU → VVPU 管線已經這樣做；我們在 FPGA 上用 HLS 實現同樣的原則（6.4、6.7 節） |
 | | **模擬器 ＋ 交叉驗證**的評估方法 | 論文用 cycle-accurate 模擬器，並和 RTL 比對（誤差 < 5%）；我們用分析模型，並和 HLS 報告比對 |
-| **簡化** | 三組混合精度 → 單一 INT8 | 三週內做得完；a、b 屬 C 組，INT4 是自然的延伸 |
+| **簡化** | 三組混合精度 → a、b 只用單一精度（INT8，下一步 INT4） | a、b 屬 C 組，論文對 C 組也只用單一精度 |
 | | 執行時 top-k outlier → 不另外處理 | a、b 屬 C 組，論文本身也不處理 outlier |
 | | 完整模型 → 只做 Triangle Multiplication | **不是最花時間的運算**（長序列時是 Triangle Attention），但它是結構最單純的 pair 運算，適合當第一個目標（1.7 節） |
 | | ASIC 模擬 → FPGA 的 HLS 合成 | 評估對象是現成可燒錄的硬體 |
@@ -147,11 +147,14 @@
 | | **逐步 ablation（v0～v4）** | 把 tiling、寬位元、double buffering、量化**各自**的效果分開量；論文只給整體結果 |
 | | **完整 Triangle Multiplication 的融合設計**（含 LayerNorm、gating、**重算 g**） | 把論文的管線化原則具體套到一個運算上，並算出每一步省下多少流量與容量 |
 | | **分析模型 ＋ 設計空間探索** | 用 HLS 報告校正，可預測、可找最佳設定 |
+| | **真實資料驗證量化假設**（規劃中） | 用 ESMFold 的真實 a、b 對照論文 C 組的統計，並比較 INT8／INT4 × 三種粒度的誤差（6.7 節） |
+| | **INT4 的 v5 kernel**（規劃中） | 依論文 C 組的設定，在 FPGA 上實作低位元的 token-wise 資料路徑（6.7 節） |
 
 ### 我們的貢獻（誠實版）
 1. **在 FPGA 上實作 PPM 的 Triangle Multiplication**：搜尋範圍內沒有找到公開的類似實作；LightNobel 本身也只有模擬結果。
-2. **把各個記憶體優化手法的貢獻分開量化**（ablation）：論文是整套一起評估，看不出每一招各佔多少。
-3. **經過驗證的分析模型與設計空間探索**：讓結果不只是幾個數據點。
+2. **把各個記憶體優化手法的貢獻分開量化**（ablation，v0～v5）：論文是整套一起評估，看不出每一招各佔多少。
+3. **量化設定有論文依據、也有真實資料驗證**：不是隨便挑一個 bit 數。
+4. **經過驗證的分析模型與設計空間探索**：讓結果不只是幾個數據點。
 
 > **注意：融合（中間值不落地）與執行時量化，LightNobel 都已經做了，不是我們的新概念。**
 > 我們的角色是「在現成的 FPGA 上實現並拆解這些想法」，不是提出新的原理。
@@ -173,7 +176,7 @@
 ### 讀完原文後確認的答案
 | 問題 | 答案（出處） |
 |---|---|
-| 三類的分類依據？各用什麼精度？ | 依 activation 在模型中的**位置**：A 組 INT8 ＋ 4 個 outlier、B 組 INT4 ＋ 4 個、C 組 INT4 無 outlier（Sec. 4.2、7.1） |
+| 三組的分類依據？各用什麼精度？ | 依 activation 在模型中的**位置**：A 組 INT8 ＋ 4 個 outlier、B 組 INT4 ＋ 4 個、C 組 INT4 無 outlier（Sec. 4.2、7.1） |
 | top-k 的 k 是多少？ | A、B 組 k = 4，C 組不處理；每個 token 在執行時各自挑選（Sec. 4.2、5.3） |
 | 量化套用在哪些 activation？ | PPM block 裡的 activation（Fig. 6 標出每個 activation 屬於哪一組）；**權重不量化**，用 INT16 |
 | 硬體怎麼評估？ | Python cycle-accurate 模擬器（和 RTL 交叉驗證）＋ Synopsys DC 28 nm 1 GHz ＋ CACTI ＋ Ramulator（Sec. 6） |
@@ -192,16 +195,16 @@
 1. **問題**：pair representation 隨 L² 成長，Triangle Multiplication 一步就有約 7 份；長序列時 Triangle Attention 更花時間（第 1 章）
 2. **為什麼難**：memory-bound，roofline 圖（第 2 章）
 3. **LightNobel 的解法**與我們的定位（本章第 5、6 節）
-4. **我們的架構**：融合資料流圖（第 6 章）
-5. **結果**：v0～v4 的逐步改善、DSE、可處理的序列長度（第 4、6 章）
-6. **結論與未來工作**：上板、真實資料、更激進的量化
+4. **我們的做法**：逐步優化的 kernel、依論文選的位元數（真實資料驗證）、融合資料流設計（第 6 章）
+5. **結果**：v0～v5 的逐步改善、DSE、可處理的序列長度（FP16 基準）（第 4、6 章）
+6. **結論與未來工作**：Triangle Attention、上板、完整的融合 kernel
 
 ---
 
 ## 本章小結
 - 領域問題：**pair representation 讓記憶體隨 L² 成長**，限制序列長度。
 - LightNobel：**token-wise 自適應量化 ＋ 專用硬體**，峰值記憶體最多降約 120 倍。
-- 本專題：**繼承**問題、token-wise 量化與管線化的原則，**簡化**成 INT8 與單一運算，**新增** FPGA 實作、逐步 ablation 與分析模型。
+- 本專題：**繼承**問題、token-wise 量化與管線化的原則，**簡化**成單一運算、單一精度，**新增** FPGA 實作、逐步 ablation、真實資料驗證與分析模型。
 - 報告的定位：「以 LightNobel 的原則為基礎，在現成硬體上實作並量化每一招的貢獻」。
 
 ---

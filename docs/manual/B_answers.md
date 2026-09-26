@@ -8,14 +8,14 @@
 
 1. ① **token-wise 自適應量化**：每個 token 一個 scale，activation 依位置分 A、B、C 三組給不同精度（INT8／INT4）；② **outlier 另外存**：執行時用 top-k 挑出、以 INT16 存放，資料格式對硬體友善；③ **專用硬體**：RMPU（4-bit 小塊、多精度）、VVPU（執行時量化、top-k）、Token Aligner 有效率地處理不同格式的 token。（速覽第 2、3 節）
 2. 他們觀察到同一個 token 的 channel 之間差異小、token 之間差異大，outlier 也集中在特定 token；以 token 為單位，既能讓每個 token 用適合自己的 scale，又不需要像 per-element 那樣存大量 scale。（速覽第 2 節、1.6 節）
-3. **繼承**：問題定義、以 ESMFold 為對象、token-wise 量化、管線化與執行時量化（中間值不落地）的原則、以峰值記憶體與序列長度為指標。**新增**：FPGA 上的實作、v0～v4 逐步 ablation、完整 Triangle Multiplication 的融合設計（含重算 g）、分析模型與設計空間探索。（速覽第 6 節）
+3. **繼承**：問題定義、以 ESMFold 為對象、token-wise 量化、管線化與執行時量化（中間值不落地）的原則、以峰值記憶體與序列長度為指標、模擬器＋交叉驗證的評估方法。**新增**：FPGA 上的實作、v0～v5 逐步 ablation、真實資料驗證量化假設、完整 Triangle Multiplication 的融合設計（含重算 g）、分析模型與設計空間探索。（速覽第 6 節）
 4. 平台（ASIC 模擬 vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平；而且融合與執行時量化 LightNobel 都已經做了。較好的說法：「以 LightNobel 的原則為基礎，在現成硬體上實作其中一個運算，並量化每一招各自的貢獻。」（速覽第 6 節）
-5. a、b 是 linear 之後的值，依定義屬於 **C 組**（平均 outlier 少於 1 個），論文對 C 組用 INT4、不處理 outlier。所以我們的 INT8 是保守的選擇，INT4 是合理的下一步。（速覽第 2、3 節）
+5. a、b 是 linear 之後的值，依定義屬於 **C 組**（平均 outlier 少於 1 個），論文對 C 組用 INT4、不處理 outlier。所以我們的 INT8 是保守的選擇，INT4（v5）是下一步，但要先用真實資料確認。（速覽第 2、3 節、6.7）
 
 ## 第 1 章　為何而做
 
 1. **512 MB → 2 GB（4 倍）。** 大小是 `L² × 128 × 4 bytes`，L 變 2 倍，L² 變 4 倍。（1.4）
-2. 權重大小**固定**（ESMFold 約 7～8 GB），和 L 無關；activation 隨 **L²**（pair representation）甚至 **L³**（Triangle Attention 的中間值）成長。L 一大，activation 就遠超過權重。（1.4）
+2. 權重大小**固定**（ESMFold 的 FP16 權重約 7.90 GB），和 L 無關；activation 隨 **L²**（pair representation）甚至 **L³**（Triangle Attention 的中間值）成長。L 一大，activation 就遠超過權重：L = 2,034 時已經是權重的 24 倍（144 GB）。（1.4）
 3. **0.25 FLOP/byte**：每做 2 次運算要讀 8 bytes。以 GPU 約 10 FLOP/byte 的平衡點來看，運算單元大約 97% 的時間都在等資料。（1.5）
 4. **`z = a × bᵀ`**：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）
 5. per-tensor 整份資料共用一個 scale；per-token 每個 token 各自一個 scale。有 outlier 時，per-tensor 的 scale 被 outlier 撐大，一般的數值只能用到很少幾個整數，誤差變大。模擬結果：per-token 約 1%，per-tensor 約 11%。（1.6、2.8）
@@ -62,6 +62,7 @@
 5. 找不到另一個設計在**所有指標都一樣好、而且至少一項更好**。（6.9）
 6. `√(3,584 ÷ 1,288) ≈ √2.78 ≈` **1.67 倍**（約 2,190 → 3,650）。（6.10）
 7. 論文的比較基準（ESMFold）是 FP16。用 FP32 當基準，原始資料大了一倍，量化「看起來」省更多，會高估效果：同樣的融合 ＋ INT8，FP32 基準是 1.67 倍，FP16 基準只有 1.52 倍。（6.10、1.4）
+8. INT4 的前提是「a、b 屬於論文的 C 組（outlier 很少）」，這個假設要用真實資料確認，否則 v5 可能白做。要看 `paper_group_C_check`（平均絕對值、每個 token 的 3σ outlier 數，和論文的 3.85、0.64 比）與 `rel_l2_grid`（INT8／INT4 × token／channel／tensor 的誤差）。（6.7）
 
 ## 第 7 章　研究方法
 
@@ -69,3 +70,4 @@
 2. 這樣 v4 和 v2 之間**只差「量化」一件事**，才能把效果歸因給量化；如果從 v3 改，差異就混進了 double buffering。（7.5）
 3. 預測逼你先想清楚「為什麼會有效」；量測後比對預測，吻合代表理解正確，不吻合就是新的發現（例如 v3 應該快約 1.27 倍）。（7.5、2.6）
 4. 代表**假設錯了**（例如路徑 bug 改成絕對路徑後仍失敗），要回頭找新的線索，例如比較日誌中「加入時的路徑」和「合成時的路徑」。（7.9）
+5. ① **瓶頸的數據**與量測條件：我們以為 Triangle Multiplication 最花時間，其實長序列時是 Triangle Attention（Fig. 3）。② **比較基準**：我們用 FP32，論文是 FP16（Table 1）。③ **論文已經做了什麼**：我們以為融合是新角度，其實 RMPU → VVPU 管線已經做到（Sec. 5）。（7.11）

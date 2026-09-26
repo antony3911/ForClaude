@@ -38,7 +38,7 @@
 ## 4.2 步驟一：界定範圍
 
 ### 為什麼做
-LightNobel 處理的是整個 PPM，還設計了專用硬體。專題要求「用常見手法比較」，
+LightNobel 處理的是整個 PPM，還設計了專用硬體。專題只有幾週，
 所以要從中挑出**一個能代表問題、又做得完**的小範圍。
 
 ### 怎麼決定
@@ -47,7 +47,8 @@ LightNobel 處理的是整個 PPM，還設計了專用硬體。專題要求「�
 | 能代表問題嗎？ | ✅ 直接處理 L×L×128 的 pair representation |
 | 算式簡單、容易驗證嗎？ | ✅ 本質是 128 個矩陣乘法 |
 | 能展示多種記憶體手法嗎？ | ✅ tiling、寬位元、重疊、多通道、量化都適用 |
-| 能呼應 LightNobel 嗎？ | ✅ 可以比較 per-token vs per-tensor 量化 |
+| 能呼應 LightNobel 嗎？ | ✅ 可以比較 per-token vs per-tensor 量化；a、b 屬於論文的 C 組，位元數有依據 |
+| 是最花時間的運算嗎？ | ❌ 長序列時是 Triangle Attention（1.3 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標 |
 
 ### 產出
 一句話的題目定義（見第 1 章 1.7 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。
@@ -196,8 +197,10 @@ for (int r = 0; r < TI * TJ * QW; r++) {
 
 ### 怎麼做（`tb/tb.cpp`）
 1. 產生隨機資料 `a`、`b`（`host/common.h` 的 `make_activation`）：
-   - 一般 token：常態分布 N(0, 1)
-   - **1% 的 token 放大 30 倍**：模擬真實 activation 中的 outlier
+
+    - 一般 token：常態分布 N(0, 1)
+    - **1% 的 token 放大 30 倍**：模擬真實 activation 中的 outlier
+
 2. 依序呼叫 v0～v4，把結果和 CPU 用 double 精度算出的正確答案比較。
 3. 印出兩種誤差：
    ```
@@ -316,7 +319,12 @@ sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
 2. 載入 HuggingFace 的 ESMFold（`facebook/esmfold_v1`）。
 3. **把 `trunk.blocks[N].tri_mul_out._combine_projections` 換成我們的函式**：
    當模型執行到這裡時，把 `a`、`b` 存下來，然後丟出例外讓模型停止（後面的 block 不用跑，省時間）。
-4. 計算 outlier 程度、per-token / per-tensor 的量化誤差。
+4. 計算統計數字（輸出成 JSON，也存進 `meta.json`）：
+
+    - outlier 程度、per-token / per-tensor 的 INT8 誤差；
+    - `paper_group_C_check`：和 LightNobel C 組對照的統計（每個 token 的平均絕對值、3σ outlier 數）；
+    - `rel_l2_grid`：INT8／INT4 × per-token／per-channel／per-tensor 的 einsum 誤差（用途見 6.7 節）。
+
 5. 補零到 32 的倍數，存成 `a.bin`、`b.bin`（float32，排列和 kernel 相同）。
 
 ### 驗證：「差值 0」是怎麼來的

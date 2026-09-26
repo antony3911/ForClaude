@@ -1,0 +1,4 @@
+# 擷取出來的真實資料很大（L=2048 時每個檔案 2 GB），不要 commit
+data/
+__pycache__/
+.venv/

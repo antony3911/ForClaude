@@ -42,18 +42,18 @@
 
 | 檔案 | 內容 | 狀態 |
 |---|---|---|
-| `README.md` | 總覽：十個重點發現、章節目錄、閱讀順序 | ✅ 第一版完成 |
+| `README.md` | 總覽：篩選原則、十個重點發現、章節目錄 | ✅ v2（依篩選條件重整） |
 | `WORKLOG.md` | 本檔：交接單 | 持續更新 |
-| `00-frameworks.md` | 思考框架：拆解目標、Odyssey Plan、職涯資本、可逆性、自我提問 | ✅ 第一版完成 |
-| `01-work-first.md` | 先工作：台灣工作地圖、英國 YMS、德國機會卡、日本、新加坡 | ✅ 第一版完成 |
-| `02-study-abroad-by-country.md` | 各國學位：學費、畢業後工作權、晶片產業 | ✅ 第一版完成 |
-| `03-phd-and-research.md` | 歐洲有薪 PhD、台灣博士與千里馬、教職、研究員 | ✅ 第一版完成 |
-| `04-pivots.md` | 轉換跑道：HFT、分析師、政策、專利、PM、創業、冷門硬體 | ✅ 第一版完成 |
-| `05-writing-and-humanities.md` | 科學傳播、MFA、台灣創作所、業餘寫作 | ✅ 第一版完成 |
-| `06-experience-first.md` | 打工度假、語言學校、EMBA／MBA／MiM | ✅ 第一版完成 |
-| `07-life-scripts.md` | 十種五年劇本與比較 | ✅ 第一版完成 |
-| `08-uk-yms-deep-dive.md` | 英國 YMS 深入：費用、流程、公司、薪資、後續路線 | ✅ 完成 |
-| `09-europe-phd-labs.md` | 歐洲 AI 硬體 PhD 實驗室、找職缺、申請流程、MSCA | ✅ 完成 |
+| `00-frameworks.md` | 篩選原則、拆解目標、Odyssey Plan、職涯資本、可逆性、自我提問 | ✅ v2 |
+| `01-work-first.md` | 台灣工作地圖；從台灣工作通往英語系國家的路；各國畢業後工作權 | ✅ v2 |
+| `02-study-abroad-by-country.md` | 英語系國家（美、英、加、澳、愛、紐；新加坡邊界）的學位、資助、工作權、產業 | ✅ v2 |
+| `03-phd-and-research.md` | 英、加、澳、美的有資助 PhD；台灣博士與出國研究；教職；研究員 | ✅ v2 |
+| `04-pivots.md` | 轉換跑道：HFT、分析師、政策、專利、PM、創業、冷門硬體 | ✅ v2（HFT 據點改為英語系國家） |
+| `05-writing-and-humanities.md` | 科學傳播、MFA、台灣創作所、業餘寫作 | ✅ v2 |
+| `06-structured-learning.md` | EMBA／MBA／MiM、英文課程、短期研究、線上學位 | ✅ 新（取代舊的 06） |
+| `07-life-scripts.md` | 十種五年劇本（英語系國家、主動提升型） | ✅ v2 |
+| `11-prestige-scholarships.md` | Chevening、Gates、Clarendon、Knight-Hennessy、Fulbright | ✅ 第一版 |
+| `archive/` | 已排除的內容：英國 YMS、歐陸 PhD、第一版的 01／02／03／06／07 | 封存，不再擴充 |
 
 **寫作原則**（之後的對話請沿用）：繁體中文（台灣用語）、技術名詞保留英文；每章最後列來源連結；時效性資訊標註「2026/09」並提醒查證；沒查證到的內容明確標示「未查證」或用保守措辭；不要誇大錄取機率。
 
@@ -61,11 +61,11 @@
 
 - [x] ~~D1 英國 YMS 深入~~（已完成，但因篩選條件被排除 → 移到 `archive/`）
 - [x] ~~D2 歐洲 PhD 深入~~（已完成，但歐陸被排除 → 移到 `archive/`；其中 Imperial College 的部分屬於英國，已移到英語系國家的章節）
-- [ ] **D3 加拿大研究型碩士（MASc）與博士**：資助情況（生活津貼、學費）、做 FPGA／AI 硬體的實驗室（UofT、UBC、Waterloo 等）、PGWP 與永久居留路徑 → 更新 `10-english-speaking-countries.md`
-- [ ] **D13 英國深入**：1 年制 MSc（IC 設計、AI 硬體、嵌入式）、英國 PhD 對國際生的資助（UKRI 開放國際生的比例等）、Graduate Route（2027 起 18 個月）、Skilled Worker 門檻 → 更新 `10`
-- [ ] **D12 美國的其他路徑**：美國 PhD 再評估、MEng、線上碩士（例如 Georgia Tech OMSCS）、給剛畢業者的商管碩士（MiM 類型）→ 更新 `10`、`06`
-- [ ] **D10 愛爾蘭深入**：半導體聚落（Intel、ADI、AMD 等）、大學與 Tyndall 研究所、畢業後的 Stamp 1G、Critical Skills Employment Permit → 更新 `10`
-- [ ] **D5 澳洲、紐西蘭深入**：研究型學位的資助（例如澳洲的 RTP 獎學金）、晶片與 HFT 產業（例如 Sydney）、畢業後簽證 → 更新 `10`
+- [ ] **D3 加拿大研究型碩士（MASc）與博士**：資助情況（生活津貼、學費）、做 FPGA／AI 硬體的實驗室（UofT、UBC、Waterloo 等）、PGWP 與永久居留路徑 → 更新 `02`
+- [ ] **D13 英國深入**：1 年制 MSc（IC 設計、AI 硬體、嵌入式）、英國 PhD 對國際生的資助（UKRI 開放國際生的比例等）、Graduate Route（2027 起 18 個月）、Skilled Worker 門檻 → 更新 `02`
+- [ ] **D12 美國的其他路徑**：美國 PhD 再評估、MEng、線上碩士（例如 Georgia Tech OMSCS）、給剛畢業者的商管碩士（MiM 類型）→ 更新 `02`、`06`
+- [ ] **D10 愛爾蘭深入**：半導體聚落（Intel、ADI、AMD 等）、大學與 Tyndall 研究所、畢業後的 Stamp 1G、Critical Skills Employment Permit → 更新 `02`
+- [ ] **D5 澳洲、紐西蘭深入**：研究型學位的資助（例如澳洲的 RTP 獎學金）、晶片與 HFT 產業（例如 Sydney）、畢業後簽證 → 更新 `02`
 - [ ] **D14 有聲望的獎學金深入**：Chevening、Gates Cambridge、Clarendon、Rhodes、Knight-Hennessy、Fulbright 等的資格、時程、錄取者背景；台灣人的申請經驗 → 更新 `11-prestige-scholarships.md`
 - [ ] **D4 外商台灣分公司 → 美國的轉調**：L-1 的條件、實際案例、哪些公司在台灣有數位設計團隊 → 更新 `01`
 - [ ] **D6 HFT 深入**：FPGA 工程師的面試內容、準備清單；只看英語系國家與新加坡的據點 → 更新 `04`
@@ -82,6 +82,7 @@
 | 2026-09-26 | 第一輪探索：約 60 次網路搜尋，涵蓋打工度假（18 國；英國 YMS、日本、澳洲、愛爾蘭、荷蘭）、各國留學政策與費用（德、荷、比、瑞、英、加、澳、日、韓、新）、歐洲有薪 PhD、台灣博士獎學金與千里馬、教職薪資落差、工研院、HFT FPGA、專利工程師、CSET 政策研究、科學寫作碩士（UCSC、MIT、Imperial）、MFA、台灣創作所、林榮三文學獎、MiM／EMBA／科技管理碩士、語言學校。寫完 00–07 與 README | 第二輪：依佇列 D1 開始 |
 | 2026-09-26 | D1：英國 YMS 深入（費用、流程、英國晶片聚落與薪資、轉 Skilled Worker 的門檻）→ `08-uk-yms-deep-dive.md` | D2 歐洲 PhD 實驗室 |
 | 2026-09-26 | D2：歐洲 PhD 實驗室（KU Leuven Verhelst、ETH Benini／Mutlu、TU Delft Al-Ars／Gaydadjiev、TUM Amrouch、TU Dresden Mayr、RWTH Gemmeke、Imperial Constantinides／Bouganis）、找職缺管道、MSCA 博士網絡 → `09-europe-phd-labs.md` | D3 加拿大研究型碩士（由每日排程接手） |
+| 2026-09-26 | **使用者補充篩選條件**：不考慮打工度假、只考慮英語系國家、核心原則是「主動提升」。重整全部檔案：YMS 與歐陸 PhD 移到 `archive/`；改寫 00–07 與 README；新增 `06-structured-learning.md`、`11-prestige-scholarships.md`（Chevening、Gates、Clarendon、Knight-Hennessy、Fulbright）；補查加拿大 UofT MASc 資助、UKRI 國際生名額、澳洲 RTP、愛爾蘭半導體與 Stamp 1G／CSEP；更新佇列與排程的提示詞 | 由每日排程從 D3 接手 |
 
 ## 6. 排程
 

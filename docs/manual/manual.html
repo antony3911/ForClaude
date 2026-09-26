@@ -83,7 +83,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   <div class="meta">
     專題 reference：LightNobel (ISCA 2025)<br>
     程式碼：github.com/antony3911/ForClaude（分支 claude/lightnobel-memory-optimization-yhokyc）<br>
-    產生日期：2026-09-25
+    產生日期：2026-09-26
   </div>
 </div>
 <div class="toc chapter"><h1>目錄</h1><ol>
@@ -171,6 +171,22 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch6-6-6-AMD-工具鏈">6.6 AMD 工具鏈</a></li>
 <li><a href="#ch6-6-7-軟體與開發工具">6.7 軟體與開發工具</a></li>
 <li><a href="#ch6-本章小結">本章小結</a></li>
+</ol>
+</li>
+<li><a href="#ch7-第-7-章-指令手冊-做過的-可以做的-格式與用途">第 7 章 指令手冊：做過的、可以做的、格式與用途</a>
+<ol>
+<li><a href="#ch7-7-1-先看懂指令的格式">7.1 先看懂指令的格式</a></li>
+<li><a href="#ch7-7-2-Linux-基本操作">7.2 Linux 基本操作</a></li>
+<li><a href="#ch7-7-3-環境調查與設定">7.3 環境調查與設定</a></li>
+<li><a href="#ch7-7-4-Git-取得與更新程式碼">7.4 Git：取得與更新程式碼</a></li>
+<li><a href="#ch7-7-5-tmux-斷線也不會中斷的終端機">7.5 tmux：斷線也不會中斷的終端機</a></li>
+<li><a href="#ch7-7-6-本專案的-make-指令-最重要">7.6 本專案的 make 指令（最重要）</a></li>
+<li><a href="#ch7-7-7-Vitis-工具的原始指令-Makefile-背後在做什麼">7.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</a></li>
+<li><a href="#ch7-7-8-看結果">7.8 看結果</a></li>
+<li><a href="#ch7-7-9-host-程式與-Python-腳本的參數">7.9 host 程式與 Python 腳本的參數</a></li>
+<li><a href="#ch7-7-10-目前為止實際執行過的指令-時間軸">7.10 目前為止實際執行過的指令（時間軸）</a></li>
+<li><a href="#ch7-7-11-常見錯誤與排查">7.11 常見錯誤與排查</a></li>
+<li><a href="#ch7-本章小結">本章小結</a></li>
 </ol>
 </li>
 </ol></div>
@@ -3859,5 +3875,1137 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 <hr />
 <h2 id="ch6-本章小結">本章小結</h2>
 <p>遇到不懂的詞，先在這裡查白話解釋，再回到「本專題」欄位指出的章節看完整說明。</p>
+</section><section class="chapter">
+<h1 id="ch7-第-7-章-指令手冊-做過的-可以做的-格式與用途">第 7 章　指令手冊：做過的、可以做的、格式與用途</h1>
+<blockquote>
+<p><strong>本章重點</strong></p>
+<ul>
+<li>先學會看懂<strong>指令的格式</strong>（指令、選項、參數、管線、導向），之後遇到新指令也能自己拆解。</li>
+<li>依用途分成九類：Linux 基本操作、環境調查、Git、tmux、<strong>本專案的 make 指令</strong>、Vitis 工具、看結果、host 程式、Python 腳本。</li>
+<li>每個指令都標示：✅ <strong>已經做過</strong>、🔜 <strong>下一步會用到</strong>、⬜ <strong>之後可以做</strong>、⚠️ <strong>小心使用</strong>。</li>
+<li>本章最後有一張「目前為止實際執行過的指令」時間軸，以及常見錯誤的排查方法。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="ch7-7-1-先看懂指令的格式">7.1 先看懂指令的格式</h2>
+<h3 id="ch7-基本結構">基本結構</h3>
+<pre><code>指令名稱  [選項]          [參數]
+│         │               │
+▼         ▼               ▼
+ls        -la             /opt/xilinx
+git       clone -b 分支   網址
+make      hls             KERNEL=trimul_v2
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>部分</th>
+<th>意思</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>指令名稱</strong></td>
+<td>要執行的程式</td>
+<td><code>ls</code>、<code>git</code>、<code>make</code></td>
+</tr>
+<tr>
+<td><strong>短選項</strong></td>
+<td>一個 <code>-</code> 加一個字母，可以合併</td>
+<td><code>-l</code>、<code>-a</code>，合併成 <code>-la</code></td>
+</tr>
+<tr>
+<td><strong>長選項</strong></td>
+<td>兩個 <code>-</code> 加單字</td>
+<td><code>--help</code>、<code>--mode hls</code></td>
+</tr>
+<tr>
+<td><strong>參數</strong></td>
+<td>指令要處理的對象</td>
+<td>檔名、資料夾、網址</td>
+</tr>
+<tr>
+<td><strong>子指令</strong></td>
+<td>有些指令底下還有功能分類</td>
+<td><code>git clone</code>、<code>git pull</code> 的 <code>clone</code>、<code>pull</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-組合指令的符號">組合指令的符號</h3>
+<table>
+<thead>
+<tr>
+<th>符號</th>
+<th>意思</th>
+<th>例子</th>
+<th>白話</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>\|</code></td>
+<td><strong>管線</strong>：前一個的輸出當成後一個的輸入</td>
+<td><code>lspci \| grep -i xilinx</code></td>
+<td>列出所有裝置，只留下含 xilinx 的行</td>
+</tr>
+<tr>
+<td><code>&gt;</code></td>
+<td>把輸出<strong>寫進</strong>檔案（覆蓋）</td>
+<td><code>make summary &gt; out.txt</code></td>
+<td>結果存檔</td>
+</tr>
+<tr>
+<td><code>&gt;&gt;</code></td>
+<td>把輸出<strong>附加</strong>到檔案結尾</td>
+<td><code>... \| grep ^CSV &gt;&gt; results.csv</code></td>
+<td>累積多次結果</td>
+</tr>
+<tr>
+<td><code>2&gt;/dev/null</code></td>
+<td>把錯誤訊息丟掉</td>
+<td><code>ls /opt/xilinx 2&gt;/dev/null</code></td>
+<td>資料夾不存在也不顯示錯誤</td>
+</tr>
+<tr>
+<td><code>2&gt;&amp;1</code></td>
+<td>錯誤訊息也當成一般輸出</td>
+<td><code>make hls &gt; log.txt 2&gt;&amp;1</code></td>
+<td>錯誤也一起存進檔案</td>
+</tr>
+<tr>
+<td><code>&amp;&amp;</code></td>
+<td>前一個<strong>成功</strong>才執行下一個</td>
+<td><code>git pull &amp;&amp; make csim</code></td>
+<td>更新成功才測試</td>
+</tr>
+<tr>
+<td><code>\|\|</code></td>
+<td>前一個<strong>失敗</strong>才執行下一個</td>
+<td><code>make hls \|\| echo 失敗</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>;</code></td>
+<td>不管成功與否，依序執行</td>
+<td><code>cd ~; ls</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>\</code></td>
+<td>行尾的反斜線：指令太長時接到下一行</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>#</code></td>
+<td>後面是註解，不會執行</td>
+<td><code>make csim   # 看到 ALL PASS</code></td>
+<td>手冊裡的說明文字</td>
+</tr>
+<tr>
+<td><code>~</code></td>
+<td>你的家目錄</td>
+<td><code>cd ~</code></td>
+<td><code>/home/anthony</code></td>
+</tr>
+<tr>
+<td><code>.</code> / <code>..</code></td>
+<td>目前資料夾 / 上一層</td>
+<td><code>cd ..</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>*</code></td>
+<td>萬用字元</td>
+<td><code>ls kernels/*.cpp</code></td>
+<td>所有 .cpp 檔</td>
+</tr>
+<tr>
+<td><code>$變數</code></td>
+<td>取出變數的值</td>
+<td><code>echo $XILINX_XRT</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-變數的兩種用法">變數的兩種用法</h3>
+<pre><code class="language-bash">KERNEL=trimul_v2 vitis-run ...     # ① 寫在指令前面：只對這一個指令有效（環境變數）
+make hls KERNEL=trimul_v2          # ② 寫在 make 後面：傳給 Makefile 的變數
+</code></pre>
+<h3 id="ch7-常用按鍵">常用按鍵</h3>
+<table>
+<thead>
+<tr>
+<th>按鍵</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tab</strong></td>
+<td>自動補完檔名或指令（按兩下列出所有可能）</td>
+</tr>
+<tr>
+<td><strong>↑ / ↓</strong></td>
+<td>叫出之前輸入過的指令</td>
+</tr>
+<tr>
+<td><strong>Ctrl + C</strong></td>
+<td><strong>中斷</strong>正在執行的程式（跑錯了、卡住了都用這個）</td>
+</tr>
+<tr>
+<td><strong>Ctrl + R</strong></td>
+<td>搜尋歷史指令</td>
+</tr>
+<tr>
+<td><strong>Ctrl + L</strong></td>
+<td>清除畫面</td>
+</tr>
+<tr>
+<td><strong>q</strong></td>
+<td>離開 <code>less</code>、<code>man</code> 這類翻頁畫面</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-忘記怎麼用時">忘記怎麼用時</h3>
+<pre><code class="language-bash">指令 --help        # 大部分指令都有簡短說明
+man 指令           # 完整手冊（按 q 離開）
+make help          # 本專案的指令一覽
+</code></pre>
+<hr />
+<h2 id="ch7-7-2-Linux-基本操作">7.2 Linux 基本操作</h2>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>格式</th>
+<th>用途</th>
+<th>例子</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ssh</code></td>
+<td><code>ssh 帳號@主機</code></td>
+<td>登入遠端 server</td>
+<td><code>ssh anthony@scd-lab-server63</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>pwd</code></td>
+<td><code>pwd</code></td>
+<td>顯示目前所在的資料夾</td>
+<td></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>ls</code></td>
+<td><code>ls [-la] [路徑]</code></td>
+<td>列出檔案；<code>-l</code> 詳細、<code>-a</code> 含隱藏檔</td>
+<td><code>ls /tools/Xilinx</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>cd</code></td>
+<td><code>cd 路徑</code></td>
+<td>切換資料夾</td>
+<td><code>cd ForClaude/fpga/trimul</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>cat</code></td>
+<td><code>cat 檔案</code></td>
+<td>印出整個檔案</td>
+<td><code>cat cfg/trimul_v2.cfg</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>head</code></td>
+<td><code>head -n 行數 檔案</code></td>
+<td>印出前幾行</td>
+<td><code>head -n 60 xxx.rpt</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>tail</code></td>
+<td><code>tail -n 行數 檔案</code></td>
+<td>印出最後幾行（看錯誤訊息最常用）</td>
+<td><code>tail -n 30 hls_trimul_v4.log</code></td>
+<td>🔜</td>
+</tr>
+<tr>
+<td><code>tail -f</code></td>
+<td><code>tail -f 檔案</code></td>
+<td><strong>持續</strong>顯示檔案新增的內容（看進度）</td>
+<td><code>tail -f hls_trimul_v3.log</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>less</code></td>
+<td><code>less 檔案</code></td>
+<td>翻頁閱讀長檔案（↑↓ 翻、<code>/</code> 搜尋、<code>q</code> 離開）</td>
+<td><code>less xxx_csynth.rpt</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>grep</code></td>
+<td><code>grep [-i] 關鍵字 檔案</code></td>
+<td>找出含關鍵字的行；<code>-i</code> 不分大小寫；<code>-n</code> 顯示行號</td>
+<td><code>grep -n ERROR hls_trimul_v4.log</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>find</code></td>
+<td><code>find 路徑 -name "樣式"</code></td>
+<td>找檔案</td>
+<td><code>find /tools -iname "*u55c*"</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>which</code></td>
+<td><code>which 指令</code></td>
+<td>這個指令裝在哪裡（找不到代表沒裝或沒載入）</td>
+<td><code>which v++</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>echo</code></td>
+<td><code>echo 文字或$變數</code></td>
+<td>印出文字或變數</td>
+<td><code>echo $PATH</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>mkdir</code></td>
+<td><code>mkdir -p 資料夾</code></td>
+<td>建立資料夾</td>
+<td><code>mkdir -p ~/results</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>cp</code> / <code>mv</code></td>
+<td><code>cp 來源 目的</code></td>
+<td>複製 / 移動（或改名）</td>
+<td><code>cp hls_summary.csv ~/results/</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>rm</code></td>
+<td><code>rm [-r] 檔案</code></td>
+<td>⚠️ <strong>刪除，無法復原</strong>；<code>-r</code> 刪資料夾</td>
+<td><code>rm -f host.exe</code></td>
+<td>⚠️</td>
+</tr>
+<tr>
+<td><code>df -h</code></td>
+<td><code>df -h</code></td>
+<td>硬碟剩多少空間</td>
+<td></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>du -sh</code></td>
+<td><code>du -sh 資料夾</code></td>
+<td>某個資料夾佔多少空間（<code>hls_prj/</code> 會越來越大）</td>
+<td><code>du -sh hls_prj</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>top</code> / <code>htop</code></td>
+<td><code>top</code></td>
+<td>看 CPU、記憶體用量與正在跑的程式（<code>q</code> 離開）</td>
+<td>確認合成是否還在跑</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>history</code></td>
+<td><code>history</code></td>
+<td>列出輸入過的指令</td>
+<td><code>history \| grep make</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>source 檔案</code></td>
+<td>在目前的終端機執行設定檔（載入環境變數）</td>
+<td>見 7.3</td>
+<td>🔜</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <code>rm -rf</code> 會直接刪除整個資料夾，不會經過資源回收筒。刪除前先用 <code>ls</code> 確認內容；
+想清掉本專案產生的檔案，改用 <code>make clean</code> 比較安全。</p>
+</blockquote>
+<hr />
+<h2 id="ch7-7-3-環境調查與設定">7.3 環境調查與設定</h2>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>用途</th>
+<th>結果 / 狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lspci \| grep -i -E "xilinx\|amd\|altera"</code></td>
+<td>列出 PCIe 裝置，找 FPGA 卡</td>
+<td>✅ 空的</td>
+</tr>
+<tr>
+<td><code>lspci -d 10ee:</code></td>
+<td>只列 Xilinx（廠商代號 10ee）的裝置</td>
+<td>✅ 空的 → <strong>server63 沒有卡</strong></td>
+</tr>
+<tr>
+<td><code>which vivado vitis v++ vitis-run</code></td>
+<td>確認工具有沒有裝</td>
+<td>✅ 都在 <code>/tools/Xilinx/2025.2/</code></td>
+</tr>
+<tr>
+<td><code>which vitis_hls</code></td>
+<td></td>
+<td>✅ 找不到（2025.2 已移除）</td>
+</tr>
+<tr>
+<td><code>ls /tools/Xilinx</code></td>
+<td>看裝了哪些版本</td>
+<td>✅ <code>2025.2</code></td>
+</tr>
+<tr>
+<td><code>xbutil examine</code></td>
+<td>列出 FPGA 卡、shell、狀態（需要 XRT）</td>
+<td>✅ command not found</td>
+</tr>
+<tr>
+<td><code>ls /opt/xilinx/platforms</code></td>
+<td>找 U55C platform</td>
+<td>✅ 沒有</td>
+</tr>
+<tr>
+<td><code>find /opt /tools -maxdepth 4 -iname "*u55c*"</code></td>
+<td>找 U55C 相關檔案</td>
+<td>✅ 沒有</td>
+</tr>
+<tr>
+<td><code>module avail</code></td>
+<td>有些 server 用 module 管理工具版本</td>
+<td>✅ 沒有相關結果</td>
+</tr>
+<tr>
+<td><code>nvidia-smi</code></td>
+<td>看有沒有 NVIDIA GPU</td>
+<td>✅ 沒有 GPU</td>
+</tr>
+<tr>
+<td><code>find /tools/Xilinx/2025.2 -maxdepth 6 -type d -iname "virtexuplus*"</code></td>
+<td>確認 U55C 晶片型號資料有裝</td>
+<td>⬜（HLS 報告顯示 <code>virtexuplusHBM</code>，代表有裝）</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-載入環境-找到有-U55C-的機器後會用到">載入環境（找到有 U55C 的機器後會用到）</h3>
+<pre><code class="language-bash">source /tools/Xilinx/2025.2/Vitis/settings64.sh   # 載入 Vitis（server63 看起來已自動載入）
+source /opt/xilinx/xrt/setup.sh                   # 載入 XRT（有卡的機器才有）
+</code></pre>
+<ul>
+<li>每次登入都要執行，或寫進 <code>~/.bashrc</code> 讓它自動執行。</li>
+<li>載入後 <code>echo $XILINX_XRT</code> 會顯示路徑，<code>make host</code> 需要這個變數。</li>
+</ul>
+<h3 id="ch7-在有-U55C-的機器上要跑的指令">在有 U55C 的機器上要跑的指令（🔜）</h3>
+<pre><code class="language-bash">lspci -d 10ee:                   # 應該看到兩行（U55C 有兩個 PCIe function）
+xbutil examine                   # 列出卡片與 BDF（例如 0000:3b:00.1）
+xbutil examine -d &lt;BDF&gt;          # 看這張卡目前的 shell（platform）名稱
+xbutil validate -d &lt;BDF&gt;         # 板子自我檢測（約數分鐘）
+ls /opt/xilinx/platforms         # platform 資料夾名稱 = Makefile 的 PLATFORM
+</code></pre>
+<hr />
+<h2 id="ch7-7-4-Git-取得與更新程式碼">7.4 Git：取得與更新程式碼</h2>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>格式</th>
+<th>用途</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git clone</code></td>
+<td><code>git clone -b 分支 網址</code></td>
+<td>第一次下載整個專案</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>git pull</code></td>
+<td><code>git pull</code></td>
+<td>下載 Claude 推上去的最新修改（<strong>最常用</strong>）</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>git status</code></td>
+<td><code>git status</code></td>
+<td>看有沒有被你改過的檔案</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>git log --oneline</code></td>
+<td><code>git log --oneline \| head</code></td>
+<td>看最近的修改紀錄</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>git diff</code></td>
+<td><code>git diff [檔案]</code></td>
+<td>看你改了哪些地方</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>git branch</code></td>
+<td><code>git branch</code></td>
+<td>看目前在哪個分支</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>git checkout -- 檔案</code></td>
+<td></td>
+<td>⚠️ 放棄你對某個檔案的修改，還原成最新版</td>
+<td>⚠️</td>
+</tr>
+</tbody>
+</table>
+<p>本專案的 clone 指令：</p>
+<pre><code class="language-bash">git clone -b claude/lightnobel-memory-optimization-yhokyc https://github.com/antony3911/ForClaude.git
+</code></pre>
+<h3 id="ch7-git-pull-失敗時"><code>git pull</code> 失敗時</h3>
+<p>如果出現 <code>Your local changes would be overwritten</code>，代表你在 server 上改過某個檔案：</p>
+<pre><code class="language-bash">git status                  # 看是哪個檔案
+git stash                   # 先把你的修改暫存起來
+git pull                    # 再更新
+git stash pop               # 需要的話把修改拿回來（可能要手動合併）
+</code></pre>
+<blockquote>
+<p>⚠️ <strong>不要在 server 上執行 <code>git push</code>。</strong> 程式碼的修改由 Claude 推上 GitHub，server 只負責下載與執行。</p>
+</blockquote>
+<hr />
+<h2 id="ch7-7-5-tmux-斷線也不會中斷的終端機">7.5 tmux：斷線也不會中斷的終端機</h2>
+<p>長時間的工作（<code>make hls-all</code>、上板編譯）一定要在 tmux 裡跑。</p>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>指令 / 按鍵</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>開新的 session</td>
+<td><code>tmux</code> 或 <code>tmux new -s hls</code>（取名 hls）</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>暫時離開（程式繼續跑）</td>
+<td><code>Ctrl + B</code>，放開，再按 <code>D</code></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>列出所有 session</td>
+<td><code>tmux ls</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td>回到 session</td>
+<td><code>tmux attach</code> 或 <code>tmux attach -t hls</code></td>
+<td>🔜</td>
+</tr>
+<tr>
+<td>在 tmux 裡往上捲動</td>
+<td><code>Ctrl + B</code>，放開，再按 <code>[</code>，用方向鍵捲；按 <code>q</code> 離開</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td>結束 session</td>
+<td>在裡面輸入 <code>exit</code></td>
+<td>⬜</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch7-7-6-本專案的-make-指令-最重要">7.6 本專案的 make 指令（最重要）</h2>
+<p>所有 make 指令都要在 <strong><code>ForClaude/fpga/trimul</code></strong> 資料夾裡執行。</p>
+<h3 id="ch7-格式">格式</h3>
+<pre><code>make  目標  [變數=值 變數=值 ...]
+│     │     │
+│     │     └─ 調整參數（不給就用預設值）
+│     └─ 要做哪件事（csim、hls、run ...）
+└─ 讀取目前資料夾的 Makefile
+</code></pre>
+<p>加上 <code>-n</code> 可以<strong>只顯示會執行哪些指令、但不真的執行</strong>，用來檢查：<code>make -n hls KERNEL=trimul_v3</code></p>
+<h3 id="ch7-目標一覽">目標一覽</h3>
+<table>
+<thead>
+<tr>
+<th>目標</th>
+<th>做什麼</th>
+<th>需要</th>
+<th>時間</th>
+<th>產出</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make help</code></td>
+<td>列出所有指令</td>
+<td>—</td>
+<td>瞬間</td>
+<td>—</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>make csim</code></td>
+<td>g++ 編譯 testbench，5 個版本和正確答案比對</td>
+<td>g++</td>
+<td>秒</td>
+<td>畫面上的 PASS/FAIL</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>make hls KERNEL=...</code></td>
+<td>合成一個版本，產生 cycle 數與資源報告</td>
+<td>Vitis</td>
+<td>數分鐘～數十分鐘</td>
+<td><code>hls_prj/&lt;kernel&gt;/sol/syn/report/</code></td>
+<td>✅（v2）</td>
+</tr>
+<tr>
+<td><code>make hls-all</code></td>
+<td>依序合成 v0～v4，最後自動 <code>make summary</code></td>
+<td>Vitis</td>
+<td>數十分鐘以上</td>
+<td><code>hls_&lt;kernel&gt;.log</code>、<code>hls_summary.csv</code></td>
+<td>🟡 進行中</td>
+</tr>
+<tr>
+<td><code>make summary</code></td>
+<td>讀取所有報告，印出比較表</td>
+<td>Python 3</td>
+<td>秒</td>
+<td><code>hls_summary.csv</code></td>
+<td>🔜</td>
+</tr>
+<tr>
+<td><code>make xo KERNEL=... TARGET=hw</code></td>
+<td><code>v++ -c</code>：把 kernel 編成 .xo</td>
+<td>Vitis ＋ platform</td>
+<td>數分鐘</td>
+<td><code>build/hw/&lt;tag&gt;.xo</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>make xclbin KERNEL=... TARGET=hw</code></td>
+<td><code>v++ -l</code>：接上 platform 產生 bitstream</td>
+<td>Vitis ＋ platform</td>
+<td><strong>1～數小時</strong></td>
+<td><code>build/hw/&lt;tag&gt;.xclbin</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>make host</code></td>
+<td>編譯 host 程式</td>
+<td>XRT</td>
+<td>秒</td>
+<td><code>host.exe</code></td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>make run ...</code></td>
+<td>執行（emulation 或上板）</td>
+<td>XRT（上板需要卡）</td>
+<td>視 L 而定</td>
+<td>畫面上的時間、誤差、CSV 行</td>
+<td>⬜</td>
+</tr>
+<tr>
+<td><code>make clean</code></td>
+<td>⚠️ 刪除所有產生的檔案（<code>build/</code>、<code>hls_prj/</code>、log、csv）</td>
+<td>—</td>
+<td>瞬間</td>
+<td>—</td>
+<td>⚠️</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <code>make clean</code> 會刪掉 <code>hls_summary.csv</code> 和所有 HLS 報告。清之前先把要保留的結果複製到別的地方：
+<code>mkdir -p ~/results &amp;&amp; cp hls_summary.csv ~/results/</code></p>
+</blockquote>
+<h3 id="ch7-可以調整的變數">可以調整的變數</h3>
+<table>
+<thead>
+<tr>
+<th>變數</th>
+<th>預設值</th>
+<th>用途</th>
+<th>例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KERNEL</code></td>
+<td><code>trimul_v2</code></td>
+<td>選版本</td>
+<td><code>KERNEL=trimul_v4</code></td>
+</tr>
+<tr>
+<td><code>TARGET</code></td>
+<td><code>hw_emu</code></td>
+<td><code>sw_emu</code>（軟體模擬）／<code>hw_emu</code>（硬體模擬）／<code>hw</code>（上板）</td>
+<td><code>TARGET=hw</code></td>
+</tr>
+<tr>
+<td><code>PLATFORM</code></td>
+<td><code>xilinx_u55c_gen3x16_xdma_3_202210_1</code></td>
+<td>必須和卡上的 shell 一致</td>
+<td><code>PLATFORM=&lt;ls /opt/xilinx/platforms 看到的名稱&gt;</code></td>
+</tr>
+<tr>
+<td><code>CFG</code></td>
+<td><code>cfg/$(KERNEL).cfg</code></td>
+<td>HBM 接線設定</td>
+<td><code>CFG=cfg/trimul_v2_onebank.cfg</code></td>
+</tr>
+<tr>
+<td><code>DEFS</code></td>
+<td>空</td>
+<td>編譯時定義，目前用來改 tile 大小</td>
+<td><code>DEFS="-DTILE_I=16 -DTILE_J=16"</code></td>
+</tr>
+<tr>
+<td><code>TAG</code></td>
+<td>同 <code>KERNEL</code></td>
+<td>輸出檔名，做不同實驗時避免覆蓋</td>
+<td><code>TAG=v2_t16</code></td>
+</tr>
+<tr>
+<td><code>RUN_L</code></td>
+<td><code>16</code></td>
+<td><code>make run</code> 的序列長度</td>
+<td><code>RUN_L=512</code></td>
+</tr>
+<tr>
+<td><code>RUN_ARGS</code></td>
+<td>空</td>
+<td>傳給 host.exe 的額外參數</td>
+<td><code>RUN_ARGS="3 tensor"</code></td>
+</tr>
+<tr>
+<td><code>DATA</code></td>
+<td>空</td>
+<td>真實資料的資料夾（設定後忽略 <code>RUN_L</code>）</td>
+<td><code>DATA=../../data/spike</code></td>
+</tr>
+<tr>
+<td><code>KERNELS</code></td>
+<td>v0～v4</td>
+<td><code>hls-all</code> 要跑哪些版本</td>
+<td><code>KERNELS="trimul_v3 trimul_v4"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-常用組合-照實驗整理">常用組合（照實驗整理）</h3>
+<pre><code class="language-bash"># ── 功能驗證 ──
+make csim                                   # ✅ 隨機資料，L=32
+make csim DATA=../../data/hba               # ⬜ 真實資料（有 GPU／Colab 產生資料後）
+
+# ── 實驗 A：五個版本比較（HLS 報告） ──
+make hls-all                                # 🟡 進行中
+make hls-all KERNELS=&quot;trimul_v3 trimul_v4&quot;  # ⬜ 只重跑失敗或新增的版本
+make summary                                # 🔜 重新整理比較表
+
+# ── 實驗 B：tile 大小 ──
+make hls KERNEL=trimul_v2 DEFS=&quot;-DTILE_I=16 -DTILE_J=16&quot;   # ⬜
+#   注意：同一個 KERNEL 的報告會被覆蓋，跑下一組前先把數字記下來或執行 make summary
+
+# ── 上板（找到有 U55C 的機器後） ──
+make xclbin KERNEL=trimul_v2 TARGET=hw PLATFORM=&lt;實際名稱&gt;    # ⬜ 1～數小時
+make run    KERNEL=trimul_v2 TARGET=hw RUN_L=512              # ⬜
+
+# ── 實驗 C：HBM 單一通道對照 ──
+make run KERNEL=trimul_v2 CFG=cfg/trimul_v2_onebank.cfg TAG=trimul_v2_onebank TARGET=hw RUN_L=256   # ⬜
+
+# ── 實驗 D：量化方式 ──
+make run KERNEL=trimul_v4 TARGET=hw RUN_L=512                       # ⬜ per-token（預設）
+make run KERNEL=trimul_v4 TARGET=hw RUN_L=512 RUN_ARGS=&quot;3 tensor&quot;   # ⬜ per-tensor
+
+# ── 實驗 E：序列長度掃描（收集成一個 CSV） ──
+for L in 128 256 512 1024; do
+  make run KERNEL=trimul_v2 TARGET=hw RUN_L=$L | grep ^CSV &gt;&gt; results.csv
+done                                                                 # ⬜
+</code></pre>
+<hr />
+<h2 id="ch7-7-7-Vitis-工具的原始指令-Makefile-背後在做什麼">7.7 Vitis 工具的原始指令（Makefile 背後在做什麼）</h2>
+<p>平常用 make 就好。這一節讓你知道 make 實際呼叫了什麼，除錯時會用到。</p>
+<table>
+<thead>
+<tr>
+<th>make 目標</th>
+<th>實際執行的指令</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make csim</code></td>
+<td><code>g++ -std=c++17 -O2 ... tb/tb.cpp kernels/*.cpp -o csim.exe &amp;&amp; ./csim.exe 32</code></td>
+<td>一般 C++ 編譯</td>
+</tr>
+<tr>
+<td><code>make hls</code></td>
+<td><code>KERNEL=trimul_v2 DEFS="" vitis-run --mode hls --tcl hls/run_hls.tcl</code></td>
+<td>✅ 2025.2 的 HLS 指令</td>
+</tr>
+<tr>
+<td><code>make xo</code></td>
+<td><code>v++ -c -t hw --platform &lt;P&gt; -k trimul_v2 -I kernels -o build/hw/trimul_v2.xo kernels/trimul_v2.cpp</code></td>
+<td>編譯 kernel</td>
+</tr>
+<tr>
+<td><code>make xclbin</code></td>
+<td><code>v++ -l -t hw --platform &lt;P&gt; --config cfg/trimul_v2.cfg -o build/hw/trimul_v2.xclbin build/hw/trimul_v2.xo</code></td>
+<td>連結＋擺放繞線</td>
+</tr>
+<tr>
+<td><code>make host</code></td>
+<td><code>g++ ... host/host.cpp -I$XILINX_XRT/include -L$XILINX_XRT/lib -lxrt_coreutil -pthread -o host.exe</code></td>
+<td>編譯 host</td>
+</tr>
+<tr>
+<td><code>make run</code>（emulation）</td>
+<td><code>emconfigutil --platform &lt;P&gt; --od .</code> 然後 <code>XCL_EMULATION_MODE=hw_emu ./host.exe ...</code></td>
+<td>產生模擬設定並執行</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-v-常用選項"><code>v++</code> 常用選項</h3>
+<table>
+<thead>
+<tr>
+<th>選項</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-c</code> / <code>-l</code></td>
+<td>compile（產生 .xo）／ link（產生 .xclbin）</td>
+</tr>
+<tr>
+<td><code>-t hw\|hw_emu\|sw_emu</code></td>
+<td>目標</td>
+</tr>
+<tr>
+<td><code>--platform</code></td>
+<td>platform 名稱</td>
+</tr>
+<tr>
+<td><code>-k</code></td>
+<td>kernel 函式名稱</td>
+</tr>
+<tr>
+<td><code>--config</code></td>
+<td>設定檔（HBM 接線等）</td>
+</tr>
+<tr>
+<td><code>--save-temps --temp_dir</code></td>
+<td>保留中間檔案，除錯時可以看 Vivado 的報告</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-run_hls-tcl-可用的環境變數"><code>run_hls.tcl</code> 可用的環境變數</h3>
+<pre><code class="language-bash">KERNEL=trimul_v3 CSIM=1 vitis-run --mode hls --tcl hls/run_hls.tcl    # 合成前先在 HLS 裡跑 C 模擬
+KERNEL=trimul_v3 COSIM=1 vitis-run --mode hls --tcl hls/run_hls.tcl   # 合成後再跑 C/RTL 協同模擬（較慢）
+</code></pre>
+<p>也可以透過 make 傳：<code>make hls KERNEL=trimul_v3 COSIM=1</code>（make 會把命令列變數傳給子程式）。</p>
+<hr />
+<h2 id="ch7-7-8-看結果">7.8 看結果</h2>
+<h3 id="ch7-HLS-報告">HLS 報告</h3>
+<pre><code class="language-bash"># 報告位置
+ls hls_prj/trimul_v2/sol/syn/report/
+
+# 前 60 行：timing 與 latency 摘要                                    ✅
+head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
+
+# 資源用量那一段                                                     🔜
+grep -n -A 20 &quot;Utilization Estimates&quot; hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
+
+# 只看各迴圈的 latency 與 II                                          ⬜
+grep -n -A 15 &quot;\* Loop:&quot; hls_prj/trimul_v3/sol/syn/report/trimul_v3_csynth.rpt
+</code></pre>
+<h3 id="ch7-make-hls-all-的進度與錯誤">make hls-all 的進度與錯誤</h3>
+<pre><code class="language-bash">ls hls_*.log                       # 哪些版本跑過了
+tail -n 30 hls_trimul_v4.log       # 看某一版最後的輸出（失敗時截圖這個）   🔜
+grep -n &quot;ERROR&quot; hls_trimul_*.log   # 一次找出所有錯誤                      ⬜
+tail -f hls_trimul_v3.log          # 即時看正在跑的版本（Ctrl+C 離開）      ⬜
+</code></pre>
+<h3 id="ch7-比較表">比較表</h3>
+<pre><code class="language-bash">make summary                                   # 印出表格並存成 hls_summary.csv   🔜
+column -s, -t &lt; hls_summary.csv                # 在終端機把 CSV 排整齊            ⬜
+python3 scripts/hls_summary.py --L 256         # 直接呼叫腳本（--L 要和 L_TRIP 一致）
+</code></pre>
+<h3 id="ch7-把結果帶回自己的電腦">把結果帶回自己的電腦</h3>
+<p>在<strong>你自己的電腦</strong>（Windows 的 PowerShell 或命令提示字元）執行：</p>
+<pre><code class="language-powershell">scp anthony@scd-lab-server63:~/ForClaude/fpga/trimul/hls_summary.csv C:\ForClaude\
+</code></pre>
+<p><code>scp</code> 的格式是 <code>scp 來源 目的</code>，遠端路徑寫成 <code>帳號@主機:路徑</code>。</p>
+<hr />
+<h2 id="ch7-7-9-host-程式與-Python-腳本的參數">7.9 host 程式與 Python 腳本的參數</h2>
+<h3 id="ch7-host-exe-上板用"><code>host.exe</code>（上板用，⬜）</h3>
+<pre><code>./host.exe  &lt;xclbin&gt;  &lt;kernel&gt;  &lt;L&gt;  [reps=3]  [token|tensor]  [samples=2000]  [data_dir]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>參數</th>
+<th>意思</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xclbin</code></td>
+<td>編譯好的電路檔</td>
+</tr>
+<tr>
+<td><code>kernel</code></td>
+<td>kernel 名稱（<code>trimul_v2</code> 等）</td>
+</tr>
+<tr>
+<td><code>L</code></td>
+<td>序列長度，必須是 tile 大小的倍數（給了 <code>data_dir</code> 就以檔案為準）</td>
+</tr>
+<tr>
+<td><code>reps</code></td>
+<td>重複執行幾次，取最快的一次</td>
+</tr>
+<tr>
+<td><code>token</code> / <code>tensor</code></td>
+<td>v4 的量化方式</td>
+</tr>
+<tr>
+<td><code>samples</code></td>
+<td>隨機抽幾個點驗證正確性</td>
+</tr>
+<tr>
+<td><code>data_dir</code></td>
+<td>真實資料的資料夾</td>
+</tr>
+</tbody>
+</table>
+<p>輸出的最後一行是 CSV：</p>
+<pre><code>CSV,kernel,L,time_ms,gflops,est_traffic_GB,est_GBps,hbm_footprint_MB,rel_l2,max_abs
+</code></pre>
+<h3 id="ch7-python-dump_trimul_inputs-py-需要-GPU-或-Colab"><code>python/dump_trimul_inputs.py</code>（需要 GPU 或 Colab，⬜）</h3>
+<pre><code>python dump_trimul_inputs.py  (--uniprot ID | --pdb ID | --fasta 檔案 | --seq 序列)  --out 資料夾
+                              [--block 0~47] [--max-len N] [--pad 32] [--device cuda|cpu]
+                              [--chunk-size 64] [--eval-channels 16]
+</code></pre>
+<p>例：<code>python dump_trimul_inputs.py --uniprot P0DTC2 --out ../data/spike</code></p>
+<h3 id="ch7-docs-manual-build_pdf-py-重新產生這份手冊的-PDF"><code>docs/manual/build_pdf.py</code>（重新產生這份手冊的 PDF）</h3>
+<pre><code class="language-bash">pip install markdown
+python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual.pdf
+</code></pre>
+<hr />
+<h2 id="ch7-7-10-目前為止實際執行過的指令-時間軸">7.10 目前為止實際執行過的指令（時間軸）</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>指令</th>
+<th>在哪裡</th>
+<th>結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>lspci \| grep -i -E "xilinx\|amd\|altera\|intel.*fpga"</code></td>
+<td>server63</td>
+<td>空的</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>which vivado vitis vitis_hls v++ xbutil</code></td>
+<td>server63</td>
+<td>Vivado/Vitis/v++ 有；vitis_hls、xbutil 沒有</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>ls /tools/Xilinx /opt/Xilinx /opt/xilinx</code></td>
+<td>server63</td>
+<td><code>2025.2 DocNav flexlm xic</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>xbutil examine</code></td>
+<td>server63</td>
+<td>command not found</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>which quartus aoc aocl</code>、<code>ls /opt/intelFPGA*</code></td>
+<td>server63</td>
+<td>沒有（不是 Intel FPGA）</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>module avail \| grep ...</code></td>
+<td>server63</td>
+<td>沒有結果</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>lspci -d 10ee:</code></td>
+<td>server63</td>
+<td>空的 → 沒有 FPGA 卡</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>ls /opt/xilinx/platforms</code>、<code>find ... "*u55c*"</code></td>
+<td>server63</td>
+<td>沒有 platform</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>which vitis-run g++ make git</code></td>
+<td>server63</td>
+<td>都有</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>git clone -b ... ForClaude.git</code></td>
+<td>server63</td>
+<td>需要 GitHub 帳號（private repo）</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>cd ForClaude/fpga/trimul</code></td>
+<td>server63</td>
+<td></td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>make csim</code></td>
+<td>server63</td>
+<td>（待確認是否 ALL PASS）</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>make hls KERNEL=trimul_v2</code></td>
+<td>server63</td>
+<td>失敗 3 次（2025.2 路徑問題）→ 修正後成功</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>git pull</code></td>
+<td>server63</td>
+<td>取得修正版</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>head -n 60 .../trimul_v2_csynth.rpt</code></td>
+<td>server63</td>
+<td>第一筆數據：177,029,185 cycles</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>tmux</code> → <code>make hls-all</code></td>
+<td>server63</td>
+<td>🟡 進行中</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch7-7-11-常見錯誤與排查">7.11 常見錯誤與排查</h2>
+<table>
+<thead>
+<tr>
+<th>看到的訊息</th>
+<th>意思</th>
+<th>怎麼辦</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>command not found</code></td>
+<td>沒裝，或環境沒載入</td>
+<td><code>which 指令</code>；試 <code>source .../settings64.sh</code>；問管理員</td>
+</tr>
+<tr>
+<td><code>No such file or directory</code></td>
+<td>路徑打錯，或不在正確的資料夾</td>
+<td><code>pwd</code> 看自己在哪；<code>ls</code> 看檔案在不在；善用 Tab 補完</td>
+</tr>
+<tr>
+<td><code>Permission denied</code></td>
+<td>沒有權限</td>
+<td>不要用 <code>sudo</code> 硬來，先問管理員</td>
+</tr>
+<tr>
+<td><code>make: *** No rule to make target</code></td>
+<td>不在 <code>fpga/trimul</code> 裡，或目標名稱打錯</td>
+<td><code>cd ~/ForClaude/fpga/trimul</code>；<code>make help</code></td>
+</tr>
+<tr>
+<td><code>Username for 'https://github.com'</code></td>
+<td>repo 是 private</td>
+<td>改成 public，或用 fine-grained token</td>
+</tr>
+<tr>
+<td><code>Your local changes would be overwritten</code></td>
+<td>server 上的檔案被改過</td>
+<td>見 7.4 節的 <code>git stash</code></td>
+</tr>
+<tr>
+<td><code>ERROR: [HLS ...]</code></td>
+<td>HLS 失敗</td>
+<td><code>tail -n 30 hls_&lt;kernel&gt;.log</code> 截圖給 Claude</td>
+</tr>
+<tr>
+<td><code>WARNING: [HLS ...]</code></td>
+<td>通常可以忽略</td>
+<td>只有同時出現 ERROR 才需要處理</td>
+</tr>
+<tr>
+<td><code>No space left on device</code></td>
+<td>硬碟滿了</td>
+<td><code>du -sh hls_prj build</code>；確認結果已保存後 <code>make clean</code></td>
+</tr>
+<tr>
+<td>畫面卡住很久沒動</td>
+<td>可能正常（合成很慢），也可能卡住</td>
+<td>另開一個 tmux 視窗用 <code>top</code> 看 CPU 有沒有在跑</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch7-回報問題時請提供">回報問題時請提供</h3>
+<ol>
+<li>完整的指令</li>
+<li>錯誤前後 20～30 行的輸出（<code>tail -n 30 xxx.log</code>）</li>
+<li>你預期會發生什麼</li>
+<li>已經試過什麼</li>
+</ol>
+<hr />
+<h2 id="ch7-本章小結">本章小結</h2>
+<ul>
+<li>指令 = <strong>名稱 ＋ 選項 ＋ 參數</strong>；用 <code>|</code>、<code>&gt;</code>、<code>&amp;&amp;</code> 串接；忘了就 <code>--help</code>。</li>
+<li>本專案的所有操作都可以用 <strong><code>make 目標 變數=值</code></strong> 完成，<code>make -n</code> 可以預覽不執行。</li>
+<li><strong>現在最常用的四個指令：</strong> <code>git pull</code>、<code>make hls-all</code>、<code>tail -n 30 hls_*.log</code>、<code>make summary</code>。</li>
+<li>長時間工作用 <strong>tmux</strong>；刪除前先確認，<strong>不要在 server 上 <code>git push</code></strong>。</li>
+</ul>
 </section>
 </body></html>

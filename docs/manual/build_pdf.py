@@ -28,6 +28,7 @@ CHAPTERS = [
     "04_tools.md",
     "05_research_method.md",
     "06_glossary.md",
+    "07_commands.md",
 ]
 
 CSS = r"""

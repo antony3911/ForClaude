@@ -112,9 +112,38 @@
 - [Taipei Times：US House passes Double-Tax Relief Act](https://www.taipeitimes.com/News/taiwan/archives/2025/01/16/2003830316)
 - [Colombo & Hurd：September 2026 Visa Bulletin](https://www.colombohurdlaw.com/september-2026-visa-bulletin/)
 
+### 第二碩士資格（05 章 5.1）
+- [UC Berkeley EECS：Graduate Admissions FAQ](https://eecs.berkeley.edu/academics/graduate/faq-3/)
+- [UC San Diego：Duplication of Degree](https://grad.ucsd.edu/academics/policies-procedures/duplication-degree.html)
+- [UCLA：Standards and Procedures for Graduate Study](https://grad.ucla.edu/gasaa/library/spfgs.pdf)
+- [UIUC Graduate College：Admissions Minimum Requirements](https://grad.illinois.edu/admissions/graduate-admissions-minimum-requirements)
+- [Michigan ECE：Grad FAQs](https://ece.engin.umich.edu/academics/graduate-programs/prospective-grad-students/grad-faqs/)
+- [NC State CSC：Graduate FAQs](https://csc.ncsu.edu/academics/graduate/faqs/)、[NC State Graduate Handbook](https://catalog.ncsu.edu/graduate/graduate-handbook/minimum-requirements/)
+- [Stanford EE：MS Admissions](https://ee.stanford.edu/admissions/ms)
+- [CMU ECE：Graduate FAQs](https://www.ece.cmu.edu/admissions/graduate-faq.html)
+- [Georgia Tech ECE：Graduate Admissions](https://ece.gatech.edu/future-students/graduate-admissions)
+- [USC：Second Master's Degrees](https://www.cs.usc.edu/students/ms-students/second-masters-degrees/)
+
+### MS 學程細節
+- [USC Viterbi：MS ECE – VLSI Design](https://viterbigradadmission.usc.edu/programs/masters/msprograms/electrical-computer-engineering/ms-ece-vlsi-design/)、[USC Viterbi Master's FAQ](https://viterbigradadmission.usc.edu/programs/masters/faq/)
+- [Georgia Tech Catalog：MS ECE](https://catalog.gatech.edu/programs/electrical-computer-engineering-ms/)
+- [CMU ECE：Incoming MS FAQs](https://www.ece.cmu.edu/academics/incoming-ms-faq.html)、[CMU MS ECE Applied Program](https://www.ece.cmu.edu/academics/ms-ece/applied-program.html)
+- [Cornell ECE：MEng Programs](https://www.ece.cornell.edu/ece/programs/graduate-programs/meng-program/meng-admissions-and-applying/meng-early-admit-options)
+- [UW ECE：Admissions Requirements](https://www.ece.uw.edu/academics/grad/admissions/)
+
+### OPT 與 cap-gap
+- [Study in the States：H-1B Rule Extends F-1 Cap-Gap](https://studyinthestates.dhs.gov/2025/04/recent-h-1b-rule-extends-f-1-cap-gap-extension)
+- [University of Houston：90/150 Day Unemployment Rules](https://www.uh.edu/issso/students/f-1/opt/90-150-day-unemployment-rules/)
+
+### 就業市場
+- [NVIDIA：ASIC Hardware Design Engineer – New College Grad 2026](https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/ASIC-Hardware-Design-Engineer---New-College-Grad-2026_JR2011787)
+
 ### 兵役
 - [內政部役政署：海外留學生及僑民兵役問題說明](https://www.taiwanembassy.org/public/SE_possport/1122042271.pdf)
 - [中山大學：役男出境](https://ag-osa.nsysu.edu.tw/p/412-1087-23077.php?Lang=zh-tw)
+- [移民署：役男赴國外就學出國申請須知](https://www.immigration.gov.tw/5385/7244/7250/7254/16054/16487/)
+- [全國法規資料庫：役男出境處理辦法](https://law.moj.gov.tw/LawClass/LawAll.aspx?PCode=D0040006)
+- [換日線：役齡前出境就學役男的真相](https://crossing.cw.com.tw/article/8767)
 
 ### 獎學金
 - [教育部與世界百大合作設置獎學金](https://www.scholarship.moe.gov.tw/top100)

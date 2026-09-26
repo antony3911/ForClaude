@@ -1,183 +1,171 @@
 # 01. 定位與策略
 
-> 目標：想清楚你要走哪條路（PhD／MS），誠實盤點自己的優勢與缺口，並把研究題目包裝成美國教授會想收你的故事。
+> 目標：清楚知道讀第二個碩士「買到的是什麼」、風險在哪，以及怎麼用你的研究背景拉開和其他 MS 申請者的差距。
 
 ---
 
-## 1.1 AI 加速器的職涯地圖
+## 1.1 AI 加速器的職涯地圖（MS 的入口在哪）
 
-「做 AI 加速器」其實包含很多種職位。先搞清楚你想做哪一種，才知道該讀 PhD 還是 MS、該補哪些技能。
-
-| 職位 | 在做什麼 | 常見學歷 | 和你目前背景的距離 |
+| 職位 | 在做什麼 | MS 能不能進 | 和你目前背景的距離 |
 |---|---|---|---|
-| **Architecture / Performance Modeling** | 決定加速器的 dataflow、記憶體階層、運算單元配置；寫 performance model 做 design space exploration | **PhD 為主**（少數優秀 MS） | 近：co-design 經驗可以直接用上 |
-| **RTL Design（micro-architecture）** | 把架構寫成可合成的 SystemVerilog，負責 timing、面積、功耗 | MS／PhD | 中：你會寫 RTL/HLS，但要補 ASIC 的時序與功耗觀念 |
-| **Design Verification (DV)** | UVM testbench、coverage、formal；職缺最多的一類 | MS 為主 | 中遠：需要 SV/UVM |
-| **Physical Design (PD)** | Floorplan、P&R、CTS、timing closure、signoff | MS 為主 | 遠：需要完整的 APR 經驗 |
-| **DFT** | Scan、BIST、ATPG | MS | 遠 |
-| **ML Compiler / Kernel / HW-SW Co-design** | 把模型映射到硬體：compiler（MLIR/TVM/Triton）、kernel、runtime | MS／PhD | 近：co-design 經驗很加分 |
-| **Circuit（SRAM、CIM、高速 I/O）** | 客製電路 | PhD 較多 | 遠（除非你轉向電路） |
-| **Research Scientist（NVIDIA Research、Google 等）** | 發論文、做下一代架構 | **幾乎都是 PhD** | 需要頂會論文紀錄 |
+| **RTL Design（micro-architecture）** | 把架構寫成可合成的 SystemVerilog，負責 timing、面積、功耗 | ✅ **MS 主要入口** | 中：你會寫 RTL/HLS，要補 ASIC 的時序與功耗觀念 |
+| **Design Verification (DV)** | UVM testbench、coverage、formal；**職缺最多** | ✅ **MS 主要入口** | 中遠：需要 SV/UVM |
+| **Physical Design (PD)** | Floorplan、P&R、CTS、timing closure、signoff | ✅ MS 主要入口 | 遠：需要完整的 APR 經驗 |
+| **DFT** | Scan、BIST、ATPG | ✅ | 遠 |
+| **ML Compiler / Kernel / HW-SW Co-design** | 把模型映射到硬體（MLIR/TVM/Triton、kernel、runtime） | ✅ | **近：co-design 經驗很加分** |
+| **Performance Modeling / Architecture** | 寫效能模型、做 design space exploration、決定 dataflow | ⚠️ 少數優秀的 MS 可以，多數是 PhD | 近 |
+| **Research Scientist** | 發論文、做下一代架構 | ❌ 幾乎都是 PhD | — |
+
+**MS 進 AI 加速器的實際路徑**：
+```
+新鮮人：RTL / DV / PD / compiler（在 AI 晶片團隊）
+   ↓ 3–5 年
+資深 RTL／micro-architecture，參與架構討論
+   ↓
+架構師（很多加速器架構師是 MS 學歷，從 RTL 做上去的）
+```
+**重點：一開始就挑「做 AI 晶片的團隊」**。職稱就算是 RTL 或 DV，每天接觸的都是加速器設計，之後往架構走比較順。
 
 **雇主類型**（名單只是舉例，新創變動很快）：
-
 - **GPU／CPU／SoC 大廠**：NVIDIA、AMD、Intel、Apple、Qualcomm、Arm
-- **雲端業者的自研晶片**：Google（TPU）、Amazon（Annapurna Labs：Trainium/Inferentia）、Meta（MTIA）、Microsoft（Maia）
+- **雲端業者的自研晶片**：Google（TPU）、Amazon（Annapurna Labs）、Meta（MTIA）、Microsoft（Maia）
 - **客製 ASIC／網通**：Broadcom、Marvell
-- **AI 晶片新創**：Cerebras、Tenstorrent、Etched、MatX、d-Matrix、SambaNova 等。2025–2026 年併購、IPO、大額融資都很頻繁（例如 NVIDIA 和 Groq 在 2025 年底的授權／人才交易），**加入前要評估穩定性**
-- **EDA**：Synopsys、Cadence、Siemens EDA（在 AI for EDA 方面也有很多機會）
-- **記憶體**：Micron、Samsung/SK hynix 的美國據點（HBM、PIM 相關）
+- **AI 晶片新創**：Cerebras、Tenstorrent、Etched、MatX、d-Matrix、SambaNova 等（加入前先評估穩定性）
+- **EDA**：Synopsys、Cadence、Siemens EDA
+- **記憶體**：Micron、Samsung／SK hynix 的美國據點
+
+> 大廠每年都有招募 new college grad 的 ASIC 設計和驗證職位，例如 NVIDIA 在 2026 年就有這類職缺，而且公開的薪資範圍不低。不過，薪資能不能落在較高的 H-1B 級別，要看職位與地區，不保證。
 
 ---
 
-## 1.2 PhD 還是 MS？
+## 1.2 第二個碩士到底「買到」什麼？
 
-| | PhD | MS |
-|---|---|---|
-| 年限 | 5–6 年（台灣碩士入學不一定會縮短） | 1–2 年 |
-| 費用 | **通常全額資助**：學費全免加生活津貼（RA/TA/fellowship） | **多半自費**：總花費約 US$9–20 萬（見 [03](03-application-materials.md#38-費用估算)） |
-| 錄取關鍵 | 研究經驗、推薦信、研究契合度（fit）、論文 | GPA、學校背景、專題、英文 |
-| 錄取單位 | 系上委員會和／或個別教授 | 系上委員會 |
-| 出路 | 架構師、research scientist、資深 RTL；也可以走學界 | RTL/DV/PD 工程師 |
-| 起薪／職級 | 較高，常以 senior 或 PhD-level 聘用 | 新鮮人職級 |
-| H-1B 抽籤（2026 新制） | 薪資級別通常較高 → **中籤率較高** | 新鮮人多落在 Level I–II → 中籤率較低（見 [07](07-reality-check.md#72-工作簽證與移民路徑的現實)） |
-| 風險 | 時間成本、指導教授關係、研究卡關、經費 | 學貸壓力、找工作只有一次 CPT/OPT 窗口、就業市場波動 |
+| 你付出的 | 你換到的 |
+|---|---|
+| 約 US$9–20 萬（見 [03](03-application-materials.md#38-費用估算)） | 美國學歷，能直接進入美國的校園招募管道（career fair、Handshake、校友網路） |
+| 1.5–2 年的時間 | 通常有一次**暑期實習**機會，實習後常能轉成正職 offer |
+| 放棄這段時間在台灣工作的薪水 | **最多 3 年的 OPT 工作許可**（EE/CE 屬於 STEM 科系） |
+| 身分與政策的不確定性 | **3 次 H-1B 抽籤機會**，而且持美國碩士學位可以多一輪抽籤（advanced degree cap） |
 
-### 決策建議
-
-- **想做 architecture／research，或者想要「設計下一代加速器」的角色** → PhD。
-- **只想盡快進業界做 RTL/DV/PD，也有資金** → MS（選 thesis option 保留轉 PhD 的可能）。
-- **不確定** → **兩者混合申請**：例如 8–10 所 PhD 加上 3–4 所 MS 當保底。不過同一所學校通常只能申請一個學位，先查規定。
-- **你的狀況**：有研究題目、有 co-design 實驗室、有論文潛力，**以 PhD 為主**是 CP 值最高的路線：不用花錢、出路比較好、簽證優勢也比較大。
-
-> 補充：美國 PhD 招生並不要求碩士學位，大學畢業就能直接申請。你的台灣碩士學歷帶來的主要優勢是**研究成果與成熟度**，而不是縮短年限（有些學校可以抵修課學分或讓你較早考資格考）。
+**說白一點**：第二個碩士的學術價值有限（很多課你可能修過類似的），它的核心價值是**「進入美國就業市場的入場券」**。所以選校時，**就業資源、地點、實習政策、總花費**的權重，要比學術排名高。
 
 ---
 
-## 1.3 誠實盤點：你的 SWOT
+## 1.3 三條路的比較：美國 MS、PhD、台灣美商轉調
+
+| | 美國 MS（主軸） | 美國 PhD（備案） | 台灣美商 → L-1 轉調 |
+|---|---|---|---|
+| 花費 | 自費 US$9–20 萬 | 通常全額資助 | **不花錢，還有薪水** |
+| 時間 | 1.5–2 年 | 5–6 年 | 台灣工作 1 年以上，之後看公司安排 |
+| 到美國工作的簽證 | OPT → H-1B 抽籤（Level I 中籤率約 15%） | OPT → H-1B（薪資級別較高、較有利），也可以走 O-1、NIW | **L-1 不用抽籤**，但要公司願意轉調 |
+| 你能掌控的程度 | 中：錄取與求職靠自己，抽籤靠運氣 | 中：錄取門檻高 | **低：轉調要看公司和部門** |
+| 起點職位 | RTL/DV/PD 新鮮人 | 架構／研究類 | 視台灣職位而定 |
+| 役男 | **必須先處理兵役**（見 [07](07-reality-check.md#74-役男兵役)） | 同左，PhD 的年齡上限較寬 | 在台灣工作，不受出境就學限制 |
+
+**建議**：MS 當主軸，另外申請 2–3 所 PhD 當備案（成本只是申請費）。**同時**把「台灣美商」當成平行選項：如果 MS 沒拿到理想的錄取，或者預算不夠，NVIDIA、Google、Apple、AMD、Intel、Qualcomm、Microsoft 等在台灣的硬體團隊，都是很好的起點。
+
+---
+
+## 1.4 誠實盤點：你的 SWOT（MS 申請與求職角度）
 
 ### Strengths（優勢）
-- 做過**完整的 FPGA 加速器**，從演算法、架構到實作都碰過，這點很多申請者沒有
-- 所在實驗室做 **HW/SW co-design**，這正是美國加速器實驗室最重視的思維
-- 題目有 **真實且重要的 workload**（蛋白質結構預測，2024 年諾貝爾化學獎相關領域），故事性強
-- 長序列問題本質上是「**記憶體受限、資料搬移主導**」的問題，和目前 LLM 加速的核心挑戰相通
+- **已經有碩士研究經驗**：大部分 MS 申請者只有大學專題
+- 做過**完整的 FPGA 加速器**（從演算法、架構到實作），在面試時是很有深度的話題
+- **HW/SW co-design** 的思維，正是 AI 晶片團隊需要的
+- 研究題目新穎，故事性強（蛋白質結構預測，2024 年諾貝爾化學獎相關領域）
 
-### Weaknesses（缺口）— 接下來 12 個月要補
-- **沒有 ASIC flow 經驗**（synthesis、STA、APR、PPA 分析）→ 見 1.5
-- 可能缺少**嚴謹的 baseline 與評估方法**（最佳化過的 GPU baseline、能耗量測方法、準確度指標）
-- **頂會論文紀錄**
-- **驗證方法論**（SystemVerilog assertion、UVM 或 cocotb）
-- **計算機結構的正規訓練**（如果還沒修過研究所等級的計結）
-- 英文（見 [04](04-english.md)）
+### Weaknesses（缺口）
+- **「第二個碩士」本身**：有些學校不收，可以申請的學校也會問你「為什麼要再讀一個碩士」（見 1.6）
+- **沒有 ASIC flow 經驗**：MS 求職最看重實作能力，這個缺口的影響比申請 PhD 時更大
+- **業界面試能力**：RTL 手寫、STA、驗證方法論
+- 英文面試與溝通
 
 ### Opportunities（機會）
-- AI 硬體人才需求仍然很高，大廠持續聘用國際學生
-- AI for Science 是新興方向，生醫加上硬體的跨域背景很少見
-- 台灣有 TSRI（國研院台灣半導體研究中心）提供學界 EDA 工具與下線服務，相較許多國家的學生是優勢
+- AI 硬體人才需求仍然很高，大廠持續招募 new grad
+- 台灣有 TSRI 提供學界 EDA 工具與下線資源，能在出國前就補上 ASIC 經驗
+- 你有研究背景，比一般 MS 學生更有機會拿到 **RA 或 thesis 機會**，有時可以抵學費
 
 ### Threats（威脅）
-- 美國政策不穩定（簽證、工作許可、研究經費，見 [07](07-reality-check.md)）
-- 2026 Fall 頂尖研究型大學的 PhD 錄取人數比前一年約少 15%，已經是連續第二年下降（AAU 資料）
-- 同領域申請者很強（中國、印度、韓國的申請者常常已有頂會論文）
+- **H-1B 加權抽籤**：新鮮人的中籤率大幅下降
+- **CPT 收緊**：MS 那一次暑期實習的風險變大
+- **OPT 仍在被 DHS 檢討**：這是 MS 路線的命脈
+- **兵役**：未服役的男生畢業後無法留美工作
+- 大量國際 MS 學生搶同一批 new grad 職缺
 
 ---
 
-## 1.4 研究題目的包裝：長序列蛋白質結構預測加速
+## 1.5 研究經驗怎麼用在 MS 路線
 
-這是你申請時最重要的武器，一定要包裝好。
+MS 申請不像 PhD 那麼看研究，但**研究是你和其他 MS 申請者最大的差異**。三個用途：
 
-### (1) 先徹底理解 workload
+### (1) 申請：放進 SOP 和 CV，證明你「做過真的東西」
+MS 版 SOP 的重點不是「我想做研究」，而是**「我做過完整的加速器，現在要補上 ASIC 與業界能力，進入 AI 晶片產業」**（見 [03](03-application-materials.md#32-statement-of-purposems-版)）。
 
-以 AlphaFold2 的 Evoformer 為例（AF3 的 Pairformer、Boltz、ESMFold 的 folding trunk 都有類似的 pair representation 與 triangle 運算）：
+### (2) 求職面試：最好的技術話題
+面試官很喜歡問「講一個你做過最複雜的設計」。長序列蛋白質結構預測加速器就是很好的題材：
+- **瓶頸**：pair representation 是 L × L × 128 的張量。以 L = 4,000 為例，單一 FP32 張量約 **8.2 GB**；triangle 運算的複雜度是 O(L³)
+- **你的解法**：dataflow、tiling、量化、記憶體階層的設計
+- **取捨**：為什麼用 FPGA？換成 ASIC 會有哪些改變？
+- **驗證**：你怎麼確認正確性？GPU baseline 有多強？
 
-| 元件 | 形狀／複雜度 | 硬體上的意義 |
-|---|---|---|
-| Pair representation | L × L × c_z（c_z = 128） | **記憶體 O(L²)**。例如 L = 4,000 時，單一 FP32 張量約 4000² × 128 × 4 B ≈ **8.2 GB** |
-| Triangle multiplicative update | 每個 (i,j) 都要沿 k 累加 → **O(L³·c)** 運算 | 計算量大，而且資料重用模式特殊 |
-| Triangle attention | 每個 head 的 attention logits 有 **L × L × L** 個元素 | 不做 chunking 就放不下；做了 chunking 又會產生大量資料搬移 |
-| MSA representation（AF2） | N_seq × L × c_m | 和 MSA 深度有關 |
-
-**建議第一步**：在 GPU 上用 OpenFold、Boltz 或 ESMFold 跑 L = 256 到 4,000 以上，畫出：
-1. 各個 kernel 的時間佔比
-2. peak memory 和 L 的關係
-3. roofline（哪些 kernel 是 memory-bound，哪些是 compute-bound）
-
-這三張圖可以直接當論文和 SOP 裡的 motivation。
-
-### (2) 知道前人做了什麼，並做出差異化
-
-- **LightNobel（ISCA 2025，KAIST 團隊）**：以 token-wise adaptive activation quantization 搭配可重組的多精度矩陣單元，處理長序列 PPM 的 activation 爆量問題；論文宣稱 peak memory 降低上百倍，速度與能效都明顯超越 A100/H100。**這是你最直接的「競爭對手」，一定要精讀。**
-- FastFold（2022）：從系統層面（平行化、通訊）加速 AlphaFold 的訓練與推論
-- OpenFold：可訓練的開源 AlphaFold2 重現版本，適合拿來做 profiling
-- 一般性的 attention 加速技術：FlashAttention 類的 tiling + online softmax、KV/activation 量化、sparsity
-
-**可能的差異化角度**（和指導教授討論後選一個主軸）：
-- **Dataflow／tiling**：針對 triangle multiplication／attention 設計跨運算融合（fusion）的資料流，減少 off-chip 存取
-- **記憶體階層**：利用 HBM FPGA（例如 Alveo U280/U55C）或 near-memory 的設計
-- **演算法近似**：pair representation 的稀疏性、低秩結構、跨層重用
-- **Scale-out**：多 FPGA 或多晶片切分超長序列
-- **精度**：和 LightNobel 不同的量化策略，或 FP8/MX 格式
-
-### (3) 故事框架（SOP、面試、論文 intro 都能用）
-
-```
-問題  ：科學上需要預測長蛋白質與大型複合體（L > 1,000），但現有模型在長序列下記憶體爆量
-瓶頸  ：pair representation 是 O(L²) 記憶體；triangle 運算是 O(L³) 的資料搬移
-洞見  ：（你的關鍵觀察，例如某種 locality / precision tolerance / sparsity）
-設計  ：演算法 + dataflow + 硬體的 co-design
-結果  ：和強 GPU baseline 相比的速度、能效、記憶體；準確度以 lDDT / TM-score 驗證
-泛化  ：同樣的方法適用於 long-context transformer、以 pairwise representation 為核心的 GNN 等
-```
-
-**最後一行「泛化」最重要。** 美國的加速器教授不一定關心蛋白質，但一定關心「你的 insight 能不能用在下一個 workload」。
-
-### (4) 美國審稿人和教授期待的評估嚴謹度
-
-- **Baseline 要強**：GPU baseline 必須是最佳化過的版本（例如 bf16、chunking、fused kernel），不能拿沒最佳化的 PyTorch 來比
-- **能耗量測要說清楚**：FPGA 用板上量測還是工具估計？GPU 用 nvidia-smi 還是外部量測？
-- **準確度**：用 CASP/CAMEO 等標準資料集，報告 lDDT/TM-score
-- **Ablation**：每個設計元素各貢獻多少
-- **ASIC 推估**：光有 FPGA 結果，說服力有限。若能附上 ASIC synthesis 的面積與功耗數字，說服力會高很多（見 1.5）
+### (3) 保留 PhD 的可能
+- 研究照樣做完、**論文照樣投**（DAC、ICCAD、FCCM、FPGA 等等，時程見 [02](02-timeline.md#23-研討會投稿時程參考)）
+- 同領域已有 **ISCA 2025 的 LightNobel**（KAIST 團隊，針對長序列蛋白質結構預測模型的軟硬體協同加速器），一定要讀，並說得出你的方法和它的差異
+- MS 期間如果選 thesis option 或做 RA，有機會拿到美國教授的推薦信，將來要轉 PhD 就容易得多
 
 ---
 
-## 1.5 從 FPGA 銜接到 ASIC：最值得投資的 12 個月
+## 1.6 「為什麼要再讀一個碩士？」要有好答案
 
-你要申請的是 digital IC 方向，只有 FPGA 經驗會被認為「偏系統、偏原型」。以下是分階段的補強計畫：
+可以申請的學校（例如 Stanford EE、CMU ECE）都明確要求你**在 SOP 裡說明理由**，面試官也常問。
+
+**❌ 不好的理由**
+- 「為了拿美國工作簽證」（雖然是事實，但不能當主要理由）
+- 「台灣的碩士不夠好」（貶低自己的學歷，沒有必要）
+
+**✅ 好的理由（依你的情況調整）**
+- **能力轉換**：「我的碩士研究偏重 FPGA 原型與 HW/SW co-design，但要設計 AI 加速器晶片，我需要系統性的 ASIC 設計、驗證與實體設計訓練。這是我目前的學程無法提供的」
+- **具體課程與資源**：點名學校的進階 VLSI 課程、下線課程、驗證課程，以及和業界的合作專案
+- **產業銜接**：清楚的職涯目標，說明這個學程如何幫你銜接到 AI 晶片產業
+- **研究延續**：如果有 thesis option，可以提你想延續的研究方向
+
+**這個理由必須是真的**。它也會引導你選課：**不要重修你已經會的東西**，要去補 ASIC、驗證、進階計結這些真正的缺口。
+
+---
+
+## 1.7 從 FPGA 銜接到 ASIC（出國前最值得投資的事）
+
+這對 MS 求職**極度重要**：面試官會直接問你有沒有做過 synthesis、STA 和 P&R。
 
 ### 階段 1：ASIC 綜合（1–2 個月）
-- 把加速器的**核心運算單元**（例如 systolic array／triangle update engine）改寫或整理成乾淨的 SystemVerilog（如果原本是 HLS，可以先用 HLS 產生的 RTL，但最好能手寫關鍵模組）
-- 用 Synopsys Design Compiler 或 Cadence Genus 做 synthesis
-  - 製程：透過 **TSRI** 取得的學界製程（詢問實驗室／學校），或 **ASAP7**（學界常用的 7nm 預測型 PDK）
-- 用 PrimeTime/Tempus 做 STA，報告面積、功耗、頻率
+- 把加速器的**核心運算單元**整理成乾淨的 SystemVerilog（原本是 HLS 的話，最好手寫關鍵模組）
+- 用 Design Compiler 或 Genus 做 synthesis
+  - 製程：透過 **TSRI** 取得學界製程，或使用 **ASAP7**（學界常用的 7nm 預測型 PDK）
+- 用 PrimeTime/Tempus 做 STA → 報告面積、功耗、頻率
 
 ### 階段 2：APR（2–3 個月）
 - ICC2 或 Innovus：floorplan → placement → CTS → routing → 修 timing
-- 或者走開源流程：**OpenROAD / OpenLane**（搭配 SKY130、GF180、IHP SG13G2 或 ASAP7）
-- 產出：post-layout 的 PPA、layout 截圖（很適合放在 CV 和網站上）
+- 或者走開源流程：**OpenROAD / OpenLane**
+- 產出：post-layout 的 PPA、layout 截圖（放在 CV 和 GitHub 上）
 
-### 階段 3（選做）：下線
-- TSRI 晶片下線服務：週期長（從設計到拿回晶片需要數個月），要看實驗室能不能配合
-- Tiny Tapeout：成本低、面積小，適合放一個小型測試設計；2025 年 Efabless 倒閉後已改用 IHP 的 shuttle（2026 年仍在運作，條款有改變，要先讀清楚）
-- **不一定需要下線**。對申請來說，完整的 post-layout PPA 已經很有說服力
-
-### 階段 4：驗證能力（並行進行）
-- 替你的 RTL 寫一套像樣的 testbench：SystemVerilog + assertion，或 **cocotb**（Python 驗證框架，適合 co-design 背景的人）
-- 加上 coverage 報告
+### 階段 3：驗證（並行進行）
+- 替 RTL 寫一套像樣的 testbench：SystemVerilog + assertion，或 **cocotb**；再學 UVM 基礎
+- **DV 是職缺最多的領域**，有驗證經驗能讓你的求職面更廣
 
 ### 在台灣可以利用的資源
-- **課程**：研究所等級的計算機結構、VLSI 系統設計、數位 IC 設計。例如陽明交大的積體電路設計實驗（ICLAB）這類高強度課程，在業界和學界都有口碑
-- **競賽**（有時間再參加）：旺宏金矽獎、大學院校積體電路設計競賽、CAD Contest @ ICCAD
-- **TSRI**：EDA 工具授權、製程資源、下線服務、教育訓練課程
+- **課程**：研究所等級的 VLSI 系統設計、數位 IC 設計（例如陽明交大的積體電路設計實驗 ICLAB 這類高強度課程）
+- **競賽**：旺宏金矽獎、大學院校積體電路設計競賽、CAD Contest @ ICCAD
+- **TSRI**：EDA 工具、製程資源、下線服務、訓練課程
 
 ---
 
-## 1.6 策略總結
+## 1.8 策略總結
 
 ```
-主軸   ：以 PhD 為主（8–10 所）+ 少量 MS 保底（視資金狀況）
-研究   ：長序列蛋白質結構預測加速 → 包裝成「記憶體受限的長序列 pairwise 運算加速」
-補強   ：ASIC flow（PPA 數字）+ 驗證 + 計算機結構
-產出   ：1 篇第一作者論文 + 開源 repo + 個人網站 + 3 分鐘研究簡報
-選校   ：以教授 fit 為核心，分成 A 類（加速器架構）、B 類（數位 IC 下線）、C 類（FPGA/HLS 銜接）三類混合（見 05）
+主軸   ：美國 MS（8–10 所，先確認第二碩士資格）
+備案   ：2–3 所 PhD（教授研究高度對口）＋ 台灣美商（平行選項）
+兵役   ：未服役的男生 → 出國前完成兵役或研替（情境 B）
+研究   ：做完並投稿 → SOP 的差異化、面試話題、保留 PhD 的可能
+補強   ：ASIC flow（PPA 數字）+ 驗證 + RTL 面試能力（出國前完成）
+選校   ：就業資源 > 地點 > 實習政策 > 花費 > 學術排名
 ```

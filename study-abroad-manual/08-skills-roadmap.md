@@ -1,7 +1,7 @@
 # 08. 技術能力路線圖
 
 > 目標：從「FPGA 加速器研究者」變成「懂 ASIC、也懂架構的 AI 加速器設計者」。
-> 這些能力同時服務三件事：**你的研究、申請時的說服力，以及之後的實習與求職面試。**
+> 對 MS 路線來說，這一章的最終目的是**入學第一學期就能通過業界的技術面試**。這些能力也同時支撐你的研究和申請。
 
 ---
 
@@ -112,37 +112,65 @@ RTL → Lint → Simulation → Synthesis → STA → DFT(scan) → Floorplan �
 
 ---
 
-## 8.5 未來 12 個月的具體專案
+## 8.5 出國前的具體專案
 
-以你的研究為主軸，每個專案都要能放上 CV、GitHub 和 SOP：
+每個專案都要能放上履歷和 GitHub，並且能在面試時講 5 分鐘：
 
-| # | 專案 | 時間 | 產出 |
-|---|---|---|---|
-| P1 | **GPU profiling 研究**：OpenFold／Boltz／ESMFold 在不同 L 下的時間、記憶體與 roofline 分析 | 2–4 週 | 論文 motivation 的圖表、blog 文章 |
-| P2 | **FPGA 加速器**（你的主要研究）：加上強 baseline 與完整評估 | 持續 | 論文 |
-| P3 | **核心運算單元的 ASIC implementation**：synthesis + APR → PPA | 3–4 個月 | CV 上的 ASIC 經驗、論文中的 ASIC 推估 |
-| P4 | **開源 repo**：可重現的腳本、清楚的 README | 與 P2 並行 | GitHub 作品集 |
-| P5（選做） | **可參數化的 systolic array + 完整驗證**（SVA／cocotb + coverage） | 1–2 個月 | 驗證能力展示，面試時的好話題 |
-| P6（選做） | 用 Timeloop 替你的 dataflow 做能耗建模 | 1 個月 | 和 ASIC 數字交叉驗證 |
+| # | 專案 | 時間 | 產出 | 對求職的價值 |
+|---|---|---|---|---|
+| P1 | **FPGA 加速器**（你的主要研究）：加上強 baseline 與完整評估 | 持續 | 論文、面試主題 | 「講一個你做過最複雜的設計」 |
+| P2 | **核心運算單元的 ASIC implementation**：synthesis + APR → PPA | 3–4 個月 | 履歷上的 ASIC 經驗 | **RTL／PD 職位一定會問** |
+| P3 | **可參數化的 systolic array + 完整驗證**（SVA／cocotb + coverage，進階可以加上 UVM） | 1–2 個月 | GitHub 作品 | **DV 職位的敲門磚**；RTL 面試的好話題 |
+| P4 | GPU profiling：OpenFold／Boltz／ESMFold 在不同序列長度下的效能分析 | 2–4 週 | 論文的 motivation、技術文章 | 展現效能分析能力 |
+| P5（選做） | 用 Timeloop 替你的 dataflow 做能耗建模 | 1 個月 | 和 ASIC 數字交叉驗證 | 架構類職位加分 |
 
 ---
 
-## 8.6 業界面試準備（實習或 MS 求職）
+## 8.6 業界面試準備（MS 的核心）
 
-### RTL 面試常見題型
+### (1) 美國硬體公司的面試流程
+```
+投遞履歷（career fair / Handshake / 官網 / 內推）
+   ↓
+Recruiter 電話（15–30 分鐘：背景、身分、時程）
+   ↓
+技術電話面試 1–2 輪（45–60 分鐘：RTL、數位邏輯、你的專案）
+   ↓
+Onsite／virtual onsite（4–6 輪，每輪 45–60 分鐘：技術 + behavioral）
+   ↓
+Offer
+```
+- **內推的效果遠大於海投**：台灣同學會、學長姐、LinkedIn 上的校友都是資源
+- **身分問題**：申請表上常問「是否需要簽證贊助」，要誠實回答。大部分大型晶片公司會贊助，部分新創和國防相關公司不會
+
+### (2) 依職位準備的重點
+
+| 職位 | 必考 | 加分 |
+|---|---|---|
+| **RTL Design** | 手寫 RTL（FIFO、arbiter、FSM）、CDC、pipelining、STA、低功耗 | 計算機結構、AI 加速器 dataflow |
+| **Design Verification** | SystemVerilog OOP、constrained random、SVA、**UVM**、coverage | Formal、Python 自動化 |
+| **Physical Design** | Floorplan、placement、CTS、routing、STA（setup／hold 修正）、IR drop | Tcl 腳本、EDA 工具的實際經驗 |
+| **Architecture／Performance** | Roofline、cache、記憶體階層、performance model | 你的研究（這類職位最看重） |
+| **ML Compiler／Co-design** | PyTorch、C++、MLIR／TVM 概念、kernel 最佳化 | 你的 co-design 經驗 |
+
+### (3) RTL 面試常見題型
 - **手寫 RTL**：同步 FIFO、非同步 FIFO、round-robin arbiter、edge detector、除頻器、序列偵測 FSM
 - **CDC**：怎麼安全地把單一 bit 或多 bit 訊號傳到另一個 clock domain？
-- **STA**：計算 setup／hold slack、如何修 violation
+- **STA**：計算 setup／hold slack，說明怎麼修 violation
 - **架構**：設計一個 X TOPS、Y GB/s 頻寬的矩陣乘法單元 → 計算 roofline、決定 SRAM 大小
 - **AI 加速器**：比較不同 dataflow；量化對面積與功耗的影響；attention 在硬體上的瓶頸
+- **數位邏輯基礎**：K-map、mux 實作任意邏輯、latch vs flip-flop、metastability
 
-### 練習資源
+### (4) 練習資源
 - **HDLBits**：Verilog 線上練習題
 - **Verification Academy**（Siemens）：UVM／SVA 教學
-- 各大公司的面試心得：一畝三分地、Glassdoor、PTT 相關版、Reddit r/chipdesign
-- 自己練習：把 8.1 的每個主題都能**用英文**在白板上講 5 分鐘
+- 面試心得：一畝三分地、Glassdoor、PTT 相關版、Reddit r/chipdesign
+- **自己練習**：8.1 的每個主題都要能**用英文**在白板上講 5 分鐘（英文面試技巧見 [04 的 4.7 節](04-english.md#47-求職面試的英文ms-的主戰場)）
 
-### PhD 研究實習
-- NVIDIA Research、Google（TPU／DeepMind 硬體）、Meta、Microsoft Research、AMD Research、Intel Labs、IBM Research 等
-- 多半透過**指導教授人脈、研討會認識的研究員**、或者你的論文被注意到
-- **2026/08 的 CPT 新指引可能影響實習**：入學後先向國際學生辦公室確認
+### (5) 準備時程
+| 時間 | 目標 |
+|---|---|
+| 出國前 6 個月 | 每週 2–3 題 RTL 手寫；把 8.1 的基礎主題複習一輪 |
+| 出國前 3 個月 | 模擬面試（找在美國業界的學長姐）；履歷定稿；LinkedIn 完成 |
+| 入學第 1 個月 | Career fair；大量投遞；請內推 |
+| 入學第 1–3 個月 | 面試高峰，每場面試後記錄題目並檢討 |

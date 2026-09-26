@@ -1,6 +1,6 @@
 # 04. 英文準備
 
-> 英文在申請中是「門檻」，在美國生活和讀博時則是「基本功」。**考試只要過門檻就好，但研究溝通能力（寫作、簡報、面試）要持續練。**
+> 英文在申請中是「門檻」，在美國求職和工作時則是「基本功」。**考試只要過門檻就好，但溝通能力（寫作、簡報、面試）要持續練。**
 
 ---
 
@@ -32,9 +32,9 @@
 
 | | 目標 |
 |---|---|
-| 最低要求 | 很多學校仍用舊制寫門檻，例如 **Stanford EE PhD 要求 100**；常見範圍在 80–100 |
+| 最低要求 | 很多學校仍用舊制寫門檻，例如 **Stanford EE 要求 100**；常見範圍在 80–100 |
 | **你的目標** | **Overall 5.0–5.5（舊制 100–110）**，口說盡量高 |
-| 口說 | **口說會影響 TA 資格**。很多學校要求口說達到一定分數，或者入學後要另外考口說測驗，才能擔任 TA → 而 TA 是 PhD 經費來源之一 |
+| 口說 | 口說分數會影響 **TA／grader 資格**，這是 MS 少數能減免學費的機會之一。更重要的是，**入學第一學期就要用英文參加求職面試** |
 
 ### 注意事項
 - **市面上很多補習班教材還是舊制題型**，一定要用新制的官方練習材料
@@ -50,16 +50,18 @@
 
 | 學校／系所 | GRE 政策（Fall 2027 申請季） |
 |---|---|
-| MIT EECS | 不採用 GRE |
-| UC Berkeley EECS | **不要求也不接受** GRE |
+| USC Viterbi（所有碩士學程） | **不需要** |
+| Georgia Tech ECE | **不需要**；有送的話會參考（官方期待值：Verbal 153、Quant 155、AW 3.0 以上；有競爭力的分數是 Verbal 160+、Quant 165+） |
+| UW ECE | **不需要也不接受** |
 | CMU ECE | Optional，沒送分的申請者一視同仁 |
-| 其他學校 | 多數 EE/ECE PhD 為 optional 或不需要；**部分 MS 課程可能仍然要求或建議** |
+| MIT EECS／UC Berkeley EECS（PhD 備案） | 不採用／不接受 |
+| 其他學校 | 多數 EE/ECE 為 optional 或不需要；**部分 MS 學程可能仍然要求或建議** |
 
 **策略**
 1. **預設不考**
-2. T−6 名單定案時，逐一確認有沒有學校**要求** GRE
+2. T−5 名單定案時，逐一確認有沒有學校**要求** GRE
 3. 如果需要，目標是 Quant 167 以上、Verbal 150–155 以上、AW 3.5 以上（新制 GRE 已縮短為約 2 小時）
-4. 如果你的 GPA 或學校背景較弱，而某所學校 GRE 是 optional，高分的 Quant 可以稍微補強，但效果有限
+4. MS 申請比較看重 GPA 和學校背景。如果你的 GPA 較弱，而某所學校的 GRE 是 optional，高分的 Quant 可以稍微補強，但效果有限
 
 ---
 
@@ -78,14 +80,15 @@
 - 新制 TOEFL 官方模擬題，每週 1–2 次限時練習
 - **口說**：每種題型準備一套回答框架，大量錄音練習
 - **寫作**：練習學術討論題型，注意時間控制
-- **第一次正式考試**（最晚在 T−6）
+- **第一次正式考試**（最晚在 T−5）
 
-### Phase 3：轉向申請與面試（+8 → +12 個月以上）
+### Phase 3：轉向申請文件與求職面試（+8 → 出國）
 
 - 需要的話再考一次
-- **研究簡報三種長度**：1 分鐘（elevator pitch）、3 分鐘（面試開場）、10–15 分鐘（visit day／面試深入版）
-- **模擬面試**：找在美國讀博的學長姐，或者同樣要申請的同學互相練習。題庫見 [03](03-application-materials.md#37-面試) 和 [10](10-templates.md#6-面試自我準備清單)
 - 用英文寫 SOP，**自己寫**
+- **自我介紹與專案介紹**：60–90 秒版本的「Tell me about yourself」，以及 3 分鐘版本的研究專案介紹
+- **技術面試英文**：用英文邊畫圖邊解釋 FIFO、CDC、STA、systolic array（見 4.7 和 [08](08-skills-roadmap.md#86-業界面試準備ms-的核心)）
+- **模擬面試**：找在美國工作的學長姐，或同樣要出國的同學互相練習。題庫見 [10](10-templates.md#6-面試自我準備清單)
 
 ### 持續進行
 - 如果實驗室願意：**lab meeting 用英文報告**，或至少投影片用英文寫
@@ -118,3 +121,37 @@
 - **Small talk**：週末做了什麼、天氣、運動、美食。這些看起來沒用，但它是建立人脈的開始
 - **說「不」與協商**：例如和指導教授討論工作量、畢業時間
 - **技術口語**："ballpark number"、"back-of-the-envelope"、"low-hanging fruit"、"sanity check"
+
+---
+
+## 4.7 求職面試的英文（MS 的主戰場）
+
+MS 入學後的第一學期就要面試。面試的英文和考試的英文是兩回事：
+
+### (1) 「Tell me about yourself」（60–90 秒）
+結構：**現在**（我是 X 學校的 MS 學生，專長是…）→ **過去**（我在台灣做過 FPGA 加速器研究，成果是…）→ **未來**（我想在 AI 晶片團隊做…，所以對這個職位有興趣）
+
+### (2) Behavioral 面試：用 STAR 結構回答
+- **S**ituation（背景）→ **T**ask（你的任務）→ **A**ction（**你**做了什麼，這是重點）→ **R**esult（量化結果）
+- 常見題目：
+  - Tell me about a challenging bug you fixed.
+  - Describe a time you disagreed with a teammate or advisor.
+  - Tell me about a time you had to learn something quickly.
+  - Describe a project you're most proud of.
+- 準備 5–6 個故事，每個故事都能套用到不同的題目
+
+### (3) 技術面試：邊想邊說（think out loud）
+- 美國的技術面試很看重**溝通過程**，不只是答案
+- 先釐清題目（"Just to clarify, should the FIFO support simultaneous read and write?"）
+- 講出你的思路（"My first thought is… but that would cause… so instead I'd…"）
+- 卡住時也要說話（"Let me think about the corner case where the FIFO is full…"）
+- 練習方法：錄下自己用英文解一題 RTL 題的過程，回放檢查
+
+### (4) 你要問面試官的問題
+- What does a typical week look like for a new grad on this team?
+- What are the biggest technical challenges the team is facing?
+- How does the team split work between architecture, RTL, and verification?
+
+### (5) 薪資與 offer 溝通
+- 可以禮貌地詢問、比較、協商，這在美國是正常的
+- 用語："I'm very excited about this opportunity. Is there any flexibility on the base salary / sign-on bonus?"

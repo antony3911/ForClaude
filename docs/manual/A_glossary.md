@@ -22,7 +22,7 @@
 | **Pair representation** | 每一對胺基酸之間的關係 | 形狀 **L × L × 128**，隨 L² 成長 | **本專題處理的資料** |
 | **Triangle Multiplication** | 用「第三者」推論兩者關係 | `z[i][j][c] = Σ_k a[i][k][c]·b[j][k][c]`（outgoing） | **本專題實作的運算** |
 | **Outgoing / Incoming** | 兩種三角形方向 | outgoing 用 (i,k)、(j,k)；incoming 用 (k,i)、(k,j) | 我們做 outgoing |
-| **Triangle Attention** | 三角形版本的 attention | 中間值隨 L³ 成長，實作上需分塊 | 第 1 章 1.3 節（未實作） |
+| **Triangle Attention** | 三角形版本的 attention | 中間值隨 L³ 成長，實作上需分塊；**長序列時最花時間**（1,410 aa 佔 75.9%） | 第 1 章 1.3 節（未實作，未來工作） |
 | **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置的 128 個數字 | per-token 量化的單位 |
 | **Channel（C）** | 每格的數字個數 | 特徵維度，ESMFold 的 pair 為 128 | `trimul.h` 的 `C = 128` |
 | **LayerNorm / Linear / Gating** | 模型中的標準運算 | 正規化、線性轉換、用 sigmoid 控制資訊流 | 產生 a、b 的步驟（未實作） |
@@ -76,7 +76,7 @@
 | **Fake quantization** | 量化再還原 | 用浮點數模擬量化誤差 | Python 腳本評估誤差 |
 | **rel_l2** | 整體相對誤差 | `‖z − z_ref‖ ÷ ‖z_ref‖` | testbench、host |
 | **max_abs** | 最大單點誤差 | `max |z − z_ref|` | testbench、host |
-| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：token 分三類、各自精度、動態 top-k outlier | 1.6 節、速覽 |
+| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：每個 token 一個 scale；activation 依位置分 A、B、C 三組（INT8＋4 outlier／INT4＋4 outlier／INT4）；outlier 用 INT16、執行時 top-k 挑出 | 1.6 節、速覽 |
 | **Inlier** | 一般大小的值 | 用低精度量化的部分 | 速覽 |
 | **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值 | 速覽 |
 | **Dequantization（反量化）** | 把整數還原成實數 | `x̂ = s × q` | 2.8 節 |
@@ -88,7 +88,7 @@
 | **FPGA** | 可以重新接線的晶片 | Field-Programmable Gate Array | U55C |
 | **ASIC** | 專用晶片 | 做好就不能改，最快最省電 | LightNobel 的加速器 |
 | **HW/SW co-design** | 軟硬體一起設計 | 演算法配合硬體、硬體配合演算法 | LightNobel、速覽 |
-| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | 可重組的多精度矩陣單元／多功能向量單元／整理不同格式 token 的單元（後兩者細節以原文為準） | 速覽 |
+| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊 | 速覽 |
 | **ISCA** | 計算機架構頂尖會議 | International Symposium on Computer Architecture | LightNobel 發表處 |
 | **U55C** | 我們的 FPGA 卡 | AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e | 整個專題 |
 | **Alveo** | AMD 資料中心 FPGA 卡系列 | 插在伺服器的 PCIe 插槽 | U55C 屬於此系列 |

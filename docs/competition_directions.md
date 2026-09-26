@@ -67,13 +67,14 @@ Kernel 2（consumer）：現有的 v4 ＋ 輸出 epilogue
 ## B. FPGA 上的簡化版 AAQ
 
 ### 問題
-LightNobel 的 AAQ：把 token **分成三類**，各用不同精度，並用**動態 top-k 保留 outlier**。論文用自己設計的 ASIC 評估。
+LightNobel 的 AAQ：依 activation 在模型中的**位置**分成 **A、B、C 三組**（A：接 residual，INT8 ＋ 4 個 INT16 outlier；B：LayerNorm 後，INT4 ＋ 4 個 outlier；C：其他，INT4 不處理 outlier），每個 token 一個 scale，outlier 在執行時用 **top-k** 挑出。論文用自己寫的 cycle-accurate 模擬器評估 ASIC。
+（2026-09-26 讀原文後更正：分組依據是 activation 的位置，不是 token 的難易度。）
 
 ### 做法（簡化）
 | LightNobel | 我們的簡化版 |
 |---|---|
-| 三類 token、多種精度 | 兩類：一般 token 用 **INT4**，「難」的 token 用 **INT8** |
-| 動態 top-k outlier | 每個 token 保留固定 k 個 outlier（FP16），其餘量化 |
+| 三組 activation、多種精度 | 只處理 Triangle Multiplication 的 a、b：它們屬於 **C 組** → **INT4 per-token、不處理 outlier**（和論文一致的最小版本） |
+| 執行時 top-k outlier（k = 4，INT16） | 延伸：若要處理 z（A 組），每個 token 保留 4 個 outlier，其餘 INT8 |
 | 專用 RMPU / VVPU | HLS 寫兩條資料路徑（INT4、INT8）＋ outlier 修正 |
 
 1. **先在 Python 做**（快、便宜）：在真實 activation 上試各種設定（k、分類門檻），畫出「記憶體 vs 誤差」的 Pareto 曲線。
@@ -144,7 +145,7 @@ LightNobel 的 AAQ：把 token **分成三類**，各用不同精度，並用**�
 ---
 
 ## 文獻查找紀錄（2026-09-26）
-- LightNobel：token-wise 自適應量化（三類 token、token-wise scale、動態 top-k outlier）＋ RMPU / VVPU；
+- LightNobel：token-wise 自適應量化（三組 activation、token-wise scale、執行時 top-k outlier）＋ RMPU / VVPU；
   宣稱比 A100 / H100 快最多約 8.4 倍、peak memory 最多降低約 120 倍。
   [arXiv 2505.05893](https://arxiv.org/abs/2505.05893)、[ACM DL](https://dl.acm.org/doi/10.1145/3695053.3731006)
 - GPU 融合 kernel：OpenFold3 的 PR 把 Triangle Multiplication 的工作空間從約 7U 降到約 4U（分塊後約 2.2U）。

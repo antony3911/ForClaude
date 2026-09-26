@@ -6,10 +6,11 @@
 
 ## 速覽　LightNobel 與本專題
 
-1. ① **token-wise 自適應量化**：每個 token 一個 scale，分三類給不同精度；② **outlier 另外存**：動態 top-k，資料格式對硬體友善；③ **專用硬體**：RMPU、VVPU、Token Aligner 有效率地處理不同格式的 token。（速覽第 3 節）
-2. 他們觀察到 activation 的分布以 token 為單位有明顯差異；以 token 為單位，既能讓每個 token 用適合自己的精度，又不需要像 per-element 那樣存大量 scale。（速覽第 2、3 節、1.6 節）
-3. **繼承**：問題定義、以 ESMFold 為對象、token-wise 量化的想法、以峰值記憶體與序列長度為指標。**新增**：融合資料流、重算 g、量化在源頭完成、FPGA 實作、v0～v4 ablation、分析模型與設計空間探索。（速覽第 6 節）
-4. 平台（ASIC vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平。較好的說法：「在現成硬體上，從互補的角度處理同一個問題，並量化各手法的貢獻。」（速覽第 6 節）
+1. ① **token-wise 自適應量化**：每個 token 一個 scale，activation 依位置分 A、B、C 三組給不同精度（INT8／INT4）；② **outlier 另外存**：執行時用 top-k 挑出、以 INT16 存放，資料格式對硬體友善；③ **專用硬體**：RMPU（4-bit 小塊、多精度）、VVPU（執行時量化、top-k）、Token Aligner 有效率地處理不同格式的 token。（速覽第 2、3 節）
+2. 他們觀察到同一個 token 的 channel 之間差異小、token 之間差異大，outlier 也集中在特定 token；以 token 為單位，既能讓每個 token 用適合自己的 scale，又不需要像 per-element 那樣存大量 scale。（速覽第 2 節、1.6 節）
+3. **繼承**：問題定義、以 ESMFold 為對象、token-wise 量化、管線化與執行時量化（中間值不落地）的原則、以峰值記憶體與序列長度為指標。**新增**：FPGA 上的實作、v0～v4 逐步 ablation、完整 Triangle Multiplication 的融合設計（含重算 g）、分析模型與設計空間探索。（速覽第 6 節）
+4. 平台（ASIC 模擬 vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平；而且融合與執行時量化 LightNobel 都已經做了。較好的說法：「以 LightNobel 的原則為基礎，在現成硬體上實作其中一個運算，並量化每一招各自的貢獻。」（速覽第 6 節）
+5. a、b 是 linear 之後的值，依定義屬於 **C 組**（平均 outlier 少於 1 個），論文對 C 組用 INT4、不處理 outlier。所以我們的 INT8 是保守的選擇，INT4 是合理的下一步。（速覽第 2、3 節）
 
 ## 第 1 章　為何而做
 
@@ -18,6 +19,7 @@
 3. **0.25 FLOP/byte**：每做 2 次運算要讀 8 bytes。以 GPU 約 10 FLOP/byte 的平衡點來看，運算單元大約 97% 的時間都在等資料。（1.5）
 4. **`z = a × bᵀ`**：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）
 5. per-tensor 整份資料共用一個 scale；per-token 每個 token 各自一個 scale。有 outlier 時，per-tensor 的 scale 被 outlier 撐大，一般的數值只能用到很少幾個整數，誤差變大。模擬結果：per-token 約 1%，per-tensor 約 11%。（1.6、2.8）
+6. **Triangle Attention**（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.3、1.7）
 
 ## 第 2 章　為何可做
 
@@ -55,10 +57,11 @@
 
 1. LayerNorm、linear、sigmoid、gating、量化都是「**每個 token 只用自己的 128 個數**」的運算，一個 token 可以在晶片內一路處理完；只有 einsum 需要跨 token 的資料，才必須把 a、b 寫出去。（6.4）
 2. 比例是 `128 ÷ L`，L = 512 時約 **25%**。（6.5）
-3. 省下「把 FP32 的 a、b 寫出去、再讀回來量化」的兩趟搬運：a 的 128 個數剛算完還在暫存器裡，就順便算 scale、轉成 INT8。（6.7）
+3. 省下「把 FP32 的 a、b 寫出去、再讀回來量化」的兩趟搬運：a 的 128 個數剛算完還在暫存器裡，就順便算 scale、轉成 INT8。這就是 LightNobel VVPU 的執行時量化。（6.7）
 4. 同一份資料校正又驗證，當然會很準，無法證明模型能**預測**沒看過的情況。應該用 v2 8×8 校正，去預測 16×16、32×32，以及 v3、v4 的報告，看誤差是否在 10% 以內。（6.8）
 5. 找不到另一個設計在**所有指標都一樣好、而且至少一項更好**。（6.9）
 6. `√(3,584 ÷ 1,288) ≈ √2.78 ≈` **1.67 倍**（約 2,190 → 3,650）。（6.10）
+7. 論文的比較基準（ESMFold）是 FP16。用 FP32 當基準，原始資料大了一倍，量化「看起來」省更多，會高估效果：同樣的融合 ＋ INT8，FP32 基準是 1.67 倍，FP16 基準只有 1.52 倍。（6.10、1.4）
 
 ## 第 7 章　研究方法
 

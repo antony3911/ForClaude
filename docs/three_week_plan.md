@@ -26,12 +26,13 @@ LightNobel 本身也是用模擬器評估架構，不是做出實體晶片。
 > *Breaking the Pair-Representation Memory Wall: FPGA Dataflow Fusion and Token-wise Quantization for Protein Structure Prediction*
 
 **故事三段：**
-1. **問題**：PPM 的 pair representation 隨 L² 成長，Triangle Multiplication 一步就同時需要約 7 份 L×L×128 的資料 → 序列長度受限、而且 memory-bound。
-2. **方法**：在 FPGA 上逐步套用 tiling → 寬位元 → double buffering → token-wise INT8，並提出**融合的資料流架構**，讓中間值不寫回 HBM。
+1. **問題**：PPM 的 pair representation 隨 L² 成長，Triangle Multiplication 一步就同時需要約 7 份 L×L×128 的資料 → 序列長度受限、而且 memory-bound（長序列時 Triangle Attention 更重，列為未來工作）。
+2. **方法**：在 FPGA 上逐步套用 tiling → 寬位元 → double buffering → token-wise INT8，並把 LightNobel 的管線化原則落實成**融合的資料流架構**，讓中間值不寫回 HBM。
 3. **結果**：用 HLS ＋ 分析模型量化每一步的效能、資源、精度，以及 U55C 上可處理的最大序列長度。
 
 **和「單純比較常見手法」的差別：**
-- 有自己提出的架構（融合資料流），不只是套現成技巧。
+- 有完整的融合資料流設計（原則來自 LightNobel，具體設計與每一步的效益估算是我們的），不只是套現成技巧。
+- 把每一招的貢獻拆開量化（LightNobel 只給整體結果）。
 - 有經過驗證的分析模型，可以做設計空間探索，而不是只看 5 個點。
 - 每一招都對應到明確的瓶頸（roofline、Amdahl），不只是列數字。
 

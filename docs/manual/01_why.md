@@ -139,12 +139,26 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 它的中間值（attention logits）形狀是 **L × L × L × heads**，是**立方**成長，
 所以實作上一定要分塊（chunking）計算，否則 L = 1000 時光這個中間值就需要數十 GB。
 
+**它才是長序列時最花時間的運算。** LightNobel 在 H100 上量測 ESMFold（不分塊）的執行時間（論文 Fig. 3）：
+
+| 運算 | 77 個胺基酸（R0271） | 1,410 個胺基酸（T1269） |
+|---|---|---|
+| Triangle Multiplication | **36.1%** | 14.5% |
+| Triangle Attention | 29.0% | **75.9%** |
+| 整個 pair representation 資料流 | 69.4% | 91.9% |
+
+序列短時，Triangle Multiplication 佔比最高；序列一長，立方成長的 Triangle Attention 就壓過其他所有運算。
+所以本專題選 Triangle Multiplication **不是因為它最花時間**，理由見 1.7 節。
+
 ---
 
 ## 1.4 問題一：記憶體放不下
 
 ### 算一算 pair representation 有多大
 每個數字用 FP32（4 bytes），每格 128 個數字 → **每格 512 bytes**。
+
+> **精度說明：** 本專題的 kernel 用 FP32（HLS 裡最直接）。LightNobel 的比較基準（ESMFold）是 **FP16**，
+> 大小是下表的一半。和論文比較時要用 FP16 當基準，否則量化的效果會被**高估 2 倍**（6.10 節）。
 
 ```
 大小 = L × L × 128 × 4 bytes = L² × 512 bytes
@@ -178,10 +192,12 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 ### 為什麼問題出在 activation，不是模型權重
 | 類別 | 是什麼 | 大小和 L 的關係 | ESMFold 的量級 |
 |---|---|---|---|
-| **權重（weights）** | 模型學到的參數 | **固定**，和 L 無關 | 約 3～4B 參數，FP16 約 7～8 GB |
+| **權重（weights）** | 模型學到的參數 | **固定**，和 L 無關 | ESM-2 3B ＋ folding trunk，FP16 約 **7.90 GB**（論文 Table 1） |
 | **Activation** | 計算過程中產生的中間資料 | **隨 L² 甚至 L³ 成長** | L 大時可達數十 GB |
 
 L 小的時候，權重佔大頭；**L 一大，activation 就遠遠超過權重**。
+論文 Fig. 4：L = 2,034 時 activation 已經是權重的 **24.15 倍**，需要 **144 GB**，一張 80 GB 的 GPU 放不下。
+以 3,364 個胺基酸的 T1169 為例，FP16 的 activation 是 113.49 GB，權重只有 7.90 GB（Table 1）。
 所以「把模型變小」幫助有限，真正要處理的是 activation。這正是 LightNobel 的切入點。
 
 ### 現在的解法與代價
@@ -238,48 +254,62 @@ v0 只有 0.25，也就是說**運算單元大約 97% 的時間都在等資料**
 
 ## 1.6 LightNobel 的觀察與解法
 
-> 這裡只整理和「問題」直接相關的部分。論文的完整速讀卡、三個創新的白話說明、
-> 以及本專題繼承與新增了什麼，見**「速覽」一章**。確切的精度設定與硬體數字以原文為準。
+> 這裡只整理和「問題」直接相關的部分。論文的完整速讀卡、三組量化設定、硬體架構，
+> 以及本專題繼承與新增了什麼，見**「速覽」一章**。
 
 ### 他們的觀察
-1. PPM 的記憶體瓶頸主要來自 **activation**（尤其是 pair representation），而不是權重。
-2. Activation 的數值分布**以 token 為單位**有明顯特徵：不同 token 的數值範圍差很多，少數 token 或少數數值特別大（**outlier**）。
+1. 序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.3 節）。
+2. PPM 的記憶體瓶頸主要來自 **activation**，而不是權重（1.4 節）。
+3. **同一個 token 的 128 個 channel 數值差不多，但 token 和 token 之間差很多**，而且 outlier 集中在特定 token（和 distogram 的模式相關）。
    （這裡的 token 指 pair representation 中的一格，也就是一個 (i, j) 位置的 128 個數字。）
-3. 如果整份資料共用同一個量化尺度，outlier 會讓其他數值的精度嚴重下降。
+   → 所以「每個 token 一把尺」比「每個 channel 一把尺」更合適。
+4. **不同位置的 activation 特性也不同**：接 residual 的值很大（平均絕對值約 82）、outlier 多；其他位置的值小（約 4）、outlier 少。
 
 ### 他們的解法
-1. **AAQ（Token-wise Adaptive Activation Quantization）**：每個 token 有自己的 scale；token 分成**三類**，
-   各用不同的 inlier 精度與 outlier 數量；用**動態 top-k** 挑出 outlier 另外保存。
-2. **專用加速器**：Token Aligner、可重組的多精度矩陣單元（**RMPU**）、向量單元（**VVPU**）等，
-   有效率地處理「每個 token 格式不同」的資料。
-3. **結果**：在 CAMEO、CASP14、CASP15 上 TM-score 變化小於 0.001；峰值記憶體最多降低約 **120 倍**；
-   比 A100／H100 快最多約 **8.4 倍**，能處理比 GPU 長得多的序列。
+1. **AAQ（Token-wise Adaptive Activation Quantization）**：每個 token 有自己的 scale；activation 依位置分成 **A、B、C 三組**，
+   分別用 INT8 ＋ 4 個 outlier、INT4 ＋ 4 個 outlier、INT4 不處理 outlier；outlier 用 INT16 另外存，在**執行時用 top-k** 挑出。
+2. **專用加速器**：Token Aligner、可重組的多精度矩陣單元（**RMPU**）、向量單元（**VVPU**，負責執行時量化）等，
+   有效率地處理「每個 token 格式不同」的資料；RMPU 的結果直接以管線交給 VVPU，中間值不寫回外部記憶體。
+3. **結果**：TM-score 變化小於 0.001；峰值記憶體最多降低約 **120 倍**（和不分塊的 GPU 比）；
+   比 A100／H100 快最多約 **8.4 倍**；80 GB 內最長可處理 **9,945** 個胺基酸（GPU 不分塊時約 1,410）。
+   這些是 **cycle-accurate 模擬器**的結果（和 RTL 比對誤差 < 5%），沒有實體晶片。
 
 ### 我們重現了核心直覺
 在模擬資料中放入 1% 的 outlier token：**per-token INT8 的誤差約 1%，per-tensor INT8 約 11%**，相差約 10 倍。
 這說明了 LightNobel 為什麼要以 token 為單位量化。
+
+> **模擬資料和論文的差異：** 我們的 outlier 是「整個 token 放大 30 倍」，對應論文觀察 3（token 之間差很多）；
+> 論文另外還有「token 內少數幾個值特別大」的 outlier，我們沒有模擬。
+> 另外，a、b 是 linear 之後的值，依論文的分法屬於 **C 組**（outlier 很少），所以我們的模擬其實比真實情況更嚴苛。
+> 用真實 ESMFold 資料（4.9 節）重跑，可以確認這一點。
 
 ---
 
 ## 1.7 我們的定位
 
 ### 題目一句話
-> 在 FPGA 上實作 PPM 中最吃記憶體的運算（Triangle Multiplication），提出**融合資料流 ＋ token-wise 量化**的架構，
+> 在 FPGA 上實作 PPM 的 pair representation 運算之一（Triangle Multiplication），採用**融合資料流 ＋ token-wise 量化**，
 > 並用逐步優化（v0～v4）與分析模型，**量化每一招帶來多少改善、付出多少硬體代價**。
 
-和 LightNobel 的關係：**繼承**它的問題定義與 token-wise 量化的想法，**簡化**成單一 INT8，
-**新增**融合資料流、FPGA 實作與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。
+和 LightNobel 的關係：**繼承**它的問題定義、token-wise 量化與管線化（中間值不落地）的原則，**簡化**成單一 INT8 與單一運算，
+**新增** FPGA 實作、逐步 ablation 與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。
 
 ### 為什麼選 Triangle Multiplication
-1. **它是 pair representation 的核心運算**，直接受 L² 資料量影響。
-2. 算式簡單（本質是矩陣乘法），容易驗證正確性。
+1. **它是 pair representation 的運算**，直接受 L² 資料量影響；短序列時它佔執行時間最多（36.1%）。
+2. 算式簡單（本質是矩陣乘法，沒有 softmax），容易驗證正確性，適合當**第一個**目標。
 3. 可以清楚展示「同樣的計算，不同搬運方式」的差異。
 4. 量化的效果（per-token vs per-tensor）可以直接呼應 LightNobel。
+
+> **誠實說明：** 長序列時最花時間的是 Triangle Attention（75.9%），不是 Triangle Multiplication。
+> Triangle Attention 多了 softmax 和立方大小的 score matrix，需要 FlashAttention 式的 token-wise 做法（LightNobel 的 Sec. 5.4），
+> 三週內做不完，列為**未來工作**。本專題的 tiling、寬位元、double buffering、量化和分析模型都可以直接沿用過去。
 
 ### 為什麼用 FPGA
 - FPGA 可以**自己決定記憶體怎麼接、資料怎麼搬、運算單元擺幾個**，適合展示記憶體優化的每一個細節。
 - U55C 有 HBM（多通道高頻寬記憶體），可以做多通道的實驗。
 - GPU 上這些細節大多被硬體和驅動程式隱藏，比較難單獨觀察每一招的效果。
+- **LightNobel 自己也指出**：GPU 做 activation 量化效率很差（要在執行時量化和反量化，用不到 Tensor Core；W4A4 甚至比 FP16 慢），
+  所以才需要專用硬體。FPGA 是「不用流片就能做專用資料路徑」的折衷。
 
 ---
 
@@ -290,6 +320,7 @@ v0 只有 0.25，也就是說**運算單元大約 97% 的時間都在等資料**
 | 記憶體容量 | pair representation 隨 L² 成長 | L=2000 時一份就 2 GB，同時存在 5～8 份 |
 | 記憶體頻寬 | 搬資料比計算慢 | 最直白的寫法算術強度只有 0.25 FLOP/byte |
 | 精度 vs. 壓縮 | outlier 讓量化誤差變大 | per-tensor INT8 誤差是 per-token 的約 10 倍 |
+| 執行時間 | 長序列時 Triangle Attention 最重 | 1,410 aa 時佔 75.9%；Triangle Multiplication 佔 14.5% |
 
 ---
 
@@ -301,5 +332,6 @@ v0 只有 0.25，也就是說**運算單元大約 97% 的時間都在等資料**
 3. v0 的算術強度是多少 FLOP/byte？這個數字代表什麼？
 4. Triangle Multiplication（outgoing）對單一 channel 來說，等同於什麼矩陣運算？
 5. per-tensor 和 per-token 量化差在哪裡？為什麼有 outlier 時 per-tensor 的誤差特別大？
+6. 序列很長時，ESMFold 最花時間的是哪個運算？既然如此，為什麼本專題還是先做 Triangle Multiplication？
 
 **下一章**解釋：為什麼 tiling、寬位元、double buffering、多通道、量化這些手法，可以從概念上解決（或緩解）這些問題。

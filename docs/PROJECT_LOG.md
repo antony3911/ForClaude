@@ -121,9 +121,22 @@ A 融合版 Triangle Multiplication（主推）、B FPGA 簡化版 AAQ、C 分�
 
 使用者要求一份鉅細靡遺的教學手冊（為何而做、為何可做、整體流程、工具原理），
 放在 `docs/manual/`，進度表在 `docs/manual/README.md`。
-**狀態：已依學習順序重排為「導讀＋速覽＋7 章＋附錄 A/B」（2026-09-26）。速覽（`00b_paper_guide.md`）是 LightNobel 論文與本專題的一頁式導覽；arXiv 在本環境被擋，論文細節來自搜尋結果，未確認者標為「以原文為準」，已輸出 `docs/manual/manual.pdf`（約 58 頁）。**
+**狀態：已依學習順序重排為「導讀＋速覽＋7 章＋附錄 A/B」（2026-09-26）。速覽（`00b_paper_guide.md`）是 LightNobel 論文與本專題的一頁式導覽；已依使用者上傳的原文 PDF 核對（見 8.1），已輸出 `docs/manual/manual.pdf`。**
 之後若有新數據（例如 `make hls-all` 的比較表、上板結果），請更新第 4 章 4.11 節、第 2 章 2.6 節、第 6 章 6.8～6.9 節的預測驗證，
 並重跑 `build_pdf.py`。
+
+### 8.1 讀原文後的更正（2026-09-26）
+使用者上傳了論文 PDF（**不要 commit PDF**，repo 是公開的；只摘要、標出處）。核對後修正了三個誤判：
+1. **Triangle Multiplication 不是最花時間的運算**：Fig. 3，77 aa 時 TriMul 36.1%、TriAttn 29.0%；1,410 aa 時 TriMul 14.5%、**TriAttn 75.9%**。
+   → 選 TriMul 的理由改成「結構最單純的第一個目標」，Triangle Attention 列為未來工作（1.3、1.7、6.11）。
+2. **融合／執行時量化不是我們的新概念**：LightNobel 的 RMPU → VVPU 管線、VVPU 的 runtime quantization、token-wise MHA（類 FlashAttention）已經做了。
+   → 貢獻改成「FPGA 實作 ＋ 逐步 ablation 拆解每一招 ＋ 分析模型／DSE」（速覽 6、第 6 章）。
+3. **比較基準的精度是 FP16**（Table 1：activation 113.49 GB、權重 7.90 GB，T1169 3,364 aa），不是 FP32。
+   → 容量模型加上 FP16 基準（`perf_model.py` 的 FOOTPRINT）：融合 ＋ INT8 在 FP16 基準下 L 提升 **1.52×**（FP32 基準是 1.67×）。
+另外確認：AAQ 三組依 activation **位置**分（A：residual 前 INT8＋4 outlier；B：LayerNorm 後 INT4＋4；C：其他 INT4 無 outlier）；
+a、b 屬 C 組 → 我們的 INT8 是保守選擇，INT4 是自然延伸（方向 B 已改寫）。
+評估方法：Python cycle-accurate 模擬器，和 RTL 交叉驗證誤差平均 3.30%（對應我們的「模型 ↔ HLS」驗證）。
+120× 是和「不分塊」GPU 比；和分塊比 1.26～5.05×；量化本身（Table 1）121.39 → 73.50 GB ≈ 1.65×。
 
 ## 9. 檔案索引
 

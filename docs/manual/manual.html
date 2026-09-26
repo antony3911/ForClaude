@@ -496,30 +496,75 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </tr>
 <tr>
 <td><strong>關鍵觀察</strong></td>
-<td>activation 的數值分布<strong>以 token 為單位</strong>有明顯特徵（論文提到與 distogram 相關的模式），不同 token 適合不同的量化方式</td>
+<td>① 序列一長，執行時間集中在 pair representation，其中 <strong>Triangle Attention</strong> 暴增（Fig. 3）② activation 遠大於權重（Fig. 4）③ <strong>channel 之間差異小、token 之間差異大</strong>，而且 outlier 集中在特定 token（Fig. 5，與 distogram 的模式相關）</td>
 </tr>
 <tr>
 <td><strong>軟體解法</strong></td>
-<td><strong>AAQ</strong>（Token-wise Adaptive Activation Quantization）：把 activation 分成<strong>三類</strong>，各用不同的 inlier 精度與 outlier 數量；<strong>每個 token 一個 scale</strong>；<strong>動態 top-k</strong> 挑出 outlier</td>
+<td><strong>AAQ</strong>（Token-wise Adaptive Activation Quantization）：把 activation 依「在模型中的位置」分成 <strong>A、B、C 三組</strong>，各用不同的 inlier 精度與 outlier 數量；<strong>每個 token 一個 scale</strong>；<strong>執行時用 top-k 挑出 outlier</strong>（見下表）</td>
 </tr>
 <tr>
 <td><strong>硬體解法</strong></td>
-<td>Token Aligner、<strong>RMPU</strong>（可重組的多精度矩陣運算單元）、<strong>VVPU</strong>（多功能向量運算單元）、crossbar 資料網路、scratchpad、控制器</td>
+<td><strong>RMPU</strong>（把資料切成 4-bit 小塊、可依精度重組的矩陣單元）、<strong>VVPU</strong>（128 條 SIMD 的向量單元：LayerNorm、Softmax、residual、<strong>執行時量化</strong>、bitonic top-k 排序）、<strong>Token Aligner</strong>（把不同格式的 token 重新排齊）、crossbar、scratchpad（token 128 KB × 2 做 double buffering）；32 個 RMPU、每個配 4 個 VVPU</td>
 </tr>
 <tr>
-<td><strong>評估</strong></td>
-<td>CAMEO、CASP14、CASP15；和 NVIDIA A100、H100 比較</td>
+<td><strong>評估方法</strong></td>
+<td>自寫的 <strong>Python cycle-accurate 模擬器</strong>（和 RTL 交叉驗證，平均誤差 3.30%、都在 5% 內）＋ SystemVerilog RTL、Synopsys DC 合成（28 nm、1 GHz）、CACTI 7.0（SRAM）、Ramulator（80 GB HBM2E、2 TB/s）</td>
+</tr>
+<tr>
+<td><strong>對象與資料</strong></td>
+<td>ESMFold（ESM-2 3B），Chunk4 設定；CAMEO、CASP14、CASP15、CASP16；和 NVIDIA A100、H100 比較</td>
 </tr>
 <tr>
 <td><strong>結果</strong></td>
-<td>TM-score 變化 &lt; 0.001；速度最多快 <strong>8.44×</strong>（vs A100）／<strong>8.41×</strong>（vs H100）；能效最多高 <strong>37.29×</strong>／<strong>43.35×</strong>；<strong>峰值記憶體最多降 120.05×</strong>；可處理接近萬級長度的序列</td>
+<td>TM-score 變化 &lt; 0.001；速度最多快 <strong>8.44×</strong>（vs A100）／<strong>8.41×</strong>（vs H100）；能效最多高 <strong>37.29×</strong>／<strong>43.35×</strong>；<strong>峰值記憶體最多降 120.05×</strong>（和不分塊的 GPU 比；和分塊比是 1.26～5.05×）；80 GB 內最長可處理 <strong>9,945</strong> 個胺基酸</td>
 </tr>
 <tr>
-<td><strong>以原文為準</strong></td>
-<td>三類各自的確切精度、k 值、製程與面積功耗、最長序列的精確數字</td>
+<td><strong>硬體成本</strong></td>
+<td>178.80 mm²、67.80 W；<strong>crossbar 佔 70% 面積、68% 功耗</strong>（資料搬運與排序比運算本身還貴）</td>
 </tr>
 </tbody>
 </table>
+<h3 id="ch2-AAQ-的三組設定-Sec-4-2-Fig-6-Fig-11">AAQ 的三組設定（Sec. 4.2、Fig. 6、Fig. 11）</h3>
+<table>
+<thead>
+<tr>
+<th>組別</th>
+<th>是哪些 activation</th>
+<th>數值大小（平均絕對值）</th>
+<th>平均 outlier 數</th>
+<th>選定的格式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>LayerNorm <strong>之前</strong>、接 residual 的 activation</td>
+<td>82.14（大）</td>
+<td>2.31</td>
+<td><strong>INT8</strong> inlier ＋ <strong>4 個</strong> INT16 outlier</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>LayerNorm <strong>之後</strong>、進 linear 之前</td>
+<td>4.05</td>
+<td>1.69</td>
+<td><strong>INT4</strong> inlier ＋ <strong>4 個</strong> INT16 outlier</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>其餘（linear 之後的中間值等）</td>
+<td>3.85</td>
+<td>0.64</td>
+<td><strong>INT4</strong>，不處理 outlier</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>量化方式：<strong>對稱量化</strong>，scale = 該 token 的最大絕對值 ÷ (2^(bits−1) − 1)。</li>
+<li>為什麼用對稱量化：和非對稱量化相比，對稱量化若不處理 outlier，RMSE 多 27.35%；處理 outlier 後只多 9.76%（實際數值差約 0.0004），所以「對稱 ＋ outlier 處理」就夠了，硬體更簡單（Sec. 4.1）。</li>
+<li>每組的設定是用<strong>設計空間探索</strong>（精度 × outlier 數，看 TM-score 與資料大小）選出來的（Fig. 11）。</li>
+<li><strong>權重不量化</strong>，用 INT16（7.90 GB）；比較基準（baseline）的 activation 與權重都是 <strong>FP16</strong>（Table 1）。</li>
+</ul>
 <blockquote>
 <p>詳見 1.6 節。原文：<a href="https://arxiv.org/abs/2505.05893">arXiv 2505.05893</a>、<a href="https://dl.acm.org/doi/10.1145/3695053.3731006">ACM DL</a></p>
 </blockquote>
@@ -528,26 +573,26 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <h3 id="ch2-創新一-量化的單位是-token-而且每個-token-的待遇不同">創新一：量化的單位是「token」，而且每個 token 的待遇不同</h3>
 <ul>
 <li>一般量化是「整份資料一把尺」（per-tensor），少數特別大的值（outlier）會拖垮其他值的精度。</li>
-<li>LightNobel 讓<strong>每個 token 有自己的尺</strong>（scale），再依照 token 的特性分成三類，<strong>重要或難處理的類別給比較高的精度</strong>。</li>
+<li>LightNobel 讓<strong>每個 token 有自己的尺</strong>（scale），再依 activation <strong>在模型中的位置</strong>分成三組：接 residual 的數值大、outlier 多，給 INT8；其他給 INT4（見上表）。</li>
 <li>白話：不是全班穿同一個尺寸的制服，而是量身訂做，還依體型分成三種版型。</li>
 <li>本專題的對應：v4 做了最基本的「每個 token 一把尺」（INT8 per-token），模擬資料上誤差約 1%，per-tensor 約 11%。（詳見 2.8 節）</li>
+<li>值得注意：Triangle Multiplication 裡的 a、b 是 linear 之後的值，依定義屬於 <strong>C 組</strong>（論文用 INT4、不處理 outlier）。也就是說，我們的 INT8 對 a、b 其實是<strong>保守</strong>的選擇，INT4 是合理的延伸。</li>
 </ul>
 <h3 id="ch2-創新二-outlier-另外存-而且格式對硬體友善">創新二：outlier 另外存，而且格式對硬體友善</h3>
 <ul>
-<li>每個 token 裡最大的 k 個值（top-k）當作 outlier，<strong>以較高精度另外存</strong>（不需要反量化）；其他值（inlier）用低精度。</li>
-<li>資料依「inlier → outlier → scale → outlier 位置」的順序排好，硬體讀取時不用到處跳。</li>
+<li>每個 token 裡絕對值最大的 k 個值（A、B 組 k = 4）當作 outlier，<strong>用 INT16 另外存</strong>；其他值（inlier）用 INT4 或 INT8。</li>
+<li>資料依「inlier → outlier → scale → outlier 位置」的順序排好（Fig. 7），硬體讀取時不用到處跳。</li>
+<li>top-k 是<strong>執行時</strong>才算的（VVPU 用 bitonic 排序），所以每個 token 的 outlier 位置可以不同。</li>
 <li>白話：大件行李另外托運，其他的壓縮裝箱，箱子依序排好方便拿。</li>
 </ul>
 <h3 id="ch2-創新三-專門設計能吃這種格式的硬體">創新三：專門設計能吃這種格式的硬體</h3>
 <ul>
 <li>因為不同 token 的精度不同，一般的矩陣運算單元處理起來很浪費。</li>
-<li>
-<p><strong>RMPU</strong> 可以依精度重組運算單元；<strong>VVPU</strong> 負責向量類的運算；<strong>Token Aligner</strong> 負責整理不同格式的 token。
-  （後兩者的具體分工是依名稱推測，細節以原文為準。）</p>
-</li>
-<li>
-<p>白話：量身訂做的衣服，也要有會處理不同版型的裁縫機。</p>
-</li>
+<li><strong>RMPU</strong> 把每個數切成 4-bit 小塊，INT4 用 1 塊、INT8 用 2 塊、INT16 用 4 塊，<strong>不用先反量化</strong>就能直接相乘（一次最多處理 20 個 token）。</li>
+<li><strong>VVPU</strong> 負責向量類的運算：LayerNorm、Softmax、residual，以及<strong>執行時量化</strong>（算 scale、挑 top-k、轉成低精度）。</li>
+<li><strong>Token Aligner</strong> 把格式不同的 token 重新排齊，讓 RMPU 的運算單元保持忙碌。</li>
+<li>RMPU 的結果<strong>直接以管線方式交給 VVPU</strong>，中間值不寫回外部記憶體；Triangle Attention 用 <strong>token-wise 的 multi-head attention</strong>（和 FlashAttention 類似），不必存下整個立方大小的 score matrix。</li>
+<li>白話：量身訂做的衣服，也要有會處理不同版型的裁縫機，而且裁好就直接送去縫，不先堆進倉庫。</li>
 </ul>
 <h3 id="ch2-一句話總結論文">一句話總結論文</h3>
 <blockquote>
@@ -572,6 +617,11 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <tr>
 <td>Triangle Multiplication</td>
 <td>用「第三個胺基酸」推論兩者的關係，本專題實作的運算</td>
+<td>1.3 節</td>
+</tr>
+<tr>
+<td>Triangle Attention</td>
+<td>同一 block 的另一個運算，score matrix 是 L³；<strong>長序列時最花時間</strong></td>
 <td>1.3 節</td>
 </tr>
 <tr>
@@ -652,9 +702,15 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </tr>
 <tr>
 <td>量化</td>
-<td>MEFold、蛋白質語言模型的 PTQ</td>
+<td>MEFold（只量化權重）、PTQ4Protein（per-tensor INT8）</td>
 <td>資料變小</td>
-<td>outlier 會傷精度；多半針對權重</td>
+<td>只量化權重幫助有限；精度降低時 TM-score 下降</td>
+</tr>
+<tr>
+<td>通用 LLM 量化</td>
+<td>SmoothQuant、LLM.int8()、AWQ</td>
+<td>outlier 分離</td>
+<td>outlier 以外都用同一精度；GPU 上 activation 量化常常反而變慢（W4A4 比 FP16 慢）</td>
 </tr>
 <tr>
 <td>融合 kernel</td>
@@ -665,8 +721,8 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <tr>
 <td><strong>專用加速器</strong></td>
 <td><strong>LightNobel</strong></td>
-<td>量化 ＋ 專用硬體，記憶體與速度一起改善</td>
-<td>ASIC 要流片，成本高、無法修改</td>
+<td>量化 ＋ 專用硬體 ＋ 管線化資料流，記憶體與速度一起改善</td>
+<td>以模擬器評估，沒有流片；ASIC 做出來後無法修改</td>
 </tr>
 <tr>
 <td><strong>FPGA 加速</strong></td>
@@ -712,39 +768,49 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <td>容量模型（6.10 節）</td>
 </tr>
 <tr>
-<td><strong>簡化</strong></td>
-<td>三類混合精度 → 單一 INT8</td>
-<td>三週內做得完；可列為延伸（方向 B）</td>
+<td></td>
+<td><strong>管線化、執行時量化</strong>（中間值不落地）</td>
+<td>LightNobel 的 RMPU → VVPU 管線已經這樣做；我們在 FPGA 上用 HLS 實現同樣的原則（6.4、6.7 節）</td>
 </tr>
 <tr>
 <td></td>
-<td>動態 top-k outlier → 不另外處理</td>
-<td>同上</td>
+<td><strong>模擬器 ＋ 交叉驗證</strong>的評估方法</td>
+<td>論文用 cycle-accurate 模擬器，並和 RTL 比對（誤差 &lt; 5%）；我們用分析模型，並和 HLS 報告比對</td>
+</tr>
+<tr>
+<td><strong>簡化</strong></td>
+<td>三組混合精度 → 單一 INT8</td>
+<td>三週內做得完；a、b 屬 C 組，INT4 是自然的延伸</td>
+</tr>
+<tr>
+<td></td>
+<td>執行時 top-k outlier → 不另外處理</td>
+<td>a、b 屬 C 組，論文本身也不處理 outlier</td>
 </tr>
 <tr>
 <td></td>
 <td>完整模型 → 只做 Triangle Multiplication</td>
-<td>最核心、最吃記憶體的運算</td>
+<td><strong>不是最花時間的運算</strong>（長序列時是 Triangle Attention），但它是結構最單純的 pair 運算，適合當第一個目標（1.7 節）</td>
+</tr>
+<tr>
+<td></td>
+<td>ASIC 模擬 → FPGA 的 HLS 合成</td>
+<td>評估對象是現成可燒錄的硬體</td>
 </tr>
 <tr>
 <td><strong>新增（我們的）</strong></td>
-<td><strong>融合資料流</strong>：LayerNorm、投影、gating、量化串成一條管線</td>
-<td>論文重點在量化；我們從<strong>融合</strong>這個互補的角度處理記憶體</td>
-</tr>
-<tr>
-<td></td>
-<td><strong>重算 g</strong>、<strong>量化在源頭完成</strong></td>
-<td>用少量計算換記憶體；不多掃一次資料</td>
-</tr>
-<tr>
-<td></td>
-<td><strong>現成 FPGA 平台</strong>（U55C，HBM）</td>
-<td>可實際部署、可修改；不需要流片</td>
+<td><strong>現成 FPGA 平台</strong>（U55C，HBM）上的實作</td>
+<td>論文沒有公開硬體；我們的設計可以合成、之後可以上板</td>
 </tr>
 <tr>
 <td></td>
 <td><strong>逐步 ablation（v0～v4）</strong></td>
-<td>量出每一招的貢獻</td>
+<td>把 tiling、寬位元、double buffering、量化<strong>各自</strong>的效果分開量；論文只給整體結果</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>完整 Triangle Multiplication 的融合設計</strong>（含 LayerNorm、gating、<strong>重算 g</strong>）</td>
+<td>把論文的管線化原則具體套到一個運算上，並算出每一步省下多少流量與容量</td>
 </tr>
 <tr>
 <td></td>
@@ -753,15 +819,17 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </tr>
 </tbody>
 </table>
-<h3 id="ch2-我們的創新點-誠實版">我們的創新點（誠實版）</h3>
+<h3 id="ch2-我們的貢獻-誠實版">我們的貢獻（誠實版）</h3>
 <ol>
-<li><strong>在 FPGA 上實作 PPM 的 Triangle Multiplication</strong>：搜尋範圍內沒有找到公開的類似實作。</li>
-<li><strong>融合資料流 ＋ token-wise INT8 的組合</strong>：分別都有前例（GPU 融合、LightNobel 量化），組合起來並放在 FPGA 上是本專題的設計。</li>
+<li><strong>在 FPGA 上實作 PPM 的 Triangle Multiplication</strong>：搜尋範圍內沒有找到公開的類似實作；LightNobel 本身也只有模擬結果。</li>
+<li><strong>把各個記憶體優化手法的貢獻分開量化</strong>（ablation）：論文是整套一起評估，看不出每一招各佔多少。</li>
 <li><strong>經過驗證的分析模型與設計空間探索</strong>：讓結果不只是幾個數據點。</li>
 </ol>
 <blockquote>
-<p>不要宣稱「比 LightNobel 好」：兩者平台不同（ASIC vs FPGA）、範圍不同（整個模型 vs 一個運算）。
-比較好的說法是：「<strong>在現成硬體上，從互補的角度處理同一個問題，並量化各手法的貢獻。</strong>」</p>
+<p><strong>注意：融合（中間值不落地）與執行時量化，LightNobel 都已經做了，不是我們的新概念。</strong>
+我們的角色是「在現成的 FPGA 上實現並拆解這些想法」，不是提出新的原理。</p>
+<p>也不要宣稱「比 LightNobel 好」：兩者平台不同（ASIC vs FPGA）、範圍不同（整個模型 vs 一個運算）。
+比較好的說法是：「<strong>以 LightNobel 的原則為基礎，在現成硬體上實作其中一個運算，並量化每一招各自的貢獻。</strong>」</p>
 </blockquote>
 <hr />
 <h2 id="ch2-7-讀原文時的指引">7. 讀原文時的指引</h2>
@@ -769,29 +837,58 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <ol>
 <li>摘要與 Introduction 最後的貢獻列表 → 對照本章第 2、3 節。</li>
 <li>動機章節的圖（activation 大小、token-wise 分布）→ 這是「觀察」，最重要。</li>
-<li>AAQ 的方法章節 → 找出三類的分法、精度、k 值。</li>
+<li>AAQ 的方法章節 → 找出三組的分法、精度、k 值。</li>
 <li>硬體架構圖 → 找出 RMPU、VVPU、Token Aligner 的位置和資料流。</li>
 <li>評估章節 → 比較對象、資料集、主要圖表。</li>
 </ol>
-<h3 id="ch2-讀完要能補上的-待確認清單">讀完要能補上的「待確認清單」</h3>
-<ul>
-<li>[ ] 三類 token 的分類依據是什麼？各用什麼精度？</li>
-<li>[ ] top-k 的 k 是多少？是固定還是依類別不同？</li>
-<li>[ ] 量化套用在哪些 activation（全部，還是只有 pair representation）？</li>
-<li>[ ] 硬體的製程、面積、功耗怎麼評估（用什麼模擬器、合成工具）？</li>
-<li>[ ] 最長可處理的序列精確是多少？和 GPU 的上限差多少？</li>
-<li>[ ] 作者自己提到的限制與未來工作是什麼？</li>
-</ul>
-<p>補完後，把答案寫進 1.6 節，並更新本章第 2 節的「以原文為準」欄位。</p>
+<h3 id="ch2-讀完原文後確認的答案">讀完原文後確認的答案</h3>
+<table>
+<thead>
+<tr>
+<th>問題</th>
+<th>答案（出處）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>三類的分類依據？各用什麼精度？</td>
+<td>依 activation 在模型中的<strong>位置</strong>：A 組 INT8 ＋ 4 個 outlier、B 組 INT4 ＋ 4 個、C 組 INT4 無 outlier（Sec. 4.2、7.1）</td>
+</tr>
+<tr>
+<td>top-k 的 k 是多少？</td>
+<td>A、B 組 k = 4，C 組不處理；每個 token 在執行時各自挑選（Sec. 4.2、5.3）</td>
+</tr>
+<tr>
+<td>量化套用在哪些 activation？</td>
+<td>PPM block 裡的 activation（Fig. 6 標出每個 activation 屬於哪一組）；<strong>權重不量化</strong>，用 INT16</td>
+</tr>
+<tr>
+<td>硬體怎麼評估？</td>
+<td>Python cycle-accurate 模擬器（和 RTL 交叉驗證）＋ Synopsys DC 28 nm 1 GHz ＋ CACTI ＋ Ramulator（Sec. 6）</td>
+</tr>
+<tr>
+<td>最長可處理的序列？</td>
+<td>80 GB 內 <strong>9,945</strong>（CASP16 最長 6,879 的 1.45 倍）；GPU 不分塊時單卡約 1,410</td>
+</tr>
+<tr>
+<td>比較基準的精度？</td>
+<td>ESMFold <strong>FP16</strong>（activation 113.49 GB、權重 7.90 GB，T1169 3,364 aa；Table 1）</td>
+</tr>
+<tr>
+<td>有哪些限制？</td>
+<td><strong>論文指出：</strong> crossbar 佔 70% 面積、68% 功耗；GPU 上 activation 量化效率差，所以才需要專用硬體（Sec. 8.4、9.3）。<strong>我們的觀察：</strong> 評估以模擬器為主，沒有實體晶片，硬體設計也沒有公開</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="ch2-8-報告時怎麼講">8. 報告時怎麼講</h2>
 <h3 id="ch2-30-秒版">30 秒版</h3>
 <blockquote>
-<p>蛋白質結構預測模型裡有一份 L×L×128 的資料，序列越長越放不下。LightNobel 用專用晶片加上 token-wise 量化解決這個問題。我們在現成的 FPGA 上，從<strong>融合資料流</strong>的角度處理同一個瓶頸，再結合 token-wise 量化，並用分析模型找出最佳設計。</p>
+<p>蛋白質結構預測模型裡有一份 L×L×128 的資料，序列越長越放不下。LightNobel 用專用晶片加上 token-wise 量化和管線化資料流解決這個問題，但只有模擬結果。我們在現成的 FPGA 上實作其中的 Triangle Multiplication，<strong>逐步拆解每一種記憶體優化手法各自的貢獻</strong>，並用分析模型找出最佳設計。</p>
 </blockquote>
 <h3 id="ch2-3-分鐘版-投影片順序">3 分鐘版（投影片順序）</h3>
 <ol>
-<li><strong>問題</strong>：pair representation 隨 L² 成長，Triangle Multiplication 一步就有約 7 份（第 1 章）</li>
+<li><strong>問題</strong>：pair representation 隨 L² 成長，Triangle Multiplication 一步就有約 7 份；長序列時 Triangle Attention 更花時間（第 1 章）</li>
 <li><strong>為什麼難</strong>：memory-bound，roofline 圖（第 2 章）</li>
 <li><strong>LightNobel 的解法</strong>與我們的定位（本章第 5、6 節）</li>
 <li><strong>我們的架構</strong>：融合資料流圖（第 6 章）</li>
@@ -803,8 +900,8 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <ul>
 <li>領域問題：<strong>pair representation 讓記憶體隨 L² 成長</strong>，限制序列長度。</li>
 <li>LightNobel：<strong>token-wise 自適應量化 ＋ 專用硬體</strong>，峰值記憶體最多降約 120 倍。</li>
-<li>本專題：<strong>繼承</strong>問題與 token-wise 量化，<strong>簡化</strong>成 INT8，<strong>新增</strong>融合資料流、FPGA 實作與分析模型。</li>
-<li>報告的定位：「在現成硬體上，從互補的角度處理同一個問題」。</li>
+<li>本專題：<strong>繼承</strong>問題、token-wise 量化與管線化的原則，<strong>簡化</strong>成 INT8 與單一運算，<strong>新增</strong> FPGA 實作、逐步 ablation 與分析模型。</li>
+<li>報告的定位：「以 LightNobel 的原則為基礎，在現成硬體上實作並量化每一招的貢獻」。</li>
 </ul>
 <hr />
 <h2 id="ch2-自我檢測">自我檢測</h2>
@@ -814,6 +911,7 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <li>為什麼 LightNobel 選擇以「token」為量化單位？</li>
 <li>本專題哪些部分繼承自論文？哪些是新增的？</li>
 <li>為什麼不應該說「我們比 LightNobel 好」？比較好的說法是什麼？</li>
+<li>Triangle Multiplication 的 a、b 屬於 AAQ 的哪一組？這對我們選 INT8 有什麼意義？</li>
 </ol>
 <p><strong>接下來</strong>從第 1 章開始，完整了解問題的細節。</p>
 </section><section class="chapter">
@@ -994,10 +1092,43 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 <p>同一個 block 裡還有 Triangle Attention：對每一列 i，在 (j, k) 之間做 attention。
 它的中間值（attention logits）形狀是 <strong>L × L × L × heads</strong>，是<strong>立方</strong>成長，
 所以實作上一定要分塊（chunking）計算，否則 L = 1000 時光這個中間值就需要數十 GB。</p>
+<p><strong>它才是長序列時最花時間的運算。</strong> LightNobel 在 H100 上量測 ESMFold（不分塊）的執行時間（論文 Fig. 3）：</p>
+<table>
+<thead>
+<tr>
+<th>運算</th>
+<th>77 個胺基酸（R0271）</th>
+<th>1,410 個胺基酸（T1269）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Triangle Multiplication</td>
+<td><strong>36.1%</strong></td>
+<td>14.5%</td>
+</tr>
+<tr>
+<td>Triangle Attention</td>
+<td>29.0%</td>
+<td><strong>75.9%</strong></td>
+</tr>
+<tr>
+<td>整個 pair representation 資料流</td>
+<td>69.4%</td>
+<td>91.9%</td>
+</tr>
+</tbody>
+</table>
+<p>序列短時，Triangle Multiplication 佔比最高；序列一長，立方成長的 Triangle Attention 就壓過其他所有運算。
+所以本專題選 Triangle Multiplication <strong>不是因為它最花時間</strong>，理由見 1.7 節。</p>
 <hr />
 <h2 id="ch3-1-4-問題一-記憶體放不下">1.4 問題一：記憶體放不下</h2>
 <h3 id="ch3-算一算-pair-representation-有多大">算一算 pair representation 有多大</h3>
 <p>每個數字用 FP32（4 bytes），每格 128 個數字 → <strong>每格 512 bytes</strong>。</p>
+<blockquote>
+<p><strong>精度說明：</strong> 本專題的 kernel 用 FP32（HLS 裡最直接）。LightNobel 的比較基準（ESMFold）是 <strong>FP16</strong>，
+大小是下表的一半。和論文比較時要用 FP16 當基準，否則量化的效果會被<strong>高估 2 倍</strong>（6.10 節）。</p>
+</blockquote>
 <pre><code>大小 = L × L × 128 × 4 bytes = L² × 512 bytes
 </code></pre>
 <table>
@@ -1097,7 +1228,7 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 <td><strong>權重（weights）</strong></td>
 <td>模型學到的參數</td>
 <td><strong>固定</strong>，和 L 無關</td>
-<td>約 3～4B 參數，FP16 約 7～8 GB</td>
+<td>ESM-2 3B ＋ folding trunk，FP16 約 <strong>7.90 GB</strong>（論文 Table 1）</td>
 </tr>
 <tr>
 <td><strong>Activation</strong></td>
@@ -1108,6 +1239,8 @@ z[0][1] = a00·b10 + a01·b11 + a02·b12
 </tbody>
 </table>
 <p>L 小的時候，權重佔大頭；<strong>L 一大，activation 就遠遠超過權重</strong>。
+論文 Fig. 4：L = 2,034 時 activation 已經是權重的 <strong>24.15 倍</strong>，需要 <strong>144 GB</strong>，一張 80 GB 的 GPU 放不下。
+以 3,364 個胺基酸的 T1169 為例，FP16 的 activation 是 113.49 GB，權重只有 7.90 GB（Table 1）。
 所以「把模型變小」幫助有限，真正要處理的是 activation。這正是 LightNobel 的切入點。</p>
 <h3 id="ch3-現在的解法與代價">現在的解法與代價</h3>
 <p>常見做法是 <strong>chunking（分塊）</strong>：一次只算一部分，算完就丟。</p>
@@ -1176,59 +1309,75 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <hr />
 <h2 id="ch3-1-6-LightNobel-的觀察與解法">1.6 LightNobel 的觀察與解法</h2>
 <blockquote>
-<p>這裡只整理和「問題」直接相關的部分。論文的完整速讀卡、三個創新的白話說明、
-以及本專題繼承與新增了什麼，見<strong>「速覽」一章</strong>。確切的精度設定與硬體數字以原文為準。</p>
+<p>這裡只整理和「問題」直接相關的部分。論文的完整速讀卡、三組量化設定、硬體架構，
+以及本專題繼承與新增了什麼，見<strong>「速覽」一章</strong>。</p>
 </blockquote>
 <h3 id="ch3-他們的觀察">他們的觀察</h3>
 <ol>
-<li>PPM 的記憶體瓶頸主要來自 <strong>activation</strong>（尤其是 pair representation），而不是權重。</li>
+<li>序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.3 節）。</li>
+<li>PPM 的記憶體瓶頸主要來自 <strong>activation</strong>，而不是權重（1.4 節）。</li>
 <li>
-<p>Activation 的數值分布<strong>以 token 為單位</strong>有明顯特徵：不同 token 的數值範圍差很多，少數 token 或少數數值特別大（<strong>outlier</strong>）。
-   （這裡的 token 指 pair representation 中的一格，也就是一個 (i, j) 位置的 128 個數字。）</p>
+<p><strong>同一個 token 的 128 個 channel 數值差不多，但 token 和 token 之間差很多</strong>，而且 outlier 集中在特定 token（和 distogram 的模式相關）。
+   （這裡的 token 指 pair representation 中的一格，也就是一個 (i, j) 位置的 128 個數字。）
+   → 所以「每個 token 一把尺」比「每個 channel 一把尺」更合適。</p>
 </li>
 <li>
-<p>如果整份資料共用同一個量化尺度，outlier 會讓其他數值的精度嚴重下降。</p>
+<p><strong>不同位置的 activation 特性也不同</strong>：接 residual 的值很大（平均絕對值約 82）、outlier 多；其他位置的值小（約 4）、outlier 少。</p>
 </li>
 </ol>
 <h3 id="ch3-他們的解法">他們的解法</h3>
 <ol>
 <li>
-<p><strong>AAQ（Token-wise Adaptive Activation Quantization）</strong>：每個 token 有自己的 scale；token 分成<strong>三類</strong>，
-   各用不同的 inlier 精度與 outlier 數量；用<strong>動態 top-k</strong> 挑出 outlier 另外保存。</p>
+<p><strong>AAQ（Token-wise Adaptive Activation Quantization）</strong>：每個 token 有自己的 scale；activation 依位置分成 <strong>A、B、C 三組</strong>，
+   分別用 INT8 ＋ 4 個 outlier、INT4 ＋ 4 個 outlier、INT4 不處理 outlier；outlier 用 INT16 另外存，在<strong>執行時用 top-k</strong> 挑出。</p>
 </li>
 <li>
-<p><strong>專用加速器</strong>：Token Aligner、可重組的多精度矩陣單元（<strong>RMPU</strong>）、向量單元（<strong>VVPU</strong>）等，
-   有效率地處理「每個 token 格式不同」的資料。</p>
+<p><strong>專用加速器</strong>：Token Aligner、可重組的多精度矩陣單元（<strong>RMPU</strong>）、向量單元（<strong>VVPU</strong>，負責執行時量化）等，
+   有效率地處理「每個 token 格式不同」的資料；RMPU 的結果直接以管線交給 VVPU，中間值不寫回外部記憶體。</p>
 </li>
 <li>
-<p><strong>結果</strong>：在 CAMEO、CASP14、CASP15 上 TM-score 變化小於 0.001；峰值記憶體最多降低約 <strong>120 倍</strong>；
-   比 A100／H100 快最多約 <strong>8.4 倍</strong>，能處理比 GPU 長得多的序列。</p>
+<p><strong>結果</strong>：TM-score 變化小於 0.001；峰值記憶體最多降低約 <strong>120 倍</strong>（和不分塊的 GPU 比）；
+   比 A100／H100 快最多約 <strong>8.4 倍</strong>；80 GB 內最長可處理 <strong>9,945</strong> 個胺基酸（GPU 不分塊時約 1,410）。
+   這些是 <strong>cycle-accurate 模擬器</strong>的結果（和 RTL 比對誤差 &lt; 5%），沒有實體晶片。</p>
 </li>
 </ol>
 <h3 id="ch3-我們重現了核心直覺">我們重現了核心直覺</h3>
 <p>在模擬資料中放入 1% 的 outlier token：<strong>per-token INT8 的誤差約 1%，per-tensor INT8 約 11%</strong>，相差約 10 倍。
 這說明了 LightNobel 為什麼要以 token 為單位量化。</p>
+<blockquote>
+<p><strong>模擬資料和論文的差異：</strong> 我們的 outlier 是「整個 token 放大 30 倍」，對應論文觀察 3（token 之間差很多）；
+論文另外還有「token 內少數幾個值特別大」的 outlier，我們沒有模擬。
+另外，a、b 是 linear 之後的值，依論文的分法屬於 <strong>C 組</strong>（outlier 很少），所以我們的模擬其實比真實情況更嚴苛。
+用真實 ESMFold 資料（4.9 節）重跑，可以確認這一點。</p>
+</blockquote>
 <hr />
 <h2 id="ch3-1-7-我們的定位">1.7 我們的定位</h2>
 <h3 id="ch3-題目一句話">題目一句話</h3>
 <blockquote>
-<p>在 FPGA 上實作 PPM 中最吃記憶體的運算（Triangle Multiplication），提出<strong>融合資料流 ＋ token-wise 量化</strong>的架構，
+<p>在 FPGA 上實作 PPM 的 pair representation 運算之一（Triangle Multiplication），採用<strong>融合資料流 ＋ token-wise 量化</strong>，
 並用逐步優化（v0～v4）與分析模型，<strong>量化每一招帶來多少改善、付出多少硬體代價</strong>。</p>
 </blockquote>
-<p>和 LightNobel 的關係：<strong>繼承</strong>它的問題定義與 token-wise 量化的想法，<strong>簡化</strong>成單一 INT8，
-<strong>新增</strong>融合資料流、FPGA 實作與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。</p>
+<p>和 LightNobel 的關係：<strong>繼承</strong>它的問題定義、token-wise 量化與管線化（中間值不落地）的原則，<strong>簡化</strong>成單一 INT8 與單一運算，
+<strong>新增</strong> FPGA 實作、逐步 ablation 與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。</p>
 <h3 id="ch3-為什麼選-Triangle-Multiplication">為什麼選 Triangle Multiplication</h3>
 <ol>
-<li><strong>它是 pair representation 的核心運算</strong>，直接受 L² 資料量影響。</li>
-<li>算式簡單（本質是矩陣乘法），容易驗證正確性。</li>
+<li><strong>它是 pair representation 的運算</strong>，直接受 L² 資料量影響；短序列時它佔執行時間最多（36.1%）。</li>
+<li>算式簡單（本質是矩陣乘法，沒有 softmax），容易驗證正確性，適合當<strong>第一個</strong>目標。</li>
 <li>可以清楚展示「同樣的計算，不同搬運方式」的差異。</li>
 <li>量化的效果（per-token vs per-tensor）可以直接呼應 LightNobel。</li>
 </ol>
+<blockquote>
+<p><strong>誠實說明：</strong> 長序列時最花時間的是 Triangle Attention（75.9%），不是 Triangle Multiplication。
+Triangle Attention 多了 softmax 和立方大小的 score matrix，需要 FlashAttention 式的 token-wise 做法（LightNobel 的 Sec. 5.4），
+三週內做不完，列為<strong>未來工作</strong>。本專題的 tiling、寬位元、double buffering、量化和分析模型都可以直接沿用過去。</p>
+</blockquote>
 <h3 id="ch3-為什麼用-FPGA">為什麼用 FPGA</h3>
 <ul>
 <li>FPGA 可以<strong>自己決定記憶體怎麼接、資料怎麼搬、運算單元擺幾個</strong>，適合展示記憶體優化的每一個細節。</li>
 <li>U55C 有 HBM（多通道高頻寬記憶體），可以做多通道的實驗。</li>
 <li>GPU 上這些細節大多被硬體和驅動程式隱藏，比較難單獨觀察每一招的效果。</li>
+<li><strong>LightNobel 自己也指出</strong>：GPU 做 activation 量化效率很差（要在執行時量化和反量化，用不到 Tensor Core；W4A4 甚至比 FP16 慢），
+  所以才需要專用硬體。FPGA 是「不用流片就能做專用資料路徑」的折衷。</li>
 </ul>
 <hr />
 <h2 id="ch3-本章小結">本章小結</h2>
@@ -1256,6 +1405,11 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <td>outlier 讓量化誤差變大</td>
 <td>per-tensor INT8 誤差是 per-token 的約 10 倍</td>
 </tr>
+<tr>
+<td>執行時間</td>
+<td>長序列時 Triangle Attention 最重</td>
+<td>1,410 aa 時佔 75.9%；Triangle Multiplication 佔 14.5%</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1267,6 +1421,7 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <li>v0 的算術強度是多少 FLOP/byte？這個數字代表什麼？</li>
 <li>Triangle Multiplication（outgoing）對單一 channel 來說，等同於什麼矩陣運算？</li>
 <li>per-tensor 和 per-token 量化差在哪裡？為什麼有 outlier 時 per-tensor 的誤差特別大？</li>
+<li>序列很長時，ESMFold 最花時間的是哪個運算？既然如此，為什麼本專題還是先做 Triangle Multiplication？</li>
 </ol>
 <p><strong>下一章</strong>解釋：為什麼 tiling、寬位元、double buffering、多通道、量化這些手法，可以從概念上解決（或緩解）這些問題。</p>
 </section><section class="chapter">
@@ -1733,6 +1888,10 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 </table>
 <p>總佔用量<strong>約減半</strong> → 相同記憶體下，L 約可增加 √2 ≈ <strong>1.4 倍</strong>。
 （若輸出也量化，才會接近 2 倍，可以當延伸題目。）</p>
+<blockquote>
+<p>注意：這是和<strong>我們自己的 FP32 版本</strong>比。LightNobel 的比較基準是 FP16（1.4 節），以 FP16 為基準時 z 只佔 256 B，
+量化 a、b 的效果會變小；和論文比較時請用 6.10 節的 FP16 數字。</p>
+</blockquote>
 <h3 id="ch4-這是-解法-的原因_4">這是「解法」的原因</h3>
 <p>量化同時縮小兩件事：<strong>搬運量</strong>（公式中的分子）和<strong>記憶體佔用</strong>（決定 L 的上限）。
 這是唯一一個<strong>直接處理「序列長度受限」</strong>的手法，也是 LightNobel 的核心。</p>
@@ -4409,7 +4568,8 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <blockquote>
 <p><strong>本章重點</strong></p>
 <ul>
-<li>新策略有三根支柱：<strong>① 逐步優化的量測（v0～v4）</strong>、<strong>② 自己提出的融合資料流架構</strong>、<strong>③ 經過驗證的分析模型與設計空間探索</strong>。</li>
+<li>新策略有三根支柱：<strong>① 逐步優化的量測（v0～v4）</strong>、<strong>② 融合資料流架構</strong>（把 LightNobel 的管線化原則具體套到 Triangle Multiplication 上）、<strong>③ 經過驗證的分析模型與設計空間探索</strong>。</li>
+<li><strong>先說清楚：</strong> 「中間值不落地」和「執行時量化」LightNobel 都已經做了（RMPU → VVPU 管線），不是我們的新概念；我們的貢獻是在 FPGA 上實作，並把每一招的效果拆開量化。</li>
 <li><strong>Architectural simulation</strong> 不一定要上板：HLS 合成報告加上校正過的分析模型，就是正統的架構評估方法。</li>
 <li><strong>融合（fusion）</strong> 的核心：讓中間值不寫回記憶體。以本章的估算，Triangle Multiplication 一步的記憶體流量可以減少約 7 倍，同時存在的資料量從約 7 份降到約 2.5 份。</li>
 <li><strong>分析模型</strong> 讓我們能在幾秒內評估上百種設計，並用 <strong>Pareto 前緣</strong> 挑出最佳設定。</li>
@@ -4446,7 +4606,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <tr>
 <td>和 LightNobel 的關係</td>
 <td>模仿它的量化</td>
-<td>從「<strong>融合</strong>」這個不同的角度處理同一個問題，並和量化結合</td>
+<td>沿用它的量化與管線化原則，<strong>在 FPGA 上實作並拆解每一招的貢獻</strong></td>
 </tr>
 <tr>
 <td>需要板子？</td>
@@ -4469,7 +4629,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </code></pre>
 <ul>
 <li><strong>①</strong> 是基礎：證明我們懂每一招在做什麼（已完成大半）。</li>
-<li><strong>②</strong> 是亮點：我們自己的設計。</li>
+<li><strong>②</strong> 是亮點：把論文的原則落實成一個完整、可合成的設計，並算出每一步省多少（原則來自 LightNobel，具體設計是我們的）。</li>
 <li><strong>③</strong> 是方法論：讓結果可信、可以推廣。</li>
 </ul>
 <hr />
@@ -4526,6 +4686,9 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 </ol>
 <h3 id="ch8-學術界也這樣做">學術界也這樣做</h3>
 <p>架構類論文（包括 LightNobel）大多用自己寫的<strong>cycle 級模擬器</strong>加上<strong>合成工具的面積、功耗估計</strong>來評估，而不是真的做出晶片。
+LightNobel 的做法（Sec. 6）：用 Python 寫 cycle-accurate 模擬器，再拿 RTL 模擬的結果交叉驗證，四個資料集的誤差平均 <strong>3.30%</strong>、都在 5% 以內；
+面積與功耗用 Synopsys DC（28 nm）和 CACTI 估計，記憶體用 Ramulator 模擬。
+我們的對應做法：<strong>分析模型 ↔ HLS 報告</strong>交叉驗證（6.8 節），目標同樣是誤差 10% 以內。
 所以「HLS 報告＋分析模型」是正當的 architectural simulation，不是偷懶。</p>
 <hr />
 <h2 id="ch8-6-3-完整的-Triangle-Multiplication-長什麼樣子">6.3 完整的 Triangle Multiplication 長什麼樣子</h2>
@@ -4580,6 +4743,11 @@ GPU 上的融合實作分析也是這個量級（見第 6.12 節參考資料）�
    → gating、mask、量化（只需要這個 token）
 </code></pre>
 <p>一個 token 的所有處理都可以在晶片內完成，<strong>只有最後的 a、b 需要寫出去</strong>（因為 einsum 需要跨 token 的資料）。</p>
+<blockquote>
+<p><strong>和 LightNobel 的關係：</strong> LightNobel 的硬體就是以 token 為單位流動：RMPU 算完 linear，結果以管線方式直接交給 VVPU
+做 LayerNorm、gating、量化，中間值不寫回外部記憶體（Sec. 5）。本節是<strong>同一個原則</strong>在 Triangle Multiplication 上的具體展開，
+並額外算出流量與容量各省多少——論文只給整體結果，沒有拆開。</p>
+</blockquote>
 <h3 id="ch8-融合後的兩個-kernel">融合後的兩個 kernel</h3>
 <pre><code>Kernel 1：Producer（逐 token 處理）
   讀 z（一次）
@@ -4672,7 +4840,7 @@ Kernel 2：Consumer（einsum ＋ epilogue）
 </tr>
 </tbody>
 </table>
-<p>公式見 6.10 節。</p>
+<p>公式見 6.10 節。以 LightNobel 的 <strong>FP16</strong> 為基準重算，提升約 <strong>1.52 倍</strong>（6.10 節）。</p>
 <hr />
 <h2 id="ch8-6-5-用計算換記憶體-為什麼-g-要-重算">6.5 用計算換記憶體：為什麼 g 要「重算」</h2>
 <h3 id="ch8-問題">問題</h3>
@@ -4754,7 +4922,16 @@ y_c  = (x_c − mean) / sqrt(var + ε) × γ_c + β_c
 <p>per-token 量化需要知道「這個 token 128 個數的最大絕對值」。
 在 producer 裡，a 的 128 個數<strong>剛算完、還在暫存器裡</strong>，順便取最大值、算 scale、轉成 INT8，<strong>不需要額外再掃一次資料</strong>。</p>
 <p>對比：如果量化是獨立的步驟，要先把 FP32 的 a 寫出去、再讀回來量化，等於多搬了 2 份資料。
-<strong>「在資料產生的地方就壓縮」是融合設計的另一個好處。</strong></p>
+<strong>「在資料產生的地方就壓縮」是融合設計的另一個好處。</strong>
+這正是 LightNobel 的 VVPU 做的「<strong>執行時量化</strong>」（runtime quantization，Sec. 5.3）；它還多做了 top-k 挑 outlier。</p>
+<h3 id="ch8-該用幾個-bit-論文給的線索">該用幾個 bit？論文給的線索</h3>
+<p>依 LightNobel 的分組，a、b 是 linear 之後的值，屬於 <strong>C 組</strong>：平均絕對值約 3.85、平均 outlier 不到 1 個，
+論文用 <strong>INT4、不處理 outlier</strong> 就能維持 TM-score。所以：</p>
+<ul>
+<li>我們的 <strong>INT8 是保守的起點</strong>，誤差應該比論文的設定小。</li>
+<li><strong>INT4 per-token</strong> 是自然的延伸：a、b 再小一半，容量模型見 6.10 節。</li>
+<li>真正需要 outlier 處理的是 A 組（接 residual 的 z 本身），那是完整模型才需要處理的部分。</li>
+</ul>
 <hr />
 <h2 id="ch8-6-8-分析模型-用公式預測硬體表現">6.8 分析模型：用公式預測硬體表現</h2>
 <h3 id="ch8-為什麼要做模型">為什麼要做模型</h3>
@@ -4856,12 +5033,50 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </tr>
 </tbody>
 </table>
+<p><strong>上表以 FP32 為基準，會誇大效果。</strong> LightNobel 的比較基準（ESMFold）是 <strong>FP16</strong>，換成 FP16 重算（<code>make model</code> 已加入這幾列）：</p>
+<table>
+<thead>
+<tr>
+<th>配置（FP16 基準）</th>
+<th>bytes / L²</th>
+<th>最大 L</th>
+<th>相對</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>典型實作（約 7 份 FP16）</td>
+<td>7 × 256 = 1,792</td>
+<td>≈ <strong>3,096</strong></td>
+<td>1.00×</td>
+</tr>
+<tr>
+<td>融合 ＋ FP16 z ＋ INT8 a、b</td>
+<td>2 × 256 ＋ 2 × 132 = 776</td>
+<td>≈ <strong>4,705</strong></td>
+<td><strong>1.52×</strong></td>
+</tr>
+<tr>
+<td>融合 ＋ FP16 z ＋ INT4 a、b（延伸）</td>
+<td>2 × 256 ＋ 2 × 68 = 648</td>
+<td>≈ <strong>5,148</strong></td>
+<td>1.66×</td>
+</tr>
+</tbody>
+</table>
+<p>報告時<strong>用 FP16 基準的 1.52 倍</strong>比較誠實；FP32 基準的 1.67 倍只能說「相對於我們自己的 FP32 實作」。</p>
 <h3 id="ch8-為什麼只提升-1-67-倍-不是-7-倍">為什麼只提升 1.67 倍，不是 7 倍？</h3>
 <p>因為記憶體和 L² 成正比，<strong>L 只和記憶體的平方根成正比</strong>：</p>
 <pre><code>L 的提升 = sqrt(記憶體減少的倍數) = sqrt(3,584 ÷ 1,288) = sqrt(2.78) ≈ 1.67
 </code></pre>
 <p>要讓 L 變 2 倍，記憶體要降到 1/4；要變 10 倍，記憶體要降到 1/100。
 這也是為什麼 LightNobel 要把 peak memory 降低到上百倍，才能大幅延長序列。</p>
+<blockquote>
+<p><strong>看懂論文的 120 倍：</strong> 120.05 倍是和「<strong>不分塊</strong>」的 GPU 比（GPU 會存下整個立方大小的 score matrix）；
+和「<strong>有分塊</strong>」的 GPU 比只有 <strong>1.26～5.05 倍</strong>。很大一部分的節省來自 token-wise 的 attention（不存 score matrix），
+量化本身（AAQ）在同樣資料流下是 121.39 GB → 73.50 GB，約 <strong>1.65 倍</strong>（Table 1）。
+所以我們的 1.5 倍左右，和論文中「量化 ＋ 不落地」這部分的量級是一致的，並不是做得特別差。</p>
+</blockquote>
 <hr />
 <h2 id="ch8-6-11-對應到海報-以及評審可能會問的問題">6.11 對應到海報，以及評審可能會問的問題</h2>
 <h3 id="ch8-每個成果對應海報的哪一塊">每個成果對應海報的哪一塊</h3>
@@ -4934,34 +5149,38 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </tr>
 <tr>
 <td>和 LightNobel 差在哪？</td>
-<td>LightNobel 是 ASIC ＋ 精細的混合精度量化；我們在現成 FPGA 上，從<strong>融合</strong>這個互補的角度處理同一個問題，並量化融合與量化各自的貢獻（對照表見「速覽」第 6 節）。</td>
+<td>LightNobel 是 ASIC（模擬評估）＋ 三組混合精度量化 ＋ 管線化資料流；我們沿用它的原則，在現成 FPGA 上實作其中一個運算，並<strong>把每一招的貢獻拆開量化</strong>（對照表見「速覽」第 6 節）。<strong>不要</strong>說融合是我們提出的。</td>
 </tr>
 <tr>
 <td>為什麼只做 Triangle Multiplication？</td>
-<td>它是 pair representation 最核心、最吃記憶體的運算之一；方法可以推廣到 Triangle Attention（列為未來工作）。</td>
+<td>誠實回答：長序列時最花時間的是 Triangle Attention（論文 Fig. 3：75.9%）。Triangle Multiplication 結構最單純（沒有 softmax），適合當第一個目標；tiling、量化、分析模型都能沿用到 Triangle Attention（未來工作）。</td>
 </tr>
 <tr>
-<td>1.67 倍看起來不多？</td>
-<td>L 和記憶體是平方根關係；這個提升來自融合，還可以和更激進的量化（INT4、outlier 分離）疊加。</td>
+<td>1.5 倍看起來不多？</td>
+<td>L 和記憶體是平方根關係；以 FP16 為基準，融合 ＋ INT8 讓 L 提升約 1.52 倍。論文的 120 倍主要來自不存 score matrix（和不分塊的 GPU 比），量化本身約 1.65 倍，量級一致。</td>
+</tr>
+<tr>
+<td>為什麼 a、b 用 INT8，不用 INT4？</td>
+<td>先用保守的 INT8 驗證流程；論文把這類 activation（C 組）用 INT4，所以 INT4 是下一步。</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="ch8-6-12-參考資料">6.12 參考資料</h2>
 <ul>
-<li>LightNobel：<a href="https://arxiv.org/abs/2505.05893">arXiv 2505.05893</a></li>
+<li>LightNobel：<a href="https://arxiv.org/abs/2505.05893">arXiv 2505.05893</a>（本章引用：Fig. 3 執行時間分布、Table 1 記憶體、Sec. 5 硬體管線、Sec. 6 評估方法、Fig. 11 量化設定）</li>
 <li>GPU 上的融合 Triangle Multiplication（工作空間約 7U → 約 4U，分塊後約 2.2U）：<a href="https://github.com/aqlaboratory/openfold-3/pull/318">openfold-3 PR #318</a></li>
 <li>長序列推論的分塊：<a href="https://arxiv.org/pdf/2401.10652">AutoChunk</a>、<a href="https://arxiv.org/pdf/2203.00854">FastFold</a></li>
 </ul>
 <hr />
 <h2 id="ch8-本章小結">本章小結</h2>
 <ul>
-<li><strong>新策略 = 量測（v0～v4）＋ 自己的融合架構 ＋ 分析模型與 DSE。</strong> 不需要板子就能完成 architectural simulation。</li>
+<li><strong>新策略 = 量測（v0～v4）＋ 融合架構（原則來自 LightNobel，具體設計是我們的）＋ 分析模型與 DSE。</strong> 不需要板子就能完成 architectural simulation。</li>
 <li><strong>融合</strong>：Triangle Multiplication 裡除了 einsum，全部都是逐 token 的運算，可以在晶片內一路做完；記憶體流量估計減少約 7 倍。</li>
 <li><strong>重算 g</strong>：用 128/L 比例的額外計算，換掉一整份 pair 張量，序列越長越划算。</li>
-<li><strong>量化在源頭完成</strong>：在 producer 裡順便算 scale，不必多掃一次資料。</li>
+<li><strong>量化在源頭完成</strong>：在 producer 裡順便算 scale，不必多掃一次資料（即 LightNobel VVPU 的執行時量化）；a、b 屬 C 組，INT4 是下一步。</li>
 <li><strong>分析模型</strong>：用 HLS 報告校正常數，再用不同設定驗證；用 Pareto 前緣挑設計。</li>
-<li><strong>容量</strong>：L 和記憶體是平方根關係，記憶體降到約 1/2.8，L 提升約 1.67 倍。</li>
+<li><strong>容量</strong>：L 和記憶體是平方根關係。以 FP32 為基準 L 提升約 1.67 倍；<strong>以論文的 FP16 為基準約 1.52 倍</strong>，報告用後者。</li>
 </ul>
 <hr />
 <h2 id="ch8-自我檢測">自我檢測</h2>
@@ -4973,6 +5192,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>分析模型用同一份報告校正又驗證，為什麼還不夠？應該怎麼驗證？</li>
 <li>Pareto 最佳的定義是什麼？</li>
 <li>每個 L² 位置的記憶體從 3,584 bytes 降到 1,288 bytes，最大序列長度提升幾倍？</li>
+<li>為什麼和 LightNobel 比較時要用 FP16 當基準？用 FP32 會發生什麼事？</li>
 </ol>
 <p><strong>下一章</strong>把整個過程整理成可以重複使用的研究方法，之後讀其他 paper 時也能照著做。</p>
 </section><section class="chapter">
@@ -5534,8 +5754,8 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td><strong>Triangle Attention</strong></td>
 <td>三角形版本的 attention</td>
-<td>中間值隨 L³ 成長，實作上需分塊</td>
-<td>第 1 章 1.3 節（未實作）</td>
+<td>中間值隨 L³ 成長，實作上需分塊；<strong>長序列時最花時間</strong>（1,410 aa 佔 75.9%）</td>
+<td>第 1 章 1.3 節（未實作，未來工作）</td>
 </tr>
 <tr>
 <td><strong>Token</strong></td>
@@ -5824,7 +6044,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td><strong>AAQ</strong></td>
 <td>LightNobel 的量化方法</td>
-<td>Token-wise Adaptive Activation Quantization：token 分三類、各自精度、動態 top-k outlier</td>
+<td>Token-wise Adaptive Activation Quantization：每個 token 一個 scale；activation 依位置分 A、B、C 三組（INT8＋4 outlier／INT4＋4 outlier／INT4）；outlier 用 INT16、執行時 top-k 挑出</td>
 <td>1.6 節、速覽</td>
 </tr>
 <tr>
@@ -5879,7 +6099,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td><strong>RMPU / VVPU / Token Aligner</strong></td>
 <td>LightNobel 的硬體單元</td>
-<td>可重組的多精度矩陣單元／多功能向量單元／整理不同格式 token 的單元（後兩者細節以原文為準）</td>
+<td>RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊</td>
 <td>速覽</td>
 </tr>
 <tr>
@@ -6452,10 +6672,11 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <hr />
 <h2 id="ch11-速覽-LightNobel-與本專題">速覽　LightNobel 與本專題</h2>
 <ol>
-<li>① <strong>token-wise 自適應量化</strong>：每個 token 一個 scale，分三類給不同精度；② <strong>outlier 另外存</strong>：動態 top-k，資料格式對硬體友善；③ <strong>專用硬體</strong>：RMPU、VVPU、Token Aligner 有效率地處理不同格式的 token。（速覽第 3 節）</li>
-<li>他們觀察到 activation 的分布以 token 為單位有明顯差異；以 token 為單位，既能讓每個 token 用適合自己的精度，又不需要像 per-element 那樣存大量 scale。（速覽第 2、3 節、1.6 節）</li>
-<li><strong>繼承</strong>：問題定義、以 ESMFold 為對象、token-wise 量化的想法、以峰值記憶體與序列長度為指標。<strong>新增</strong>：融合資料流、重算 g、量化在源頭完成、FPGA 實作、v0～v4 ablation、分析模型與設計空間探索。（速覽第 6 節）</li>
-<li>平台（ASIC vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平。較好的說法：「在現成硬體上，從互補的角度處理同一個問題，並量化各手法的貢獻。」（速覽第 6 節）</li>
+<li>① <strong>token-wise 自適應量化</strong>：每個 token 一個 scale，activation 依位置分 A、B、C 三組給不同精度（INT8／INT4）；② <strong>outlier 另外存</strong>：執行時用 top-k 挑出、以 INT16 存放，資料格式對硬體友善；③ <strong>專用硬體</strong>：RMPU（4-bit 小塊、多精度）、VVPU（執行時量化、top-k）、Token Aligner 有效率地處理不同格式的 token。（速覽第 2、3 節）</li>
+<li>他們觀察到同一個 token 的 channel 之間差異小、token 之間差異大，outlier 也集中在特定 token；以 token 為單位，既能讓每個 token 用適合自己的 scale，又不需要像 per-element 那樣存大量 scale。（速覽第 2 節、1.6 節）</li>
+<li><strong>繼承</strong>：問題定義、以 ESMFold 為對象、token-wise 量化、管線化與執行時量化（中間值不落地）的原則、以峰值記憶體與序列長度為指標。<strong>新增</strong>：FPGA 上的實作、v0～v4 逐步 ablation、完整 Triangle Multiplication 的融合設計（含重算 g）、分析模型與設計空間探索。（速覽第 6 節）</li>
+<li>平台（ASIC 模擬 vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平；而且融合與執行時量化 LightNobel 都已經做了。較好的說法：「以 LightNobel 的原則為基礎，在現成硬體上實作其中一個運算，並量化每一招各自的貢獻。」（速覽第 6 節）</li>
+<li>a、b 是 linear 之後的值，依定義屬於 <strong>C 組</strong>（平均 outlier 少於 1 個），論文對 C 組用 INT4、不處理 outlier。所以我們的 INT8 是保守的選擇，INT4 是合理的下一步。（速覽第 2、3 節）</li>
 </ol>
 <h2 id="ch11-第-1-章-為何而做">第 1 章　為何而做</h2>
 <ol>
@@ -6464,6 +6685,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li><strong>0.25 FLOP/byte</strong>：每做 2 次運算要讀 8 bytes。以 GPU 約 10 FLOP/byte 的平衡點來看，運算單元大約 97% 的時間都在等資料。（1.5）</li>
 <li><strong><code>z = a × bᵀ</code></strong>：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）</li>
 <li>per-tensor 整份資料共用一個 scale；per-token 每個 token 各自一個 scale。有 outlier 時，per-tensor 的 scale 被 outlier 撐大，一般的數值只能用到很少幾個整數，誤差變大。模擬結果：per-token 約 1%，per-tensor 約 11%。（1.6、2.8）</li>
+<li><strong>Triangle Attention</strong>（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.3、1.7）</li>
 </ol>
 <h2 id="ch11-第-2-章-為何可做">第 2 章　為何可做</h2>
 <ol>
@@ -6501,10 +6723,11 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <ol>
 <li>LayerNorm、linear、sigmoid、gating、量化都是「<strong>每個 token 只用自己的 128 個數</strong>」的運算，一個 token 可以在晶片內一路處理完；只有 einsum 需要跨 token 的資料，才必須把 a、b 寫出去。（6.4）</li>
 <li>比例是 <code>128 ÷ L</code>，L = 512 時約 <strong>25%</strong>。（6.5）</li>
-<li>省下「把 FP32 的 a、b 寫出去、再讀回來量化」的兩趟搬運：a 的 128 個數剛算完還在暫存器裡，就順便算 scale、轉成 INT8。（6.7）</li>
+<li>省下「把 FP32 的 a、b 寫出去、再讀回來量化」的兩趟搬運：a 的 128 個數剛算完還在暫存器裡，就順便算 scale、轉成 INT8。這就是 LightNobel VVPU 的執行時量化。（6.7）</li>
 <li>同一份資料校正又驗證，當然會很準，無法證明模型能<strong>預測</strong>沒看過的情況。應該用 v2 8×8 校正，去預測 16×16、32×32，以及 v3、v4 的報告，看誤差是否在 10% 以內。（6.8）</li>
 <li>找不到另一個設計在<strong>所有指標都一樣好、而且至少一項更好</strong>。（6.9）</li>
 <li><code>√(3,584 ÷ 1,288) ≈ √2.78 ≈</code> <strong>1.67 倍</strong>（約 2,190 → 3,650）。（6.10）</li>
+<li>論文的比較基準（ESMFold）是 FP16。用 FP32 當基準，原始資料大了一倍，量化「看起來」省更多，會高估效果：同樣的融合 ＋ INT8，FP32 基準是 1.67 倍，FP16 基準只有 1.52 倍。（6.10、1.4）</li>
 </ol>
 <h2 id="ch11-第-7-章-研究方法">第 7 章　研究方法</h2>
 <ol>

@@ -126,10 +126,17 @@ FOOTPRINT = {  # 每個 L² 需要的 bytes（C=128）
     # 完整的 Triangle Multiplication 一步（含 LayerNorm、投影、gating 的中間值）
     "[完整一步] 典型實作（約 7 份 FP32）": 7 * C * 4,
     "[完整一步] 融合 + INT8 中間值（方向 A）": 2 * C * 4 + 2 * (C + 4),
+    # 同上，但以 LightNobel 論文 baseline 的 FP16 為基準（Table 1：activation 為 FP16）
+    "[完整一步] 典型實作（約 7 份 FP16）": 7 * C * 2,
+    "[完整一步] 融合 + FP16 z + INT8 a、b": 2 * C * 2 + 2 * (C + 4),
+    "[完整一步] 融合 + FP16 z + INT4 a、b（延伸）": 2 * C * 2 + 2 * (C // 2 + 4),
     # 只有 einsum 核心（目前 v0～v4 實作的範圍）
     "[只算 einsum] v2（a、b、z，FP32）": 3 * C * 4,
     "[只算 einsum] v4（a、b INT8，z FP32）": 2 * (C + 4) + C * 4,
 }
+# 「相對」欄位的比較基準：同精度的典型實作
+FOOTPRINT_BASE = {k: ("[完整一步] 典型實作（約 7 份 FP16）" if "FP16" in k
+                      else "[完整一步] 典型實作（約 7 份 FP32）") for k in FOOTPRINT}
 
 
 def max_L(bytes_per_L2, budget_gb):
@@ -221,12 +228,11 @@ def main():
 
     print("\n=== 4. 容量模型：U55C 16 GB HBM 可處理的最大序列長度 ===")
     print(f"{'配置':<42}{'bytes/L²':>10}{'最大 L（16 GB）':>16}{'相對':>7}")
-    base = None
     for k, b in FOOTPRINT.items():
         m = max_L(b, U55C["HBM_GB"])
-        base = base or m
+        base = max_L(FOOTPRINT[FOOTPRINT_BASE[k]], U55C["HBM_GB"])
         print(f"{k:<42}{b:>10}{m:>16,}{m/base:>6.2f}x")
-    print("（相對值以第一列為基準；只計 pair 張量，未計其他層、權重與 HBM 分區限制）")
+    print("（相對值以同精度的「典型實作」為基準；只計 pair 張量，未計其他層、權重與 HBM 分區限制）")
 
     if a.csv:
         with open(a.csv, "w") as f:

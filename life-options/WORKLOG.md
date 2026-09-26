@@ -65,4 +65,11 @@
 
 ## 6. 排程
 
-（建立定時探索的排程後，把 trigger id、頻率、停止方式寫在這裡）
+| 項目 | 內容 |
+|---|---|
+| Routine 名稱 | Life options exploration |
+| Trigger id | `trig_013YDYkGcRuBV4w8APivq5fk` |
+| 頻率 | **每天台灣時間 09:52**（cron：`CRON_TZ=Asia/Taipei 52 9 * * *`），第一次在 2026-09-27 |
+| 送到哪裡 | 本對話 session（`session_01WBQkJRQ2YZ9eUXoHiezSHT`） |
+| 每次做什麼 | 做探索佇列中的下一項，更新檔案與本工作紀錄，commit、push，回覆使用者摘要 |
+| 什麼時候停 | **佇列全部完成時自動刪除**；使用者隨時可以要求停止或調整頻率（用 update_trigger／delete_trigger，或在 claude.ai 的 Routines 頁面管理） |

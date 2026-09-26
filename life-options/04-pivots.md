@@ -23,9 +23,9 @@
 ### ⚡ 高頻交易（HFT）的 FPGA 工程師：**你的 FPGA 經驗在這裡最值錢**
 - **在做什麼**：把交易邏輯直接做在 FPGA 上，追求奈秒等級的延遲。這是 FPGA 應用裡對延遲要求最極端的領域
 - **誰在招**：Optiver、IMC、Jump Trading、Citadel Securities、Hudson River Trading、Jane Street、DRW、Tower Research 等
-- **地點**：Chicago、New York、**Amsterdam**（Optiver、IMC 的總部）、London、**Sydney**、Singapore、Hong Kong
+- **地點（英語系國家）**：**Chicago**、**New York**、**London**、**Sydney**；新加坡（邊界選項）也有據點
 - **薪資**：業界普遍認為極高。例如有資料顯示 Jump Trading 的新鮮人整體薪酬在 US$25–50 萬之間；IMC 的 FPGA 工程師平均年薪約 US$18 萬（Glassdoor）
-- **Optiver 在阿姆斯特丹有 Graduate FPGA Engineer 的職缺**：**不一定要在美國**
+- **例如 Optiver 在 Chicago 有 FPGA Engineer 職缺**；各公司也有給應屆畢業生的 Graduate FPGA Engineer 職位
 - **挑戰**：錄取門檻很高（演算法、低階硬體、系統的面試都很難）；工作壓力大；需要一點金融直覺
 - **為什麼值得你知道**：這是少數「**FPGA 經驗比 ASIC 經驗更有價值**」的領域
 
@@ -95,7 +95,7 @@
 | IC 設計 + 寫作 | 科技媒體記者、產業分析師、技術寫作、專利、科普作家 |
 | IC 設計 + 金融 | 半導體分析師、HFT 工程師、創投 |
 | IC 設計 + 政策 | 科技政策研究員、政府的產業顧問、國際組織 |
-| IC 設計 + 外語（日語／德語） | 跨國專案、日本或德國的半導體業、跨國 FAE |
+| IC 設計 + 英語系國家的學位或工作經驗 | 外商的跨國專案、跨國 FAE、國際產業分析 |
 | IC 設計 + 生醫 | 生物資訊加速、醫療晶片 |
 | IC 設計 + 教學 | 大學教職、線上課程、企業內訓 |
 

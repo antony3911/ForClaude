@@ -48,7 +48,6 @@
 |---|---|---|---|---|
 | **美國 MFA（全額資助的學程）** | 美國 | 2–3 年 | **很多學程提供全額學費減免加生活津貼**。例如 Brown 每年 US$37,925；UVA 前兩年每年最高 US$37,080；Syracuse 每年 US$24,000 | **非常競爭**（例如 Cornell 的錄取率約 1%）；用英文寫作；國際生只要符合 TA 的英文要求，多數學程一樣能拿到資助 |
 | **UNLV「Creative Writing International」MFA** | 美國拉斯維加斯 | — | 研究助理獎學金每年 US$21,000 | 學程本身就以國際視野為特色 |
-| **香港浸會大學 MA in Creative Writing for Cultural Professionals** | 香港 | 1 年 | — | 號稱**世界第一個中英雙語的創意寫作碩士**，可以用中文創作 |
 | **UEA MA Creative Writing** | 英國 Norwich | 1 年 | 要到官網確認國際生學費 | 英國最知名的創意寫作學程之一 |
 | **北藝大 文學跨域創作研究所** | 台北 | 2–3 年 | 國立大學學費 | 以「文學 × 藝術」為特色；115 學年度一般生錄取 6 名 |
 | **其他台灣的文學相關研究所** | 各地 | — | — | 例如台大台文所、東華大學華文文學系的創作相關學程等 |
@@ -92,11 +91,11 @@
 1. **「科學傳播」可能是你最自然的交集**：UCSC 的學程簡直是為「有研究經驗的理工人想學寫作」設計的。一年制，也能累積美國的閱歷
 2. **不需要急著做決定**：寫作是少數可以「業餘開始、慢慢放大」的興趣。先寫一年，讓作品告訴你答案
 3. **組合的價值**：在台灣，「懂 AI 晶片的寫作者」非常少。這個組合可以通往分析師、科技記者、政策研究、內容創作等很多方向
-4. **如果想用中文認真創作**：台灣的創作研究所，或者香港浸會大學的雙語學程，比美國 MFA 更實際
+4. **如果想用中文認真創作**：台灣的創作研究所比美國 MFA 更實際；如果想用英文創作，英國 UEA 的 1 年制碩士或美國有資助的 MFA 是主要選項
 
 ---
 
 ## 來源
 - 科學寫作：[UCSC Science Communication M.S.](https://graduateadmissions.ucsc.edu/graduate-programs/science-communication-ms/)、[UCSC Science Communication Program](https://scicom.ucsc.edu/about-the-program/)、[MIT GPSW：Tuition & Financial Aid](https://sciwrite.mit.edu/tuition-financial-aid/)、[MIT OGE：Science Writing](https://oge.mit.edu/programs/science-writing/)、[Imperial：Science Communication MSc](https://www.imperial.ac.uk/study/courses/postgraduate-taught/science-communication/)、[Purdue：Science Writer career](https://www.purdue.edu/science/careers/what_can_i_do_with_a_major/Career%20Pages/science_writer.html)
-- 創意寫作：[UVA MFA Funding](https://creativewriting.virginia.edu/funding)、[ProFellow：Fully Funded MFA Programs](https://www.profellow.com/fellowships/fully-funded-mfa-programs-in-creative-writing/)、[Cornell MFA Admissions](https://english.cornell.edu/mfa-creative-writing-admissions-and-financial-support)、[HKBU MA in Creative Writing for Cultural Professionals](https://hmw.hkbu.edu.hk/programmes/postgraduates/macwcp/en-home/)、[UEA MA Creative Writing](https://www.uea.ac.uk/course/postgraduate/ma-creative-writing)、[北藝大文學跨域創作研究所：招生資訊](https://literature.tnua.edu.tw/recruit/)
+- 創意寫作：[UVA MFA Funding](https://creativewriting.virginia.edu/funding)、[ProFellow：Fully Funded MFA Programs](https://www.profellow.com/fellowships/fully-funded-mfa-programs-in-creative-writing/)、[Cornell MFA Admissions](https://english.cornell.edu/mfa-creative-writing-admissions-and-financial-support)、[UEA MA Creative Writing](https://www.uea.ac.uk/course/postgraduate/ma-creative-writing)、[北藝大文學跨域創作研究所：招生資訊](https://literature.tnua.edu.tw/recruit/)
 - 台灣：[第 22 屆林榮三文學獎徵文辦法](https://art.ltn.com.tw/literaryAward/1977982/476363)、[泛科學：加入我們](https://pansci.asia/job)、[104：泛科知識科學編輯職缺](https://www.104.com.tw/job/8npl2)、[科技新報](https://technews.tw/)

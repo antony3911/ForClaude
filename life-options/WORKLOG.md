@@ -40,13 +40,14 @@
 | `06-experience-first.md` | 打工度假、語言學校、EMBA／MBA／MiM | ✅ 第一版完成 |
 | `07-life-scripts.md` | 十種五年劇本與比較 | ✅ 第一版完成 |
 | `08-uk-yms-deep-dive.md` | 英國 YMS 深入：費用、流程、公司、薪資、後續路線 | ✅ 完成 |
+| `09-europe-phd-labs.md` | 歐洲 AI 硬體 PhD 實驗室、找職缺、申請流程、MSCA | ✅ 完成 |
 
 **寫作原則**（之後的對話請沿用）：繁體中文（台灣用語）、技術名詞保留英文；每章最後列來源連結；時效性資訊標註「2026/09」並提醒查證；沒查證到的內容明確標示「未查證」或用保守措辭；不要誇大錄取機率。
 
 ## 4. 探索佇列（第二輪深入；依優先順序，做完就移到「工作日誌」）
 
 - [x] **D1 英國 YMS 深入**（2026-09-26 完成 → `08-uk-yms-deep-dive.md`）：英國晶片公司清單（Cambridge、Bristol、London、Edinburgh 等）、雇主對 YMS 的態度與實際案例、申請流程、2027 年抽籤時程 → 寫成新檔 `08-uk-yms-deep-dive.md`
-- [ ] **D2 歐洲 PhD 深入**：做 AI 加速器、HW/SW co-design、低功耗數位 IC 的歐洲實驗室與教授（例如 KU Leuven／imec、ETH、EPFL、TU Delft、TU/e、TUM 等），職缺平台、申請時程、面試方式 → `09-europe-phd-labs.md`
+- [x] **D2 歐洲 PhD 深入**（2026-09-26 完成 → `09-europe-phd-labs.md`）：做 AI 加速器、HW/SW co-design、低功耗數位 IC 的歐洲實驗室與教授（例如 KU Leuven／imec、ETH、EPFL、TU Delft、TU/e、TUM 等），職缺平台、申請時程、面試方式 → `09-europe-phd-labs.md`
 - [ ] **D3 加拿大研究型碩士（MASc）**：加拿大的研究型碩士常有資助，查 UofT、UBC、Waterloo 等的資助情況與硬體實驗室 → 更新 `02`
 - [ ] **D4 外商台灣分公司 → 美國的轉調**：L-1 的條件、實際案例、哪些公司在台灣有數位設計團隊 → 更新 `01`
 - [ ] **D5 日本深入**：日本研究所的 AI 硬體實驗室、日語門檻、日本就職活動的流程、薪資 → 更新 `02`、`01`
@@ -64,6 +65,7 @@
 | 2026-09-26 | 建立 `life-options/` 與本工作紀錄 | 開始依探索佇列做研究 |
 | 2026-09-26 | 第一輪探索：約 60 次網路搜尋，涵蓋打工度假（18 國；英國 YMS、日本、澳洲、愛爾蘭、荷蘭）、各國留學政策與費用（德、荷、比、瑞、英、加、澳、日、韓、新）、歐洲有薪 PhD、台灣博士獎學金與千里馬、教職薪資落差、工研院、HFT FPGA、專利工程師、CSET 政策研究、科學寫作碩士（UCSC、MIT、Imperial）、MFA、台灣創作所、林榮三文學獎、MiM／EMBA／科技管理碩士、語言學校。寫完 00–07 與 README | 第二輪：依佇列 D1 開始 |
 | 2026-09-26 | D1：英國 YMS 深入（費用、流程、英國晶片聚落與薪資、轉 Skilled Worker 的門檻）→ `08-uk-yms-deep-dive.md` | D2 歐洲 PhD 實驗室 |
+| 2026-09-26 | D2：歐洲 PhD 實驗室（KU Leuven Verhelst、ETH Benini／Mutlu、TU Delft Al-Ars／Gaydadjiev、TUM Amrouch、TU Dresden Mayr、RWTH Gemmeke、Imperial Constantinides／Bouganis）、找職缺管道、MSCA 博士網絡 → `09-europe-phd-labs.md` | D3 加拿大研究型碩士（由每日排程接手） |
 
 ## 6. 排程
 

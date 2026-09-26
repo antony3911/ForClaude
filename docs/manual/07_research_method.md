@@ -52,6 +52,8 @@
 6. **Related work**：找出這個領域還有哪些相關論文，建立文獻地圖。
 
 ### 讀完要寫下的筆記模板
+（「速覽」一章就是用這個模板整理 LightNobel 的完整範例。）
+
 ```
 論文：
 一句話摘要：
@@ -232,7 +234,7 @@ v0 ──(+ tiling)──► v1 ──(+ 寬位元)──► v2 ──(+ double 
 
 | 步驟 | 本專題的做法 | 產出 |
 |---|---|---|
-| ① 讀 paper | LightNobel：長序列受限於 activation 記憶體；token-wise 量化 | 第 1 章 |
+| ① 讀 paper | LightNobel：長序列受限於 activation 記憶體；token-wise 量化 | 速覽、第 1 章 |
 | ② 量化問題 | pair tensor L² × 512 B；AI = 0.25 | 第 1、2 章的表格 |
 | ③ 縮小範圍 | 只做 Triangle Multiplication 的 einsum | `trimul.h` |
 | ④ 設計實驗 | v0 baseline ＋ 四種手法；tile sweep；HBM 對照；per-token vs per-tensor | 5 個 kernel、cfg |

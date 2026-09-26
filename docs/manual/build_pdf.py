@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # (檔案, 從這章開始的「部」標題；None 表示同一部)
 CHAPTERS = [
     ("00_guide.md", None),
+    ("00b_paper_guide.md", "速覽"),
     ("01_why.md", "第一部　背景與理論"),
     ("02_why_it_works.md", None),
     ("03_tools.md", "第二部　工具與實作"),

@@ -236,41 +236,39 @@ v0 只有 0.25，也就是說**運算單元大約 97% 的時間都在等資料**
 
 ---
 
-## 1.6 LightNobel 的觀察與解法（高層次）
+## 1.6 LightNobel 的觀察與解法
 
-> 以下是概念層次的整理。**具體數字、實驗設定與硬體細節請以原文為準。**
+> 這裡只整理和「問題」直接相關的部分。論文的完整速讀卡、三個創新的白話說明、
+> 以及本專題繼承與新增了什麼，見**「速覽」一章**。確切的精度設定與硬體數字以原文為準。
 
 ### 他們的觀察
 1. PPM 的記憶體瓶頸主要來自 **activation**（尤其是 pair representation），而不是權重。
-2. Activation 的數值分布**在不同 token 之間差異很大**。少數 token 有特別大的數值（**outlier**）。
+2. Activation 的數值分布**以 token 為單位**有明顯特徵：不同 token 的數值範圍差很多，少數 token 或少數數值特別大（**outlier**）。
    （這裡的 token 指 pair representation 中的一格，也就是一個 (i, j) 位置的 128 個數字。）
 3. 如果整份資料共用同一個量化尺度，outlier 會讓其他數值的精度嚴重下降。
 
 ### 他們的解法
-1. **Token-wise Adaptive Activation Quantization（AAQ）**：**每個 token 各自決定量化方式**（包含尺度，
-   以及如何處理 outlier），在大幅壓縮 activation 的同時維持預測準確度。
-2. **專用硬體加速器**：設計能有效率地處理這種「每個 token 格式不同」的資料的運算單元
-   （原文中有可重組的矩陣運算單元與向量運算單元等設計）。
-3. 結果：大幅降低記憶體峰值，讓模型能處理**比 GPU 基準長得多的序列**，同時保持速度。
+1. **AAQ（Token-wise Adaptive Activation Quantization）**：每個 token 有自己的 scale；token 分成**三類**，
+   各用不同的 inlier 精度與 outlier 數量；用**動態 top-k** 挑出 outlier 另外保存。
+2. **專用加速器**：Token Aligner、可重組的多精度矩陣單元（**RMPU**）、向量單元（**VVPU**）等，
+   有效率地處理「每個 token 格式不同」的資料。
+3. **結果**：在 CAMEO、CASP14、CASP15 上 TM-score 變化小於 0.001；峰值記憶體最多降低約 **120 倍**；
+   比 A100／H100 快最多約 **8.4 倍**，能處理比 GPU 長得多的序列。
 
-### 和我們的關係
-| LightNobel | 我們的專題 |
-|---|---|
-| 整個 PPM 的完整解法 | 只取 Triangle Multiplication 的核心 einsum |
-| 自己設計 ASIC 加速器（模擬評估） | 用現成的 FPGA（U55C）實際實作 |
-| 提出新的量化方法（AAQ） | 實作簡化版：INT8 **per-token**（v4），並與 per-tensor 比較 |
-| 新穎的架構設計 | 比較**常見的 memory-bound 手法**（tiling、寬位元、double buffering、多通道、量化） |
-
-我們在模擬資料上已經重現了 LightNobel 的核心直覺：資料中有 1% 的 outlier token 時，
-**per-token INT8 的誤差約 1%，per-tensor INT8 約 11%**，相差約 10 倍。
+### 我們重現了核心直覺
+在模擬資料中放入 1% 的 outlier token：**per-token INT8 的誤差約 1%，per-tensor INT8 約 11%**，相差約 10 倍。
+這說明了 LightNobel 為什麼要以 token 為單位量化。
 
 ---
 
 ## 1.7 我們的定位
 
 ### 題目一句話
-> 在 FPGA 上實作 PPM 中最吃記憶體的運算（Triangle Multiplication），
-> 逐一套用常見的 memory-bound 優化手法，**量化每一招帶來多少改善、付出多少硬體代價**。
+> 在 FPGA 上實作 PPM 中最吃記憶體的運算（Triangle Multiplication），提出**融合資料流 ＋ token-wise 量化**的架構，
+> 並用逐步優化（v0～v4）與分析模型，**量化每一招帶來多少改善、付出多少硬體代價**。
+
+和 LightNobel 的關係：**繼承**它的問題定義與 token-wise 量化的想法，**簡化**成單一 INT8，
+**新增**融合資料流、FPGA 實作與分析模型。完整對照見「速覽」第 6 節，架構細節見第 6 章。
 
 ### 為什麼選 Triangle Multiplication
 1. **它是 pair representation 的核心運算**，直接受 L² 資料量影響。

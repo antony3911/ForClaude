@@ -121,7 +121,7 @@ A 融合版 Triangle Multiplication（主推）、B FPGA 簡化版 AAQ、C 分�
 
 使用者要求一份鉅細靡遺的教學手冊（為何而做、為何可做、整體流程、工具原理），
 放在 `docs/manual/`，進度表在 `docs/manual/README.md`。
-**狀態：已依學習順序重排為「導讀＋7 章＋附錄 A/B」（2026-09-26），已輸出 `docs/manual/manual.pdf`（約 58 頁）。**
+**狀態：已依學習順序重排為「導讀＋速覽＋7 章＋附錄 A/B」（2026-09-26）。速覽（`00b_paper_guide.md`）是 LightNobel 論文與本專題的一頁式導覽；arXiv 在本環境被擋，論文細節來自搜尋結果，未確認者標為「以原文為準」，已輸出 `docs/manual/manual.pdf`（約 58 頁）。**
 之後若有新數據（例如 `make hls-all` 的比較表、上板結果），請更新第 4 章 4.11 節、第 2 章 2.6 節、第 6 章 6.8～6.9 節的預測驗證，
 並重跑 `build_pdf.py`。
 

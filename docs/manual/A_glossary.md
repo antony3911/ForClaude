@@ -29,6 +29,9 @@
 | **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 2 章 2.9 節 |
 | **HuggingFace** | 公開模型的平台 | 提供模型程式碼（transformers）與權重下載（Hub） | `dump_trimul_inputs.py` |
 | **UniProt / PDB** | 公開的蛋白質資料庫 | UniProt 存序列、PDB 存實驗測定的結構 | 下載測試序列 |
+| **TM-score** | 預測結構有多像真實結構 | 0～1，越高越好；LightNobel 用它證明量化不傷準確度 | 速覽 |
+| **CAMEO / CASP** | 蛋白質結構預測的標準測試集 | CASP 是兩年一次的預測競賽；CAMEO 是持續更新的評測 | 速覽 |
+| **Distogram** | 胺基酸之間距離的分布 | 模型預測的距離直方圖；LightNobel 觀察到 activation 有與之相關的模式 | 速覽 |
 
 ## A.2 效能與記憶體概念
 
@@ -73,7 +76,10 @@
 | **Fake quantization** | 量化再還原 | 用浮點數模擬量化誤差 | Python 腳本評估誤差 |
 | **rel_l2** | 整體相對誤差 | `‖z − z_ref‖ ÷ ‖z_ref‖` | testbench、host |
 | **max_abs** | 最大單點誤差 | `max |z − z_ref|` | testbench、host |
-| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization | 第 1 章 1.6 節 |
+| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：token 分三類、各自精度、動態 top-k outlier | 1.6 節、速覽 |
+| **Inlier** | 一般大小的值 | 用低精度量化的部分 | 速覽 |
+| **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值 | 速覽 |
+| **Dequantization（反量化）** | 把整數還原成實數 | `x̂ = s × q` | 2.8 節 |
 
 ## A.4 FPGA 硬體
 
@@ -81,6 +87,9 @@
 |---|---|---|---|
 | **FPGA** | 可以重新接線的晶片 | Field-Programmable Gate Array | U55C |
 | **ASIC** | 專用晶片 | 做好就不能改，最快最省電 | LightNobel 的加速器 |
+| **HW/SW co-design** | 軟硬體一起設計 | 演算法配合硬體、硬體配合演算法 | LightNobel、速覽 |
+| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | 可重組的多精度矩陣單元／多功能向量單元／整理不同格式 token 的單元（後兩者細節以原文為準） | 速覽 |
+| **ISCA** | 計算機架構頂尖會議 | International Symposium on Computer Architecture | LightNobel 發表處 |
 | **U55C** | 我們的 FPGA 卡 | AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e | 整個專題 |
 | **Alveo** | AMD 資料中心 FPGA 卡系列 | 插在伺服器的 PCIe 插槽 | U55C 屬於此系列 |
 | **LUT** | 小真值表 | 6 輸入，可實現任意邏輯 | 報告的 LUT 用量 |

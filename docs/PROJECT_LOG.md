@@ -153,6 +153,15 @@ a、b 屬 C 組 → 我們的 INT8 是保守選擇，INT4 是自然延伸（方�
 - `dump_trimul_inputs.py` 新增 `paper_group_C_check`（平均絕對值、3σ outlier 數）與 `rel_l2_grid`（INT8／INT4 × token／channel／tensor），已用隨機小模型測過可執行。
 - 手冊通讀一遍並同步修改：速覽、第 1、2、4、5、6、7 章（新增 7.11 誤判案例）、附錄 A、B。
 
+### 8.2 使用者回饋後的補充（2026-09-27）
+使用者（硬體設計背景）反映手冊對硬體「只說做了什麼，沒說是什麼、怎麼設計、什麼原理」。已補：
+- 新增**第 8 章 `08_hardware.md`**：需求→架構、資料流（weight-stationary、double buffering、管線）、Token Aligner、
+  RMPU（位元拆解乘法、sign extension、PE→Lane→Cluster→Engine、20 = lcm(4,5)、DAL）、VVPU（SIMD、exp LUT、SSU、LCN、bitonic top-k、4 VVPU/RMPU）、
+  線上 softmax、crossbar 與 Table 2 面積功耗（我們由各列加總對照重建）、硬體 DSE（32 RMPU 飽和 = roofline 平衡點）、評估工具、FPGA 對應分析。
+- 第 2 章新增 2.11「資料表示／資料流／硬體結構」三層框架；1.2 節新增 activation 與 token 的定義；2.8 節新增尺的格式、每 token 位元組表。
+- **更正**：2.8 節原本寫「einsum 裡尺最後乘一次」是錯的。linear（沿 channel 加總）可以最後乘一次；
+  TriMul 的 einsum 沿 k 跨 token 加總，每項的尺不同，必須每個 k 乘（v4 的 mac 就是這樣）。已改正並加上 per-channel 的硬體取捨觀察。
+
 ## 9. 檔案索引
 
 | 檔案 | 用途 |

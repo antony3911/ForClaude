@@ -103,6 +103,7 @@
 - **Token Aligner** 把格式不同的 token 重新排齊，讓 RMPU 的運算單元保持忙碌。
 - RMPU 的結果**直接以管線方式交給 VVPU**，中間值不寫回外部記憶體；Triangle Attention 用 **token-wise 的 multi-head attention**（和 FlashAttention 類似），不必存下整個立方大小的 score matrix。
 - 白話：量身訂做的衣服，也要有會處理不同版型的裁縫機，而且裁好就直接送去縫，不先堆進倉庫。
+- **每個單元的內部結構、電路原理和設計理由，詳見第 8 章。**
 
 ### 一句話總結論文
 > **找到「token」這個合適的壓縮單位，並設計能有效率地處理這種格式的硬體，讓長序列放得下、也跑得快。**

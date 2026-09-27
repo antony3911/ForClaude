@@ -32,6 +32,7 @@ CHAPTERS = [
     ("05_commands.md", "第三部　動手操作"),
     ("06_strategy.md", "第四部　專題策略"),
     ("07_research_method.md", "第五部　研究方法"),
+    ("08_hardware.md", "第六部　深入硬體"),
     ("A_glossary.md", "附錄"),
     ("B_answers.md", None),
 ]

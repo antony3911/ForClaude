@@ -138,6 +138,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch4-2-8-解法五-量化-讓每筆資料變小-v2-v4">2.8 解法五：量化 → 讓每筆資料變小（v2 → v4）</a></li>
 <li><a href="#ch4-2-9-其他常見手法-v0-v4-沒有用到-第-6-章的設計會用到其中幾個">2.9 其他常見手法（v0～v4 沒有用到，第 6 章的設計會用到其中幾個）</a></li>
 <li><a href="#ch4-2-10-為什麼-效益可能不大-仍然算解法">2.10 為什麼「效益可能不大」仍然算解法？</a></li>
+<li><a href="#ch4-2-11-把所有手法放進同一個框架-三層">2.11 把所有手法放進同一個框架：三層</a></li>
 <li><a href="#ch4-本章小結">本章小結</a></li>
 <li><a href="#ch4-自我檢測">自我檢測</a></li>
 </ol>
@@ -228,29 +229,46 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch9-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch10-附錄-A-術語表">附錄 A 術語表</a>
+<li><a href="#ch10-第-8-章-LightNobel-硬體架構詳解-每個單元是什麼-為什麼這樣設計">第 8 章 LightNobel 硬體架構詳解：每個單元是什麼、為什麼這樣設計</a>
 <ol>
-<li><a href="#ch10-A-1-蛋白質與模型">A.1 蛋白質與模型</a></li>
-<li><a href="#ch10-A-2-效能與記憶體概念">A.2 效能與記憶體概念</a></li>
-<li><a href="#ch10-A-3-量化">A.3 量化</a></li>
-<li><a href="#ch10-A-4-FPGA-硬體">A.4 FPGA 硬體</a></li>
-<li><a href="#ch10-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</a></li>
-<li><a href="#ch10-A-6-AMD-工具鏈">A.6 AMD 工具鏈</a></li>
-<li><a href="#ch10-A-7-軟體與開發工具">A.7 軟體與開發工具</a></li>
-<li><a href="#ch10-A-8-架構評估與設計方法">A.8 架構評估與設計方法</a></li>
-<li><a href="#ch10-本附錄小結">本附錄小結</a></li>
+<li><a href="#ch10-8-1-從需求推導架構-設計者面對的四個問題">8.1 從需求推導架構：設計者面對的四個問題</a></li>
+<li><a href="#ch10-8-2-整體架構與一個-linear-的資料流">8.2 整體架構與一個 linear 的資料流</a></li>
+<li><a href="#ch10-8-3-Token-Aligner-記憶體的格式和運算的格式不一樣">8.3 Token Aligner：記憶體的格式和運算的格式不一樣</a></li>
+<li><a href="#ch10-8-4-RMPU-用-4-bit-小乘法器拼出任何精度">8.4 RMPU：用 4-bit 小乘法器拼出任何精度</a></li>
+<li><a href="#ch10-8-5-VVPU-向量運算-排序與執行時量化">8.5 VVPU：向量運算、排序與執行時量化</a></li>
+<li><a href="#ch10-8-6-Token-wise-multi-head-attention-不存-L³-的-score-matrix">8.6 Token-wise multi-head attention：不存 L³ 的 score matrix</a></li>
+<li><a href="#ch10-8-7-互連與記憶體-為什麼-crossbar-佔了-70-的面積">8.7 互連與記憶體：為什麼 crossbar 佔了 70% 的面積</a></li>
+<li><a href="#ch10-8-8-決定要放幾個-硬體設計空間探索">8.8 決定要放幾個：硬體設計空間探索</a></li>
+<li><a href="#ch10-8-9-硬體怎麼評估-每個工具在做什麼">8.9 硬體怎麼評估：每個工具在做什麼</a></li>
+<li><a href="#ch10-8-10-如果要在-FPGA-上實作這些設計-我們的分析">8.10 如果要在 FPGA 上實作這些設計（我們的分析）</a></li>
+<li><a href="#ch10-本章小結">本章小結</a></li>
+<li><a href="#ch10-自我檢測">自我檢測</a></li>
 </ol>
 </li>
-<li><a href="#ch11-附錄-B-自我檢測參考答案">附錄 B 自我檢測參考答案</a>
+<li><a href="#ch11-附錄-A-術語表">附錄 A 術語表</a>
 <ol>
-<li><a href="#ch11-速覽-LightNobel-與本專題">速覽 LightNobel 與本專題</a></li>
-<li><a href="#ch11-第-1-章-為何而做">第 1 章 為何而做</a></li>
-<li><a href="#ch11-第-2-章-為何可做">第 2 章 為何可做</a></li>
-<li><a href="#ch11-第-3-章-工具原理">第 3 章 工具原理</a></li>
-<li><a href="#ch11-第-4-章-整體流程">第 4 章 整體流程</a></li>
-<li><a href="#ch11-第-5-章-指令手冊">第 5 章 指令手冊</a></li>
-<li><a href="#ch11-第-6-章-新策略">第 6 章 新策略</a></li>
-<li><a href="#ch11-第-7-章-研究方法">第 7 章 研究方法</a></li>
+<li><a href="#ch11-A-1-蛋白質與模型">A.1 蛋白質與模型</a></li>
+<li><a href="#ch11-A-2-效能與記憶體概念">A.2 效能與記憶體概念</a></li>
+<li><a href="#ch11-A-3-量化">A.3 量化</a></li>
+<li><a href="#ch11-A-4-FPGA-硬體">A.4 FPGA 硬體</a></li>
+<li><a href="#ch11-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</a></li>
+<li><a href="#ch11-A-6-AMD-工具鏈">A.6 AMD 工具鏈</a></li>
+<li><a href="#ch11-A-7-軟體與開發工具">A.7 軟體與開發工具</a></li>
+<li><a href="#ch11-A-8-架構評估與設計方法">A.8 架構評估與設計方法</a></li>
+<li><a href="#ch11-本附錄小結">本附錄小結</a></li>
+</ol>
+</li>
+<li><a href="#ch12-附錄-B-自我檢測參考答案">附錄 B 自我檢測參考答案</a>
+<ol>
+<li><a href="#ch12-速覽-LightNobel-與本專題">速覽 LightNobel 與本專題</a></li>
+<li><a href="#ch12-第-1-章-為何而做">第 1 章 為何而做</a></li>
+<li><a href="#ch12-第-2-章-為何可做">第 2 章 為何可做</a></li>
+<li><a href="#ch12-第-3-章-工具原理">第 3 章 工具原理</a></li>
+<li><a href="#ch12-第-4-章-整體流程">第 4 章 整體流程</a></li>
+<li><a href="#ch12-第-5-章-指令手冊">第 5 章 指令手冊</a></li>
+<li><a href="#ch12-第-6-章-新策略">第 6 章 新策略</a></li>
+<li><a href="#ch12-第-7-章-研究方法">第 7 章 研究方法</a></li>
+<li><a href="#ch12-第-8-章-LightNobel-硬體架構詳解">第 8 章 LightNobel 硬體架構詳解</a></li>
 </ol>
 </li>
 </ol></div>
@@ -321,6 +339,12 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <td>把方法用在下一篇 paper</td>
 </tr>
 <tr>
+<td><strong>第六部 深入硬體</strong></td>
+<td>8 LightNobel 硬體架構詳解</td>
+<td>每個硬體單元的結構、原理、設計理由（位元拆解乘法、可重組加法樹、排序網路、線上 softmax、crossbar 的代價）</td>
+<td>用硬體設計者的角度讀懂加速器</td>
+</tr>
+<tr>
 <td><strong>附錄</strong></td>
 <td>A 術語表</td>
 <td>所有專有名詞的白話解釋</td>
@@ -351,6 +375,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <tr>
 <td><strong>只有 10 分鐘</strong></td>
 <td>速覽</td>
+</tr>
+<tr>
+<td><strong>學硬體設計、想弄懂加速器怎麼設計</strong></td>
+<td>速覽 → 1 → 2（含 2.11 三層框架）→ <strong>8</strong> → 3 → 4</td>
 </tr>
 <tr>
 <td><strong>要馬上開始跑實驗</strong></td>
@@ -617,6 +645,7 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <li><strong>Token Aligner</strong> 把格式不同的 token 重新排齊，讓 RMPU 的運算單元保持忙碌。</li>
 <li>RMPU 的結果<strong>直接以管線方式交給 VVPU</strong>，中間值不寫回外部記憶體；Triangle Attention 用 <strong>token-wise 的 multi-head attention</strong>（和 FlashAttention 類似），不必存下整個立方大小的 score matrix。</li>
 <li>白話：量身訂做的衣服，也要有會處理不同版型的裁縫機，而且裁好就直接送去縫，不先堆進倉庫。</li>
+<li><strong>每個單元的內部結構、電路原理和設計理由，詳見第 8 章。</strong></li>
 </ul>
 <h3 id="ch2-一句話總結論文">一句話總結論文</h3>
 <blockquote>
@@ -1393,7 +1422,8 @@ v0 只有 0.25，也就是說<strong>運算單元大約 97% 的時間都在等�
 <li>
 <p><strong>結果</strong>：TM-score 變化小於 0.001；峰值記憶體最多降低約 <strong>120 倍</strong>（和不分塊的 GPU 比）；
    比 A100／H100 快最多約 <strong>8.4 倍</strong>；80 GB 內最長可處理 <strong>9,945</strong> 個胺基酸（GPU 不分塊時約 1,410）。
-   這些是 <strong>cycle-accurate 模擬器</strong>的結果（和 RTL 比對誤差 &lt; 5%），沒有實體晶片。</p>
+   這些是 <strong>cycle-accurate 模擬器</strong>的結果（和 RTL 比對誤差 &lt; 5%），沒有實體晶片。
+   硬體單元的詳細設計見第 8 章。</p>
 </li>
 </ol>
 <h3 id="ch3-我們重現了核心直覺">我們重現了核心直覺</h3>
@@ -1972,11 +2002,23 @@ FP16 的 16 個 bit：1 個正負號 ＋ 5 個 bit 存次方（−11）＋ 10 �
    → 換下一個 token
 </code></pre>
 <p>真正佔記憶體的 L×L 個 token，<strong>全部都是壓縮後的版本</strong>；完整精度的資料從來不會整份存下來（6.7 節「量化在源頭完成」）。</p>
-<h3 id="ch4-計算時也不用每個數都乘尺">計算時也不用每個數都乘尺</h3>
-<p>einsum 裡，a、b 的整數先相乘累加，<strong>最後才乘一次</strong> <code>s_a × s_b</code>：</p>
-<pre><code>z = Σ_k (s_a × q_a[k]) × (s_b × q_b[k]) = s_a × s_b × Σ_k q_a[k] × q_b[k]
+<h3 id="ch4-尺在什麼時候乘-要看-加總沿著哪個方向">尺在什麼時候乘？要看「加總沿著哪個方向」</h3>
+<p><strong>情況一：linear（一個 token × 權重矩陣）。</strong> 加總沿著<strong>同一個 token</strong> 的 128 個 channel，這 128 個數共用一把尺，
+所以可以把尺提出來：整數先乘加完，<strong>最後只乘一次尺</strong>。</p>
+<pre><code>y = Σ_c (s_x × q_x[c]) × W[c] = s_x × Σ_c q_x[c] × W[c]
 </code></pre>
-<p>所以尺的計算成本也很小（LightNobel Sec. 8.3 也是「最後才乘一次尺」）。</p>
+<p>LightNobel 的 linear 就是這樣做（Sec. 8.3：「最後才乘一次尺，省掉重複的反量化」）。</p>
+<p><strong>情況二：Triangle Multiplication 的 einsum（本專題的 kernel）。</strong> 加總沿著 <strong>k</strong>，也就是跨越不同的 token (i, k)。
+每個 k 是不同的 token，<strong>尺都不一樣，不能提出來</strong>：</p>
+<pre><code>z[i][j][c] = Σ_k (s_a[i][k] × q_a[i][k][c]) × (s_b[j][k] × q_b[j][k][c])
+           = Σ_k (s_a[i][k] × s_b[j][k]) × (q_a × q_b)      ← 每一項都要乘自己的尺
+</code></pre>
+<p>所以 v4 的 <code>mac</code> 迴圈每個 k 先算一次 <code>s = s_a × s_b</code>，再讓 64 個 lane 的整數乘積都乘上 s 才累加。
+這就是 v4 的代價表中「每次乘加要多乘上 <code>s_a × s_b</code>」的原因，也讓 v4 需要較多的 DSP。</p>
+<blockquote>
+<p><strong>給硬體設計的觀察：</strong> 如果改用 per-channel 的尺（每個 c 一把），尺在 k 方向上是固定的，就可以提出來、最後乘一次，
+硬體比較省；但精度可能比較差。這是「精度 vs 硬體成本」的取捨，6.7 節的真實資料誤差表（<code>rel_l2_grid</code>）可以幫忙判斷。</p>
+</blockquote>
 <h3 id="ch4-為什麼-outlier-是問題-per-tensor-vs-per-token">為什麼 outlier 是問題：per-tensor vs per-token</h3>
 <p>我們的模擬資料：一般的數字大約落在 ±3 以內，但有 1% 的 token 被放大 30 倍（outlier，大約 ±80）。</p>
 <p><strong>Per-tensor（整份資料共用一把尺）：</strong></p>
@@ -2182,6 +2224,119 @@ s = 那部分被加速的倍數
 </tbody>
 </table>
 <hr />
+<h2 id="ch4-2-11-把所有手法放進同一個框架-三層">2.11 把所有手法放進同一個框架：三層</h2>
+<p>學到這裡，很容易搞不清楚「哪些是軟體優化、哪些是硬體優化」。比較好用的分法是三層：</p>
+<table>
+<thead>
+<tr>
+<th>層</th>
+<th>問的問題</th>
+<th>例子</th>
+<th>通常由誰決定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>① 資料表示</strong></td>
+<td>每個數<strong>存成什麼格式</strong>？</td>
+<td>FP32、FP16、INT8、INT4、per-token 的尺、outlier 另外存</td>
+<td>演算法／軟體</td>
+</tr>
+<tr>
+<td><strong>② 資料流（dataflow）</strong></td>
+<td>資料<strong>怎麼搬、放在哪、什麼順序算</strong>？哪些中間值要存？</td>
+<td>tiling、double buffering、融合、重算、chunking、token-wise attention</td>
+<td>軟體，或做成硬體</td>
+</tr>
+<tr>
+<td><strong>③ 硬體結構</strong></td>
+<td><strong>誰來算、有多少資源</strong>？</td>
+<td>運算單元的數量與精度、晶片內記憶體大小、介面寬度、HBM 通道數</td>
+<td>硬體</td>
+</tr>
+</tbody>
+</table>
+<p>在 memory-bound 的問題裡，<strong>三層的目標都是減少資料存取</strong>：① 讓每筆資料變小、② 讓搬的次數與存的份數變少、③ 讓搬運更快、晶片內放得更多。</p>
+<p><strong>為什麼在 FPGA 上特別分不清？</strong> 在 GPU 上，硬體是固定的，資料流由程式（軟體）決定。
+在 FPGA／ASIC 上，<strong>HLS 的 C++ 迴圈順序會變成電路的資料路徑、陣列大小會變成晶片內記憶體</strong>，資料流的決定直接變成硬體結構，兩層合在一起。</p>
+<p><strong>為什麼需要軟硬體協同設計？</strong> 只改①不一定會變快：LightNobel 指出 GPU 上的 INT4 activation 量化反而比 FP16 慢，
+因為 GPU 的運算單元不是為這種格式設計的。所以 LightNobel 同時設計了③（能直接算多種精度的 RMPU、能執行時量化的 VVPU，第 8 章）。</p>
+<table>
+<thead>
+<tr>
+<th>手法</th>
+<th>① 資料表示</th>
+<th>② 資料流</th>
+<th>③ 硬體結構</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1 tiling</td>
+<td></td>
+<td>✅ 一次搬一批、重複使用</td>
+<td>需要晶片內 buffer</td>
+</tr>
+<tr>
+<td>v2 寬位元</td>
+<td></td>
+<td></td>
+<td>✅ 512-bit 介面、16 個運算單元</td>
+</tr>
+<tr>
+<td>v3 double buffering</td>
+<td></td>
+<td>✅ 搬運和計算同時做</td>
+<td>需要兩組 buffer</td>
+</tr>
+<tr>
+<td>多通道 HBM</td>
+<td></td>
+<td></td>
+<td>✅ 資料分散到不同通道</td>
+</tr>
+<tr>
+<td>v4 INT8／v5 INT4</td>
+<td>✅ 每個數變小、per-token 尺</td>
+<td></td>
+<td>需要整數乘法器與解包邏輯</td>
+</tr>
+<tr>
+<td>融合、重算 g（第 6 章）</td>
+<td></td>
+<td>✅ 中間值不寫回</td>
+<td>需要把運算串成管線</td>
+</tr>
+<tr>
+<td>chunking（GPU）</td>
+<td></td>
+<td>✅ 一次只算一部分</td>
+<td></td>
+</tr>
+<tr>
+<td>LightNobel AAQ</td>
+<td>✅ 三組、INT4／INT8、outlier</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>LightNobel RMPU／VVPU（第 8 章）</td>
+<td></td>
+<td>✅ 管線、執行時量化</td>
+<td>✅ 多精度運算單元、排序硬體</td>
+</tr>
+<tr>
+<td>LightNobel token-wise attention</td>
+<td></td>
+<td>✅ 不存 L³ 的 score matrix</td>
+<td>需要 scratchpad 與線上最大值追蹤</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>一句話：<strong>目標是減少資料存取；軟體決定資料的樣子和搬運順序，硬體決定這些事做起來多快。在 FPGA 上，後兩者是用同一份程式寫出來的。</strong></p>
+</blockquote>
+<hr />
 <h2 id="ch4-本章小結">本章小結</h2>
 <ul>
 <li>記住這條公式：<code>T ≈ T_compute + T_memory</code>（沒重疊）或 <code>max(...)</code>（有重疊），每一招都在縮小其中一項。</li>
@@ -2201,8 +2356,9 @@ s = 那部分被加速的倍數
 <li>如果記憶體用量減半，可處理的最大序列長度 L 變成幾倍？</li>
 <li>每個 token 用自己的 scale，會不會讓不同 token 的數值「失去可比性」？為什麼？</li>
 <li>尺用什麼格式存？像 0.000787 這種很小的數，為什麼不需要很多 bit？</li>
+<li>把 tiling、INT8 量化、寬位元介面分別放進「資料表示／資料流／硬體結構」三層中的哪一層？</li>
 </ol>
-<p><strong>下一章</strong>先介紹工具背後的原理：FPGA 是什麼、C++ 怎麼變成電路、每個工具做了什麼。有了這些基礎，第 4 章看程式碼時會比較容易。</p>
+<p><strong>下一章</strong>先介紹工具背後的原理（想先深入 LightNobel 的硬體設計，可以先跳到第 8 章）：FPGA 是什麼、C++ 怎麼變成電路、每個工具做了什麼。有了這些基礎，第 4 章看程式碼時會比較容易。</p>
 </section><section class="chapter">
 <div class="part">第二部　工具與實作</div>
 <h1 id="ch5-第-3-章-工具原理-為何-C-可以變成電路">第 3 章　工具原理：為何 C++ 可以變成電路？</h1>
@@ -6001,16 +6157,645 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>修正之後錯誤訊息完全沒變，代表什麼？下一步該怎麼做？</li>
 <li>讀一篇論文的原文時，哪三種東西特別容易在二手資料中被誤解？本專題各犯了哪一個？</li>
 </ol>
+<p><strong>下一章</strong>從硬體設計者的角度，拆開 LightNobel 的每個硬體單元。</p>
+</section><section class="chapter">
+<div class="part">第六部　深入硬體</div>
+<h1 id="ch10-第-8-章-LightNobel-硬體架構詳解-每個單元是什麼-為什麼這樣設計">第 8 章　LightNobel 硬體架構詳解：每個單元是什麼、為什麼這樣設計</h1>
+<blockquote>
+<p><strong>本章重點</strong></p>
+<ul>
+<li>前面各章只說「LightNobel 有 RMPU、VVPU」；這一章從<strong>硬體設計者的角度</strong>，拆開每個單元的結構、原理與設計理由。</li>
+<li>讀法：先看 8.1「需求 → 架構」，知道每個單元是為了解決哪個問題；再逐一看單元內部。</li>
+<li>核心技巧有四個：<strong>位元拆解乘法</strong>（RMPU）、<strong>可重組的加法樹</strong>（PE Cluster、DAL）、<strong>SIMD 向量單元 ＋ 排序網路</strong>（VVPU）、<strong>線上 softmax</strong>（token-wise attention）。</li>
+<li>最重要的一課：<strong>這顆晶片 70% 的面積花在搬資料的 crossbar，不是運算單元。</strong></li>
+<li>資料來源：論文 Sec. 5（架構）、Sec. 6（評估方法）、Sec. 7.2（硬體設計空間探索）、Table 2（面積與功耗）、Fig. 8～10。
+  論文沒有寫明的細節會標「推測」或「我們的分析」。</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="ch10-8-1-從需求推導架構-設計者面對的四個問題">8.1 從需求推導架構：設計者面對的四個問題</h2>
+<p>好的加速器不是先想「要放什麼單元」，而是先分析<strong>工作負載（workload）的特性</strong>，再讓每個單元對應一個需求。
+LightNobel 面對的 PPM 有四個特性：</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>工作負載的特性</th>
+<th>帶來的硬體問題</th>
+<th>LightNobel 的對應單元</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>①</td>
+<td><strong>token 很小（128 個數）但數量極多</strong>（L² 個，動輒數百萬）</td>
+<td>要能同時處理很多 token，而且權重要一直重複使用</td>
+<td>很多組 <strong>RMPU</strong>（每組同時算 20 個 token）；<strong>weight-stationary</strong> 資料流</td>
+</tr>
+<tr>
+<td>②</td>
+<td><strong>同一份工作裡混著多種精度</strong>（INT4、INT8、INT16 outlier）</td>
+<td>為每種精度各做一套乘法器會很浪費：用不到的那套就閒置</td>
+<td><strong>RMPU 的位元拆解</strong>：用 4-bit 小乘法器拼出任何精度</td>
+</tr>
+<tr>
+<td>③</td>
+<td><strong>activation 要在執行時量化</strong>（算尺、挑 top-k）</td>
+<td>需要排序、找最大值、重新排列資料的硬體</td>
+<td><strong>VVPU</strong>（SIMD ＋ bitonic 排序）、<strong>Token Aligner</strong></td>
+</tr>
+<tr>
+<td>④</td>
+<td><strong>向量運算很多</strong>（LayerNorm、Softmax、residual，每個 token 都要做）</td>
+<td>矩陣單元做這些很沒效率</td>
+<td><strong>VVPU</strong> 專門做向量運算，和 RMPU 以管線串接</td>
+</tr>
+</tbody>
+</table>
+<p>再加上一個全域的限制：<strong>記憶體容量與頻寬</strong>（第 1、2 章），所以還需要 scratchpad、double buffering，以及不存中間值的資料流（8.6 節）。</p>
+<hr />
+<h2 id="ch10-8-2-整體架構與一個-linear-的資料流">8.2 整體架構與一個 linear 的資料流</h2>
+<h3 id="ch10-方塊圖-依論文-Fig-8-簡化">方塊圖（依論文 Fig. 8 簡化）</h3>
+<pre><code>          External Memory（80 GB HBM2E, 2 TB/s）
+                 |                         ^
+                 v                         |
+          +--------------+          +--------------+
+          | Token Aligner|          |    Output    |
+          +--------------+          |  Scratchpad  |
+                 |                  +--------------+
+                 v                         ^
+  +------------------+ +-----------+       |
+  | Token Scratchpad | |  Weight   |       |
+  |  128 KB x 2      | | Scratchpad|       |
+  | (double buffer)  | |  64 KB    |       |
+  +------------------+ +-----------+       |
+           |                 |             |
+  =========v=================v=============|=====  Global Crossbar Network (GCN)
+           |                               |
+     +-----v------+      +-----------------+---------------+
+     |   RMPU x32 | ---&gt; | VVPU x4 per RMPU (128 in total) |
+     |  (matrix)  |      |  (vector: LayerNorm, Softmax,   |
+     +------------+      |   residual, quantization)       |
+                         +---------------------------------+
+     Controller: generates control signals for all units
+</code></pre>
+<h3 id="ch10-一個-linear-怎麼流過這顆晶片">一個 linear 怎麼流過這顆晶片</h3>
+<ol>
+<li>
+<p><strong>Token Aligner</strong> 從 HBM 讀進一批（block）壓縮過的 token，拆解、排整齊後放進 <strong>Token Scratchpad</strong>。
+   Token Scratchpad 有兩份（128 KB × 2），一份給運算單元讀，另一份同時從記憶體裝下一批，也就是 <strong>double buffering</strong>（2.6 節），藏住記憶體延遲。</p>
+</li>
+<li>
+<p>權重事先載入 <strong>Weight Scratchpad</strong>（64 KB），<strong>整個 linear 的期間都不動</strong>（weight-stationary）。</p>
+</li>
+<li><strong>RMPU</strong> 從兩個 scratchpad 取 token 和權重做矩陣乘法，一次最多 20 個 token。</li>
+<li>結果直接送給 <strong>VVPU</strong>（管線，不回記憶體），VVPU 做 LayerNorm、gating、residual，最後做<strong>執行時量化</strong>。</li>
+<li>量化好的 token 經 <strong>Output Scratchpad</strong> 寫回 HBM。</li>
+</ol>
+<h3 id="ch10-為什麼是-weight-stationary">為什麼是 weight-stationary？</h3>
+<p>「stationary」是指<strong>哪一種資料留在運算單元旁邊不動</strong>。常見的選擇有三種：</p>
+<table>
+<thead>
+<tr>
+<th>資料流</th>
+<th>固定不動的</th>
+<th>適合的情況</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Weight-stationary</td>
+<td>權重</td>
+<td>權重小、被很多輸入重複使用</td>
+</tr>
+<tr>
+<td>Output-stationary</td>
+<td>部分和（累加值）</td>
+<td>輸出要累加很多次</td>
+</tr>
+<tr>
+<td>Input-stationary</td>
+<td>輸入</td>
+<td>輸入被很多權重重複使用</td>
+</tr>
+</tbody>
+</table>
+<p>PPM 的 linear 權重只有 128 × 128 個 INT16 = <strong>32 KB</strong>，卻要被數百萬個 token 重複使用。
+把權重固定在晶片內，每個 token 只需要搬一次，權重的搬運成本幾乎是 0。
+這和 6.6 節「權重小、activation 大」是同一個觀察。</p>
+<h3 id="ch10-管線-pipeline-與延遲">管線（pipeline）與延遲</h3>
+<p>論文的延遲模型：<strong>總延遲由每個管線階段中最慢的那一段決定</strong>（RMPU 運算、VVPU 運算、記憶體讀寫）。
+這和第 2 章的 <code>max(T_compute, T_memory)</code> 是同一個概念，只是階段更多。</p>
+<hr />
+<h2 id="ch10-8-3-Token-Aligner-記憶體的格式和運算的格式不一樣">8.3 Token Aligner：記憶體的格式和運算的格式不一樣</h2>
+<h3 id="ch10-問題-兩邊想要的排列方式互相衝突">問題：兩邊想要的排列方式互相衝突</h3>
+<ul>
+<li>
+<p><strong>記憶體端</strong>希望資料<strong>大塊、連續</strong>，才能用滿 burst（2.5 節）。所以論文把多個 token 打包成一個 block，block 大小依記憶體通道的頻寬決定（Sec. 4.3）。
+  每個 token 裡的排列是：inlier → outlier → 尺 → outlier 的位置（Fig. 7）。由於不同組的精度不同，<strong>每個 token 壓縮後的長度也不同</strong>。</p>
+</li>
+<li>
+<p><strong>運算端</strong>希望<strong>一行 scratchpad 剛好是一個 token</strong>，這樣 RMPU、VVPU 一次讀一行就拿到一個完整的 token。</p>
+</li>
+</ul>
+<h3 id="ch10-解法-解碼-重新排列">解法：解碼 ＋ 重新排列</h3>
+<p>Token Aligner 在資料進 scratchpad 之前，把「打包好的 block」<strong>解碼並重新排成一個 token 一行</strong>。
+在硬體上，它的角色類似<strong>寬度轉換器（width converter / gearbox）</strong>：輸入是固定寬度的記憶體 word，輸出是長度不一的 token，
+中間要有 buffer 和移位邏輯，把跨越 word 邊界的 token 拼回來。</p>
+<h3 id="ch10-學到的設計原則">學到的設計原則</h3>
+<p><strong>「儲存格式」和「運算格式」可以不同，中間用一個專門的轉換單元銜接。</strong> 這樣兩邊都能用最適合自己的格式。
+代價是轉換單元本身的面積與延遲；和 RMPU、crossbar 比起來，它只是很小的一塊。</p>
+<hr />
+<h2 id="ch10-8-4-RMPU-用-4-bit-小乘法器拼出任何精度">8.4 RMPU：用 4-bit 小乘法器拼出任何精度</h2>
+<p>RMPU（Reconfigurable Matrix Processing Unit）是做矩陣乘法的單元，要解決 8.1 節的問題 ②：<strong>同一份工作裡混著 INT4、INT8、INT16。</strong></p>
+<h3 id="ch10-8-4-1-為什麼不各做一套乘法器">8.4.1 為什麼不各做一套乘法器？</h3>
+<p>假設晶片上放了 INT4、INT8、INT16 三種乘法器：</p>
+<ul>
+<li>算 INT4 的 token 時，INT8、INT16 的乘法器全部閒置；</li>
+<li>而且三種的比例要事先固定，但 AAQ 的精度組合在<strong>執行時</strong>才知道（依 activation 所屬的組、outlier 的數量）。</li>
+</ul>
+<p>結果就是嚴重的<strong>利用率不足（underutilization）</strong>。RMPU 的做法是：<strong>只放一種最小的乘法器（4-bit），大的乘法用很多個小的拼起來。</strong>
+這個想法來自 Bit Fusion（ISCA 2018，論文參考文獻 [57]）。</p>
+<h3 id="ch10-8-4-2-原理-位元拆解乘法">8.4.2 原理：位元拆解乘法</h3>
+<p>任何整數都可以拆成 4-bit 的小塊（chunk）：</p>
+<pre><code>A = a₀ + a₁·2⁴ + a₂·2⁸ + a₃·2¹²              （16-bit 的數拆成 4 塊）
+A × B = Σᵢ Σⱼ aᵢ·bⱼ · 2^(4(i+j))              （每一對小塊相乘，再移位相加）
+</code></pre>
+<p>每個 <code>aᵢ·bⱼ</code> 是 <strong>4-bit × 4-bit</strong> 的小乘法；<code>× 2^(4(i+j))</code> 只是<strong>左移</strong>，不需要乘法器。</p>
+<p><strong>數字例子：INT4 的 activation × INT16 的權重</strong>（linear 裡最常見的情況：論文的權重是 INT16）</p>
+<pre><code>a = −5（INT4，只有 1 塊）
+w = 1234 = 0x04D2 → 從低到高 4 塊：[2, 13, 4, 0]
+
+部分積        值        左移      結果
+−5 ×  2  =   −10       &lt;&lt; 0   =    −10
+−5 × 13  =   −65       &lt;&lt; 4   =  −1,040
+−5 ×  4  =   −20       &lt;&lt; 8   =  −5,120
+−5 ×  0  =     0       &lt;&lt; 12  =      0
+                         合計   = −6,170   ← 正好等於 −5 × 1234
+</code></pre>
+<p>所以：
+| 乘法 | 需要幾個 4-bit 乘法器 |
+|---|---|
+| INT4 × INT4 | 1 |
+| INT4 × INT16 | 1 × 4 = 4 |
+| INT8 × INT16 | 2 × 4 = 8 |
+| INT16 × INT16 | 4 × 4 = 16 |</p>
+<p><strong>同一組硬體，精度低就同時算很多個，精度高就合起來算一個</strong>，所有乘法器都不會閒著。</p>
+<h3 id="ch10-8-4-3-有正負號的數怎麼拆-sign-extension">8.4.3 有正負號的數怎麼拆？（sign extension）</h3>
+<p>二補數（two's complement）的整數，<strong>只有最高位的那一塊帶正負號</strong>，其他塊都是無號數。例如 INT8 的 −93：</p>
+<pre><code>−93 = 0xA3 → 高 4 位 0xA、低 4 位 0x3
+高位塊：0xA 當作有號數 = −6
+低位塊：0x3 當作無號數 = 3
+驗算：−6 × 16 + 3 = −93 ✓
+</code></pre>
+<p>所以 RMPU 的資料對齊器（RDA）在拆塊時：</p>
+<ul>
+<li><strong>最高位的塊</strong>：用它自己的最高位元做<strong>符號延伸</strong>（sign extension）；</li>
+<li><strong>其他塊</strong>：前面<strong>補 0</strong>（zero extension）。</li>
+</ul>
+<p>有號塊的範圍是 −8～7，無號塊是 0～15，要同時裝得下兩者，<strong>每塊要 5 bit</strong>（−16～15）。
+這就是論文 Fig. 9(a) 裡乘法器輸入標成「5bit」的原因。</p>
+<h3 id="ch10-8-4-4-階層式的結構-PE-PE-Lane-PE-Cluster-RMPU-Engine">8.4.4 階層式的結構：PE → PE Lane → PE Cluster → RMPU Engine</h3>
+<pre><code>PE（Processing Element）
+  16 個 5-bit 乘法器 ＋ 移位器 ＋ 16-to-1 加法樹
+  → 可以算 1 個 INT16×INT16，或 16 個 INT4×INT4，或 4 個 INT4×INT16 …
+
+PE Lane = 8 個 PE（共 128 個小乘法器）
+  兩種模式：(1) 每 2 個 PE 加上 bias → 4 個輸出（給 head 維度 32 的 attention）
+           (2) 8 個 PE 全部用加法樹加起來 → 1 個輸出（內積）
+
+PE Cluster = 20 個 PE Lane ＋ DAL（動態累加邏輯）
+
+RMPU Engine = 4 個 PE Cluster
+  = 80 個 PE Lane = 640 個 PE = 10,240 個 4-bit 乘法器
+  → 一次最多同時處理 20 個 token
+</code></pre>
+<h3 id="ch10-8-4-5-為什麼一個-Cluster-是-20-個-Lane-最小公倍數">8.4.5 為什麼一個 Cluster 是 20 個 Lane？（最小公倍數）</h3>
+<p>算一個 128 維的內積（一個 token × 權重的一行），需要多少個 4-bit 乘法器？</p>
+<table>
+<thead>
+<tr>
+<th>token 的格式</th>
+<th>計算</th>
+<th>需要的小乘法器</th>
+<th>需要的 PE Lane（每個 128 個）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>128 個 INT4 inlier（C 組）</td>
+<td>128 × 4 = 512</td>
+<td>512</td>
+<td><strong>4</strong></td>
+</tr>
+<tr>
+<td>124 個 INT4 inlier ＋ 4 個 INT16 outlier（B 組）</td>
+<td>124 × 4 ＋ 4 × 16 = 560</td>
+<td>560</td>
+<td>4.375 → <strong>5</strong></td>
+</tr>
+</tbody>
+</table>
+<p>PPM 裡大部分的內積需要 <strong>4 或 5</strong> 個 Lane。一個 Cluster 放 <strong>20 個 Lane（4 和 5 的最小公倍數）</strong>：</p>
+<ul>
+<li>需要 4 個 Lane 時：20 ÷ 4 = <strong>5 個 token</strong> 同時算，Lane 全部用滿；</li>
+<li>需要 5 個 Lane 時：20 ÷ 5 = <strong>4 個 token</strong> 同時算，也全部用滿。</li>
+</ul>
+<p><strong>這就是「依工作負載決定硬體數量」的典型例子</strong>：先統計工作負載需要的單位（4 或 5），再選一個能被兩者整除的數量，讓利用率在兩種情況都是 100%。</p>
+<h3 id="ch10-8-4-6-DAL-尺要在什麼時候乘">8.4.6 DAL：尺要在什麼時候乘？</h3>
+<p>一個 B 組的 token 有兩種值：</p>
+<ul>
+<li><strong>inlier</strong>：量化過，要<strong>乘尺</strong>才會回到原本的大小；</li>
+<li><strong>outlier</strong>：以 INT16 原值存，<strong>不用乘尺</strong>。</li>
+</ul>
+<p>所以不能把 5 個 Lane 的結果直接加起來。<strong>DAL（Dynamic Accumulation Logic）</strong> 的做法：</p>
+<pre><code>需要 4 個 Lane（全是 inlier）：  4 個 Lane 的結果相加 → 最後乘一次尺
+需要 5 個 Lane（有 outlier）：   inlier 的部分先相加 → 乘尺
+                                 → 再加上 outlier 那個 Lane 的結果
+</code></pre>
+<p>4-to-1 和 5-to-1 的加法樹結構不同，DAL 用「關掉其中一個加法樹、把第 5 個 Lane 接到後面」的方式動態切換，
+前面再放一個 <strong>Arbiter</strong> 把各 Lane 的輸出排到正確的位置。這就是「<strong>可重組的加法樹</strong>」。</p>
+<blockquote>
+<p><strong>對照我們的 v4：</strong> linear 的內積是沿著同一個 token 的 channel 加總，所以尺可以最後乘一次（2.8 節情況一）。
+我們的 einsum 是沿著 k 跨 token 加總，每一項的尺都不同（2.8 節情況二），所以 v4 每個 k 都要乘尺。</p>
+</blockquote>
+<h3 id="ch10-8-4-7-RMPU-的輸出有很多種-粒度">8.4.7 RMPU 的輸出有很多種「粒度」</h3>
+<p>加法樹的每一層都有意義，RMPU Engine 把不同層的結果都拉出來用：
+| 取出的位置 | 意義 | 用途 |
+|---|---|---|
+| 2 個 PE 的和 | head 維度 32 的內積 | multi-head attention |
+| 4 或 5 個 Lane 的和 | 一個量化 token 的內積 | 量化的 linear（經過 DAL） |
+| 8 或 16 個 Lane 的和 | 沒量化的 token 的內積 | 高精度的運算 |
+| 80 個 PE 的和 | 更大的內積 | 多個 RMPU 合作 |</p>
+<p>最後一層還有 ReLU。同一組乘法器，靠「從加法樹的哪一層取結果」支援不同的運算。</p>
+<hr />
+<h2 id="ch10-8-5-VVPU-向量運算-排序與執行時量化">8.5 VVPU：向量運算、排序與執行時量化</h2>
+<h3 id="ch10-8-5-1-結構">8.5.1 結構</h3>
+<pre><code>VVPU
+ ├─ 128 條 SIMD Lane：每條有一個 16-bit ALU、自己的小 scratchpad、兩級的指數查表（exp LUT）
+ ├─ SSU（Scalar Support Unit）：處理純量運算，例如求平均、量化資料的格式整理
+ └─ LCN（Local Crossbar Network）：讓 128 條 Lane 之間可以任意交換資料
+</code></pre>
+<ul>
+<li><strong>為什麼是 128 條？</strong> 一個 token 剛好 128 個數，<strong>一條 Lane 負責一個 channel</strong>，一個 cycle 就能對整個 token 做同一個運算（SIMD：single instruction, multiple data）。</li>
+<li><strong>為什麼要指數查表？</strong> Softmax 和 sigmoid 都要算 <code>exp(x)</code>。用查表加少量運算代替完整的指數電路，面積小很多（參考文獻 [26] 的做法）。</li>
+<li><strong>為什麼要 SSU？</strong> LayerNorm 的平均值、變異數要把 128 個數加起來變成一個數，這種「歸約（reduction）」和格式整理交給純量單元做，SIMD Lane 就能專心做逐元素的運算。</li>
+<li><strong>為什麼要 LCN？</strong> 量化後的資料要依記憶體格式重新排列（inlier、outlier 分開放），需要資料在 Lane 之間移動。</li>
+</ul>
+<h3 id="ch10-8-5-2-用硬體挑-top-k-bitonic-排序網路">8.5.2 用硬體挑 top-k：bitonic 排序網路</h3>
+<p>執行時量化要找出每個 token 裡絕對值最大的 k 個（A、B 組 k = 4）。VVPU 用 <strong>bitonic sort（雙調排序）</strong>：</p>
+<p><strong>原理：</strong> 排序網路（sorting network）是一組<strong>固定連線的比較交換器（compare-and-swap）</strong>：
+每個比較器接兩個數，大的往一邊、小的往另一邊。連線是固定的，<strong>不管資料是什麼，步驟都一樣</strong>。這點對硬體很重要：</p>
+<ul>
+<li>沒有「if 分支」，每一步所有比較器<strong>同時動作</strong>，很適合 SIMD Lane 平行做；</li>
+<li>延遲固定，容易排進管線。</li>
+</ul>
+<p>以 8 個數為例，bitonic sort 分 3 個大階段（2、4、8 個一組），共 6 步，每步 4 個比較器同時動作：</p>
+<pre><code>階段 1：兩兩比較，做出長度 2 的有序片段
+階段 2：合併成長度 4 的有序片段（2 步）
+階段 3：合併成長度 8 的有序序列（3 步）
+總步數 = log₂8 × (log₂8 + 1) ÷ 2 = 3 × 4 ÷ 2 = 6
+</code></pre>
+<p>128 個數時：<code>7 × 8 ÷ 2 = 28</code> 步，每步 64 個比較器同時動作。只要 top-k，不需要完整排序，還可以提早停止（參考文獻 [56]）。</p>
+<p>排序時 VVPU <strong>一路追蹤每個值原本的位置（index）</strong>，最後就知道 outlier 在哪裡（要存進記憶體的「outlier 位置」）。
+<strong>k = 1 時就是找最大值</strong>，所以同一套硬體也用在 softmax（要先找最大值）和算尺（最大絕對值）。</p>
+<h3 id="ch10-8-5-3-執行時量化的四個步驟">8.5.3 執行時量化的四個步驟</h3>
+<pre><code>1. top-k：SIMD Lane 找出 outlier 和尺（最大絕對值）
+2. 縮放：每個值除以尺、四捨五入成 INT4／INT8
+3. 重排：LCN 依記憶體格式重新排列（inlier、outlier、尺、位置）
+4. 對齊：SSU 整理成最終的記憶體排列
+</code></pre>
+<p>這些都在 VVPU 內完成，<strong>完整精度的值從來不寫回記憶體</strong>（2.8 節「算尺的時候…」、6.7 節「量化在源頭完成」）。</p>
+<h3 id="ch10-8-5-4-為什麼一個-RMPU-配-4-個-VVPU-硬體設計空間探索">8.5.4 為什麼一個 RMPU 配 4 個 VVPU？（硬體設計空間探索）</h3>
+<p>論文 Fig. 12(a) 改變「每個 RMPU 配幾個 VVPU」，看延遲怎麼變：</p>
+<ul>
+<li><strong>VVPU 太少</strong>：RMPU 算得很快，但 VVPU 做 LayerNorm、量化來不及，整條管線被 VVPU 拖慢；</li>
+<li><strong>到 4 個時延遲就不再下降（飽和）</strong>：VVPU 的工作已經能完全藏在 RMPU 的運算底下，再加也沒用。</li>
+</ul>
+<p>這和第 2 章的 Amdahl's Law、double buffering 是同一個道理：<strong>管線的速度由最慢的那一段決定，把最慢的那段加強到不是瓶頸就夠了，再多只是浪費面積。</strong></p>
+<hr />
+<h2 id="ch10-8-6-Token-wise-multi-head-attention-不存-L³-的-score-matrix">8.6 Token-wise multi-head attention：不存 L³ 的 score matrix</h2>
+<h3 id="ch10-問題">問題</h3>
+<p>Triangle Attention 的 score matrix 是 L × L × L（每個 head），不分塊時一定放不下（6.10 節）。</p>
+<h3 id="ch10-原理-線上-softmax-online-softmax">原理：線上 softmax（online softmax）</h3>
+<p>論文說他們的做法「類似 FlashAttention，並針對 token-wise 運算最佳化」（參考文獻 [16]），但沒有寫出完整的演算法。
+以下說明 FlashAttention 的核心原理，也就是 LightNobel 能做到「不存 score matrix」的原因。</p>
+<p>Softmax 需要先知道<strong>所有分數的最大值</strong>（數值穩定）和<strong>總和</strong>：</p>
+<pre><code>softmax(sᵢ) = exp(sᵢ − m) ÷ Σⱼ exp(sⱼ − m)        m = max(s)
+</code></pre>
+<p>看起來必須先算完全部的分數才能開始。<strong>線上 softmax</strong> 的技巧是邊算邊修正：</p>
+<pre><code>維護三個值：目前的最大值 m、目前的總和 ℓ、目前的輸出累加 o
+每來一批新的分數 s（和對應的 V）：
+  m_new = max(m, max(s))
+  ℓ     = ℓ × exp(m − m_new) + Σ exp(s − m_new)       ← 舊的總和用新的最大值重新縮放
+  o     = o × exp(m − m_new) + Σ exp(s − m_new) × V
+  m     = m_new
+全部算完：輸出 = o ÷ ℓ
+</code></pre>
+<p>每一批分數<strong>算完就丟</strong>，只留下 m、ℓ、o 三個小東西。L³ 的 score matrix 從來不需要整份存在記憶體。</p>
+<h3 id="ch10-在-LightNobel-上怎麼跑-Sec-5-4">在 LightNobel 上怎麼跑（Sec. 5.4）</h3>
+<ol>
+<li>RMPU 對每個 head 平行算 Q × K；</li>
+<li>同時，VVPU 做反量化和中間結果的累加；</li>
+<li>VVPU 做 softmax，和下一批 Q × K 以管線重疊，減少找最大值的延遲；</li>
+<li>最後載入 V，乘上 softmax 的結果，寫回記憶體。</li>
+</ol>
+<h3 id="ch10-為什麼在-PPM-上特別划算">為什麼在 PPM 上特別划算</h3>
+<p>一般的語言模型 hidden 維度很大（LLaMA 7B 是 4,096），一次放不下很多 token，token-wise 做法的資料重用有限。
+<strong>PPM 的 hidden 維度只有 128</strong>，一個 token 很小，晶片內可以同時放很多個，token-wise 的做法就很有效率（論文 Sec. 5.4 的論點）。</p>
+<hr />
+<h2 id="ch10-8-7-互連與記憶體-為什麼-crossbar-佔了-70-的面積">8.7 互連與記憶體：為什麼 crossbar 佔了 70% 的面積</h2>
+<h3 id="ch10-Crossbar-是什麼">Crossbar 是什麼</h3>
+<p>Crossbar 是「<strong>任何輸入都能接到任何輸出</strong>」的交換網路。N 個輸入、N 個輸出、每條 W bit 寬：</p>
+<pre><code>開關（crosspoint）的數量 ∝ N × N × W
+</code></pre>
+<p><strong>面積與功耗隨埠數的平方成長。</strong> 例如 128 條 Lane、16 bit 的全互連：128 × 128 × 16 ≈ 26 萬個開關。
+LightNobel 用 <strong>swizzle switch</strong>（參考文獻 [55]）這種面積、功耗較省的 crossbar 實作，但仍然是最大的一塊。</p>
+<h3 id="ch10-面積與功耗的分配-Table-2-28-nm-1-GHz">面積與功耗的分配（Table 2，28 nm、1 GHz）</h3>
+<p>論文的 Table 2 在 PDF 中排版錯亂，下表是我們把各列的數字加總對照後推回來的，總數與論文文字（crossbar 70.28% 面積、67.95% 功耗；RMPU Engine 18.20% 面積、22.36% 功耗）一致：</p>
+<table>
+<thead>
+<tr>
+<th>模組</th>
+<th>面積（mm²）</th>
+<th>功耗（mW）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 個 RMPU Engine</td>
+<td>1.017</td>
+<td>473.9</td>
+</tr>
+<tr>
+<td>1 個 RDA（資料對齊器）</td>
+<td>0.105</td>
+<td>112.4</td>
+</tr>
+<tr>
+<td>1 個 RMPU 合計</td>
+<td>1.127</td>
+<td>589.1</td>
+</tr>
+<tr>
+<td><strong>32 個 RMPU</strong></td>
+<td><strong>36.07</strong></td>
+<td><strong>18,853</strong></td>
+</tr>
+<tr>
+<td>1 個 VVPU 的 128 條 SIMD Lane</td>
+<td>0.115</td>
+<td>21.1</td>
+</tr>
+<tr>
+<td>1 個 VVPU 的 LCN（crossbar）</td>
+<td><strong>0.785</strong></td>
+<td><strong>288.0</strong></td>
+</tr>
+<tr>
+<td>1 個 VVPU 合計</td>
+<td>0.902</td>
+<td>309.9</td>
+</tr>
+<tr>
+<td><strong>128 個 VVPU</strong></td>
+<td><strong>115.43</strong></td>
+<td><strong>39,668</strong></td>
+</tr>
+<tr>
+<td><strong>GCN（全域 crossbar）</strong></td>
+<td><strong>25.13</strong></td>
+<td><strong>9,216</strong></td>
+</tr>
+<tr>
+<td>Scratchpad（Token 128 KB × 2、Weight 64 KB、Output 128 KB）</td>
+<td>約 2.0</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>整顆晶片</strong></td>
+<td><strong>178.80</strong></td>
+<td><strong>67,805（67.8 W）</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch10-這張表教我們什麼">這張表教我們什麼</h3>
+<ul>
+<li><strong>一個 VVPU 裡，crossbar（0.785）是 128 條運算 Lane（0.115）的將近 7 倍大。</strong> 搬資料的硬體比算資料的硬體貴得多。</li>
+<li>全晶片的 crossbar（128 個 LCN ＋ GCN）約 125.7 mm²，<strong>佔 70%</strong>；真正做乘法的 RMPU Engine 只佔 18%。</li>
+<li>這對應第 1 章的主題：<strong>在這類問題裡，瓶頸是資料移動，不是運算。</strong> 連晶片內部都是如此。</li>
+<li>對設計者的啟示：想省面積，先檢討<strong>是否真的需要全互連</strong>。如果資料的移動模式是固定的（例如只需要相鄰交換），用簡單的網路就能大幅縮小面積。</li>
+</ul>
+<h3 id="ch10-Scratchpad-為什麼叫-scratchpad-不叫-cache">Scratchpad 為什麼叫 scratchpad，不叫 cache？</h3>
+<p>兩者都是晶片內的小記憶體，差別在<strong>誰決定放什麼</strong>：
+| | Cache | Scratchpad |
+|---|---|---|
+| 放什麼由誰決定 | 硬體自動（依位址、替換策略） | <strong>設計者／程式明確指定</strong> |
+| 命中率 | 不確定 | 確定（事先規劃好） |
+| 需要的額外硬體 | tag、比較器、替換邏輯 | 幾乎沒有 |</p>
+<p>加速器的資料流是事先規劃好的（哪個 token 什麼時候用），不需要 cache 的猜測機制，用 scratchpad 更省面積也更可預測。
+我們 FPGA kernel 裡的 BRAM 陣列（<code>acc</code>、<code>la</code>、<code>lb</code>）也是 scratchpad。</p>
+<hr />
+<h2 id="ch10-8-8-決定要放幾個-硬體設計空間探索">8.8 決定要放幾個：硬體設計空間探索</h2>
+<p>論文 Fig. 12(b) 固定每個 RMPU 配 4 個 VVPU，改變 RMPU 的數量：<strong>到 32 個時效能就飽和了。</strong></p>
+<p>原因（Sec. 7.2）：32 個 RMPU 已經有足夠的運算能力，<strong>處理從記憶體讀進來的所有資料</strong>；再加更多 RMPU，資料供應跟不上，只會閒置。</p>
+<p>這就是 <strong>roofline 的平衡點</strong>（2.3 節）：</p>
+<pre><code>運算能力 &lt; 記憶體能供應的量 → 加運算單元有用（compute-bound）
+運算能力 ≥ 記憶體能供應的量 → 加運算單元沒用（memory-bound）
+32 個 RMPU ≈ 剛好在平衡點上
+</code></pre>
+<p><strong>好的硬體設計會把運算資源放到「剛好到平衡點」</strong>，再多就是浪費面積和功耗。
+我們的 6.9 節 DSE（tile 大小 vs BRAM）是同一種思考：找「膝點」。</p>
+<hr />
+<h2 id="ch10-8-9-硬體怎麼評估-每個工具在做什麼">8.9 硬體怎麼評估：每個工具在做什麼</h2>
+<p>論文沒有做出實體晶片，而是用以下工具組合評估（Sec. 6）。這也是學術界 ASIC 加速器論文的標準流程：</p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>做什麼</th>
+<th>產出</th>
+<th>對應我們的專題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SystemVerilog RTL</strong></td>
+<td>用硬體描述語言寫出每個模組的電路</td>
+<td>可模擬、可合成的設計</td>
+<td>HLS 從 C++ 自動產生 RTL</td>
+</tr>
+<tr>
+<td><strong>Synopsys Design Compiler</strong>（28 nm、1 GHz）</td>
+<td>邏輯合成：把 RTL 對應到製程的標準元件（standard cell）</td>
+<td>面積、功耗、能不能跑到 1 GHz</td>
+<td>Vivado 合成、HLS 的資源與時序報告</td>
+</tr>
+<tr>
+<td><strong>記憶體編譯器、CACTI 7.0</strong></td>
+<td>估計 SRAM（scratchpad）的面積與功耗</td>
+<td>記憶體的面積、功耗</td>
+<td>BRAM／URAM 的用量</td>
+</tr>
+<tr>
+<td><strong>Ramulator</strong></td>
+<td>cycle 級的 DRAM／HBM 模擬</td>
+<td>真實的記憶體延遲與頻寬</td>
+<td>（我們沒有；HLS 假設固定延遲）</td>
+</tr>
+<tr>
+<td><strong>Python cycle-accurate 模擬器</strong></td>
+<td>依每個模組的延遲，模擬整個 PPM 的執行</td>
+<td>總延遲</td>
+<td>我們的分析模型（<code>perf_model.py</code>）</td>
+</tr>
+<tr>
+<td><strong>RTL 交叉驗證</strong></td>
+<td>比較模擬器和 RTL 模擬的結果</td>
+<td>誤差平均 3.30%、都在 5% 內</td>
+<td>分析模型 vs HLS 報告</td>
+</tr>
+</tbody>
+</table>
+<p>CACTI 只支援到 32 nm，論文用常見的縮放係數換算到 28 nm。這種「工具不完全符合時，用文獻中的方法換算」在架構論文很常見，報告時要說明。</p>
+<hr />
+<h2 id="ch10-8-10-如果要在-FPGA-上實作這些設計-我們的分析">8.10 如果要在 FPGA 上實作這些設計（我們的分析）</h2>
+<p>這一節是我們自己的分析，不是論文的內容。目的是把 ASIC 的設計對應到 U55C 上的資源，思考哪些能搬、代價是什麼。</p>
+<table>
+<thead>
+<tr>
+<th>LightNobel 的元件</th>
+<th>在 FPGA 上的對應</th>
+<th>需要注意的地方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4-bit 小乘法器（RMPU）</td>
+<td>用 <strong>LUT</strong> 做（小的乘法器用 LUT 比用 DSP 划算）</td>
+<td>U55C 有約 130 萬個 LUT，但每個小乘法器要數個到十幾個 LUT，數量有限</td>
+</tr>
+<tr>
+<td>INT8 × INT8 乘法</td>
+<td><strong>DSP48E2</strong>（27 × 18 的乘法器）</td>
+<td>已知的技巧：共用一個運算元時，一個 DSP 可以同時算兩個 INT8 乘法（AMD 白皮書 WP486）</td>
+</tr>
+<tr>
+<td>可重組的加法樹（DAL）</td>
+<td>LUT ＋ 多工器</td>
+<td>可重組的彈性要用多工器換，會吃 LUT 和繞線</td>
+</tr>
+<tr>
+<td>SIMD Lane</td>
+<td>展開的迴圈（<code>#pragma HLS UNROLL</code>）＋ 切開的陣列（ARRAY_PARTITION）</td>
+<td>和我們的 v2 16 路、v4 64 路是同一個手法</td>
+</tr>
+<tr>
+<td>Crossbar</td>
+<td>大量多工器 ＋ 繞線</td>
+<td><strong>在 FPGA 上一樣昂貴</strong>，而且繞線擁擠會讓時脈跑不高；應盡量用固定的資料移動模式</td>
+</tr>
+<tr>
+<td>Scratchpad</td>
+<td>BRAM／URAM</td>
+<td>U55C 約 43 MB，比 LightNobel 在 Table 2 列出的共用 scratchpad（約 0.45 MB）大得多，這是 FPGA 的優勢</td>
+</tr>
+<tr>
+<td>double buffering</td>
+<td>兩組 BRAM ＋ <code>DATAFLOW</code></td>
+<td>就是我們的 v3</td>
+</tr>
+<tr>
+<td>exp 查表</td>
+<td>BRAM 或 LUT 裡的查表</td>
+<td>HLS 的 <code>hls::exp</code> 也可以，但比較耗資源</td>
+</tr>
+<tr>
+<td>bitonic 排序</td>
+<td>展開的比較交換網路</td>
+<td>128 個數要 28 步、每步 64 個比較器，LUT 用量可觀</td>
+</tr>
+</tbody>
+</table>
+<p><strong>我們的 v0～v5 對應到其中的哪些部分：</strong></p>
+<ul>
+<li>v1～v3：scratchpad、weight／input 的重用、double buffering（8.2 節的資料流基礎）；</li>
+<li>v4：INT8 乘法 ＋ 浮點尺（RMPU ＋ DAL 的簡化版，但我們的 einsum 每個 k 都要乘尺，8.4.6 節）；</li>
+<li>v5（規劃中）：INT4 的解包與乘法，接近 RMPU 的「拆成 4-bit」想法，但只支援單一精度，不需要可重組。</li>
+</ul>
+<hr />
+<h2 id="ch10-本章小結">本章小結</h2>
+<table>
+<thead>
+<tr>
+<th>單元</th>
+<th>解決的問題</th>
+<th>核心技巧</th>
+<th>設計數量的理由</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Token Aligner</td>
+<td>記憶體格式 ≠ 運算格式</td>
+<td>解碼 ＋ 重新排列（寬度轉換）</td>
+<td>—</td>
+</tr>
+<tr>
+<td>RMPU</td>
+<td>多種精度混在一起</td>
+<td><strong>位元拆解乘法</strong>、可重組加法樹、DAL</td>
+<td>一個 Cluster 20 個 Lane（4 和 5 的最小公倍數）；32 個 RMPU（到平衡點就飽和）</td>
+</tr>
+<tr>
+<td>VVPU</td>
+<td>大量向量運算、執行時量化</td>
+<td>128 條 SIMD Lane、exp 查表、<strong>bitonic 排序</strong></td>
+<td>每個 RMPU 配 4 個（再多就飽和）</td>
+</tr>
+<tr>
+<td>Token-wise attention</td>
+<td>L³ 的 score matrix</td>
+<td><strong>線上 softmax</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Crossbar、scratchpad</td>
+<td>資料要在單元之間移動</td>
+<td>swizzle switch、double buffering、weight-stationary</td>
+<td>crossbar 佔 70% 面積：資料移動才是最貴的</td>
+</tr>
+</tbody>
+</table>
+<p><strong>三個可以帶走的設計原則：</strong></p>
+<ol>
+<li><strong>先分析工作負載，再決定硬體</strong>：每個單元都對應一個工作負載的特性（8.1 節）。</li>
+<li><strong>數量由利用率和平衡點決定</strong>：20 個 Lane 讓 4、5 兩種情況都用滿；32 個 RMPU、4 個 VVPU 都是「剛好不是瓶頸」的點。</li>
+<li><strong>資料移動比運算貴</strong>：不只晶片外（HBM），晶片內（crossbar）也是如此。</li>
+</ol>
+<hr />
+<h2 id="ch10-自我檢測">自我檢測</h2>
+<p>讀完這一章，試著回答下面的問題（參考答案在附錄 B）：</p>
+<ol>
+<li>用 4-bit 乘法器算 INT8 × INT16，需要幾個乘法器？寫出拆解的公式。</li>
+<li>把 INT8 的 −93 拆成兩個 4-bit 塊，高位塊和低位塊各當作有號還是無號？為什麼乘法器的輸入是 5 bit？</li>
+<li>為什麼一個 PE Cluster 放 20 個 PE Lane？</li>
+<li>DAL 為什麼要區分「4 個 Lane」和「5 個 Lane」兩種累加方式？</li>
+<li>bitonic 排序網路為什麼適合硬體？128 個數要幾步？</li>
+<li>線上 softmax 為什麼不需要存整個 score matrix？</li>
+<li>為什麼 LightNobel 的 crossbar 佔了 70% 的面積？這對設計者有什麼啟示？</li>
+<li>論文的 RMPU 數量為什麼停在 32 個？這和 roofline 有什麼關係？</li>
+</ol>
 <p><strong>附錄 A</strong> 是術語表；<strong>附錄 B</strong> 是各章自我檢測的參考答案。</p>
 </section><section class="chapter">
 <div class="part">附錄</div>
-<h1 id="ch10-附錄-A-術語表">附錄 A　術語表</h1>
+<h1 id="ch11-附錄-A-術語表">附錄 A　術語表</h1>
 <blockquote>
 <p>依主題分類。每個詞附上：<strong>白話解釋</strong>、<strong>正式說明</strong>、<strong>在本專題哪裡出現</strong>。
 忘記某個詞的意思時，回來這裡查。</p>
 </blockquote>
 <hr />
-<h2 id="ch10-A-1-蛋白質與模型">A.1 蛋白質與模型</h2>
+<h2 id="ch11-A-1-蛋白質與模型">A.1 蛋白質與模型</h2>
 <table>
 <thead>
 <tr>
@@ -6161,7 +6946,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-2-效能與記憶體概念">A.2 效能與記憶體概念</h2>
+<h2 id="ch11-A-2-效能與記憶體概念">A.2 效能與記憶體概念</h2>
 <table>
 <thead>
 <tr>
@@ -6306,7 +7091,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-3-量化">A.3 量化</h2>
+<h2 id="ch11-A-3-量化">A.3 量化</h2>
 <table>
 <thead>
 <tr>
@@ -6427,7 +7212,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-4-FPGA-硬體">A.4 FPGA 硬體</h2>
+<h2 id="ch11-A-4-FPGA-硬體">A.4 FPGA 硬體</h2>
 <table>
 <thead>
 <tr>
@@ -6457,10 +7242,64 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <td>LightNobel、速覽</td>
 </tr>
 <tr>
+<td><strong>位元拆解乘法</strong></td>
+<td>大乘法拆成小乘法</td>
+<td>把數字切成 4-bit 小塊，每對小塊相乘再移位相加；RMPU 的核心（源自 Bit Fusion）</td>
+<td>8.4 節</td>
+</tr>
+<tr>
+<td><strong>Sign extension（符號延伸）</strong></td>
+<td>補正負號</td>
+<td>把有號數擴寬時，用最高位補滿；二補數拆塊時只有最高位塊是有號的</td>
+<td>8.4.3 節</td>
+</tr>
+<tr>
+<td><strong>加法樹（adder tree）</strong></td>
+<td>一層層兩兩相加</td>
+<td>N 個數用 log₂N 層加法器加總；取不同層的結果可支援不同運算</td>
+<td>8.4 節</td>
+</tr>
+<tr>
+<td><strong>SIMD</strong></td>
+<td>一個指令、多筆資料</td>
+<td>很多條 lane 同時做同一個運算；VVPU 有 128 條</td>
+<td>8.5 節</td>
+</tr>
+<tr>
+<td><strong>Bitonic sort（雙調排序）</strong></td>
+<td>固定連線的排序網路</td>
+<td>由比較交換器組成、步驟與資料無關，適合硬體平行；128 個數 28 步</td>
+<td>8.5.2 節</td>
+</tr>
+<tr>
+<td><strong>線上 softmax</strong></td>
+<td>邊算邊修正的 softmax</td>
+<td>維護目前最大值與總和，新資料來時重新縮放，不需存整個 score matrix（FlashAttention 的核心）</td>
+<td>8.6 節</td>
+</tr>
+<tr>
+<td><strong>Crossbar</strong></td>
+<td>任意輸入接任意輸出的交換網路</td>
+<td>開關數 ∝ 埠數²，LightNobel 70% 面積</td>
+<td>8.7 節</td>
+</tr>
+<tr>
+<td><strong>Scratchpad</strong></td>
+<td>由設計者管理的晶片內記憶體</td>
+<td>不像 cache 由硬體自動決定內容，可預測、省面積</td>
+<td>8.7 節</td>
+</tr>
+<tr>
+<td><strong>Weight-stationary</strong></td>
+<td>權重固定不動的資料流</td>
+<td>權重留在晶片內，輸入串流通過；適合權重小、重用多</td>
+<td>8.2 節</td>
+</tr>
+<tr>
 <td><strong>RMPU / VVPU / Token Aligner</strong></td>
 <td>LightNobel 的硬體單元</td>
 <td>RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊</td>
-<td>速覽</td>
+<td>速覽、第 8 章</td>
 </tr>
 <tr>
 <td><strong>ISCA</strong></td>
@@ -6554,7 +7393,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</h2>
+<h2 id="ch11-A-5-HLS-與硬體設計">A.5 HLS 與硬體設計</h2>
 <table>
 <thead>
 <tr>
@@ -6705,7 +7544,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-6-AMD-工具鏈">A.6 AMD 工具鏈</h2>
+<h2 id="ch11-A-6-AMD-工具鏈">A.6 AMD 工具鏈</h2>
 <table>
 <thead>
 <tr>
@@ -6832,7 +7671,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tr>
 </tbody>
 </table>
-<h2 id="ch10-A-7-軟體與開發工具">A.7 軟體與開發工具</h2>
+<h2 id="ch11-A-7-軟體與開發工具">A.7 軟體與開發工具</h2>
 <table>
 <thead>
 <tr>
@@ -6924,7 +7763,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tbody>
 </table>
 <hr />
-<h2 id="ch10-A-8-架構評估與設計方法">A.8 架構評估與設計方法</h2>
+<h2 id="ch11-A-8-架構評估與設計方法">A.8 架構評估與設計方法</h2>
 <table>
 <thead>
 <tr>
@@ -7022,15 +7861,15 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 </tbody>
 </table>
 <hr />
-<h2 id="ch10-本附錄小結">本附錄小結</h2>
+<h2 id="ch11-本附錄小結">本附錄小結</h2>
 <p>遇到不懂的詞，先在這裡查白話解釋，再回到「本專題」欄位指出的章節看完整說明。</p>
 </section><section class="chapter">
-<h1 id="ch11-附錄-B-自我檢測參考答案">附錄 B　自我檢測參考答案</h1>
+<h1 id="ch12-附錄-B-自我檢測參考答案">附錄 B　自我檢測參考答案</h1>
 <blockquote>
 <p>先自己想過再看答案。答不出來的題目，回到括號裡標示的章節重讀。</p>
 </blockquote>
 <hr />
-<h2 id="ch11-速覽-LightNobel-與本專題">速覽　LightNobel 與本專題</h2>
+<h2 id="ch12-速覽-LightNobel-與本專題">速覽　LightNobel 與本專題</h2>
 <ol>
 <li>① <strong>token-wise 自適應量化</strong>：每個 token 一個 scale，activation 依位置分 A、B、C 三組給不同精度（INT8／INT4）；② <strong>outlier 另外存</strong>：執行時用 top-k 挑出、以 INT16 存放，資料格式對硬體友善；③ <strong>專用硬體</strong>：RMPU（4-bit 小塊、多精度）、VVPU（執行時量化、top-k）、Token Aligner 有效率地處理不同格式的 token。（速覽第 2、3 節）</li>
 <li>他們觀察到同一個 token 的 channel 之間差異小、token 之間差異大，outlier 也集中在特定 token；以 token 為單位，既能讓每個 token 用適合自己的 scale，又不需要像 per-element 那樣存大量 scale。（速覽第 2 節、1.6 節）</li>
@@ -7038,7 +7877,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>平台（ASIC 模擬 vs FPGA）和範圍（整個模型 vs 一個運算）都不同，直接比較不公平；而且融合與執行時量化 LightNobel 都已經做了。較好的說法：「以 LightNobel 的原則為基礎，在現成硬體上實作其中一個運算，並量化每一招各自的貢獻。」（速覽第 6 節）</li>
 <li>a、b 是 linear 之後的值，依定義屬於 <strong>C 組</strong>（平均 outlier 少於 1 個），論文對 C 組用 INT4、不處理 outlier。所以我們的 INT8 是保守的選擇，INT4（v5）是下一步，但要先用真實資料確認。（速覽第 2、3 節、6.7）</li>
 </ol>
-<h2 id="ch11-第-1-章-為何而做">第 1 章　為何而做</h2>
+<h2 id="ch12-第-1-章-為何而做">第 1 章　為何而做</h2>
 <ol>
 <li><strong>512 MB → 2 GB（4 倍）。</strong> 大小是 <code>L² × 128 × 4 bytes</code>，L 變 2 倍，L² 變 4 倍。（1.4）</li>
 <li>權重大小<strong>固定</strong>（ESMFold 的 FP16 權重約 7.90 GB），和 L 無關；activation 隨 <strong>L²</strong>（pair representation）甚至 <strong>L³</strong>（Triangle Attention 的中間值）成長。L 一大，activation 就遠超過權重：L = 2,034 時已經是權重的 24 倍（144 GB）。（1.4）</li>
@@ -7047,7 +7886,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>per-tensor 整份資料共用一個 scale；per-token 每個 token 各自一個 scale。有 outlier 時，per-tensor 的 scale 被 outlier 撐大，一般的數值只能用到很少幾個整數，誤差變大。模擬結果：per-token 約 1%，per-tensor 約 11%。（1.6、2.8）</li>
 <li><strong>Triangle Attention</strong>（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.3、1.7）</li>
 </ol>
-<h2 id="ch11-第-2-章-為何可做">第 2 章　為何可做</h2>
+<h2 id="ch12-第-2-章-為何可做">第 2 章　為何可做</h2>
 <ol>
 <li>沒有重疊：<code>T ≈ T_compute + T_memory</code>；完全重疊：<code>T ≈ max(T_compute, T_memory)</code>。Double buffering 把「相加」變成「取最大值」。（2.1、2.6）</li>
 <li>v0 讀取量 <code>2·L³·C</code>；tiling 後 <code>L³·C·(1/16 + 1/16) = L³·C / 8</code>，是 v0 的 <strong>1/16</strong>。算術強度 <code>16·16 ÷ (2·32) =</code> <strong>4 FLOP/byte</strong>。（2.4）</li>
@@ -7056,8 +7895,9 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li><strong>√2 ≈ 1.41 倍</strong>。記憶體和 L² 成正比，所以 L 和記憶體的平方根成正比。（2.8、6.10）</li>
 <li>不會。scale 會和資料一起存下來，使用時乘回去（x̂ = s × q），數值回到原本的大小；量化只是換一種較省空間的記法，不像 LayerNorm 會改變數值的意義。（2.8）</li>
 <li>用浮點數（FP16 或 FP32；我們的 v4 用 FP32）。浮點數像科學記號，只存有效數字和次方：0.000787 = 1.612 × 2⁻¹¹，小數點後有幾個 0 只影響次方，而次方只佔幾個 bit。每 128 個數才一個尺，只佔 1～3%。（2.8）</li>
+<li>tiling → <strong>資料流</strong>；INT8 量化 → <strong>資料表示</strong>；寬位元介面 → <strong>硬體結構</strong>。（2.11）</li>
 </ol>
-<h2 id="ch11-第-3-章-工具原理">第 3 章　工具原理</h2>
+<h2 id="ch12-第-3-章-工具原理">第 3 章　工具原理</h2>
 <ol>
 <li>LUT 本質上是一塊 64 格的小記憶體，6 個輸入當作地址、存在裡面的 0/1 就是輸出，所以寫入不同的內容就能變成任何 6 輸入的邏輯函數。（3.1）</li>
 <li>II 是連續兩次迭代開始的間隔。v0 的 <code>acc += a*b</code> 下一次要等上一次的浮點加法做完（loop-carried dependency），所以 II 至少等於加法的延遲。（3.3）</li>
@@ -7065,7 +7905,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>代表<strong>演算法（功能）是對的</strong>；不代表時序正確、也不代表 pragma 宣告（例如 <code>DEPENDENCE</code>）沒有錯。要靠 cosim 或 hw_emu 驗證。（3.4）</li>
 <li><code>.xo</code>：kernel 編譯後的結果（RTL ＋ 參數描述）；<code>.xclbin</code>：可以燒進 FPGA 的檔案（bitstream ＋ metadata）；platform：卡上預先做好的基礎設施（PCIe、DMA、HBM 控制器），kernel 要接在它上面。（3.6）</li>
 </ol>
-<h2 id="ch11-第-4-章-整體流程">第 4 章　整體流程</h2>
+<h2 id="ch12-第-4-章-整體流程">第 4 章　整體流程</h2>
 <ol>
 <li>同一個 token 的 128 個 channel 在記憶體中是連續的，一次 burst 就能讀完，而且剛好是 8 個 512-bit word。這也和 PyTorch 的排列一致，真實資料不用轉換。（4.3）</li>
 <li><code>rel_l2 = ‖z − z_ref‖ ÷ ‖z_ref‖</code>。v4 使用量化，本來就會有誤差，所以只檢查誤差在合理範圍內（功能正確），而不是要求和浮點結果一樣。（4.5）</li>
@@ -7073,7 +7913,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>載入 a、b <strong>141</strong>（兩個 port 並行，只算一次）＋ 計算 <strong>526</strong>（512 ＋ pipeline 深度 14）＋ 額外 <strong>4</strong> = <strong>671</strong>。（4.11）</li>
 <li><code>bo.sync(XCL_BO_SYNC_BO_TO_DEVICE)</code>：透過 PCIe DMA 把資料從主機記憶體複製到 HBM。（4.6、3.7）</li>
 </ol>
-<h2 id="ch11-第-5-章-指令手冊">第 5 章　指令手冊</h2>
+<h2 id="ch12-第-5-章-指令手冊">第 5 章　指令手冊</h2>
 <ol>
 <li><code>|</code> 把 <code>lspci</code> 的輸出交給 <code>grep</code>，只留下含 xilinx 的行；<code>-i</code> 表示不分大小寫。（5.1）</li>
 <li><code>make -n hls KERNEL=trimul_v3</code>。（5.6）</li>
@@ -7081,7 +7921,7 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li><code>make hls KERNEL=trimul_v4 DEFS="-DTILE_I=16 -DTILE_J=16" TAG=trimul_v4_t16</code>，或 <code>make hls-sweep SWEEP_KERNEL=trimul_v4 TILES="16"</code>。（5.6）</li>
 <li>把要保留的結果（例如 <code>hls_summary.csv</code>、報告）複製到別的地方，因為 <code>make clean</code> 會刪除 <code>hls_prj/</code>、log 和 csv。（5.6）</li>
 </ol>
-<h2 id="ch11-第-6-章-新策略">第 6 章　新策略</h2>
+<h2 id="ch12-第-6-章-新策略">第 6 章　新策略</h2>
 <ol>
 <li>LayerNorm、linear、sigmoid、gating、量化都是「<strong>每個 token 只用自己的 128 個數</strong>」的運算，一個 token 可以在晶片內一路處理完；只有 einsum 需要跨 token 的資料，才必須把 a、b 寫出去。（6.4）</li>
 <li>比例是 <code>128 ÷ L</code>，L = 512 時約 <strong>25%</strong>。（6.5）</li>
@@ -7093,13 +7933,24 @@ LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不�
 <li>INT4 的前提是「a、b 屬於論文的 C 組（outlier 很少）」，這個假設要用真實資料確認，否則 v5 可能白做。要看 <code>paper_group_C_check</code>（平均絕對值、每個 token 的 3σ outlier 數，和論文的 3.85、0.64 比）與 <code>rel_l2_grid</code>（INT8／INT4 × token／channel／tensor 的誤差）。（6.7）</li>
 <li>① <strong>量化</strong>：每個數變成 4～8 bit，資料量約變成 1/1.65（Table 1）；② <strong>不存中間值</strong>：中間值算完就用掉，尤其 Triangle Attention 不存 L³ 的 score matrix。讓峰值降到上百倍（和不分塊的 GPU 比）的是 ②。（6.10）</li>
 </ol>
-<h2 id="ch11-第-7-章-研究方法">第 7 章　研究方法</h2>
+<h2 id="ch12-第-7-章-研究方法">第 7 章　研究方法</h2>
 <ol>
 <li><strong>問題是什麼、他們觀察到什麼、解法是什麼、怎麼證明有效。</strong>（7.2）</li>
 <li>這樣 v4 和 v2 之間<strong>只差「量化」一件事</strong>，才能把效果歸因給量化；如果從 v3 改，差異就混進了 double buffering。（7.5）</li>
 <li>預測逼你先想清楚「為什麼會有效」；量測後比對預測，吻合代表理解正確，不吻合就是新的發現（例如 v3 應該快約 1.27 倍）。（7.5、2.6）</li>
 <li>代表<strong>假設錯了</strong>（例如路徑 bug 改成絕對路徑後仍失敗），要回頭找新的線索，例如比較日誌中「加入時的路徑」和「合成時的路徑」。（7.9）</li>
 <li>① <strong>瓶頸的數據</strong>與量測條件：我們以為 Triangle Multiplication 最花時間，其實長序列時是 Triangle Attention（Fig. 3）。② <strong>比較基準</strong>：我們用 FP32，論文是 FP16（Table 1）。③ <strong>論文已經做了什麼</strong>：我們以為融合是新角度，其實 RMPU → VVPU 管線已經做到（Sec. 5）。（7.11）</li>
+</ol>
+<h2 id="ch12-第-8-章-LightNobel-硬體架構詳解">第 8 章　LightNobel 硬體架構詳解</h2>
+<ol>
+<li><strong>8 個</strong>（INT8 拆成 2 塊、INT16 拆成 4 塊，2 × 4 = 8）。<code>A × B = Σᵢ Σⱼ aᵢ·bⱼ·2^(4(i+j))</code>，每個 <code>aᵢ·bⱼ</code> 是一個 4-bit 乘法，乘 2 的次方只是移位。（8.4.2）</li>
+<li>−93 = 0xA3：高位塊 0xA 當<strong>有號</strong>（−6），低位塊 0x3 當<strong>無號</strong>（3），−6 × 16 + 3 = −93。有號塊是 −8～7、無號塊是 0～15，要同時裝得下需要 5 bit（−16～15）。（8.4.3）</li>
+<li>PPM 的內積大多需要 4 個 Lane（全 INT4）或 5 個 Lane（有 INT16 outlier）。20 是 4 和 5 的最小公倍數，兩種情況都能把 Lane 用滿（5 個或 4 個 token 同時算）。（8.4.5）</li>
+<li>inlier 要乘尺、outlier 不用。4 個 Lane 時全是 inlier，加完再乘一次尺；5 個 Lane 時要先把 inlier 加起來乘尺，再加上 outlier 的結果。（8.4.6）</li>
+<li>連線固定、步驟和資料無關，所有比較器可以同時動作，延遲固定、容易排進管線。128 個數要 7 × 8 ÷ 2 = <strong>28 步</strong>。（8.5.2）</li>
+<li>只維護目前的最大值、總和和輸出累加；每來一批新分數，用新的最大值把舊的總和與輸出重新縮放，分數用完就丟。（8.6）</li>
+<li>crossbar 的開關數和埠數的平方成正比，而 LightNobel 需要大量資料在單元之間任意移動。啟示：資料移動比運算貴；如果移動模式固定，應改用較簡單的網路。（8.7）</li>
+<li>32 個 RMPU 時，運算能力已足以處理記憶體供應的所有資料，再加只會閒置，這正是 roofline 的平衡點。（8.8）</li>
 </ol>
 </section>
 </body></html>

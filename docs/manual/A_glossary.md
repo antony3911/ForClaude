@@ -90,7 +90,16 @@
 | **FPGA** | 可以重新接線的晶片 | Field-Programmable Gate Array | U55C |
 | **ASIC** | 專用晶片 | 做好就不能改，最快最省電 | LightNobel 的加速器 |
 | **HW/SW co-design** | 軟硬體一起設計 | 演算法配合硬體、硬體配合演算法 | LightNobel、速覽 |
-| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊 | 速覽 |
+| **位元拆解乘法** | 大乘法拆成小乘法 | 把數字切成 4-bit 小塊，每對小塊相乘再移位相加；RMPU 的核心（源自 Bit Fusion） | 8.4 節 |
+| **Sign extension（符號延伸）** | 補正負號 | 把有號數擴寬時，用最高位補滿；二補數拆塊時只有最高位塊是有號的 | 8.4.3 節 |
+| **加法樹（adder tree）** | 一層層兩兩相加 | N 個數用 log₂N 層加法器加總；取不同層的結果可支援不同運算 | 8.4 節 |
+| **SIMD** | 一個指令、多筆資料 | 很多條 lane 同時做同一個運算；VVPU 有 128 條 | 8.5 節 |
+| **Bitonic sort（雙調排序）** | 固定連線的排序網路 | 由比較交換器組成、步驟與資料無關，適合硬體平行；128 個數 28 步 | 8.5.2 節 |
+| **線上 softmax** | 邊算邊修正的 softmax | 維護目前最大值與總和，新資料來時重新縮放，不需存整個 score matrix（FlashAttention 的核心） | 8.6 節 |
+| **Crossbar** | 任意輸入接任意輸出的交換網路 | 開關數 ∝ 埠數²，LightNobel 70% 面積 | 8.7 節 |
+| **Scratchpad** | 由設計者管理的晶片內記憶體 | 不像 cache 由硬體自動決定內容，可預測、省面積 | 8.7 節 |
+| **Weight-stationary** | 權重固定不動的資料流 | 權重留在晶片內，輸入串流通過；適合權重小、重用多 | 8.2 節 |
+| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊 | 速覽、第 8 章 |
 | **ISCA** | 計算機架構頂尖會議 | International Symposium on Computer Architecture | LightNobel 發表處 |
 | **U55C** | 我們的 FPGA 卡 | AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e | 整個專題 |
 | **Alveo** | AMD 資料中心 FPGA 卡系列 | 插在伺服器的 PCIe 插槽 | U55C 屬於此系列 |

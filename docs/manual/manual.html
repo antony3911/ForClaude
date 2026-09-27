@@ -1224,6 +1224,64 @@ sigmoid 這類<strong>非線性函數</strong>讓模型能表達複雜的關係�
 所以 einsum 是融合的「邊界」：前面的運算可以一個 token 一個 token 在晶片內做完，但 a、b 必須先寫出去，einsum 才能跨 token 讀取（3.5 節）。</p>
 <p><strong>硬體：</strong> 最重的一步。每個輸出 token 要 2 × L × 128 次運算，L = 1000 時約 25.6 萬次；
 相比之下，6 個 linear 加起來每個 token 約 19.7 萬次。<strong>L 越長，einsum 越是主角</strong>，這也是本專題選它做 kernel 的原因之一。</p>
+<h3 id="ch3-a-b-是什麼-為什麼只有它們要寫出去">a、b 是什麼？為什麼只有它們要寫出去？</h3>
+<p><strong>a、b 是兩種「訊息」。</strong> a[i][k] 是「i–k 這條邊」要提供的訊息，b[j][k] 是「j–k 這條邊」的訊息。
+兩者都來自 z_ln，只是用不同的 linear（不同的偵測器）做出來，扮演不同的角色。
+einsum 把它們配對：channel c 可以想成一個「問題」（例如「靠得近嗎？」），
+i–k 和 j–k 在 c 上都大，乘起來就大，代表第三者 k 提供了「i 和 j 有關係」的證據；把所有 k 的證據加總，就是 (i, j) 的結論。</p>
+<p><strong>為什麼要寫出去？</strong> a[i][k] 會被 x[i][0]～x[i][L−1] 共 <strong>L 個輸出</strong>用到，而且這些輸出分散在整個計算的不同時間點；
+a[i][k] 產生時，大部分用得到它的輸出都還沒輪到，只能先存起來（reuse distance 很長，3.5 節）。
+相比之下，z_ln、a_p、a_g 只在算同一個 token 時用一次，可以留在晶片內。</p>
+<p><strong>融合後，每個值要不要存：</strong></p>
+<table>
+<thead>
+<tr>
+<th>值</th>
+<th>誰用它</th>
+<th>用幾次、多久之後</th>
+<th>要存到記憶體嗎？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>z（輸入）</strong></td>
+<td>LayerNorm、最後的 residual、重算 g</td>
+<td>一開始用，最後又要用</td>
+<td><strong>要</strong>（狀態）</td>
+</tr>
+<tr>
+<td>z_ln、a_p、a_g、b_p、b_g</td>
+<td>linear、gating</td>
+<td>同一個 token 馬上用完</td>
+<td>不用</td>
+</tr>
+<tr>
+<td><strong>a、b</strong></td>
+<td>einsum</td>
+<td>被 L 個輸出用，分散在整個計算中</td>
+<td><strong>要</strong>（融合的邊界）</td>
+</tr>
+<tr>
+<td>g</td>
+<td>最後的 <code>x × g</code></td>
+<td>要等 einsum 做完才用</td>
+<td>可以存，也可以最後從 z 重算（本專題選重算，3.6 節）</td>
+</tr>
+<tr>
+<td>x（einsum 的結果）</td>
+<td>LayerNorm_out、linear_z、× g</td>
+<td>同一個輸出 token 馬上用完</td>
+<td>不用</td>
+</tr>
+<tr>
+<td><strong>新的 z</strong></td>
+<td>下一個步驟</td>
+<td>要傳下去</td>
+<td><strong>要</strong>（狀態）</td>
+</tr>
+</tbody>
+</table>
+<p>所以融合後記憶體裡只剩 <strong>z（進、出各一份）＋ a、b（INT8，約半份）≈ 2.5 份</strong>，一般寫法約 7 份（10.3 節）。</p>
 <h3 id="ch3-⑦-Residual-修正量加回原本的值">⑦ Residual：修正量加回原本的值</h3>
 <p><strong>做什麼：</strong> <code>z = z + 修正量</code>。每一步都不是重算 z，而是在原本的 z 上<strong>加一點修正</strong>。</p>
 <p><strong>為什麼需要：</strong> 讓資訊可以一路傳下去、每一層只要學「還差多少」，模型才能疊到 48 層還訓練得起來。
@@ -1329,6 +1387,7 @@ sigmoid 這類<strong>非線性函數</strong>讓模型能表達複雜的關係�
 <li>sigmoid 的輸出範圍是多少？它和 gating 一起用時扮演什麼角色？</li>
 <li>Triangle Multiplication 的運算中，哪一個需要讀取「其他 token」的資料？這為什麼決定了融合的邊界？</li>
 <li>既然 sigmoid 會把數字壓到 0～1，為什麼還需要先做 LayerNorm？</li>
+<li>a 和 b 分別代表什麼？為什麼融合之後它們仍然必須寫回記憶體，而 z_ln 不用？</li>
 </ol>
 <hr />
 <p><strong>下一章</strong>說明這份 L × L × 128 的資料為什麼會造成兩個問題：記憶體放不下、搬資料比計算慢，並介紹分析這類問題的工具（roofline、Amdahl's Law）。</p>
@@ -8557,6 +8616,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <li>0～1。gating 時，sigmoid 把一個 linear 的結果變成「要讓多少通過」的比例，再和另一個 linear 的結果逐元素相乘，決定每個特徵保留多少。（1.5）</li>
 <li>einsum。其他運算（LayerNorm、linear、sigmoid、gating、mask）都只用這個 token 自己的 128 個數，可以一個 token 在晶片內做完；einsum 要讀整列 i、整列 j 的 token，所以 a、b 必須先寫出去，它就是融合的邊界。（1.5、3.5）</li>
 <li>兩者功能不同：LayerNorm 一起看整個 token、保留相對關係與正負號，把振幅調到約 1（像 AGC）；sigmoid 逐個數處理、只輸出 0～1，而且只用在閘門那條路。更重要的是 sigmoid 會飽和：沒有 LayerNorm 時，大的數（例如 80、85、90）經過 sigmoid 全部變成 1，資訊消失。（1.5）</li>
+<li>a[i][k] 是 i–k 這條邊的訊息、b[j][k] 是 j–k 這條邊的訊息，einsum 把所有第三者 k 的證據配對加總。a[i][k] 會被 L 個不同的輸出 x[i][·] 用到，而且分散在整個計算中，產生當下無法用完，只能先存起來；z_ln 只在算同一個 token 時用一次，可以留在晶片內。（1.5）</li>
 </ol>
 <hr />
 <h2 id="ch16-第-2-章-記憶體牆-容量-頻寬與效能分析">第 2 章　記憶體牆：容量、頻寬與效能分析</h2>

@@ -51,6 +51,7 @@
 | `04-pivots.md` | 轉換跑道：HFT、分析師、政策、專利、PM、創業、冷門硬體 | ✅ v2（HFT 據點改為英語系國家） |
 | `05-writing-and-humanities.md` | 科學傳播、MFA、台灣創作所、業餘寫作 | ✅ v2 |
 | `06-structured-learning.md` | EMBA／MBA／MiM、英文課程、日本語言學校、短期研究、線上學位 | ✅ v2（加入日本語言學校） |
+| `08-us-paths.md` | 美國 MS 以外的入口：PhD 再評估（2026 年錄取減少）、MS → PhD（UF）、一年制 MEng、MEM、美國 MiM、線上碩士 | ✅ 第一版（U1） |
 | `07-life-scripts.md` | 十二種五年劇本，依國家權重排列（美國主線 A–C；美國以外的備選：日本 D–E、其他 F–J；不限國家 K–L） | ✅ v3.1 |
 | `11-prestige-scholarships.md` | Knight-Hennessy、Fulbright、交流協會、Chevening、Gates、Clarendon（依權重排序） | ✅ 第一版（已加入日本） |
 | `archive/` | 已排除的內容：英國 YMS、歐陸 PhD、第一版的 01／02／03／06／07 | 封存，不再擴充 |
@@ -63,7 +64,7 @@
 
 - [x] ~~D1 英國 YMS 深入~~（已完成，但打工度假被排除 → 移到 `archive/`）
 - [x] ~~D2 歐洲 PhD 深入~~（已完成，但歐陸被排除 → 移到 `archive/`）
-- [ ] **U1 美國的其他路徑**：美國 PhD 再評估（對中山電機、成績中上的現實機會）、MEng、給剛畢業者的商管碩士（MiM 類型）、線上碩士（例如 Georgia Tech OMSCS）作為出國前的準備 → 更新 `02`、`06`
+- [x] **U1 美國的其他路徑**（2026-09-27 完成 → 新檔 `08-us-paths.md`）：美國 PhD 再評估（對中山電機、成績中上的現實機會）、MEng、給剛畢業者的商管碩士（MiM 類型）、線上碩士（例如 Georgia Tech OMSCS）作為出國前的準備 → 更新 `02`、`06`
 - [ ] **U2 外商台灣分公司 → 美國的轉調**：L-1 的條件、實際案例、哪些公司在台灣有數位設計團隊、轉調前後的職涯 → 更新 `01`
 - [ ] **U3 美國的獎學金與有聲望的路徑**：Knight-Hennessy、Fulbright（台灣學術交流基金會的各種計畫）、美國大學給國際碩士生的獎學金、教育部公費留考 → 更新 `11`
 - [ ] **U4 美國的 HFT 與其他高薪硬體職位**：Chicago／NY 的 FPGA 工程師面試內容、準備清單、對國際學生的簽證擔保 → 更新 `04`
@@ -88,6 +89,7 @@
 | 2026-09-26 | **使用者補充篩選條件**：不考慮打工度假、只考慮英語系國家、核心原則是「主動提升」。重整全部檔案：YMS 與歐陸 PhD 移到 `archive/`；改寫 00–07 與 README；新增 `06-structured-learning.md`、`11-prestige-scholarships.md`（Chevening、Gates、Clarendon、Knight-Hennessy、Fulbright）；補查加拿大 UofT MASc 資助、UKRI 國際生名額、澳洲 RTP、愛爾蘭半導體與 Stamp 1G／CSEP；更新佇列與排程的提示詞 | 由每日排程從 D3 接手 |
 | 2026-09-26 | **使用者補充國家權重**：美國 ≫ 日本 > 其他英語系國家；日本重新納入（打工度假仍排除）。重排佇列（美國項目 U1–U5 最優先，其次日本 J1–J3），更新排程提示詞；補查日本資料（東大與東京科學大學的英語研究所、交流協會 2027 年度時程、本村／天野·近藤／井上實驗室、PFN MN-Core、EdgeCortix、高度專門職點數、日本工程師薪資），更新 README、00、01、02、03、04、06、07、11 與 archive/README；07 改為十二個劇本、依國家權重排列 | 由每日排程從 U1 接手 |
 | 2026-09-26 | **使用者修正權重**：「美國遠高於所有人，日本略高於其他人」→ 改為 美國 ≫ 日本 ≳ 其他英語系國家。把日本從「第二選擇」降為「美國以外的備選中略優先」：改寫 00 權重表、README 重點（日本併入「美國以外的備選」）、01／02／03／06／07／11 的標示；佇列的日本項目從 J1–J3 合併為 J1–J2；更新排程提示詞 | 由每日排程從 U1 接手 |
+| 2026-09-27 | U1（每日排程）：美國 MS 以外的入口。約 15 次搜尋：2026 年 PhD 錄取減少（AAU 約 -15%、Duke Pratt -41%，原因是聯邦研究經費刪減）、UF／UCSD／Michigan 的 MS 轉 PhD、UF RA 津貼、UCLA／Berkeley／Cornell／UIUC 的 MEng 學費與第二碩士規定、Duke／Northwestern／Dartmouth MEM、Duke MMS／Kellogg／Ross MiM（Ross 非 STEM）、OMSCS／ASU／Purdue 線上碩士（無簽證、無 OPT）→ 新檔 `08-us-paths.md`；更新 02、06、07（劇本 A 加上 A1 MEng、A2 MS→PhD）、README | U2 外商轉調美國 |
 
 ## 6. 排程
 

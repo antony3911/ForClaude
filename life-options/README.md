@@ -12,7 +12,7 @@
 
 | 權重 | 國家 | 在哪裡看 |
 |---|---|---|
-| **主軸**（遠高於所有國家） | 🇺🇸 美國 | 完整的申請手冊在 [`study-abroad-manual/`](../study-abroad-manual/README.md)；這個資料夾補充**通往美國的其他路**（外商轉調、獎學金、HFT、科學寫作） |
+| **主軸**（遠高於所有國家） | 🇺🇸 美國 | 完整的申請手冊在 [`study-abroad-manual/`](../study-abroad-manual/README.md)；這個資料夾補充**通往美國的其他路**：[08](08-us-paths.md)（PhD、MEng、MEM 等）、外商轉調、獎學金、HFT、科學寫作 |
 | 備選（略優先） | 🇯🇵 日本 | 這個資料夾的 [01](01-work-first.md)、[02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)、[06](06-structured-learning.md)、[07](07-life-scripts.md) |
 | 備選與跳板 | 🇬🇧 🇨🇦 🇮🇪 🇦🇺 🇳🇿 | 這個資料夾的 [02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)、[11](11-prestige-scholarships.md) |
 
@@ -24,20 +24,21 @@
 1. **外商台灣分公司 → 內部轉調美國（L-1）**：不用付學費、不用抽 H-1B。台灣是 NVIDIA、AMD、Google 等在亞洲的重要據點，這條路可以和申請 MS 同時進行。→ [01](01-work-first.md)
 2. **Knight-Hennessy（史丹佛全額）、Fulbright 對台灣人開放**；**UCSC 的科學傳播碩士**是全美唯一要求理工背景和研究經驗的科學寫作研究所（一年制，每年約 10 人）。→ [11](11-prestige-scholarships.md)、[05](05-writing-and-humanities.md)
 3. **高頻交易公司的 FPGA 工程師**，是少數「FPGA 經驗比 ASIC 更值錢」的領域，薪資極高，重鎮在 **Chicago、New York**。→ [04](04-pivots.md)
+4. **MS 以外的入口**：**一年制 MEng**（UCLA 學費約 US$5.3 萬）省錢省時間；**美國 PhD 在 2026 年變難**（頂尖研究型大學的錄取人數少了約 15%），**MS → PhD** 比較實際，University of Florida 同時允許第二碩士、有轉博程序、RA 有學費減免加每年至少 US$32,000；對管理有興趣的話，**工程管理碩士（MEM）是 STEM 的「年輕版 EMBA」**。→ [08](08-us-paths.md)
 
 ### 美國以外的備選（日本略優先，其次是其他英語系國家）
-4. **🇯🇵 日本有台灣人專屬的獎學金和全英語的研究所**：交流協會獎學金碩士每月 **¥144,000**，另外付學費與往返機票；東京大學、東京科學大學（前東工大）有不要求日語的英語學程，東京科學大學的**本村真人**做 AI 加速器晶片（Hiddenite）。→ [02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)
-5. **🇯🇵 日本也有 AI 晶片公司，永久居留也快**：**Preferred Networks** 自研 MN-Core 系列晶片；高度專門職簽證 80 點可以 **1 年**申請永久居留。**代價是薪資明顯低於台灣大廠、職場多半要日語**。→ [01](01-work-first.md)
-6. **🇨🇦 加拿大有「有資助的第二個碩士」**：多倫多大學（UofT）ECE 的研究型碩士（MASc）補學費，另給每年至少 CAD 20,500；UofT 還是 **FPGA 研究的世界重鎮**（Vaughn Betz、Jason Anderson）。畢業後通常有 3 年工作許可，可以申請永久居留。→ [02](02-study-abroad-by-country.md)
-7. **🇬🇧 Chevening（英國政府全額獎學金）台灣可以申請**：讀英國任何大學的 1 年制碩士。條件是**先工作 2 年**，而且**結業後要回台灣 2 年**。→ [11](11-prestige-scholarships.md)
-8. **🇬🇧 Gates Cambridge、Oxford 的 Clarendon 都對台灣人開放**，而且是全額。極度競爭，但如果你本來就要申請這些學校，一定要一起申請。→ [11](11-prestige-scholarships.md)
-9. **🇬🇧 英國的學位密度最高**：碩士 1 年（Cambridge 有 9 個月的 MPhil）；**你已經有碩士，英國博士只要 3–4 年**，UKRI 的博士獎學金最多有 30% 名額給國際生。→ [02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)
-10. **🇮🇪 愛爾蘭是英語系國家裡的歐洲晶片重鎮**：全球前 30 大半導體公司有 14 家在那裡（Intel、ADI、AMD Cork 等）；碩士畢業後有 2 年不用擔保的工作權，之後可以轉成長期居留。→ [02](02-study-abroad-by-country.md)
-11. **🇦🇺 澳洲的研究型學位有不限國籍的 RTP 獎學金**：2026 年生活津貼約每年 A$3.4–4.3 萬。→ [02](02-study-abroad-by-country.md)
+5. **🇯🇵 日本有台灣人專屬的獎學金和全英語的研究所**：交流協會獎學金碩士每月 **¥144,000**，另外付學費與往返機票；東京大學、東京科學大學（前東工大）有不要求日語的英語學程，東京科學大學的**本村真人**做 AI 加速器晶片（Hiddenite）。→ [02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)
+6. **🇯🇵 日本也有 AI 晶片公司，永久居留也快**：**Preferred Networks** 自研 MN-Core 系列晶片；高度專門職簽證 80 點可以 **1 年**申請永久居留。**代價是薪資明顯低於台灣大廠、職場多半要日語**。→ [01](01-work-first.md)
+7. **🇨🇦 加拿大有「有資助的第二個碩士」**：多倫多大學（UofT）ECE 的研究型碩士（MASc）補學費，另給每年至少 CAD 20,500；UofT 還是 **FPGA 研究的世界重鎮**（Vaughn Betz、Jason Anderson）。畢業後通常有 3 年工作許可，可以申請永久居留。→ [02](02-study-abroad-by-country.md)
+8. **🇬🇧 Chevening（英國政府全額獎學金）台灣可以申請**：讀英國任何大學的 1 年制碩士。條件是**先工作 2 年**，而且**結業後要回台灣 2 年**。→ [11](11-prestige-scholarships.md)
+9. **🇬🇧 Gates Cambridge、Oxford 的 Clarendon 都對台灣人開放**，而且是全額。極度競爭，但如果你本來就要申請這些學校，一定要一起申請。→ [11](11-prestige-scholarships.md)
+10. **🇬🇧 英國的學位密度最高**：碩士 1 年（Cambridge 有 9 個月的 MPhil）；**你已經有碩士，英國博士只要 3–4 年**，UKRI 的博士獎學金最多有 30% 名額給國際生。→ [02](02-study-abroad-by-country.md)、[03](03-phd-and-research.md)
+11. **🇮🇪 愛爾蘭是英語系國家裡的歐洲晶片重鎮**：全球前 30 大半導體公司有 14 家在那裡（Intel、ADI、AMD Cork 等）；碩士畢業後有 2 年不用擔保的工作權，之後可以轉成長期居留。→ [02](02-study-abroad-by-country.md)
+12. **🇦🇺 澳洲的研究型學位有不限國籍的 RTP 獎學金**：2026 年生活津貼約每年 A$3.4–4.3 萬。→ [02](02-study-abroad-by-country.md)
 
 ### 不限國家
-12. **EMBA 要 8 年以上年資**（台大，碩士學歷），但 **London Business School 的 Master in Management** 專收剛畢業、約 23 歲的人（工作經驗通常不能超過 2 年）。→ [06](06-structured-learning.md)
-13. **台灣博士也能出國做研究**：國科會千里馬計畫、Fulbright 的博士論文研究獎助。**教職的薪水遠低於業界**（新進助理教授年薪約 113 萬，半導體大廠碩士約 200–250 萬）。→ [03](03-phd-and-research.md)
+13. **EMBA 要 8 年以上年資**（台大，碩士學歷），但 **London Business School 的 Master in Management** 專收剛畢業、約 23 歲的人（工作經驗通常不能超過 2 年）。→ [06](06-structured-learning.md)
+14. **台灣博士也能出國做研究**：國科會千里馬計畫、Fulbright 的博士論文研究獎助。**教職的薪水遠低於業界**（新進助理教授年薪約 113 萬，半導體大廠碩士約 200–250 萬）。→ [03](03-phd-and-research.md)
 
 ---
 
@@ -53,6 +54,7 @@
 | 05 | [寫作與人文](05-writing-and-humanities.md) | 科學傳播碩士、MFA、台灣的創作研究所、工程師作家的例子 |
 | 06 | [其他主動提升的學習形式](06-structured-learning.md) | EMBA／MBA／MiM 的現實、英文課程、**日本語言學校**、短期研究、線上學位 |
 | 07 | [人生劇本](07-life-scripts.md) | **十二種五年劇本**（依國家權重排列）與比較表、劇本怎麼串接、怎麼選 |
+| 08 | [美國的其他入口](08-us-paths.md) | **PhD 再評估（2026 年的環境）、MS → PhD、一年制 MEng、工程管理碩士（MEM）、美國的 MiM、線上碩士** |
 | 11 | [有聲望的全額獎學金](11-prestige-scholarships.md) | Chevening、Gates Cambridge、Clarendon、Knight-Hennessy、Fulbright |
 | — | [工作紀錄](WORKLOG.md) | 探索進度、篩選條件、待探索清單、排程（給之後的對話接手用） |
 | — | [archive](archive/) | 已排除的選項（僅供參考） |

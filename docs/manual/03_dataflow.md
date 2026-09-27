@@ -208,7 +208,7 @@ Double buffering 不減少搬運量，也不提高頻寬，而是**改變時間�
 
 ## 3.5 運算融合：讓中間值不寫回記憶體
 
-前面幾節的例子（v0～v3）只處理中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣：
+前面幾節的例子（v0～v3）只處理中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣（每個運算的意義見 1.5 節）：
 
 ```
   z（輸入，L×L×128）

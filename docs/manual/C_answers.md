@@ -8,9 +8,13 @@
 
 ## 第 1 章　蛋白質結構預測與 pair representation
 
-1. **`z = a × bᵀ`**：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）
-2. **Triangle Attention**（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.3、10.1）
-3. pair representation 的 token 是一格 (i, j)，也就是一**對**胺基酸的 128 個數；sequence representation 的 token 才是一個胺基酸（1024 個數）。pair representation 有 L × L 個 token。（1.2）
+1. **`z = a × bᵀ`**：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.4）
+2. **Triangle Attention**（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.4、10.1）
+3. pair representation 的 token 是一格 (i, j)，也就是一**對**胺基酸的 128 個數；sequence representation 的 token 才是一個胺基酸（1024 個數）。pair representation 有 L × L 個 token。（1.3）
+4. 不是。輸入是一條**完整已知**的胺基酸序列，輸出是摺疊後每個原子的 3D 座標；每條序列從頭算一次，沒有「預測下一個」的過程。（1.2）
+5. 狀態是 z（更新後要傳給下一步）；中間值是 z_ln、a、b、g、einsum 的結果 x、修正量。中間值只在這一步有用，但每一份都是 L×L×128、和 z 一樣大，一般寫法會整份寫回記憶體，同時存在約 7 份。（1.2、2.1）
+6. 0～1。gating 時，sigmoid 把一個 linear 的結果變成「要讓多少通過」的比例，再和另一個 linear 的結果逐元素相乘，決定每個特徵保留多少。（1.5）
+7. einsum。其他運算（LayerNorm、linear、sigmoid、gating、mask）都只用這個 token 自己的 128 個數，可以一個 token 在晶片內做完；einsum 要讀整列 i、整列 j 的 token，所以 a、b 必須先寫出去，它就是融合的邊界。（1.5、3.5）
 
 ---
 

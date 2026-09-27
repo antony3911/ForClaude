@@ -16,16 +16,24 @@
 | **ESMFold** | Meta 的蛋白質結構預測模型 | 用 ESM-2 語言模型代替 MSA，結構較簡單 | 我們驗證算式的對象 |
 | **ESM-2** | 蛋白質的「語言模型」 | 像讀文字一樣讀胺基酸序列，產生特徵 | ESMFold 的第一部分 |
 | **MSA** | 多序列比對 | Multiple Sequence Alignment，把相似的蛋白質序列排在一起 | AlphaFold2 的輸入，ESMFold 不需要 |
-| **Evoformer / Folding trunk** | 模型的主體 | 由 48 個 block 組成，反覆更新兩種 representation | 第 1 章 1.2 節 |
-| **Structure module** | 輸出座標的部分 | 把特徵轉成 3D 原子座標 | 第 1 章 1.2 節 |
+| **Evoformer / Folding trunk** | 模型的主體 | 由 48 個 block 組成，反覆更新兩種 representation | 第 1 章 1.3 節 |
+| **Structure module** | 輸出座標的部分 | 把特徵轉成 3D 原子座標 | 第 1 章 1.3 節 |
 | **Sequence representation** | 每個胺基酸的特徵 | 形狀 L × 1024（ESMFold） | 第 1 章 |
 | **Pair representation** | 每一對胺基酸之間的關係 | 形狀 **L × L × 128**，隨 L² 成長 | **本專題處理的資料** |
 | **Triangle Multiplication** | 用「第三者」推論兩者關係 | `z[i][j][c] = Σ_k a[i][k][c]·b[j][k][c]`（outgoing） | **本專題實作的運算** |
 | **Outgoing / Incoming** | 兩種三角形方向 | outgoing 用 (i,k)、(j,k)；incoming 用 (k,i)、(k,j) | 我們做 outgoing |
-| **Triangle Attention** | 三角形版本的 attention | 中間值隨 L³ 成長，實作上需分塊；**長序列時最花時間**（1,410 aa 佔 75.9%） | 第 1 章 1.3 節（未實作，未來工作） |
-| **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置（一**對**胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸 | 1.2 節；per-token 量化的單位 |
+| **Triangle Attention** | 三角形版本的 attention | 中間值隨 L³ 成長，實作上需分塊；**長序列時最花時間**（1,410 aa 佔 75.9%） | 第 1 章 1.4 節（未實作，未來工作） |
+| **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置（一**對**胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸 | 1.3 節；per-token 量化的單位 |
 | **Channel（C）** | 每格的數字個數 | 特徵維度，ESMFold 的 pair 為 128 | `trimul.h` 的 `C = 128` |
-| **LayerNorm / Linear / Gating** | 模型中的標準運算 | 正規化、線性轉換、用 sigmoid 控制資訊流 | 產生 a、b 的步驟（未實作） |
+| **LayerNorm** | 把一個 token 拉回標準範圍 | 減平均、除標準差，再乘 γ 加 β | 1.5 節 |
+| **Linear** | 重新混合特徵 | `y = W x + b`，每個輸出是所有輸入的加權和；128×128 的 W 是學出來的 | 1.5 節 |
+| **Sigmoid** | 把任何數壓到 0～1 | `1 ÷ (1 + e^(−x))`；當閘門用，也提供非線性 | 1.5 節 |
+| **Gating（閘門）** | 決定每個值保留多少 | 內容 × sigmoid(閘門)，逐元素相乘 | 1.5 節 |
+| **Mask** | 忽略補上去的位置 | 乘上 0 或 1 | 1.5 節 |
+| **Einsum** | 用索引字串描述的乘加 | `"ikc,jkc->ijc"`：輸出沒有的索引（k）就加總；Triangle Multiplication 裡唯一跨 token 的運算 | 1.4、1.5 節 |
+| **Residual** | 把修正量加回原本的值 | `z = z + 修正量`；讓深層模型訓練得起來，但會讓 z 越來越大 | 1.5 節 |
+| **Recycling** | 把結果送回開頭再跑一次 | ESMFold 的 trunk 預設最多重跑 4 次 | 1.2 節 |
+| **狀態 vs 中間值** | 要傳下去的 vs 只在一步內有用的 | z 是狀態；z_ln、a、b、g 是中間值 | 1.2 節 |
 | **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 3 章 3.7 節 |
 | **HuggingFace** | 公開模型的平台 | 提供模型程式碼（transformers）與權重下載（Hub） | `dump_trimul_inputs.py` |
 | **UniProt / PDB** | 公開的蛋白質資料庫 | UniProt 存序列、PDB 存實驗測定的結構 | 下載測試序列 |
@@ -40,7 +48,7 @@
 | **Memory-bound** | 等搬資料 | 效能受限於記憶體頻寬或延遲，而非運算能力 | v0、v2 的載入部分 |
 | **Compute-bound** | 廚師忙不過來 | 效能受限於運算單元數量 | v2 的 mac 部分 |
 | **Weights（權重）** | 模型學到的參數 | 大小固定，與 L 無關 | 第 2 章 2.1 節 |
-| **Activation** | 計算中產生的中間資料 | 推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定 | 1.2 節；LightNobel 要壓縮的對象 |
+| **Activation** | 計算中產生的中間資料 | 推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定 | 1.3 節；LightNobel 要壓縮的對象 |
 | **OOM** | 記憶體不夠 | Out of Memory | 長序列在 GPU 上的問題 |
 | **FLOP** | 一次浮點運算 | 一次乘法或一次加法 | 一次乘加 = 2 FLOP |
 | **GFLOP/s** | 每秒十億次運算 | 效能單位 | v2 約 7.3 GFLOP/s |

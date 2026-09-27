@@ -111,8 +111,10 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch3-第-1-章-蛋白質結構預測與-pair-representation">第 1 章 蛋白質結構預測與 pair representation</a>
 <ol>
 <li><a href="#ch3-1-1-蛋白質結構預測在做什麼">1.1 蛋白質結構預測在做什麼？</a></li>
-<li><a href="#ch3-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</a></li>
-<li><a href="#ch3-1-3-Triangle-Multiplication-與-Triangle-Attention">1.3 Triangle Multiplication 與 Triangle Attention</a></li>
+<li><a href="#ch3-1-2-全景-一次預測從頭到尾在算什麼">1.2 全景：一次預測從頭到尾在算什麼</a></li>
+<li><a href="#ch3-1-3-兩種-representation-activation-與-token">1.3 兩種 representation、activation 與 token</a></li>
+<li><a href="#ch3-1-4-Triangle-Multiplication-與-Triangle-Attention">1.4 Triangle Multiplication 與 Triangle Attention</a></li>
+<li><a href="#ch3-1-5-Triangle-Multiplication-裡的每一個運算">1.5 Triangle Multiplication 裡的每一個運算</a></li>
 <li><a href="#ch3-本章小結">本章小結</a></li>
 <li><a href="#ch3-自我檢測">自我檢測</a></li>
 </ol>
@@ -661,14 +663,24 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </thead>
 <tbody>
 <tr>
+<td>全景：從序列到 3D 座標</td>
+<td>一次預測的完整流程、狀態與中間值、東西放在哪</td>
+<td>1.2 節</td>
+</tr>
+<tr>
 <td>Pair representation、activation、token</td>
 <td>L × L × 128 的中間資料；一格 (i, j) 是一個 token</td>
-<td>1.2 節</td>
+<td>1.3 節</td>
+</tr>
+<tr>
+<td>LayerNorm、linear、sigmoid、gating、residual</td>
+<td>Triangle Multiplication 裡的每個運算</td>
+<td>1.5 節</td>
 </tr>
 <tr>
 <td>Triangle Multiplication／Attention</td>
 <td>本專題的運算／長序列時最花時間的運算</td>
-<td>1.3 節</td>
+<td>1.4 節</td>
 </tr>
 <tr>
 <td>記憶體容量、memory-bound</td>
@@ -735,8 +747,10 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 <p><strong>本章重點</strong></p>
 <ul>
 <li>蛋白質結構預測在做什麼，以及貫穿全書的變數 <strong>L</strong>（蛋白質長度）。</li>
-<li>ESMFold 的架構：sequence representation 與 <strong>pair representation（L × L × 128）</strong>；什麼是 <strong>activation</strong>、什麼是 <strong>token</strong>。</li>
+<li><strong>全景（top-down）</strong>：一次預測從輸入序列到 3D 座標的完整流程；哪些是狀態、哪些是中間值、各放在哪裡。</li>
+<li><strong>pair representation（L × L × 128）</strong>、<strong>activation</strong>、<strong>token</strong> 是什麼。</li>
 <li>本專題實作的 <strong>Triangle Multiplication</strong> 在算什麼；為什麼長序列時最花時間的是 <strong>Triangle Attention</strong>。</li>
+<li>Triangle Multiplication 裡每一個運算：<strong>LayerNorm、linear、sigmoid、gating、mask、einsum、residual</strong>。</li>
 </ul>
 </blockquote>
 <hr />
@@ -803,41 +817,151 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </table>
 <p>大部分蛋白質在 1,000 以內，但<strong>很多重要的蛋白質比這長</strong>。另外，預測蛋白質複合體時常把多條鏈接起來一起算，L 會變得更大。</p>
 <hr />
-<h2 id="ch3-1-2-AlphaFold2-ESMFold-的架構全貌">1.2 AlphaFold2 / ESMFold 的架構全貌</h2>
-<p>我們的 reference（LightNobel）以這一類模型為對象，統稱 <strong>PPM（Protein structure Prediction Model）</strong>。
-我們實際對照的是 <strong>ESMFold</strong>（Meta，2022），因為它的結構比 AlphaFold2 簡單，而且公開在 HuggingFace 上。</p>
-<pre><code> 輸入：胺基酸序列（長度 L）
-          │
-          ▼
- ┌───────────────────────────┐
- │ ESM-2 語言模型（3B 參數） │  讀序列，產生每個胺基酸的特徵
- └───────────────────────────┘
-          │
-          ▼
- ┌───────────────────────────────────────────────┐
- │ Folding trunk（48 個 block，反覆執行）        │
- │                                               │
- │   Sequence representation   s ∈ R^{L×1024}    │  ← 每個胺基酸一組特徵
- │   Pair representation       z ∈ R^{L×L×128}   │  ← 每「一對」胺基酸一組特徵 ★
- │                                               │
- │   每個 block 內：                             │
- │     - Triangle Multiplication（outgoing）     │  ← 我們實作的就是這個
- │     - Triangle Multiplication（incoming）     │
- │     - Triangle Attention（starting / ending） │
- │     - 其他（MLP、sequence ↔ pair 的交流）     │
- └───────────────────────────────────────────────┘
-          │
-          ▼
- ┌──────────────────┐
- │ Structure module │  把特徵轉成 3D 座標
- └──────────────────┘
-          │
-          ▼
- 輸出：每個原子的 3D 座標
+<h2 id="ch3-1-2-全景-一次預測從頭到尾在算什麼">1.2 全景：一次預測從頭到尾在算什麼</h2>
+<p>這一節先由上往下（top-down）看完整個流程，後面各節再放大細節。</p>
+<h3 id="ch3-第-0-層-輸入與輸出">第 0 層：輸入與輸出</h3>
+<p><strong>ESMFold 不是在預測「下一個胺基酸」</strong>（那是 ChatGPT 這類生成模型的做法）。</p>
+<ul>
+<li><strong>輸入：</strong> 一條<strong>完整已知</strong>的胺基酸序列（L 個字母全部都知道）。</li>
+<li><strong>輸出：</strong> 這條蛋白質摺疊後的 3D 結構，也就是每個原子的 (x, y, z) 座標，外加每個位置的可信度。</li>
+<li><strong>什麼時候算：</strong> 使用者丟一條序列進來，就從頭算一次；每條序列都重新算，沒有「歷史」可以沿用。</li>
+</ul>
+<p>比喻：給你一條珠鍊的珠子順序，問它會捲成什麼形狀。</p>
+<h3 id="ch3-第-1-層-三個階段">第 1 層：三個階段</h3>
+<pre><code>輸入：胺基酸序列（L 個字母，幾 KB）
+   │
+   ▼
+① ESM-2 語言模型：讀整條序列，給每個胺基酸一組特徵
+   │   → s：L × 1024          （每個胺基酸的「自我描述」）
+   │   → z：L × L × 128       （每一對胺基酸的「關係表」；一開始只有「在序列上相距多遠」）
+   ▼
+② Folding trunk：48 個 block 依序執行，每個 block 都把 s 和 z 修正得更準
+   │   s、z 進去 → s、z 出來（形狀不變，內容更新）
+   │   整個 trunk 會把結果送回開頭再跑幾次（recycling，預設最多 4 次）
+   ▼
+③ Structure module：把最後的 s、z 轉成 3D 座標
+   ▼
+輸出：每個原子的座標（約 L × 37 × 3 個數，很小）
 </code></pre>
+<p><strong>真正花時間、花記憶體的是 ②</strong>：把 z 這張 L×L 的關係表反覆修正，讓它越來越接近真實的距離關係；③ 再根據這張表排出 3D 形狀。</p>
 <p>（AlphaFold2 的對應部分叫 <strong>Evoformer</strong>，也有 48 個 block，同樣有 pair representation。
 差別在於 AlphaFold2 用多序列比對（MSA）當輸入，ESMFold 改用語言模型。）</p>
-<h3 id="ch3-兩種-representation">兩種 representation</h3>
+<h3 id="ch3-第-2-層-一個-block-裡做了什麼">第 2 層：一個 block 裡做了什麼</h3>
+<p>每個 block 都用同一個模式修正資料：<strong><code>z ← z ＋ 修正量</code></strong>（這叫 <strong>residual</strong>，1.5 節）。依序是：</p>
+<table>
+<thead>
+<tr>
+<th>步驟</th>
+<th>做什麼（白話）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sequence attention、MLP</td>
+<td>先修正每個胺基酸的特徵 s</td>
+</tr>
+<tr>
+<td>Sequence → pair</td>
+<td>把 s 的資訊加進 z</td>
+</tr>
+<tr>
+<td><strong>Triangle Multiplication（outgoing）</strong></td>
+<td>用「i–k 的關係、j–k 的關係」推論「i–j 的關係」（<strong>本專題的 kernel 在這裡</strong>）</td>
+</tr>
+<tr>
+<td>Triangle Multiplication（incoming）</td>
+<td>同上，方向反過來</td>
+</tr>
+<tr>
+<td>Triangle Attention（starting／ending）</td>
+<td>同樣的推論，但用 attention 決定哪些 k 比較重要（長序列時最花時間，1.4 節）</td>
+</tr>
+<tr>
+<td>Pair transition（MLP）</td>
+<td>每一格自己再加工一次</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ch3-第-3-層-一個-Triangle-Multiplication-步驟">第 3 層：一個 Triangle Multiplication 步驟</h3>
+<pre><code>z（進來的關係表，L×L×128）                         ← 狀態：從上一步傳進來
+ ├─ LayerNorm                  → z_ln              ← 中間值
+ ├─ 5 個 linear ＋ sigmoid      → 各種投影與閘門    ← 中間值
+ ├─ gating（相乘）              → a、b              ← 中間值
+ ├─ einsum（跨 k 加總）         → x                 ← 中間值（本專題的 kernel）
+ ├─ LayerNorm、linear、× g      → 修正量            ← 中間值
+ └─ z ← z ＋ 修正量                                ← 狀態：更新後傳給下一步
+</code></pre>
+<ul>
+<li><strong>狀態（完成值）：</strong> 更新後的 z，要一直傳給下一步、下一個 block，所以必須保存。</li>
+<li>
+<p><strong>中間值：</strong> z_ln、a、b、g、x、修正量。只在這一步有用，加回 z 之後就沒用了。
+  但每一個都是 L×L×128，和 z 一樣大；一般寫法會整份寫回記憶體，所以同時存在約 7 份（2.1 節）。</p>
+</li>
+<li>
+<p><strong>「中間值不存、直接處理完」</strong>：不要整份算完 z_ln 再寫回去，而是一次拿一格 (i, j) 的 128 個數，在晶片裡一路做完，只把之後還需要的東西寫出去（這叫<strong>融合</strong>，3.5 節）。</p>
+</li>
+</ul>
+<p>每個運算具體在算什麼，見 1.5 節。</p>
+<h3 id="ch3-第-4-層-本專題的-kernel">第 4 層：本專題的 kernel</h3>
+<p>只做第 3 層裡的 <strong>einsum</strong>：從 HBM 讀 a、b，算 <code>x[i][j][c] = Σ_k a[i][k][c] × b[j][k][c]</code>，把 x 寫回 HBM。
+v0～v4 算的是同一件事，差別只在<strong>怎麼搬資料</strong>（第 3、4 章）。</p>
+<h3 id="ch3-東西放在哪裡">東西放在哪裡？</h3>
+<table>
+<thead>
+<tr>
+<th>東西</th>
+<th>大小（L = 1000，FP32）</th>
+<th>存活多久</th>
+<th>放在哪裡</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>輸入序列</td>
+<td>幾 KB</td>
+<td>整次預測</td>
+<td>CPU 記憶體</td>
+</tr>
+<tr>
+<td>權重（所有 linear 的矩陣）</td>
+<td>約 7.9 GB（FP16）</td>
+<td>整次預測，固定不變</td>
+<td>GPU 記憶體或 HBM（晶片外）</td>
+</tr>
+<tr>
+<td><strong>s、z（狀態）</strong></td>
+<td>s 約 4 MB、<strong>z 約 512 MB</strong></td>
+<td>整個 trunk，每一步被更新</td>
+<td>GPU 記憶體或 HBM</td>
+</tr>
+<tr>
+<td><strong>中間值</strong>（z_ln、a、b、g…）</td>
+<td><strong>每份約 512 MB，同時約 7 份</strong></td>
+<td>只在一個步驟內</td>
+<td>一般：HBM；融合後：只在晶片內一小塊一小塊存在</td>
+</tr>
+<tr>
+<td>Triangle Attention 的 score matrix</td>
+<td>L³ 級，數十 GB</td>
+<td>只在一個步驟內</td>
+<td>一般：HBM（所以放不下）；LightNobel：邊算邊丟</td>
+</tr>
+<tr>
+<td>正在計算的一小塊（tile）</td>
+<td>幾十 KB</td>
+<td>幾微秒</td>
+<td><strong>晶片內</strong>（FPGA 的 BRAM、GPU 的 shared memory）</td>
+</tr>
+<tr>
+<td>輸出座標</td>
+<td>幾百 KB</td>
+<td>最後</td>
+<td>傳回 CPU</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ch3-1-3-兩種-representation-activation-與-token">1.3 兩種 representation、activation 與 token</h2>
 <table>
 <thead>
 <tr>
@@ -872,7 +996,7 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 | <strong>Activation</strong> | 用這次的輸入一步步算出來的資料 | 做菜過程中的每一盤半成品 | 會，蛋白質越長越大 |</p>
 <p>Pair representation 就是<strong>最主要的 activation</strong>，但不只它一份：Triangle Multiplication 一個 block 裡，
 LayerNorm 的結果、5 個 linear 的結果、gating 後的 a、b、einsum 的結果……
-<strong>每一步算出來的 L×L×128 張量都是 activation</strong>（完整的流程圖見 3.5 節）。</p>
+<strong>每一步算出來的 L×L×128 張量都是 activation</strong>（流程見 1.2 節第 3 層，每個運算的意義見 1.5 節）。</p>
 <p><strong>Token = 資料的「一格」。</strong> 在不同的 representation 裡，一格代表的東西不同：
 | | Sequence representation | Pair representation |
 |---|---|---|
@@ -892,7 +1016,7 @@ pair：      1,000,000 個 token ×  128 =  約 1.28 億個數   ← 仍然大�
 <p>本手冊（以及 LightNobel 的量化）說的 token，<strong>都是指 pair representation 的一格 (i, j)</strong>。
 模型裡的 LayerNorm、linear 都是「一個 token 的 128 個數自己算自己的」，所以 token 是很自然的處理單位。</p>
 <hr />
-<h2 id="ch3-1-3-Triangle-Multiplication-與-Triangle-Attention">1.3 Triangle Multiplication 與 Triangle Attention</h2>
+<h2 id="ch3-1-4-Triangle-Multiplication-與-Triangle-Attention">1.4 Triangle Multiplication 與 Triangle Attention</h2>
 <h3 id="ch3-三角形-的直覺">「三角形」的直覺</h3>
 <p>如果知道：</p>
 <ul>
@@ -962,6 +1086,150 @@ LightNobel 則改用 token-wise 的 attention（類似 FlashAttention），根�
 </table>
 <p>序列短時，Triangle Multiplication 佔比最高；序列一長，立方成長的 Triangle Attention 就壓過其他所有運算。
 所以本專題選 Triangle Multiplication <strong>不是因為它最花時間</strong>，理由見 10.1 節。</p>
+<p>上面的 <code>a</code>、<code>b</code> 是怎麼來的、einsum 之後又做了什麼，見下一節。</p>
+<hr />
+<h2 id="ch3-1-5-Triangle-Multiplication-裡的每一個運算">1.5 Triangle Multiplication 裡的每一個運算</h2>
+<p>這一節把 1.2 節第 3 層的每個運算拆開：<strong>做什麼、公式、數字例子、在硬體上要什麼</strong>。
+這些零件（LayerNorm、linear、sigmoid、gating、residual）幾乎出現在所有深度學習模型裡（包括 ChatGPT 這類 Transformer），值得徹底弄懂。</p>
+<h3 id="ch3-完整的算式-ESMFold-的實作">完整的算式（ESMFold 的實作）</h3>
+<pre><code>z_ln = LayerNorm_in(z)                               ①
+a    = mask × sigmoid(linear_a_g(z_ln))              ⑤ ③ ②
+            × linear_a_p(z_ln)                       ④ ②
+b    = mask × sigmoid(linear_b_g(z_ln))
+            × linear_b_p(z_ln)
+x    = einsum(a, b)                                  ⑥
+x    = linear_z(LayerNorm_out(x))                    ② ①
+g    = sigmoid(linear_g(z_ln))                       ③ ②
+修正量 = x × g                                        ④ 輸出閘門
+z    = z + 修正量                                     ⑦（在 block 裡做）
+
+① LayerNorm　② linear　③ sigmoid　④ gating　⑤ mask　⑥ einsum　⑦ residual
+</code></pre>
+<p>（為了好讀，以下例子只用 4 個 channel；實際是 128 個。）</p>
+<h3 id="ch3-①-LayerNorm-把每個-token-的數字拉回標準範圍">① LayerNorm：把每個 token 的數字拉回標準範圍</h3>
+<p><strong>做什麼：</strong> 對<strong>一個 token 的 128 個數</strong>，先減掉平均、再除以標準差，讓它們變成「平均 0、大小約 1」；
+最後再乘上一組學出來的係數 γ、加上 β（每個 channel 各一個）。</p>
+<pre><code>mean = Σ x_c / 128
+var  = Σ (x_c − mean)² / 128
+y_c  = (x_c − mean) / sqrt(var + ε) × γ_c + β_c
+</code></pre>
+<p><strong>例子：</strong> x = [2, 4, 6, 8] → mean = 5、標準差 ≈ 2.236 → [−1.34, −0.45, 0.45, 1.34]（γ = 1、β = 0 時）。</p>
+<p><strong>為什麼需要：</strong> z 每經過一步就加上一筆修正量，數值會越滾越大（這就是 LightNobel A 組數值很大的原因，5.3 節）。
+先標準化，後面的 linear 才能在穩定的範圍內工作。</p>
+<p><strong>硬體：</strong> 兩次加總（一次算平均、一次算變異數）、一次開根號與倒數（每個 token 一次），再做 128 次減法與乘法。
+只需要這個 token 自己的 128 個數，可以整個放在晶片內（10.4 節）。</p>
+<h3 id="ch3-②-Linear-把-128-個特徵重新混合">② Linear：把 128 個特徵重新混合</h3>
+<p><strong>做什麼：</strong> 一個 128 × 128 的權重矩陣 W 乘上這個 token 的 128 個數，再加上偏移 b：</p>
+<pre><code>y = W x + b          每個輸出 y_o = Σ_c W[o][c] × x_c + b_o
+</code></pre>
+<p>每個輸出都是<strong>所有 128 個輸入的加權總和</strong>，權重是訓練時學到的。模型「學到的知識」大多就存在這些矩陣裡。</p>
+<p><strong>例子（2 個 channel）：</strong> W = [[1, 2], [0, −1]]、x = [3, 1] → y = [1·3 + 2·1, 0·3 − 1·1] = [5, −1]。</p>
+<p>Triangle Multiplication 有 6 個 linear（a_p、a_g、b_p、b_g、g、z），各有不同用途，但計算方式完全一樣。</p>
+<p><strong>硬體：</strong> 矩陣乘向量，每個 token 要 128 × 128 = 16,384 次乘加。權重只有 64 KB（FP32），可以一直放在晶片內（weight-stationary，6.2 節）。</p>
+<h3 id="ch3-③-Sigmoid-把任何數壓到-0-1-之間">③ Sigmoid：把任何數壓到 0～1 之間</h3>
+<p><strong>做什麼：</strong></p>
+<pre><code>sigmoid(x) = 1 ÷ (1 + e^(−x))
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>x</th>
+<th>−4</th>
+<th>−2</th>
+<th>0</th>
+<th>2</th>
+<th>4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sigmoid(x)</td>
+<td>0.018</td>
+<td>0.119</td>
+<td>0.5</td>
+<td>0.881</td>
+<td>0.982</td>
+</tr>
+</tbody>
+</table>
+<p>很負 → 接近 0；很正 → 接近 1；0 → 剛好 0.5。它是一條平滑的 S 形曲線。</p>
+<p><strong>用途：</strong> 把 linear 算出來的任意數，變成「<strong>要讓多少通過</strong>」的比例（0 = 全擋、1 = 全開）。
+在這裡它當作<strong>閘門（gate）</strong>，和下一個運算 gating 一起用。</p>
+<p><strong>另一個角色：非線性。</strong> 如果模型只有 linear，疊再多層也等於一個 linear（矩陣乘矩陣還是矩陣）。
+sigmoid 這類<strong>非線性函數</strong>讓模型能表達複雜的關係，這是深度學習能「深」的原因之一。</p>
+<p><strong>硬體：</strong> 需要指數和除法，完整實作很貴；硬體通常用<strong>查表</strong>或分段直線近似（LightNobel 的 VVPU 就有指數查表，6.5 節）。</p>
+<h3 id="ch3-④-Gating-用閘門決定每個值要保留多少">④ Gating：用閘門決定每個值要保留多少</h3>
+<p><strong>做什麼：</strong> 兩個 linear 的結果逐元素相乘，其中一個先經過 sigmoid 當閘門：</p>
+<pre><code>a = sigmoid(linear_a_g(z_ln)) × linear_a_p(z_ln)
+       └── 閘門（0～1）──┘       └─ 內容 ─┘
+</code></pre>
+<p><strong>例子：</strong> 內容 = [3.0, −1.0, 2.0, 0.5]，閘門的原始值 = [2, −4, 0, 4] → sigmoid = [0.88, 0.018, 0.5, 0.98]
+→ a = [2.64, −0.018, 1.0, 0.49]。第 2 個 channel 幾乎被關掉，第 4 個幾乎全開。</p>
+<p><strong>為什麼需要：</strong> 讓模型<strong>依照這個 token 的內容</strong>，決定哪些特徵要傳下去、哪些要壓掉。就像每個 channel 都有一個可調的調光器。
+最後的 <code>修正量 = x × g</code> 也是 gating：決定這一步的修正要套用多少。</p>
+<p><strong>硬體：</strong> 逐元素乘法，每個 token 128 次，很便宜。</p>
+<h3 id="ch3-⑤-Mask-忽略補上去的位置">⑤ Mask：忽略補上去的位置</h3>
+<p><strong>做什麼：</strong> 乘上 0 或 1。為了對齊，序列常會補上假的位置（padding，例如我們的程式補到 32 的倍數）；mask 把這些位置的值設成 0，讓它們不影響結果。</p>
+<h3 id="ch3-⑥-Einsum-唯一-跨-token-的運算">⑥ Einsum：唯一「跨 token」的運算</h3>
+<p><strong>做什麼：</strong> <code>x[i][j][c] = Σ_k a[i][k][c] × b[j][k][c]</code>，也就是對每個 channel 做 <code>a × bᵀ</code> 的矩陣乘法（1.4 節）。
+「einsum」是 Einstein summation 的縮寫：寫成 <code>"ikc,jkc-&gt;ijc"</code>，<strong>輸入有、輸出沒有的索引（k）就加總起來</strong>。</p>
+<p><strong>為什麼特別：</strong> ①～⑤ 都只用<strong>這個 token 自己的 128 個數</strong>；只有 einsum 要讀<strong>整列 i 和整列 j 的所有 token</strong>。
+所以 einsum 是融合的「邊界」：前面的運算可以一個 token 一個 token 在晶片內做完，但 a、b 必須先寫出去，einsum 才能跨 token 讀取（3.5 節）。</p>
+<p><strong>硬體：</strong> 最重的一步。每個輸出 token 要 2 × L × 128 次運算，L = 1000 時約 25.6 萬次；
+相比之下，6 個 linear 加起來每個 token 約 19.7 萬次。<strong>L 越長，einsum 越是主角</strong>，這也是本專題選它做 kernel 的原因之一。</p>
+<h3 id="ch3-⑦-Residual-修正量加回原本的值">⑦ Residual：修正量加回原本的值</h3>
+<p><strong>做什麼：</strong> <code>z = z + 修正量</code>。每一步都不是重算 z，而是在原本的 z 上<strong>加一點修正</strong>。</p>
+<p><strong>為什麼需要：</strong> 讓資訊可以一路傳下去、每一層只要學「還差多少」，模型才能疊到 48 層還訓練得起來。
+<strong>副作用：</strong> 48 個 block 不斷累加，z 的數值越來越大（LightNobel 的 A 組，5.3 節），所以每一步開頭都要先做 LayerNorm。</p>
+<h3 id="ch3-總整理">總整理</h3>
+<table>
+<thead>
+<tr>
+<th>運算</th>
+<th>輸入範圍</th>
+<th>每個 token 的運算量</th>
+<th>在硬體上要什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① LayerNorm</td>
+<td>一個 token</td>
+<td>約 5 × 128</td>
+<td>加總、開根號、乘法</td>
+</tr>
+<tr>
+<td>② Linear（× 6）</td>
+<td>一個 token ＋ 權重</td>
+<td>6 × 2 × 128² ≈ 19.7 萬</td>
+<td>大量乘加器、晶片內存權重</td>
+</tr>
+<tr>
+<td>③ Sigmoid</td>
+<td>一個值</td>
+<td>128（每個值一次）</td>
+<td>指數查表</td>
+</tr>
+<tr>
+<td>④ Gating、⑤ Mask</td>
+<td>一個 token</td>
+<td>128</td>
+<td>逐元素乘法</td>
+</tr>
+<tr>
+<td><strong>⑥ Einsum</strong></td>
+<td><strong>跨 token（整列 i、整列 j）</strong></td>
+<td><strong>2 × L × 128</strong></td>
+<td>大量乘加器、<strong>大量搬運</strong>（第 3、4 章）</td>
+</tr>
+<tr>
+<td>⑦ Residual</td>
+<td>一個 token</td>
+<td>128</td>
+<td>加法</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="ch3-本章小結">本章小結</h2>
 <table>
@@ -992,6 +1260,14 @@ LightNobel 則改用 token-wise 的 attention（類似 FlashAttention），根�
 <td>Triangle Attention</td>
 <td>score matrix 是 L³，長序列時佔 75.9% 的執行時間</td>
 </tr>
+<tr>
+<td>狀態 vs 中間值</td>
+<td>z 要一直傳下去（狀態）；z_ln、a、b、g、x 只在一步內有用（中間值），卻和 z 一樣大</td>
+</tr>
+<tr>
+<td>基本零件</td>
+<td>LayerNorm（標準化）、linear（混合特徵）、sigmoid（壓到 0～1）、gating（閘門）、einsum（唯一跨 token）、residual（加回去）</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -1001,6 +1277,10 @@ LightNobel 則改用 token-wise 的 attention（類似 FlashAttention），根�
 <li>Triangle Multiplication（outgoing）對單一 channel 來說，等同於什麼矩陣運算？</li>
 <li>序列很長時，ESMFold 最花時間的是哪個運算？既然如此，為什麼本專題還是先做 Triangle Multiplication？</li>
 <li>在 pair representation 裡，一個 token 代表什麼？和 sequence representation 的 token 有什麼不同？</li>
+<li>ESMFold 是在預測「下一個胺基酸」嗎？它的輸入和輸出分別是什麼？</li>
+<li>在一個 Triangle Multiplication 步驟裡，哪些是「狀態」、哪些是「中間值」？為什麼中間值會佔很多記憶體？</li>
+<li>sigmoid 的輸出範圍是多少？它和 gating 一起用時扮演什麼角色？</li>
+<li>Triangle Multiplication 的運算中，哪一個需要讀取「其他 token」的資料？這為什麼決定了融合的邊界？</li>
 </ol>
 <hr />
 <p><strong>下一章</strong>說明這份 L × L × 128 的資料為什麼會造成兩個問題：記憶體放不下、搬資料比計算慢，並介紹分析這類問題的工具（roofline、Amdahl's Law）。</p>
@@ -1751,7 +2031,7 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
 這個實驗需要<strong>上板</strong>才看得出效果（HLS 報告無法模擬 HBM 的真實行為）。</p>
 <hr />
 <h2 id="ch5-3-5-運算融合-讓中間值不寫回記憶體">3.5 運算融合：讓中間值不寫回記憶體</h2>
-<p>前面幾節的例子（v0～v3）只處理中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣：</p>
+<p>前面幾節的例子（v0～v3）只處理中間的 einsum。實際上 ESMFold 的 Triangle Multiplication（outgoing）是這樣（每個運算的意義見 1.5 節）：</p>
 <pre><code>  z（輸入，L×L×128）
   │
   ├─ LayerNorm ─────────────────► z_ln
@@ -2340,7 +2620,7 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 <h2 id="ch7-5-2-他們的觀察">5.2 他們的觀察</h2>
 <h3 id="ch7-四個觀察">四個觀察</h3>
 <ol>
-<li>序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.3 節）。</li>
+<li>序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.4 節）。</li>
 <li>PPM 的記憶體瓶頸主要來自 <strong>activation</strong>，而不是權重（2.1 節）。</li>
 <li>
 <p><strong>同一個 token 的 128 個 channel 數值差不多，但 token 和 token 之間差很多</strong>，而且 outlier 集中在特定 token（和 distogram 的模式相關）。
@@ -4042,7 +4322,7 @@ v++ -l（link）：    trimul_v2.xo ＋ platform ＋ cfg ──(內部呼叫 Viv
 </tr>
 <tr>
 <td>是最花時間的運算嗎？</td>
-<td>❌ 長序列時是 Triangle Attention（1.3 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標</td>
+<td>❌ 長序列時是 Triangle Attention（1.4 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標</td>
 </tr>
 </tbody>
 </table>
@@ -5285,7 +5565,7 @@ per-token 量化需要知道「這個 token 128 個數的最大絕對值」。
 <tr>
 <td>動機</td>
 <td>記憶體 vs L、約 7 份 pair 張量、執行時間分布（引用論文 Fig. 3）</td>
-<td>1.3、3.5、9.4</td>
+<td>1.4、3.5、9.4</td>
 </tr>
 <tr>
 <td>關鍵觀察</td>
@@ -7153,13 +7433,13 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <td><strong>Evoformer / Folding trunk</strong></td>
 <td>模型的主體</td>
 <td>由 48 個 block 組成，反覆更新兩種 representation</td>
-<td>第 1 章 1.2 節</td>
+<td>第 1 章 1.3 節</td>
 </tr>
 <tr>
 <td><strong>Structure module</strong></td>
 <td>輸出座標的部分</td>
 <td>把特徵轉成 3D 原子座標</td>
-<td>第 1 章 1.2 節</td>
+<td>第 1 章 1.3 節</td>
 </tr>
 <tr>
 <td><strong>Sequence representation</strong></td>
@@ -7189,13 +7469,13 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <td><strong>Triangle Attention</strong></td>
 <td>三角形版本的 attention</td>
 <td>中間值隨 L³ 成長，實作上需分塊；<strong>長序列時最花時間</strong>（1,410 aa 佔 75.9%）</td>
-<td>第 1 章 1.3 節（未實作，未來工作）</td>
+<td>第 1 章 1.4 節（未實作，未來工作）</td>
 </tr>
 <tr>
 <td><strong>Token</strong></td>
 <td>一格資料</td>
 <td>在 pair representation 中指一個 (i, j) 位置（一<strong>對</strong>胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸</td>
-<td>1.2 節；per-token 量化的單位</td>
+<td>1.3 節；per-token 量化的單位</td>
 </tr>
 <tr>
 <td><strong>Channel（C）</strong></td>
@@ -7204,10 +7484,58 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <td><code>trimul.h</code> 的 <code>C = 128</code></td>
 </tr>
 <tr>
-<td><strong>LayerNorm / Linear / Gating</strong></td>
-<td>模型中的標準運算</td>
-<td>正規化、線性轉換、用 sigmoid 控制資訊流</td>
-<td>產生 a、b 的步驟（未實作）</td>
+<td><strong>LayerNorm</strong></td>
+<td>把一個 token 拉回標準範圍</td>
+<td>減平均、除標準差，再乘 γ 加 β</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Linear</strong></td>
+<td>重新混合特徵</td>
+<td><code>y = W x + b</code>，每個輸出是所有輸入的加權和；128×128 的 W 是學出來的</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Sigmoid</strong></td>
+<td>把任何數壓到 0～1</td>
+<td><code>1 ÷ (1 + e^(−x))</code>；當閘門用，也提供非線性</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Gating（閘門）</strong></td>
+<td>決定每個值保留多少</td>
+<td>內容 × sigmoid(閘門)，逐元素相乘</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Mask</strong></td>
+<td>忽略補上去的位置</td>
+<td>乘上 0 或 1</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Einsum</strong></td>
+<td>用索引字串描述的乘加</td>
+<td><code>"ikc,jkc-&gt;ijc"</code>：輸出沒有的索引（k）就加總；Triangle Multiplication 裡唯一跨 token 的運算</td>
+<td>1.4、1.5 節</td>
+</tr>
+<tr>
+<td><strong>Residual</strong></td>
+<td>把修正量加回原本的值</td>
+<td><code>z = z + 修正量</code>；讓深層模型訓練得起來，但會讓 z 越來越大</td>
+<td>1.5 節</td>
+</tr>
+<tr>
+<td><strong>Recycling</strong></td>
+<td>把結果送回開頭再跑一次</td>
+<td>ESMFold 的 trunk 預設最多重跑 4 次</td>
+<td>1.2 節</td>
+</tr>
+<tr>
+<td><strong>狀態 vs 中間值</strong></td>
+<td>要傳下去的 vs 只在一步內有用的</td>
+<td>z 是狀態；z_ln、a、b、g 是中間值</td>
+<td>1.2 節</td>
 </tr>
 <tr>
 <td><strong>Chunking</strong></td>
@@ -7280,7 +7608,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <td><strong>Activation</strong></td>
 <td>計算中產生的中間資料</td>
 <td>推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定</td>
-<td>1.2 節；LightNobel 要壓縮的對象</td>
+<td>1.3 節；LightNobel 要壓縮的對象</td>
 </tr>
 <tr>
 <td><strong>OOM</strong></td>
@@ -8173,9 +8501,13 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 <hr />
 <h2 id="ch16-第-1-章-蛋白質結構預測與-pair-representation">第 1 章　蛋白質結構預測與 pair representation</h2>
 <ol>
-<li><strong><code>z = a × bᵀ</code></strong>：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.3）</li>
-<li><strong>Triangle Attention</strong>（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.3、10.1）</li>
-<li>pair representation 的 token 是一格 (i, j)，也就是一<strong>對</strong>胺基酸的 128 個數；sequence representation 的 token 才是一個胺基酸（1024 個數）。pair representation 有 L × L 個 token。（1.2）</li>
+<li><strong><code>z = a × bᵀ</code></strong>：a 的第 i 列和 b 的第 j 列做內積，就是 z 的 (i, j)。（1.4）</li>
+<li><strong>Triangle Attention</strong>（1,410 aa 時佔 75.9%），因為它的 score matrix 是 L³。先做 Triangle Multiplication 是因為它結構單純（矩陣乘法、沒有 softmax）、容易驗證，而且 tiling、量化、分析模型等方法都能直接沿用到 Triangle Attention；後者列為未來工作。（1.4、10.1）</li>
+<li>pair representation 的 token 是一格 (i, j)，也就是一<strong>對</strong>胺基酸的 128 個數；sequence representation 的 token 才是一個胺基酸（1024 個數）。pair representation 有 L × L 個 token。（1.3）</li>
+<li>不是。輸入是一條<strong>完整已知</strong>的胺基酸序列，輸出是摺疊後每個原子的 3D 座標；每條序列從頭算一次，沒有「預測下一個」的過程。（1.2）</li>
+<li>狀態是 z（更新後要傳給下一步）；中間值是 z_ln、a、b、g、einsum 的結果 x、修正量。中間值只在這一步有用，但每一份都是 L×L×128、和 z 一樣大，一般寫法會整份寫回記憶體，同時存在約 7 份。（1.2、2.1）</li>
+<li>0～1。gating 時，sigmoid 把一個 linear 的結果變成「要讓多少通過」的比例，再和另一個 linear 的結果逐元素相乘，決定每個特徵保留多少。（1.5）</li>
+<li>einsum。其他運算（LayerNorm、linear、sigmoid、gating、mask）都只用這個 token 自己的 128 個數，可以一個 token 在晶片內做完；einsum 要讀整列 i、整列 j 的 token，所以 a、b 必須先寫出去，它就是融合的邊界。（1.5、3.5）</li>
 </ol>
 <hr />
 <h2 id="ch16-第-2-章-記憶體牆-容量-頻寬與效能分析">第 2 章　記憶體牆：容量、頻寬與效能分析</h2>

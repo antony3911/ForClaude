@@ -33,7 +33,7 @@
 ## 5.2 他們的觀察
 
 ### 四個觀察
-1. 序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.3 節）。
+1. 序列一長，執行時間幾乎都花在 pair representation（91.9%），其中 Triangle Attention 最重（1.4 節）。
 2. PPM 的記憶體瓶頸主要來自 **activation**，而不是權重（2.1 節）。
 3. **同一個 token 的 128 個 channel 數值差不多，但 token 和 token 之間差很多**，而且 outlier 集中在特定 token（和 distogram 的模式相關）。
    （這裡的 token 指 pair representation 中的一格，也就是一個 (i, j) 位置的 128 個數字。）

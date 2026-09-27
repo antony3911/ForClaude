@@ -82,8 +82,10 @@
 
 | 概念 | 一句話 | 詳見 |
 |---|---|---|
-| Pair representation、activation、token | L × L × 128 的中間資料；一格 (i, j) 是一個 token | 1.2 節 |
-| Triangle Multiplication／Attention | 本專題的運算／長序列時最花時間的運算 | 1.3 節 |
+| 全景：從序列到 3D 座標 | 一次預測的完整流程、狀態與中間值、東西放在哪 | 1.2 節 |
+| Pair representation、activation、token | L × L × 128 的中間資料；一格 (i, j) 是一個 token | 1.3 節 |
+| LayerNorm、linear、sigmoid、gating、residual | Triangle Multiplication 裡的每個運算 | 1.5 節 |
+| Triangle Multiplication／Attention | 本專題的運算／長序列時最花時間的運算 | 1.4 節 |
 | 記憶體容量、memory-bound | 放不下、搬資料比計算慢 | 2.1、2.2 節 |
 | 算術強度、Roofline、Amdahl | 判斷瓶頸、估計優化上限 | 2.5、2.6 節 |
 | 資料表示／資料流／硬體結構 | 所有解法的三層地圖 | 2.7 節 |

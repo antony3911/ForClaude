@@ -48,7 +48,7 @@ LightNobel 處理的是整個 PPM，還設計了專用硬體。專題只有幾�
 | 算式簡單、容易驗證嗎？ | ✅ 本質是 128 個矩陣乘法 |
 | 能展示多種記憶體手法嗎？ | ✅ tiling、寬位元、重疊、多通道、量化都適用 |
 | 能呼應 LightNobel 嗎？ | ✅ 可以比較 per-token vs per-tensor 量化；a、b 屬於論文的 C 組，位元數有依據 |
-| 是最花時間的運算嗎？ | ❌ 長序列時是 Triangle Attention（1.3 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標 |
+| 是最花時間的運算嗎？ | ❌ 長序列時是 Triangle Attention（1.4 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標 |
 
 ### 產出
 一句話的題目定義（見第 10 章 10.1 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。

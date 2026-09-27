@@ -1898,6 +1898,85 @@ token 1： 0.10 ÷ 0.236 =  0.42 → 0
 token 2：s₂ = 30 ÷ 127 ≈ 0.236，還原誤差也很小
 </code></pre>
 <p>代價只是每 128 個數多存一個 scale（4 bytes，約 3%）。</p>
+<h3 id="ch4-加了尺-資料不是更多嗎">加了尺，資料不是更多嗎？</h3>
+<p>尺是加上去了，但<strong>每個數字變小的幅度遠大於多出來的那把尺</strong>。以一個 token（128 個數）為例：</p>
+<table>
+<thead>
+<tr>
+<th>存法</th>
+<th>128 個數本身</th>
+<th>額外資料</th>
+<th>一個 token 總共</th>
+<th>相對 FP16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FP32（我們的 v2）</td>
+<td>512 B</td>
+<td>無</td>
+<td>512 B</td>
+<td>200%</td>
+</tr>
+<tr>
+<td><strong>FP16（論文的基準）</strong></td>
+<td>256 B</td>
+<td>無</td>
+<td><strong>256 B</strong></td>
+<td>100%</td>
+</tr>
+<tr>
+<td>INT8 ＋ 尺（我們的 v4）</td>
+<td>128 B</td>
+<td>scale 4 B</td>
+<td>132 B</td>
+<td>約 52%</td>
+</tr>
+<tr>
+<td>INT4 ＋ 尺（論文的 C 組）</td>
+<td>64 B</td>
+<td>scale 2～4 B</td>
+<td>約 68 B</td>
+<td>約 27%</td>
+</tr>
+<tr>
+<td>INT8 ＋ 4 個 outlier ＋ 尺（論文的 A 組，估算）</td>
+<td>128 B</td>
+<td>outlier 8 B ＋ 位置約 4 B ＋ scale 2～4 B</td>
+<td>約 144 B</td>
+<td>約 56%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>尺只佔整個 token 的 1～3%</strong>：128 個數才多一個。比喻：一箱 128 顆蘋果原本每顆用大盒子裝，
+現在改用小盒子，只在箱子外面多貼一張「換算倍率」的標籤。</p>
+<h3 id="ch4-尺本身用什麼格式存">尺本身用什麼格式存？</h3>
+<p><strong>尺是用浮點數存的</strong>（FP16 或 FP32），不是用幾個 bit 的整數。我們的 v4 用 <strong>FP32（4 bytes）</strong>，見 <code>trimul_v4.cpp</code> 的 <code>sa</code>、<code>sb</code>；
+LightNobel 的論文沒有寫明尺的位元數，只說每個 token 的尺和資料存在一起（Fig. 7 的排列：inlier → outlier → 尺 → outlier 位置）。</p>
+<p><strong>「0.000787 小數點後這麼多位，不是要很多 bit 嗎？」不會，這正是浮點數的設計。</strong>
+浮點數就像科學記號，只存「有效數字」和「次方」：</p>
+<pre><code>0.000787 = 7.87 × 10⁻⁴               （科學記號：只要記 787 和 −4）
+         = 1.612 × 2⁻¹¹              （電腦用 2 的次方）
+
+FP16 的 16 個 bit：1 個正負號 ＋ 5 個 bit 存次方（−11）＋ 10 個 bit 存有效數字（1.612）
+</code></pre>
+<p>數字多小都一樣：小數點後有幾個 0 只影響「次方」，而次方只佔幾個 bit。</p>
+<p><strong>尺存起來的誤差可以忽略：</strong> FP16 的相對誤差最多約 2⁻¹¹ ≈ 0.05%；
+量化本身每一格的誤差最多是最大值的 0.5 ÷ 127 ≈ 0.4%，大了將近 10 倍。
+（小提醒：FP16 能正常表示的最小值約 6×10⁻⁵，token 的值如果都非常小，尺會小到 FP16 表示不準，所以很多實作用 FP32 或 BF16 存尺。我們用 FP32，沒有這個問題。）</p>
+<h3 id="ch4-算尺的時候不是要先有完整精度的資料嗎">算尺的時候不是要先有完整精度的資料嗎？</h3>
+<p>要，但<strong>完整精度的資料只在晶片內存在一下子，而且一次只有一個 token</strong>：</p>
+<pre><code>算出 token (i, j) 的 128 個數（完整精度，256～512 B，放在晶片內）
+   → 取最大值、算出尺、轉成 INT8／INT4
+   → 只把壓縮後的版本寫進 HBM
+   → 換下一個 token
+</code></pre>
+<p>真正佔記憶體的 L×L 個 token，<strong>全部都是壓縮後的版本</strong>；完整精度的資料從來不會整份存下來（6.7 節「量化在源頭完成」）。</p>
+<h3 id="ch4-計算時也不用每個數都乘尺">計算時也不用每個數都乘尺</h3>
+<p>einsum 裡，a、b 的整數先相乘累加，<strong>最後才乘一次</strong> <code>s_a × s_b</code>：</p>
+<pre><code>z = Σ_k (s_a × q_a[k]) × (s_b × q_b[k]) = s_a × s_b × Σ_k q_a[k] × q_b[k]
+</code></pre>
+<p>所以尺的計算成本也很小（LightNobel Sec. 8.3 也是「最後才乘一次尺」）。</p>
 <h3 id="ch4-為什麼-outlier-是問題-per-tensor-vs-per-token">為什麼 outlier 是問題：per-tensor vs per-token</h3>
 <p>我們的模擬資料：一般的數字大約落在 ±3 以內，但有 1% 的 token 被放大 30 倍（outlier，大約 ±80）。</p>
 <p><strong>Per-tensor（整份資料共用一把尺）：</strong></p>
@@ -2121,6 +2200,7 @@ s = 那部分被加速的倍數
 <li>頻寬和延遲有什麼不同？寬位元和 burst 分別改善哪一個？</li>
 <li>如果記憶體用量減半，可處理的最大序列長度 L 變成幾倍？</li>
 <li>每個 token 用自己的 scale，會不會讓不同 token 的數值「失去可比性」？為什麼？</li>
+<li>尺用什麼格式存？像 0.000787 這種很小的數，為什麼不需要很多 bit？</li>
 </ol>
 <p><strong>下一章</strong>先介紹工具背後的原理：FPGA 是什麼、C++ 怎麼變成電路、每個工具做了什麼。有了這些基礎，第 4 章看程式碼時會比較容易。</p>
 </section><section class="chapter">
@@ -5234,6 +5314,45 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 量化本身（AAQ）在同樣資料流下是 121.39 GB → 73.50 GB，約 <strong>1.65 倍</strong>（Table 1）。
 所以我們的 1.5 倍左右，和論文中「量化 ＋ 不落地」這部分的量級是一致的，並不是做得特別差。</p>
 </blockquote>
+<h3 id="ch8-記憶體到底是靠什麼省下來的-兩個機制">記憶體到底是靠什麼省下來的？兩個機制</h3>
+<table>
+<thead>
+<tr>
+<th>機制</th>
+<th>做了什麼</th>
+<th>效果</th>
+<th>LightNobel 的數字</th>
+<th>本專題的對應</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>① 量化</strong></td>
+<td>每個數從 16 bit 變成 4～8 bit</td>
+<td>每份資料變小（常數倍）</td>
+<td>資料流程相同時，activation 113.49 → 65.60 GB，總量約 1/1.65（Table 1）</td>
+<td>v4（INT8）、v5（INT4）</td>
+</tr>
+<tr>
+<td><strong>② 不存中間值</strong></td>
+<td>中間值算完馬上用掉，不整份寫回記憶體</td>
+<td>份數變少；<strong>Triangle Attention 的 L³ 項直接消失</strong></td>
+<td>和不分塊的 GPU 比，峰值最多 1/120</td>
+<td>融合設計（約 7 份 → 約 2.5 份）</td>
+</tr>
+</tbody>
+</table>
+<p>機制 ② 為什麼效果大？GPU 不分塊時，Triangle Attention 會存下整個 L×L×L 的 score matrix。
+以 ESMFold 的 4 個 head、FP16 粗估：L = 1,410 約 22 GB，L = 2,034 約 67 GB，L = 3,364 約 300 GB。
+LightNobel 的 token-wise attention 算一部分、用掉、丟掉，從來不存整個矩陣，立方成長的部分就不見了。</p>
+<h3 id="ch8-問題真的被解決了嗎-誠實版">問題真的被解決了嗎？（誠實版）</h3>
+<p><strong>沒有「根本解決」，而是「把上限往後推了很多」。</strong></p>
+<ul>
+<li>pair representation 仍然隨 <strong>L²</strong> 成長。量化只是乘上一個常數，曲線的形狀不變；而 L 只和記憶體的平方根成正比。</li>
+<li>真正大幅延長序列的，是把 <strong>L³</strong> 那一項消掉（機制 ②）。</li>
+<li>論文的成果：80 GB 內最長 <strong>9,945</strong> 個胺基酸；GPU 不分塊時約 <strong>1,410</strong>。GPU 分塊也能跑長序列，但慢很多（LightNobel 在分塊的情況下快 3.67～8.44 倍）。</li>
+</ul>
+<p>一句話：<strong>LightNobel 讓長序列「放得下」又「跑得快」，但 L² 的成長仍在。</strong></p>
 <hr />
 <h2 id="ch8-6-11-對應到海報-以及評審可能會問的問題">6.11 對應到海報，以及評審可能會問的問題</h2>
 <h3 id="ch8-每個成果對應海報的哪一塊">每個成果對應海報的哪一塊</h3>
@@ -5317,6 +5436,14 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <td>L 和記憶體是平方根關係；以 FP16 為基準，融合 ＋ INT8 讓 L 提升約 1.52 倍。論文的 120 倍主要來自不存 score matrix（和不分塊的 GPU 比），量化本身約 1.65 倍，量級一致。</td>
 </tr>
 <tr>
+<td>每個 token 多存一把尺，不是讓資料更多嗎？</td>
+<td>尺只佔 token 的 1～3%（128 個數才一個浮點數），但每個數從 16 bit 變 8 或 4 bit，整體約變成 1/2～1/4（2.8 節的表）。</td>
+</tr>
+<tr>
+<td>記憶體問題真的解決了嗎？</td>
+<td>把上限往後推，沒有消除 L² 成長。量化省常數倍；不存中間值（尤其 L³ 的 score matrix）才是大幅延長序列的關鍵（6.10 節）。</td>
+</tr>
+<tr>
 <td>為什麼 a、b 用 INT4（或為什麼還是 INT8）？</td>
 <td>論文把這類 activation（C 組）用 INT4；我們先用真實資料確認 a、b 的分布接近 C 組，再做 v5。依結果回答「INT4 可行」或「這個運算需要 INT8」。</td>
 </tr>
@@ -5356,6 +5483,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>每個 L² 位置的記憶體從 3,584 bytes 降到 1,288 bytes，最大序列長度提升幾倍？</li>
 <li>為什麼和 LightNobel 比較時要用 FP16 當基準？用 FP32 會發生什麼事？</li>
 <li>做 v5（INT4）之前，為什麼要先用真實資料檢查 a、b？要看哪兩組數字？</li>
+<li>LightNobel 的記憶體節省來自哪兩個機制？哪一個讓峰值記憶體降到上百倍？</li>
 </ol>
 <p><strong>下一章</strong>把整個過程整理成可以重複使用的研究方法，之後讀其他 paper 時也能照著做。</p>
 </section><section class="chapter">
@@ -6927,6 +7055,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>頻寬是「每秒能搬多少」，延遲是「從請求到拿到第一筆要等多久」。寬位元提高<strong>頻寬</strong>（每 cycle 搬 16 個 float）；burst 減少<strong>延遲</strong>的影響（一次請求連續拿很多筆，延遲只付一次）。（2.5）</li>
 <li><strong>√2 ≈ 1.41 倍</strong>。記憶體和 L² 成正比，所以 L 和記憶體的平方根成正比。（2.8、6.10）</li>
 <li>不會。scale 會和資料一起存下來，使用時乘回去（x̂ = s × q），數值回到原本的大小；量化只是換一種較省空間的記法，不像 LayerNorm 會改變數值的意義。（2.8）</li>
+<li>用浮點數（FP16 或 FP32；我們的 v4 用 FP32）。浮點數像科學記號，只存有效數字和次方：0.000787 = 1.612 × 2⁻¹¹，小數點後有幾個 0 只影響次方，而次方只佔幾個 bit。每 128 個數才一個尺，只佔 1～3%。（2.8）</li>
 </ol>
 <h2 id="ch11-第-3-章-工具原理">第 3 章　工具原理</h2>
 <ol>
@@ -6962,6 +7091,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li><code>√(3,584 ÷ 1,288) ≈ √2.78 ≈</code> <strong>1.67 倍</strong>（約 2,190 → 3,650）。（6.10）</li>
 <li>論文的比較基準（ESMFold）是 FP16。用 FP32 當基準，原始資料大了一倍，量化「看起來」省更多，會高估效果：同樣的融合 ＋ INT8，FP32 基準是 1.67 倍，FP16 基準只有 1.52 倍。（6.10、1.4）</li>
 <li>INT4 的前提是「a、b 屬於論文的 C 組（outlier 很少）」，這個假設要用真實資料確認，否則 v5 可能白做。要看 <code>paper_group_C_check</code>（平均絕對值、每個 token 的 3σ outlier 數，和論文的 3.85、0.64 比）與 <code>rel_l2_grid</code>（INT8／INT4 × token／channel／tensor 的誤差）。（6.7）</li>
+<li>① <strong>量化</strong>：每個數變成 4～8 bit，資料量約變成 1/1.65（Table 1）；② <strong>不存中間值</strong>：中間值算完就用掉，尤其 Triangle Attention 不存 L³ 的 score matrix。讓峰值降到上百倍（和不分塊的 GPU 比）的是 ②。（6.10）</li>
 </ol>
 <h2 id="ch11-第-7-章-研究方法">第 7 章　研究方法</h2>
 <ol>

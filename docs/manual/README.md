@@ -11,23 +11,26 @@
 
 ## 撰寫進度表
 
-> 2026-09-26 依新人學習順序重新編排（原第 3、4 章對調，指令手冊與新策略提前，術語表移到附錄），
-> 並新增導讀與各章「自我檢測」、附錄 B 參考答案。
+> 2026-09-27 重新編排成教科書結構：問題 → 原理 → 案例（LightNobel）→ 實作 → 專題（舊→新章節對照見 `docs/PROJECT_LOG.md` 8.3 節）。
 
 | 部 | 檔案 | 內容 | 狀態 |
 |---|---|---|---|
 | 前言 | `00_guide.md` | 導讀：結構、閱讀路線、慣例、最短上手路徑 | ✅ |
-| 速覽 | `00b_paper_guide.md` | LightNobel 速讀卡、三組量化設定、三個創新、領域地圖、繼承／簡化／新增、報告講法 | ✅ 已依原文 PDF 核對（2026-09-26） |
-| 一 | `01_why.md` | 第 1 章 為何而做 | ✅ |
-| 一 | `02_why_it_works.md` | 第 2 章 為何可做 | ✅ |
-| 二 | `03_tools.md` | 第 3 章 工具原理（原第 4 章） | ✅ |
-| 二 | `04_workflow.md` | 第 4 章 整體流程（原第 3 章） | ✅ |
-| 三 | `05_commands.md` | 第 5 章 指令手冊（原第 7 章） | ✅ 新增指令時更新 5.10 時間軸 |
-| 四 | `06_strategy.md` | 第 6 章 新策略：逐步拆解、融合與量化設計、分析模型、DSE、評審 Q&A | ✅ 讀原文後修訂；有 hls-all、真實資料、v5 結果後更新 6.7～6.9 |
-| 五 | `07_research_method.md` | 第 7 章 研究方法（含 7.11 讀原文後的誤判案例） | ✅ |
-| 六 | `08_hardware.md` | 第 8 章 LightNobel 硬體架構詳解（Token Aligner、RMPU、VVPU、token-wise attention、crossbar、評估工具、FPGA 對應） | ✅ 2026-09-27 新增 |
-| 附錄 | `A_glossary.md` | 附錄 A 術語表（原第 6 章） | ✅ |
-| 附錄 | `B_answers.md` | 附錄 B 自我檢測參考答案 | ✅ |
+| 速覽 | `00b_overview.md` | 來龍去脈、全書地圖、LightNobel 與本專題各一分鐘版、概念地圖 | ✅ |
+| 一 問題 | `01_problem.md` | 第 1 章 蛋白質結構預測與 pair representation | ✅ |
+| 一 問題 | `02_memory_wall.md` | 第 2 章 記憶體牆：容量、頻寬、roofline、Amdahl、三層框架 | ✅ |
+| 二 原理 | `03_dataflow.md` | 第 3 章 資料流優化：tiling、burst、double buffering、多通道、融合、重算、分塊 | ✅ |
+| 二 原理 | `04_quantization.md` | 第 4 章 量化：原理、per-token、尺的成本與格式、位元數 | ✅ |
+| 三 案例 | `05_lightnobel.md` | 第 5 章 LightNobel 的觀察、演算法與成果 | ✅ |
+| 三 案例 | `06_lightnobel_hw.md` | 第 6 章 LightNobel 的硬體架構 | ✅ |
+| 四 實作 | `07_fpga_tools.md` | 第 7 章 FPGA 與工具原理 | ✅ |
+| 四 實作 | `08_implementation.md` | 第 8 章 v0～v4 從程式碼到報告 | ✅ 有 hls-all 結果後更新 8.11 |
+| 四 實作 | `09_evaluation.md` | 第 9 章 評估方法：architectural simulation、分析模型、DSE、容量 | ✅ 有 hls-all 結果後更新 9.2、9.3 |
+| 五 專題 | `10_strategy.md` | 第 10 章 專題策略：定位、融合設計、v5、海報與評審問答 | ✅ 有真實資料、v5 結果後更新 10.4 |
+| 五 專題 | `11_research_method.md` | 第 11 章 研究方法（含 11.11 誤判案例） | ✅ |
+| 附錄 | `A_commands.md` | 附錄 A 指令手冊 | ✅ 新增指令時更新 A.10 時間軸 |
+| 附錄 | `B_glossary.md` | 附錄 B 術語表 | ✅ |
+| 附錄 | `C_answers.md` | 附錄 C 自我檢測參考答案 | ✅ |
 | — | `build_pdf.py` → `manual.pdf` | 合併輸出 | ✅ |
 
 狀態：⬜ 未開始　🟡 撰寫中　✅ 完成
@@ -47,6 +50,6 @@
 - LightNobel 的數字要標出處（Sec.／Fig.／Table）；不確定時寫「細節以原文為準」，不要編造。論文 PDF 不要 commit（repo 公開）。
 - 誠實標示哪些已驗證、哪些尚未在實機上驗證。
 - 每章開頭放「本章重點」，結尾放「本章小結」。
-- 每章結尾：本章小結 → 自我檢測（答案寫進 `B_answers.md`）→「下一章」銜接。
+- 每章結尾：本章小結 → 自我檢測（答案寫進 `C_answers.md`）→「下一章」銜接。
 - 每章寫完：更新上面的進度表 → commit → push。
 - 新增或調整章節時，同步修改 `build_pdf.py` 的 `CHAPTERS`。

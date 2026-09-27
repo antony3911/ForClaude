@@ -1,15 +1,15 @@
-# 第 5 章　指令手冊：做過的、可以做的、格式與用途
+# 附錄 B　指令手冊：做過的、可以做的、格式與用途
 
 > **本章重點**
 > - 先學會看懂**指令的格式**（指令、選項、參數、管線、導向），之後遇到新指令也能自己拆解。
 > - 依用途分成九類：Linux 基本操作、環境調查、Git、tmux、**本專案的 make 指令**、Vitis 工具、看結果、host 程式、Python 腳本。
 > - 每個指令都標示：✅ **已經做過**、🔜 **下一步會用到**、⬜ **之後可以做**、⚠️ **小心使用**。
-> - 本章最後有一張「目前為止實際執行過的指令」時間軸，以及常見錯誤的排查方法。
+> - 本附錄最後有一張「目前為止實際執行過的指令」時間軸，以及常見錯誤的排查方法。
 > - 圖示的狀態以 **2026-09-26** 為準，最新進度見 `docs/PROJECT_LOG.md`。
 
 ---
 
-## 5.1 先看懂指令的格式
+## A.1 先看懂指令的格式
 
 ### 基本結構
 ```
@@ -72,7 +72,7 @@ make help          # 本專案的指令一覽
 
 ---
 
-## 5.2 Linux 基本操作
+## A.2 Linux 基本操作
 
 | 指令 | 格式 | 用途 | 例子 | 狀態 |
 |---|---|---|---|---|
@@ -96,14 +96,14 @@ make help          # 本專案的指令一覽
 | `du -sh` | `du -sh 資料夾` | 某個資料夾佔多少空間（`hls_prj/` 會越來越大） | `du -sh hls_prj` | ⬜ |
 | `top` / `htop` | `top` | 看 CPU、記憶體用量與正在跑的程式（`q` 離開） | 確認合成是否還在跑 | ⬜ |
 | `history` | `history` | 列出輸入過的指令 | `history \| grep make` | ⬜ |
-| `source` | `source 檔案` | 在目前的終端機執行設定檔（載入環境變數） | 見 5.3 | 🔜 |
+| `source` | `source 檔案` | 在目前的終端機執行設定檔（載入環境變數） | 見 A.3 | 🔜 |
 
 > ⚠️ `rm -rf` 會直接刪除整個資料夾，不會經過資源回收筒。刪除前先用 `ls` 確認內容；
 > 想清掉本專案產生的檔案，改用 `make clean` 比較安全。
 
 ---
 
-## 5.3 環境調查與設定
+## A.3 環境調查與設定
 
 | 指令 | 用途 | 結果 / 狀態 |
 |---|---|---|
@@ -138,7 +138,7 @@ ls /opt/xilinx/platforms         # platform 資料夾名稱 = Makefile 的 PLATF
 
 ---
 
-## 5.4 Git：取得與更新程式碼
+## A.4 Git：取得與更新程式碼
 
 | 指令 | 格式 | 用途 | 狀態 |
 |---|---|---|---|
@@ -168,7 +168,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 
 ---
 
-## 5.5 tmux：斷線也不會中斷的終端機
+## A.5 tmux：斷線也不會中斷的終端機
 
 長時間的工作（`make hls-all`、上板編譯）一定要在 tmux 裡跑。
 
@@ -183,7 +183,7 @@ git stash pop               # 需要的話把修改拿回來（可能要手動�
 
 ---
 
-## 5.6 本專案的 make 指令（最重要）
+## A.6 本專案的 make 指令（最重要）
 
 所有 make 指令都要在 **`ForClaude/fpga/trimul`** 資料夾裡執行。
 
@@ -265,7 +265,7 @@ done                                                                 # ⬜
 
 ---
 
-## 5.7 Vitis 工具的原始指令（Makefile 背後在做什麼）
+## A.7 Vitis 工具的原始指令（Makefile 背後在做什麼）
 
 平常用 make 就好。這一節讓你知道 make 實際呼叫了什麼，除錯時會用到。
 
@@ -297,7 +297,7 @@ KERNEL=trimul_v3 COSIM=1 vitis-run --mode hls --tcl hls/run_hls.tcl   # 合成�
 
 ---
 
-## 5.8 看結果
+## A.8 看結果
 
 ### HLS 報告
 ```bash
@@ -338,7 +338,7 @@ scp anthony@scd-lab-server63:~/ForClaude/fpga/trimul/hls_summary.csv C:\ForClaud
 
 ---
 
-## 5.9 host 程式與 Python 腳本的參數
+## A.9 host 程式與 Python 腳本的參數
 
 ### `host.exe`（上板用，⬜）
 ```
@@ -369,7 +369,7 @@ python dump_trimul_inputs.py  (--uniprot ID | --pdb ID | --fasta 檔案 | --seq 
 
 沒有 GPU 時可以用 CPU 跑短序列（較慢，需要約 16 GB 以上的記憶體）：
 `python dump_trimul_inputs.py --uniprot P69905 --device cpu --out ../data/hba`
-（P69905 是 142 個胺基酸的血紅素 α 鏈。）輸出的 JSON 要看 `paper_group_C_check` 和 `rel_l2_grid`，怎麼解讀見 6.7 節。
+（P69905 是 142 個胺基酸的血紅素 α 鏈。）輸出的 JSON 要看 `paper_group_C_check` 和 `rel_l2_grid`，怎麼解讀見 10.4 節。
 
 ### `docs/manual/build_pdf.py`（重新產生這份手冊的 PDF）
 ```bash
@@ -379,7 +379,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 
 ---
 
-## 5.10 目前為止實際執行過的指令（時間軸）
+## A.10 目前為止實際執行過的指令（時間軸）
 
 | # | 指令 | 在哪裡 | 結果 |
 |---|---|---|---|
@@ -402,7 +402,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 
 ---
 
-## 5.11 常見錯誤與排查
+## A.11 常見錯誤與排查
 
 | 看到的訊息 | 意思 | 怎麼辦 |
 |---|---|---|
@@ -411,7 +411,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 | `Permission denied` | 沒有權限 | 不要用 `sudo` 硬來，先問管理員 |
 | `make: *** No rule to make target` | 不在 `fpga/trimul` 裡，或目標名稱打錯 | `cd ~/ForClaude/fpga/trimul`；`make help` |
 | `Username for 'https://github.com'` | repo 是 private | 改成 public，或用 fine-grained token |
-| `Your local changes would be overwritten` | server 上的檔案被改過 | 見 5.4 節的 `git stash` |
+| `Your local changes would be overwritten` | server 上的檔案被改過 | 見 A.4 節的 `git stash` |
 | `ERROR: [HLS ...]` | HLS 失敗 | `tail -n 30 hls_<kernel>.log` 截圖給 Claude |
 | `WARNING: [HLS ...]` | 通常可以忽略 | 只有同時出現 ERROR 才需要處理 |
 | `No space left on device` | 硬碟滿了 | `du -sh hls_prj build`；確認結果已保存後 `make clean` |
@@ -435,7 +435,7 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 ---
 
 ## 自我檢測
-讀完這一章，試著回答下面的問題（參考答案在附錄 B）：
+讀完這一附錄，試著回答下面的問題（參考答案在附錄 C）：
 
 1. `lspci | grep -i xilinx` 中的 `|` 做了什麼？`-i` 是什麼意思？
 2. 想知道 `make hls KERNEL=trimul_v3` 會執行哪些指令、但不要真的執行，要怎麼下？
@@ -443,4 +443,4 @@ python3 docs/manual/build_pdf.py     # 產生 docs/manual/manual.html 與 manual
 4. 想合成 16×16 tile 的 v4，但不要覆蓋 v4 預設設定的報告，指令怎麼寫？
 5. 執行 `make clean` 之前應該先做什麼？
 
-**下一章**介紹新的專題策略：逐步拆解、融合與量化設計、分析模型與設計空間探索，以及背後的理論。
+**附錄 B** 是術語表：看到不懂的詞可以在那裡查。

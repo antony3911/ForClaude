@@ -1,11 +1,11 @@
-# 附錄 A　術語表
+# 附錄 C　術語表
 
 > 依主題分類。每個詞附上：**白話解釋**、**正式說明**、**在本專題哪裡出現**。
 > 忘記某個詞的意思時，回來這裡查。
 
 ---
 
-## A.1 蛋白質與模型
+## B.1 蛋白質與模型
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -26,20 +26,20 @@
 | **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置（一**對**胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸 | 1.2 節；per-token 量化的單位 |
 | **Channel（C）** | 每格的數字個數 | 特徵維度，ESMFold 的 pair 為 128 | `trimul.h` 的 `C = 128` |
 | **LayerNorm / Linear / Gating** | 模型中的標準運算 | 正規化、線性轉換、用 sigmoid 控制資訊流 | 產生 a、b 的步驟（未實作） |
-| **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 2 章 2.9 節 |
+| **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 3 章 3.7 節 |
 | **HuggingFace** | 公開模型的平台 | 提供模型程式碼（transformers）與權重下載（Hub） | `dump_trimul_inputs.py` |
 | **UniProt / PDB** | 公開的蛋白質資料庫 | UniProt 存序列、PDB 存實驗測定的結構 | 下載測試序列 |
-| **TM-score** | 預測結構有多像真實結構 | 0～1，越高越好；LightNobel 用它證明量化不傷準確度 | 速覽 |
-| **CAMEO / CASP** | 蛋白質結構預測的標準測試集 | CASP 是兩年一次的預測競賽；CAMEO 是持續更新的評測 | 速覽 |
-| **Distogram** | 胺基酸之間距離的分布 | 模型預測的距離直方圖；LightNobel 觀察到 activation 有與之相關的模式 | 速覽 |
+| **TM-score** | 預測結構有多像真實結構 | 0～1，越高越好；LightNobel 用它證明量化不傷準確度 | 5.1 節 |
+| **CAMEO / CASP** | 蛋白質結構預測的標準測試集 | CASP 是兩年一次的預測競賽；CAMEO 是持續更新的評測 | 5.1 節 |
+| **Distogram** | 胺基酸之間距離的分布 | 模型預測的距離直方圖；LightNobel 觀察到 activation 有與之相關的模式 | 5.2 節 |
 
-## A.2 效能與記憶體概念
+## B.2 效能與記憶體概念
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
 | **Memory-bound** | 等搬資料 | 效能受限於記憶體頻寬或延遲，而非運算能力 | v0、v2 的載入部分 |
 | **Compute-bound** | 廚師忙不過來 | 效能受限於運算單元數量 | v2 的 mac 部分 |
-| **Weights（權重）** | 模型學到的參數 | 大小固定，與 L 無關 | 第 1 章 1.4 節 |
+| **Weights（權重）** | 模型學到的參數 | 大小固定，與 L 無關 | 第 2 章 2.1 節 |
 | **Activation** | 計算中產生的中間資料 | 推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定 | 1.2 節；LightNobel 要壓縮的對象 |
 | **OOM** | 記憶體不夠 | Out of Memory | 長序列在 GPU 上的問題 |
 | **FLOP** | 一次浮點運算 | 一次乘法或一次加法 | 一次乘加 = 2 FLOP |
@@ -47,20 +47,20 @@
 | **頻寬（bandwidth）** | 每秒能搬多少 | GB/s | 單一 512-bit 埠 19.2 GB/s；U55C HBM 約 460 GB/s |
 | **延遲（latency）** | 等多久才開始有資料 | 從請求到第一筆資料的時間 | v2 載入的 141 cycles 大多是延遲 |
 | **算術強度（AI）** | 每搬 1 byte 做幾次運算 | FLOP ÷ byte | v0 0.25、v2 2、v4 約 7.8 |
-| **Roofline 模型** | 判斷瓶頸的圖 | `可達效能 = min(運算上限, AI × 頻寬)` | 第 2 章 2.3 節 |
+| **Roofline 模型** | 判斷瓶頸的圖 | `可達效能 = min(運算上限, AI × 頻寬)` | 第 2 章 2.5 節 |
 | **Ridge point（平衡點）** | roofline 的轉折點 | 峰值運算 ÷ 頻寬 | 判斷 memory/compute-bound |
 | **Tiling** | 分批搬、重複用 | 把計算切成小塊，讓搬進來的資料被重用多次 | v1 |
 | **資料重用（data reuse）** | 同一個食材做多道菜 | 同一份資料被多次運算使用 | tile 中每個 a 用 TJ 次 |
 | **Burst** | 一次請求連續拿很多筆 | 只付一次延遲 | 連續的 128 個 channel |
 | **Double buffering（ping-pong）** | 兩個料理台輪流用 | 一個 buffer 計算時，另一個載入下一批 | v3 |
-| **Little's Law** | 要多少資料在路上 | 在途資料量 = 頻寬 × 延遲 | 第 2 章 2.5 節 |
+| **Little's Law** | 要多少資料在路上 | 在途資料量 = 頻寬 × 延遲 | 第 3 章 3.2 節 |
 | **Amdahl's Law** | 改善的上限 | `加速 = 1 ÷ [(1−p) + p/s]` | v3 最多約 1.27 倍 |
 | **Memory layout** | 資料在記憶體中的排列 | 決定能否連續讀取 | `[row][col][channel]` |
 | **Stride** | 連續兩次存取的間距 | stride 大 → 無法 burst | v0 的 stride = 128 |
-| **Operator fusion（融合）** | 運算合併 | 中間值不寫回記憶體 | 2.9 節、第 6 章 6.4 節（原則來自 LightNobel；本專題做設計與分析） |
-| **Recomputation（重算）** | 用計算換記憶體 | 不存中間值，需要時重算 | 2.9 節、6.5 節（重算 g） |
+| **Operator fusion（融合）** | 運算合併 | 中間值不寫回記憶體 | 3.7 節、第 3 章 3.5 節（原則來自 LightNobel；本專題做設計與分析） |
+| **Recomputation（重算）** | 用計算換記憶體 | 不存中間值，需要時重算 | 3.7 節、3.6 節（重算 g） |
 
-## A.3 量化
+## B.3 量化
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -71,35 +71,35 @@
 | **對稱量化** | 以 0 為中心 | 正負範圍相同，不需要 zero point | v4 的做法 |
 | **Per-tensor** | 整份共用一把尺 | 一個 scale 給整個張量 | 誤差約 11% |
 | **Per-token** | 每格一把尺 | 每個 token 一個 scale | 誤差約 1% |
-| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale；LLM 常用，但 PPM 的 channel 之間差異小，LightNobel 改用 per-token（kernel 未實作，真實資料的誤差表有比較） | 2.8、4.4、6.7 節 |
+| **Per-channel** | 每個 channel 一把尺 | 每個 c 一個 scale；LLM 常用，但 PPM 的 channel 之間差異小，LightNobel 改用 per-token（kernel 未實作，真實資料的誤差表有比較） | 4.2、8.4、10.4 節 |
 | **Outlier** | 特別大的值 | 少數數值遠大於其他值 | 模擬資料中 1% 的 token ×30 |
 | **Fake quantization** | 量化再還原 | 用浮點數模擬量化誤差 | Python 腳本評估誤差 |
 | **rel_l2** | 整體相對誤差 | `‖z − z_ref‖ ÷ ‖z_ref‖` | testbench、host |
 | **max_abs** | 最大單點誤差 | `max |z − z_ref|` | testbench、host |
-| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：每個 token 一個 scale；activation 依位置分 A、B、C 三組（INT8＋4 outlier／INT4＋4 outlier／INT4）；outlier 用 INT16、執行時 top-k 挑出 | 1.6 節、速覽 |
-| **Inlier** | 一般大小的值 | 用低精度量化的部分 | 速覽 |
-| **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值（LightNobel：A、B 組 k = 4，用 INT16） | 速覽 |
-| **3σ 法則** | 判斷 outlier 的常用規則 | 和平均值相差超過 3 個標準差的值視為 outlier | 速覽、6.7 節 |
-| **INT4** | 4 bit 整數 | −7～7（對稱量化）；兩個數擠在一個 byte，資料量是 INT8 的一半 | 6.7 節（v5） |
-| **Dequantization（反量化）** | 把整數還原成實數 | `x̂ = s × q` | 2.8 節 |
+| **AAQ** | LightNobel 的量化方法 | Token-wise Adaptive Activation Quantization：每個 token 一個 scale；activation 依位置分 A、B、C 三組（INT8＋4 outlier／INT4＋4 outlier／INT4）；outlier 用 INT16、執行時 top-k 挑出 | 5.3 節 |
+| **Inlier** | 一般大小的值 | 用低精度量化的部分 | 4.5、5.3 節 |
+| **Top-k outlier** | 最大的 k 個值另外存 | 以較高精度另外保存，避免拖累其他值（LightNobel：A、B 組 k = 4，用 INT16） | 4.5、5.3 節 |
+| **3σ 法則** | 判斷 outlier 的常用規則 | 和平均值相差超過 3 個標準差的值視為 outlier | 10.4 節 |
+| **INT4** | 4 bit 整數 | −7～7（對稱量化）；兩個數擠在一個 byte，資料量是 INT8 的一半 | 10.4 節（v5） |
+| **Dequantization（反量化）** | 把整數還原成實數 | `x̂ = s × q` | 4.1 節 |
 
-## A.4 FPGA 硬體
+## B.4 FPGA 硬體
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
 | **FPGA** | 可以重新接線的晶片 | Field-Programmable Gate Array | U55C |
 | **ASIC** | 專用晶片 | 做好就不能改，最快最省電 | LightNobel 的加速器 |
-| **HW/SW co-design** | 軟硬體一起設計 | 演算法配合硬體、硬體配合演算法 | LightNobel、速覽 |
-| **位元拆解乘法** | 大乘法拆成小乘法 | 把數字切成 4-bit 小塊，每對小塊相乘再移位相加；RMPU 的核心（源自 Bit Fusion） | 8.4 節 |
-| **Sign extension（符號延伸）** | 補正負號 | 把有號數擴寬時，用最高位補滿；二補數拆塊時只有最高位塊是有號的 | 8.4.3 節 |
-| **加法樹（adder tree）** | 一層層兩兩相加 | N 個數用 log₂N 層加法器加總；取不同層的結果可支援不同運算 | 8.4 節 |
-| **SIMD** | 一個指令、多筆資料 | 很多條 lane 同時做同一個運算；VVPU 有 128 條 | 8.5 節 |
-| **Bitonic sort（雙調排序）** | 固定連線的排序網路 | 由比較交換器組成、步驟與資料無關，適合硬體平行；128 個數 28 步 | 8.5.2 節 |
-| **線上 softmax** | 邊算邊修正的 softmax | 維護目前最大值與總和，新資料來時重新縮放，不需存整個 score matrix（FlashAttention 的核心） | 8.6 節 |
-| **Crossbar** | 任意輸入接任意輸出的交換網路 | 開關數 ∝ 埠數²，LightNobel 70% 面積 | 8.7 節 |
-| **Scratchpad** | 由設計者管理的晶片內記憶體 | 不像 cache 由硬體自動決定內容，可預測、省面積 | 8.7 節 |
-| **Weight-stationary** | 權重固定不動的資料流 | 權重留在晶片內，輸入串流通過；適合權重小、重用多 | 8.2 節 |
-| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊 | 速覽、第 8 章 |
+| **HW/SW co-design** | 軟硬體一起設計 | 演算法配合硬體、硬體配合演算法 | 2.7 節、第 5、6 章 |
+| **位元拆解乘法** | 大乘法拆成小乘法 | 把數字切成 4-bit 小塊，每對小塊相乘再移位相加；RMPU 的核心（源自 Bit Fusion） | 6.4 節 |
+| **Sign extension（符號延伸）** | 補正負號 | 把有號數擴寬時，用最高位補滿；二補數拆塊時只有最高位塊是有號的 | 6.4.3 節 |
+| **加法樹（adder tree）** | 一層層兩兩相加 | N 個數用 log₂N 層加法器加總；取不同層的結果可支援不同運算 | 6.4 節 |
+| **SIMD** | 一個指令、多筆資料 | 很多條 lane 同時做同一個運算；VVPU 有 128 條 | 6.5 節 |
+| **Bitonic sort（雙調排序）** | 固定連線的排序網路 | 由比較交換器組成、步驟與資料無關，適合硬體平行；128 個數 28 步 | 6.5.2 節 |
+| **線上 softmax** | 邊算邊修正的 softmax | 維護目前最大值與總和，新資料來時重新縮放，不需存整個 score matrix（FlashAttention 的核心） | 6.6 節 |
+| **Crossbar** | 任意輸入接任意輸出的交換網路 | 開關數 ∝ 埠數²，LightNobel 70% 面積 | 6.7 節 |
+| **Scratchpad** | 由設計者管理的晶片內記憶體 | 不像 cache 由硬體自動決定內容，可預測、省面積 | 6.7 節 |
+| **Weight-stationary** | 權重固定不動的資料流 | 權重留在晶片內，輸入串流通過；適合權重小、重用多 | 6.2 節 |
+| **RMPU / VVPU / Token Aligner** | LightNobel 的硬體單元 | RMPU：把數字切成 4-bit 小塊、不用反量化就能做多精度矩陣運算／VVPU：128 條 SIMD 的向量單元，做 LayerNorm、Softmax、執行時量化、top-k／Token Aligner：把格式不同的 token 排齊 | 第 5、6 章 |
 | **ISCA** | 計算機架構頂尖會議 | International Symposium on Computer Architecture | LightNobel 發表處 |
 | **U55C** | 我們的 FPGA 卡 | AMD Alveo U55C，晶片 xcu55c-fsvh2892-2L-e | 整個專題 |
 | **Alveo** | AMD 資料中心 FPGA 卡系列 | 插在伺服器的 PCIe 插槽 | U55C 屬於此系列 |
@@ -116,7 +116,7 @@
 | **Bitstream** | FPGA 的設定檔 | 決定每個元件和連線的設定 | 包在 .xclbin 中 |
 | **廠商代號 10ee** | Xilinx 的 PCI ID | `lspci -d 10ee:` 可列出 Xilinx 裝置 | 確認 server63 沒有卡 |
 
-## A.5 HLS 與硬體設計
+## B.5 HLS 與硬體設計
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -124,7 +124,7 @@
 | **RTL** | 電路的描述 | Register Transfer Level，用 Verilog/VHDL 撰寫 | HLS 的輸出 |
 | **Verilog / VHDL** | 硬體描述語言 | 描述電路結構與行為 | 我們不需要手寫 |
 | **Kernel** | 在 FPGA 上跑的函式 | 加速的核心運算 | `trimul_v0`～`v4` |
-| **Pragma** | 給 HLS 的指示 | `#pragma HLS ...`，不影響功能、只影響實作 | 第 3 章 3.3 節 |
+| **Pragma** | 給 HLS 的指示 | `#pragma HLS ...`，不影響功能、只影響實作 | 第 7 章 7.3 節 |
 | **Pipeline** | 流水線 | 多個迭代重疊執行 | 幾乎所有內層迴圈 |
 | **II（Initiation Interval）** | 流水線的節奏 | 連續兩次迭代開始的間隔，1 最好 | mac 迴圈 II = 1 |
 | **Iteration latency** | 一次迭代的長度 | 一次迭代從頭到尾的 cycle 數 | loop_k 為 671 |
@@ -132,8 +132,8 @@
 | **Loop-carried dependency** | 下一輪要等這一輪 | 跨迭代的資料相依，會拉高 II | v0 的 acc |
 | **Unroll（展開）** | 把迴圈複製成多份硬體 | 平行執行 | v2 的 16 lane |
 | **Array partition** | 把陣列拆開 | 讓多個元素能同時存取 | `ARRAY_PARTITION dim=2 complete` |
-| **Scheduling（排程）** | 決定何時做 | 把運算分配到 cycle | 第 3 章 3.3 節 |
-| **Binding（綁定）** | 決定用誰做 | 把運算分配到硬體單元 | 第 3 章 3.3 節 |
+| **Scheduling（排程）** | 決定何時做 | 把運算分配到 cycle | 第 7 章 7.3 節 |
+| **Binding（綁定）** | 決定用誰做 | 把運算分配到硬體單元 | 第 7 章 7.3 節 |
 | **FSM** | 狀態機 | 控制電路目前在做哪一步 | HLS 自動產生 |
 | **AXI4 / m_axi** | 讀寫記憶體的介面 | kernel 主動讀寫 HBM 的標準介面 | `INTERFACE m_axi` |
 | **AXI4-Lite / s_axilite** | 設定參數的介面 | host 寫入參數和 start 訊號 | L、位址 |
@@ -144,7 +144,7 @@
 | **Place & Route** | 擺放與繞線 | 決定元件位置與連線 | Vivado，耗時最久 |
 | **Netlist** | 元件清單＋連線 | 邏輯合成的輸出 | Vivado 內部 |
 
-## A.6 AMD 工具鏈
+## B.6 AMD 工具鏈
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -156,19 +156,19 @@
 | **.xo** | 編譯好的 kernel | RTL ＋ kernel 描述 | `v++ -c` 輸出 |
 | **.xclbin** | 可以燒進 FPGA 的檔案 | bitstream ＋ metadata | `v++ -l` 輸出 |
 | **Platform / Shell** | 卡上的基礎設施 | PCIe、DMA、HBM 控制器等，由 AMD 提供 | `xilinx_u55c_gen3x16_xdma_3_202210_1` |
-| **Static / Dynamic region** | 固定區／可變區 | shell 在固定區，kernel 在可變區 | 第 3 章 3.6 節 |
+| **Static / Dynamic region** | 固定區／可變區 | shell 在固定區，kernel 在可變區 | 第 7 章 7.6 節 |
 | **XRT** | 控制卡片的軟體 | Xilinx Runtime：驅動程式＋函式庫 | `host.cpp` |
 | **`xbutil`** | XRT 的管理工具 | 查看卡片狀態、測試 | `xbutil examine` |
 | **Buffer object（bo）** | 卡上的一塊記憶體 | XRT 在 HBM 上配置的空間 | `xrt::bo` |
 | **Connectivity（.cfg）** | 接線設定 | 指定 kernel 參數接到哪些 HBM PC | `cfg/*.cfg` |
 | **sw_emu / hw_emu / hw** | 三種執行目標 | 軟體模擬／硬體模擬／實際上板 | `TARGET=` |
-| **csim / cosim** | 兩種 HLS 模擬 | C 模擬／C 與 RTL 協同模擬 | 第 3 章 3.4 節 |
+| **csim / cosim** | 兩種 HLS 模擬 | C 模擬／C 與 RTL 協同模擬 | 第 7 章 7.4 節 |
 | **xsim** | Vivado 的 RTL 模擬器 | cosim 與 hw_emu 使用 | 未使用 |
 | **csynth.rpt / csynth.xml** | HLS 報告 | 文字版／機器可讀版 | `hls_summary.py` 讀 xml |
 | **Tcl** | 工具的腳本語言 | AMD 工具用 Tcl 撰寫自動化流程 | `run_hls.tcl` |
 | **flexlm** | 授權管理 | 商用軟體的授權伺服器 | `/tools/Xilinx/flexlm` |
 
-## A.7 軟體與開發工具
+## B.7 軟體與開發工具
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
@@ -188,24 +188,24 @@
 
 ---
 
-## A.8 架構評估與設計方法
+## B.8 架構評估與設計方法
 
 | 術語 | 白話 | 說明 | 本專題 |
 |---|---|---|---|
-| **Architectural simulation** | 用模型預測硬體表現 | 在做出硬體前，用分析模型、cycle 級模擬或合成報告評估設計 | 6.2 節 |
-| **分析模型（analytical model）** | 用公式算 cycle | 把迴圈次數、overhead 寫成公式，快速預測 | `make model`、6.8 節 |
-| **校正（calibration）** | 用實測數字定常數 | 從 HLS 報告反推公式裡的 overhead、pipeline 深度 | 6.8 節（77、14） |
-| **驗證（validation）** | 檢查模型準不準 | 用**沒拿來校正**的資料比對預測誤差 | 6.8 節 |
-| **DSE（設計空間探索）** | 試遍所有設定 | 掃過 tile、平行度、精度等組合，找最佳設計 | `make model`、6.9 節 |
-| **Pareto 前緣** | 無法同時更好的設計 | 找不到在所有指標都不輸、且至少一項更好的其他設計 | 6.9 節 |
+| **Architectural simulation** | 用模型預測硬體表現 | 在做出硬體前，用分析模型、cycle 級模擬或合成報告評估設計 | 9.1 節 |
+| **分析模型（analytical model）** | 用公式算 cycle | 把迴圈次數、overhead 寫成公式，快速預測 | `make model`、9.2 節 |
+| **校正（calibration）** | 用實測數字定常數 | 從 HLS 報告反推公式裡的 overhead、pipeline 深度 | 9.2 節（77、14） |
+| **驗證（validation）** | 檢查模型準不準 | 用**沒拿來校正**的資料比對預測誤差 | 9.2 節 |
+| **DSE（設計空間探索）** | 試遍所有設定 | 掃過 tile、平行度、精度等組合，找最佳設計 | `make model`、9.3 節 |
+| **Pareto 前緣** | 無法同時更好的設計 | 找不到在所有指標都不輸、且至少一項更好的其他設計 | 9.3 節 |
 | **Ablation** | 拆掉一招看差多少 | 逐一加入或移除手法，量出每一招的貢獻 | v0～v4 |
-| **Producer / Consumer** | 產生者／使用者 | 產生資料的運算與使用資料的運算 | 6.4 節 |
-| **Reuse distance** | 產生到使用的距離 | 距離越短，越容易留在晶片內 | 6.4 節 |
-| **落地（materialize）** | 中間值寫回記憶體 | 融合的目的就是避免中間值落地 | 6.3 節 |
-| **Epilogue** | kernel 的收尾階段 | 主計算之後的處理（LayerNorm、linear、gating） | 6.4 節 |
-| **Welford 演算法** | 一次掃完算平均與變異數 | 數值穩定的線上統計方法 | 6.7 節 |
+| **Producer / Consumer** | 產生者／使用者 | 產生資料的運算與使用資料的運算 | 3.5 節 |
+| **Reuse distance** | 產生到使用的距離 | 距離越短，越容易留在晶片內 | 3.5 節 |
+| **落地（materialize）** | 中間值寫回記憶體 | 融合的目的就是避免中間值落地 | 3.5 節 |
+| **Epilogue** | kernel 的收尾階段 | 主計算之後的處理（LayerNorm、linear、gating） | 10.3 節 |
+| **Welford 演算法** | 一次掃完算平均與變異數 | 數值穩定的線上統計方法 | 10.4 節 |
 | **Tile sweep** | 掃過不同 tile 大小 | 量測 tile 大小的 trade-off | `make hls-sweep` |
-| **容量模型** | 最多能處理多長 | `最大 L = sqrt(記憶體 ÷ 每個 L² 的 bytes)` | 6.10 節 |
+| **容量模型** | 最多能處理多長 | `最大 L = sqrt(記憶體 ÷ 每個 L² 的 bytes)` | 9.4 節 |
 
 ---
 

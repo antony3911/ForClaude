@@ -24,17 +24,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # (檔案, 從這章開始的「部」標題；None 表示同一部)
 CHAPTERS = [
     ("00_guide.md", None),
-    ("00b_paper_guide.md", "速覽"),
-    ("01_why.md", "第一部　背景與理論"),
-    ("02_why_it_works.md", None),
-    ("03_tools.md", "第二部　工具與實作"),
-    ("04_workflow.md", None),
-    ("05_commands.md", "第三部　動手操作"),
-    ("06_strategy.md", "第四部　專題策略"),
-    ("07_research_method.md", "第五部　研究方法"),
-    ("08_hardware.md", "第六部　深入硬體"),
-    ("A_glossary.md", "附錄"),
-    ("B_answers.md", None),
+    ("00b_overview.md", "速覽"),
+    ("01_problem.md", "第一部　問題"),
+    ("02_memory_wall.md", None),
+    ("03_dataflow.md", "第二部　原理"),
+    ("04_quantization.md", None),
+    ("05_lightnobel.md", "第三部　案例：LightNobel"),
+    ("06_lightnobel_hw.md", None),
+    ("07_fpga_tools.md", "第四部　實作"),
+    ("08_implementation.md", None),
+    ("09_evaluation.md", None),
+    ("10_strategy.md", "第五部　專題"),
+    ("11_research_method.md", None),
+    ("A_commands.md", "附錄"),
+    ("B_glossary.md", None),
+    ("C_answers.md", None),
 ]
 
 CSS = r"""

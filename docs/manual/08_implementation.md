@@ -1,4 +1,4 @@
-# 第 4 章　整體流程：從頭到現在具體做了什麼？
+# 第 8 章　實作：v0～v4 從程式碼到報告
 
 > **本章重點**
 > - 我們的工作分成十個步驟：**界定範圍 → 資料排列 → 寫 kernel → 驗證 → host → HBM 設定 → Makefile → 真實資料 → 上 server 除錯 → 讀報告**。
@@ -7,7 +7,7 @@
 
 ---
 
-## 4.1 全景圖
+## 8.1 全景圖
 
 ```
  ┌───────────────────────────── 在任何電腦上都能做 ─────────────────────────────┐
@@ -35,7 +35,7 @@
 
 ---
 
-## 4.2 步驟一：界定範圍
+## 8.2 步驟一：界定範圍
 
 ### 為什麼做
 LightNobel 處理的是整個 PPM，還設計了專用硬體。專題只有幾週，
@@ -51,14 +51,14 @@ LightNobel 處理的是整個 PPM，還設計了專用硬體。專題只有幾�
 | 是最花時間的運算嗎？ | ❌ 長序列時是 Triangle Attention（1.3 節）。但它多了 softmax 與 L³ 的 score matrix，不適合當第一個目標 |
 
 ### 產出
-一句話的題目定義（見第 1 章 1.7 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。
+一句話的題目定義（見第 10 章 10.1 節），以及「只做 einsum 核心，不含 LayerNorm/gating」的範圍界定。
 
 ---
 
-## 4.3 步驟二：資料排列（memory layout）與算式
+## 8.3 步驟二：資料排列（memory layout）與算式
 
 ### 為什麼做
-資料在記憶體中怎麼排，決定了能不能做 **burst**（連續讀取，見第 2 章 2.5 節）。
+資料在記憶體中怎麼排，決定了能不能做 **burst**（連續讀取，見第 3 章 3.2 節）。
 
 ### 我們的選擇
 ```
@@ -81,7 +81,7 @@ index = (row × L + col) × C + c
 
 ---
 
-## 4.4 步驟三：寫 5 個 kernel
+## 8.4 步驟三：寫 5 個 kernel
 
 以下擷取每個版本最關鍵的部分，完整程式碼在 `fpga/trimul/kernels/`。
 
@@ -190,7 +190,7 @@ for (int r = 0; r < TI * TJ * QW; r++) {
 
 ---
 
-## 4.5 步驟四：正確性驗證（C 模擬）
+## 8.5 步驟四：正確性驗證（C 模擬）
 
 ### 為什麼做
 上板編譯一次要 1～數小時。**先用幾秒鐘確認程式算得對**，才不會浪費時間。
@@ -223,14 +223,14 @@ v4 int8 per-tensor           rel_l2=1.126e-01   PASS    ← 約 11%
 
 ### 為什麼 g++ 能跑 HLS 程式？
 因為 kernel 就是**普通的 C++**。`#pragma HLS ...` 對 g++ 來說是不認識的指示，會被忽略
-（我們加了 `-Wno-unknown-pragmas` 讓它不要警告）。詳見第 3 章 3.4 節。
+（我們加了 `-Wno-unknown-pragmas` 讓它不要警告）。詳見第 7 章 7.4 節。
 
 ### 產出
 `tb/tb.cpp`、`host/common.h`；指令 `make csim`。
 
 ---
 
-## 4.6 步驟五：host 程式
+## 8.6 步驟五：host 程式
 
 ### 為什麼做
 FPGA 不會自己去拿資料。需要一個在 CPU 上執行的程式負責：
@@ -261,7 +261,7 @@ bo_z.read(z.data());
 
 ---
 
-## 4.7 步驟六：HBM 連接設定
+## 8.7 步驟六：HBM 連接設定
 
 ### 為什麼做
 kernel 有好幾個 AXI 連接埠（a、b、z……），每個要接到 HBM 的哪個 pseudo-channel，
@@ -283,7 +283,7 @@ sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
 
 ---
 
-## 4.8 步驟七：Makefile
+## 8.8 步驟七：Makefile
 
 ### 為什麼做
 完整流程有很多步驟、每個指令都很長。Makefile 把它們包成短指令，參數也集中管理。
@@ -295,7 +295,7 @@ sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
 | `make hls KERNEL=trimul_v2` | 執行 `hls/run_hls.tcl`，產生合成報告 | Vitis |
 | `make hls-all` | 依序合成 v0～v4，最後呼叫 `make summary` | Vitis |
 | `make hls-sweep` | tile 大小掃描（4/8/16/32），各自存成不同專案 | Vitis |
-| `make model` | 分析模型：預測、驗證、設計空間探索（見 6.8 節） | Python |
+| `make model` | 分析模型：預測、驗證、設計空間探索（見 9.2 節） | Python |
 | `make summary` | 執行 `scripts/hls_summary.py`，產生比較表與 `hls_summary.csv` | Python |
 | `make xclbin KERNEL=... TARGET=hw` | `v++ -c`（編譯）＋ `v++ -l`（連結）→ `.xclbin` | Vitis ＋ U55C platform |
 | `make host` | 編譯 host 程式 | XRT |
@@ -309,7 +309,7 @@ sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
 
 ---
 
-## 4.9 步驟八：真實資料管線（加分項）
+## 8.9 步驟八：真實資料管線（加分項）
 
 ### 為什麼做
 模擬資料的 outlier 是我們「假設」的。要證明結論在**真實蛋白質**上也成立，需要從 ESMFold 取出真正的 activation。
@@ -323,7 +323,7 @@ sp=trimul_v2_1.z:HBM[16:23]    # z 接到 PC 16～23
 
     - outlier 程度、per-token / per-tensor 的 INT8 誤差；
     - `paper_group_C_check`：和 LightNobel C 組對照的統計（每個 token 的平均絕對值、3σ outlier 數）；
-    - `rel_l2_grid`：INT8／INT4 × per-token／per-channel／per-tensor 的 einsum 誤差（用途見 6.7 節）。
+    - `rel_l2_grid`：INT8／INT4 × per-token／per-channel／per-tensor 的 einsum 誤差（用途見 10.4 節）。
 
 5. 補零到 32 的倍數，存成 `a.bin`、`b.bin`（float32，排列和 kernel 相同）。
 
@@ -349,7 +349,7 @@ C 模擬、host 程式和 Makefile 都已支援讀取這些檔案（`DATA=...`�
 
 ---
 
-## 4.10 步驟九：在實際 server 上除錯
+## 8.10 步驟九：在實際 server 上除錯
 
 ### 環境調查
 | 指令 | 結果 | 結論 |
@@ -405,7 +405,7 @@ ERROR: Cannot find any design unit to elaborate.
 
 ---
 
-## 4.11 步驟十：讀懂 HLS 報告（以 v2 為例）
+## 8.11 步驟十：讀懂 HLS 報告（以 v2 為例）
 
 報告位置：`hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt`
 
@@ -467,7 +467,7 @@ tile_j 每次：171,776（loop_k）+ 514（init）+ 586（store）+ 4 ≈ 172,88
 tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 總計：32 × 5,532,162 ≈ 177,029,184                       ✓
 ```
-**`loop_k` 的 671 cycles** 就是第 2 章 2.6 節分析 double buffering 的依據：
+**`loop_k` 的 671 cycles** 就是第 3 章 3.3 節分析 double buffering 的依據：
 `load（141，a、b 並行）+ mac（526）+ 少量 ≈ 671`。
 
 ### ⑥ 換算效能
@@ -483,7 +483,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 
 ---
 
-## 4.12 所有檔案總表
+## 8.12 所有檔案總表
 
 | 檔案 | 用途 | 狀態 |
 |---|---|---|
@@ -503,7 +503,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 | `fpga/trimul/cfg/*.cfg` | HBM 連接 | ⚠️ 未使用 |
 | `fpga/trimul/hls/run_hls.tcl` | HLS 腳本 | ✅（2025.2） |
 | `fpga/trimul/scripts/hls_summary.py` | 報告整理成表 | ✅（用假報告測過） |
-| `fpga/trimul/scripts/perf_model.py` | 分析模型與設計空間探索（`make model`，見 6.8 節） | ✅（v2 已校正） |
+| `fpga/trimul/scripts/perf_model.py` | 分析模型與設計空間探索（`make model`，見 9.2 節） | ✅（v2 已校正） |
 | `fpga/trimul/Makefile` | 指令捷徑 | ✅ csim/hls；⚠️ xclbin/run |
 | `python/dump_trimul_inputs.py` | 擷取真實 activation | ✅（小模型測過） |
 
@@ -521,7 +521,7 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 ---
 
 ## 自我檢測
-讀完這一章，試著回答下面的問題（參考答案在附錄 B）：
+讀完這一章，試著回答下面的問題（參考答案在附錄 C）：
 
 1. 為什麼把資料排成 `[row][col][channel]`？這對 burst 有什麼好處？
 2. `rel_l2` 怎麼計算？testbench 為什麼對 v4 用比較寬鬆的門檻？
@@ -529,4 +529,4 @@ tile_i 每次：32 × 172,880 + 2 = 5,532,162                ✓
 4. 請用 v2 報告的數字驗算：`loop_k` 每輪 671 cycles 是怎麼組成的？
 5. host 程式的哪一步把資料從 CPU 記憶體搬到 HBM？
 
-**下一章**是指令手冊：把用過和之後會用到的指令，整理成可以隨時查閱的參考。
+**下一章**說明怎麼評估一個還沒上板的設計：architectural simulation、分析模型與設計空間探索。（要動手跑實驗，指令都整理在附錄 A。）

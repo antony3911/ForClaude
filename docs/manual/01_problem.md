@@ -134,6 +134,17 @@ v0～v4 算的是同一件事，差別只在**怎麼搬資料**（第 3、4 章�
 Pair representation 可以想成一張 **L × L 的表格，每一格放 128 個數字**。
 第 (i, j) 格記錄模型對「i 和 j 距離多遠、有沒有交互作用」的理解。
 
+### z 到底是什麼？
+**z 就是 pair representation：z[i][j] 是 128 個特徵值，描述「胺基酸 i 和 j 之間的關係」。** 描述「各自」的是 s。
+
+z 在一次預測中的一生：
+1. **一開始幾乎是空的：** 全部是 0，只加上「i 和 j 在序列上相距幾個位置」的資訊。
+2. **每個 block 從 s 補資訊：** 把 s_i 和 s_j 的特徵相乘、相減，組合後加進 z[i][j]（sequence → pair）。
+3. **每個 block 用三角形推理修正：** Triangle Multiplication 和 Triangle Attention 讓 z[i][j] 參考所有第三者 k。
+4. **最後被拿去預測距離：** ESMFold 用一個 linear 把每一格 z[i][j] 轉成 64 個「距離區間」的機率（distogram），structure module 也用 z 排出 3D 形狀。
+
+所以 z 最終的意義是「**每一對胺基酸之間距離與交互作用的描述**」。a、b、g、x 這些都是從 z 算出來、用完就丟的中間值，形狀和 z 一樣，但不是 z 本身。
+
 ### 兩個常被搞混的詞：activation 與 token
 
 **Activation = 模型推論過程中算出來的所有中間資料。** 它是一個總稱，不是某種特定的運算。
@@ -346,12 +357,16 @@ a = sigmoid(linear_a_g(z_ln)) × linear_a_p(z_ln)
 → a = [2.64, −0.018, 1.0, 0.49]。第 2 個 channel 幾乎被關掉，第 4 個幾乎全開。
 
 **為什麼需要：** 讓模型**依照這個 token 的內容**，決定哪些特徵要傳下去、哪些要壓掉。就像每個 channel 都有一個可調的調光器。
+
+**硬體的比喻：可變增益放大器（VGA）。** 一個乘法器，一邊是訊號（內容），另一邊是控制電壓（sigmoid 算出的 0～1）；
+每個 channel、每個 token 的增益都不同，而且是動態算出來的。
 最後的 `修正量 = x × g` 也是 gating：決定這一步的修正要套用多少。
 
 **硬體：** 逐元素乘法，每個 token 128 次，很便宜。
 
 ### ⑤ Mask：忽略補上去的位置
 **做什麼：** 乘上 0 或 1。為了對齊，序列常會補上假的位置（padding，例如我們的程式補到 32 的倍數）；mask 把這些位置的值設成 0，讓它們不影響結果。
+**硬體的比喻：** AND gate 或 enable 訊號。無效的位置若不歸零，會被 einsum 加進總和、汙染結果。
 
 ### ⑥ Einsum：唯一「跨 token」的運算
 **做什麼：** `x[i][j][c] = Σ_k a[i][k][c] × b[j][k][c]`，也就是對每個 channel 做 `a × bᵀ` 的矩陣乘法（1.4 節）。
@@ -360,8 +375,19 @@ a = sigmoid(linear_a_g(z_ln)) × linear_a_p(z_ln)
 **為什麼特別：** ①～⑤ 都只用**這個 token 自己的 128 個數**；只有 einsum 要讀**整列 i 和整列 j 的所有 token**。
 所以 einsum 是融合的「邊界」：前面的運算可以一個 token 一個 token 在晶片內做完，但 a、b 必須先寫出去，einsum 才能跨 token 讀取（3.5 節）。
 
+**硬體的比喻：** 就是矩陣乘法，由大量的乘加器（MAC）完成；意義是「收集所有第三者 k 的證據」。
+
 **硬體：** 最重的一步。每個輸出 token 要 2 × L × 128 次運算，L = 1000 時約 25.6 萬次；
 相比之下，6 個 linear 加起來每個 token 約 19.7 萬次。**L 越長，einsum 越是主角**，這也是本專題選它做 kernel 的原因之一。
+
+### LayerNorm_out ＋ linear_z：einsum 之後的整理
+- **為什麼要再做 LayerNorm：** x 是 **L 個乘積的總和**，L 越長總和越大，不同長度的蛋白質差很多，所以要再做一次 AGC。
+- **為什麼要 linear_z：** einsum 的每個 channel 是「一個問題的證據總和」；linear_z 把 128 個證據重新組合，轉回 z 的特徵空間，才能加回 z。
+  比喻：調查員各自回報的結果，要整理成報告的格式才能歸檔。
+
+### × g：輸出閘門
+`g = sigmoid(linear_g(z_ln))`、`修正量 = x × g`。和 ④ 一樣是 gating，但作用在**最後的修正量**上：
+由原本的 z 決定「這一步的修正要採納多少」。某一格本來就很確定時，模型可以把 g 調小、少改一點。
 
 ### a、b 是什麼？為什麼只有它們要寫出去？
 **a、b 是兩種「訊息」。** a[i][k] 是「i–k 這條邊」要提供的訊息，b[j][k] 是「j–k 這條邊」的訊息。
@@ -390,7 +416,20 @@ a[i][k] 產生時，大部分用得到它的輸出都還沒輪到，只能先存
 **做什麼：** `z = z + 修正量`。每一步都不是重算 z，而是在原本的 z 上**加一點修正**。
 
 **為什麼需要：** 讓資訊可以一路傳下去、每一層只要學「還差多少」，模型才能疊到 48 層還訓練得起來。
+**硬體的比喻：** 累加器，或回授迴路裡的「加上一個 delta」。
 **副作用：** 48 個 block 不斷累加，z 的數值越來越大（LightNobel 的 A 組，5.3 節），所以每一步開頭都要先做 LayerNorm。
+
+### block 裡其他步驟的簡介
+| 步驟 | 做什麼 | 主要零件 |
+|---|---|---|
+| Sequence attention | 讓每個胺基酸參考其他胺基酸，修正 s（也用 z 當參考） | linear、attention、residual |
+| Sequence → pair | 把 s_i、s_j 相乘、相減，加進 z[i][j] | LayerNorm、linear、residual |
+| Triangle Multiplication | 用第三者 k 推論 i–j 的關係 | 本節介紹的全部 |
+| Triangle Attention | 同上，但用 attention 決定哪些 k 比較重要 | linear、softmax、einsum、gating、residual |
+| Pair transition（MLP） | 每一格自己再加工一次 | LayerNorm、linear、非線性函數、linear、residual |
+
+**Attention** 可以看成「先算每個 k 有多重要（權重，用 softmax 算出、總和為 1），再依權重加總」。
+Triangle Multiplication 對所有 k 一視同仁地加總；attention 則先算權重，這些權重形成 L×L×L 的 score matrix，所以才那麼吃記憶體（1.4 節）。
 
 ### 總整理
 | 運算 | 輸入範圍 | 每個 token 的運算量 | 在硬體上要什麼 |
@@ -430,6 +469,7 @@ a[i][k] 產生時，大部分用得到它的輸出都還沒輪到，只能先存
 7. Triangle Multiplication 的運算中，哪一個需要讀取「其他 token」的資料？這為什麼決定了融合的邊界？
 8. 既然 sigmoid 會把數字壓到 0～1，為什麼還需要先做 LayerNorm？
 9. a 和 b 分別代表什麼？為什麼融合之後它們仍然必須寫回記憶體，而 z_ln 不用？
+10. z 是什麼？它和 s 有什麼不同？在預測結束時 z 被拿來做什麼？
 
 ---
 

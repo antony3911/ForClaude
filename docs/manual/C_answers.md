@@ -17,6 +17,7 @@
 7. einsum。其他運算（LayerNorm、linear、sigmoid、gating、mask）都只用這個 token 自己的 128 個數，可以一個 token 在晶片內做完；einsum 要讀整列 i、整列 j 的 token，所以 a、b 必須先寫出去，它就是融合的邊界。（1.5、3.5）
 8. 兩者功能不同：LayerNorm 一起看整個 token、保留相對關係與正負號，把振幅調到約 1（像 AGC）；sigmoid 逐個數處理、只輸出 0～1，而且只用在閘門那條路。更重要的是 sigmoid 會飽和：沒有 LayerNorm 時，大的數（例如 80、85、90）經過 sigmoid 全部變成 1，資訊消失。（1.5）
 9. a[i][k] 是 i–k 這條邊的訊息、b[j][k] 是 j–k 這條邊的訊息，einsum 把所有第三者 k 的證據配對加總。a[i][k] 會被 L 個不同的輸出 x[i][·] 用到，而且分散在整個計算中，產生當下無法用完，只能先存起來；z_ln 只在算同一個 token 時用一次，可以留在晶片內。（1.5）
+10. z 是 pair representation：z[i][j] 是描述胺基酸 i 和 j 之間關係的 128 個特徵值；s 則描述每個胺基酸自己（L × 1024）。z 一開始只有序列位置的資訊，每個 block 從 s 補資訊、用三角形推理修正；最後被拿去預測每一對胺基酸的距離分布（distogram），structure module 也用它排出 3D 形狀。（1.3）
 
 ---
 

@@ -33,13 +33,14 @@
 | **Einsum** | 用索引字串描述的乘加 | `"ikc,jkc->ijc"`：輸出沒有的索引（k）就加總；Triangle Multiplication 裡唯一跨 token 的運算 | 1.4、1.5 節 |
 | **Residual** | 把修正量加回原本的值 | `z = z + 修正量`；讓深層模型訓練得起來，但會讓 z 越來越大 | 1.5 節 |
 | **Recycling** | 把結果送回開頭再跑一次 | ESMFold 的 trunk 預設最多重跑 4 次 | 1.2 節 |
+| **Attention** | 依重要性加權的加總 | 先用 softmax 算出每個對象的權重（總和為 1），再加權加總 | 1.5 節 |
 | **狀態 vs 中間值** | 要傳下去的 vs 只在一步內有用的 | z 是狀態；z_ln、a、b、g 是中間值 | 1.2 節 |
 | **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 3 章 3.7 節 |
 | **HuggingFace** | 公開模型的平台 | 提供模型程式碼（transformers）與權重下載（Hub） | `dump_trimul_inputs.py` |
 | **UniProt / PDB** | 公開的蛋白質資料庫 | UniProt 存序列、PDB 存實驗測定的結構 | 下載測試序列 |
 | **TM-score** | 預測結構有多像真實結構 | 0～1，越高越好；LightNobel 用它證明量化不傷準確度 | 5.1 節 |
 | **CAMEO / CASP** | 蛋白質結構預測的標準測試集 | CASP 是兩年一次的預測競賽；CAMEO 是持續更新的評測 | 5.1 節 |
-| **Distogram** | 胺基酸之間距離的分布 | 模型預測的距離直方圖；LightNobel 觀察到 activation 有與之相關的模式 | 5.2 節 |
+| **Distogram** | 胺基酸之間距離的分布 | 每一對胺基酸落在各個距離區間的機率；ESMFold 由 z 預測 64 個區間；LightNobel 觀察到 activation 有與之相關的模式 | 1.3、5.2 節 |
 
 ## B.2 效能與記憶體概念
 

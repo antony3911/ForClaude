@@ -1224,8 +1224,20 @@ sigmoid 這類<strong>非線性函數</strong>讓模型能表達複雜的關係�
 → a = [2.64, −0.018, 1.0, 0.49]。第 2 個 channel 幾乎被關掉，第 4 個幾乎全開。</p>
 <p><strong>為什麼需要：</strong> 讓模型<strong>依照這個 token 的內容</strong>，決定哪些特徵要傳下去、哪些要壓掉。就像每個 channel 都有一個可調的調光器。</p>
 <p><strong>硬體的比喻：可變增益放大器（VGA）。</strong> 一個乘法器，一邊是訊號（內容），另一邊是控制電壓（sigmoid 算出的 0～1）；
-每個 channel、每個 token 的增益都不同，而且是動態算出來的。
+每個 channel、每個 token 的增益都不同，而且是動態算出來的。</p>
+<p><strong>常見誤會：gating 是「沒及格就刪掉」的濾波器嗎？</strong> 不是，有三個差別：</p>
+<ol>
+<li><strong>打折，不是刪除：</strong> sigmoid 永遠不會剛好是 0；閘門 0.018 代表還留 1.8%。沒有固定的及格線。</li>
+<li>
+<p><strong>看內容現算，不是固定係數：</strong> 一般 FIR 濾波器的係數設計好就固定；閘門值由這一格自己的內容經過 linear ＋ sigmoid 當場算出，
+   同一個 channel 在不同 token 可能一個開 90%、一個開 5%。比較像<strong>自適應濾波器</strong>。</p>
+</li>
+<li>
+<p><strong>不會讓資料變少：</strong> 被壓到 0.018 的值還是要存、要搬、要算。gating 是讓模型「算得準」的工具，不是省記憶體的工具
+   （除非利用很多值接近 0 做稀疏化，3.7 節；LightNobel 和本專題都沒有這樣做）。
 最後的 <code>修正量 = x × g</code> 也是 gating：決定這一步的修正要套用多少。</p>
+</li>
+</ol>
 <p><strong>硬體：</strong> 逐元素乘法，每個 token 128 次，很便宜。</p>
 <h3 id="ch3-⑤-Mask-忽略補上去的位置">⑤ Mask：忽略補上去的位置</h3>
 <p><strong>做什麼：</strong> 乘上 0 或 1。為了對齊，序列常會補上假的位置（padding，例如我們的程式補到 32 的倍數）；mask 把這些位置的值設成 0，讓它們不影響結果。

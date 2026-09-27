@@ -15,6 +15,7 @@
 5. 狀態是 z（更新後要傳給下一步）；中間值是 z_ln、a、b、g、einsum 的結果 x、修正量。中間值只在這一步有用，但每一份都是 L×L×128、和 z 一樣大，一般寫法會整份寫回記憶體，同時存在約 7 份。（1.2、2.1）
 6. 0～1。gating 時，sigmoid 把一個 linear 的結果變成「要讓多少通過」的比例，再和另一個 linear 的結果逐元素相乘，決定每個特徵保留多少。（1.5）
 7. einsum。其他運算（LayerNorm、linear、sigmoid、gating、mask）都只用這個 token 自己的 128 個數，可以一個 token 在晶片內做完；einsum 要讀整列 i、整列 j 的 token，所以 a、b 必須先寫出去，它就是融合的邊界。（1.5、3.5）
+8. 兩者功能不同：LayerNorm 一起看整個 token、保留相對關係與正負號，把振幅調到約 1（像 AGC）；sigmoid 逐個數處理、只輸出 0～1，而且只用在閘門那條路。更重要的是 sigmoid 會飽和：沒有 LayerNorm 時，大的數（例如 80、85、90）經過 sigmoid 全部變成 1，資訊消失。（1.5）
 
 ---
 

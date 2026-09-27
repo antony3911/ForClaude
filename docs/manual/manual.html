@@ -87,7 +87,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   <div class="meta">
     專題 reference：LightNobel (ISCA 2025)<br>
     程式碼：github.com/antony3911/ForClaude（分支 claude/lightnobel-memory-optimization-yhokyc）<br>
-    產生日期：2026-09-26
+    產生日期：2026-09-27
   </div>
 </div>
 <div class="toc chapter"><h1>目錄</h1><ol>
@@ -560,8 +560,31 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </tr>
 </tbody>
 </table>
+<p><strong>三組在計算流程中的位置</strong>（以 Triangle Multiplication 為例；和胺基酸的種類無關）：</p>
+<pre><code>     ┌────── residual：每個 block 算完，把更新量加回 z ───────┐
+     ▼                                                        │
+  z（pair representation 本身）  ← A 組                       │
+     │ LayerNorm                                              │
+  z_ln                           ← B 組                       │
+     │ linear × 5（乘上權重）                                 │
+  a_p、a_g、a、b、g …            ← C 組（本專題的 a、b）      │
+     │ einsum … 算出更新量 ───────────────────────────────────┘
+</code></pre>
+<p><strong>為什麼三組的數值差這麼多（白話）：</strong></p>
 <ul>
-<li>量化方式：<strong>對稱量化</strong>，scale = 該 token 的最大絕對值 ÷ (2^(bits−1) − 1)。</li>
+<li>
+<p><strong>A 組很大</strong>（平均 82，大部分落在約 ±143 內）：pair representation 每經過一個 block 就加上一筆更新量，
+  48 個 block 一直累加、沒有被縮回來，所以數值越滾越大，也容易出現特別大的值。</p>
+</li>
+<li>
+<p><strong>B 組變小</strong>（平均 4，約 ±3.3）：LayerNorm 把每個 token 標準化到大小約 1，但最後乘上的可學習係數 γ 會放大某些 channel，所以仍有一些 outlier。</p>
+</li>
+<li>
+<p><strong>C 組最平滑</strong>（平均 3.9，約 ±2.3）：乘上權重矩陣時，128 個數被混合加總，特別大的值被攤平，outlier 最少，INT4 就夠。</p>
+</li>
+<li>
+<p>量化方式：<strong>對稱量化</strong>，scale = 該 token 的最大絕對值 ÷ (2^(bits−1) − 1)。scale 會和資料一起存下來，用的時候乘回去，數值回到原本的大小（為什麼這不是「標準化」，見 2.8 節）。</p>
+</li>
 <li>為什麼用對稱量化：和非對稱量化相比，對稱量化若不處理 outlier，RMSE 多 27.35%；處理 outlier 後只多 9.76%（實際數值差約 0.0004），所以「對稱 ＋ outlier 處理」就夠了，硬體更簡單（Sec. 4.1）。</li>
 <li>每組的設定是用<strong>設計空間探索</strong>（精度 × outlier 數，看 TM-score 與資料大小）選出來的（Fig. 11）。</li>
 <li><strong>權重不量化</strong>，用 INT16（7.90 GB）；比較基準（baseline）的 activation 與權重都是 <strong>FP16</strong>（Table 1）。</li>
@@ -1063,6 +1086,23 @@ head -n 60 hls_prj/trimul_v2/sol/syn/report/trimul_v2_csynth.rpt
 </table>
 <p>Pair representation 可以想成一張 <strong>L × L 的表格，每一格放 128 個數字</strong>。
 第 (i, j) 格記錄模型對「i 和 j 距離多遠、有沒有交互作用」的理解。</p>
+<h3 id="ch3-兩個常被搞混的詞-activation-與-token">兩個常被搞混的詞：activation 與 token</h3>
+<p><strong>Activation = 模型推論過程中算出來的所有中間資料。</strong> 它是一個總稱，不是某種特定的運算。
+| | 是什麼 | 做菜的比喻 | 大小會不會隨輸入改變 |
+|---|---|---|---|
+| <strong>權重（weight）</strong> | 訓練時學到的參數，例如 128×128 的 linear 矩陣 | 食譜 | 不會，固定（ESMFold 約 7.9 GB） |
+| <strong>Activation</strong> | 用這次的輸入一步步算出來的資料 | 做菜過程中的每一盤半成品 | 會，蛋白質越長越大 |</p>
+<p>Pair representation 就是<strong>最主要的 activation</strong>，但不只它一份：Triangle Multiplication 一個 block 裡，
+LayerNorm 的結果、5 個 linear 的結果、gating 後的 a、b、einsum 的結果……
+<strong>每一步算出來的 L×L×128 張量都是 activation</strong>（完整的流程圖見 6.3 節）。</p>
+<p><strong>Token = 資料的「一格」。</strong> 在不同的 representation 裡，一格代表的東西不同：
+| | Sequence representation | Pair representation |
+|---|---|---|
+| 一個 token 代表 | 一個胺基酸 i | <strong>一對</strong>胺基酸 (i, j) |
+| 每個 token 有幾個數 | 1024 | 128 |
+| token 的數量 | L 個 | <strong>L × L 個</strong>（L = 1000 時是 100 萬個） |</p>
+<p>本手冊（以及 LightNobel 的量化）說的 token，<strong>都是指 pair representation 的一格 (i, j)</strong>。
+模型裡的 LayerNorm、linear 都是「一個 token 的 128 個數自己算自己的」，所以 token 是很自然的處理單位。</p>
 <hr />
 <h2 id="ch3-1-3-Triangle-Multiplication-在做什麼">1.3 Triangle Multiplication 在做什麼？</h2>
 <h3 id="ch3-三角形-的直覺">「三角形」的直覺</h3>
@@ -1830,6 +1870,34 @@ q       = round(x ÷ s)           ← 四捨五入成整數，存 1 byte
 </code></pre>
 <p><strong>誤差的大小取決於 s</strong>：s 越大，每一格越粗，誤差越大。
 （在誤差均勻分布的假設下，均方根誤差約為 <code>s ÷ √12 ≈ 0.29 × s</code>。）</p>
+<h3 id="ch4-量化是-壓縮-不是-標準化">量化是「壓縮」，不是「標準化」</h3>
+<p>初學者常見的疑問：「每個 token 用自己的尺，不就變成每個 token 只跟自己比的『標準分數』了嗎？」</p>
+<p>不會。關鍵是<strong>尺（scale）會跟著資料一起存下來</strong>，用的時候乘回去（<code>x̂ = s × q</code>），數值就<strong>回到原本的大小</strong>，
+token 之間照樣可以比較、一起運算。量化只是<strong>換一個比較省空間的記法</strong>；
+真正會改變數值意義的是 LayerNorm 那種「標準化」，兩者不要搞混。</p>
+<p>比喻：量螞蟻用公釐尺、量房子用公尺尺，再在旁邊註明單位。每個東西用自己的尺，換算回來仍然能互相比較，而且都量得很準。
+如果全部都用公尺尺（per-tensor），房子很準，但螞蟻只能記成「0 公尺」。</p>
+<p>另外，scale <strong>不是從樣本「估計」出來的</strong>，而是直接取這 128 個數的最大絕對值，精確、不會估錯。
+一把尺只需要涵蓋它要記錄的那些數；<strong>涵蓋的範圍越小，刻度越細，誤差越小</strong>。這正是 per-token 準確的原因。</p>
+<h3 id="ch4-數字例子-兩個-token-一大一小">數字例子：兩個 token 一大一小</h3>
+<p>（為了簡化，每個 token 只看 3 個數。）</p>
+<pre><code>token 1：[ 0.10, −0.05, 0.08 ]      ← 數值很小
+token 2：[ 30,   −12,   25   ]      ← 數值很大（outlier token）
+</code></pre>
+<p><strong>Per-tensor（兩個 token 共用一把尺）：</strong></p>
+<pre><code>s = 30 ÷ 127 ≈ 0.236
+token 1： 0.10 ÷ 0.236 =  0.42 → 0
+         −0.05 ÷ 0.236 = −0.21 → 0
+          0.08 ÷ 0.236 =  0.34 → 0
+還原：[0, 0, 0]                        ← token 1 的資訊全部消失
+</code></pre>
+<p><strong>Per-token（每個 token 用自己的尺）：</strong></p>
+<pre><code>token 1：s₁ = 0.10 ÷ 127 ≈ 0.000787
+         q  = [127, −64, 102]
+         還原 = [0.100, −0.0504, 0.0803]   ← 幾乎完全一樣
+token 2：s₂ = 30 ÷ 127 ≈ 0.236，還原誤差也很小
+</code></pre>
+<p>代價只是每 128 個數多存一個 scale（4 bytes，約 3%）。</p>
 <h3 id="ch4-為什麼-outlier-是問題-per-tensor-vs-per-token">為什麼 outlier 是問題：per-tensor vs per-token</h3>
 <p>我們的模擬資料：一般的數字大約落在 ±3 以內，但有 1% 的 token 被放大 30 倍（outlier，大約 ±80）。</p>
 <p><strong>Per-tensor（整份資料共用一把尺）：</strong></p>
@@ -2052,6 +2120,7 @@ s = 那部分被加速的倍數
 <li>v2 每輪 <code>loop_k</code> 671 cycles，其中載入 141 cycles。Double buffering 最多能快多少？為什麼不是 2 倍？</li>
 <li>頻寬和延遲有什麼不同？寬位元和 burst 分別改善哪一個？</li>
 <li>如果記憶體用量減半，可處理的最大序列長度 L 變成幾倍？</li>
+<li>每個 token 用自己的 scale，會不會讓不同 token 的數值「失去可比性」？為什麼？</li>
 </ol>
 <p><strong>下一章</strong>先介紹工具背後的原理：FPGA 是什麼、C++ 怎麼變成電路、每個工具做了什麼。有了這些基礎，第 4 章看程式碼時會比較容易。</p>
 </section><section class="chapter">
@@ -5911,8 +5980,8 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td><strong>Token</strong></td>
 <td>一格資料</td>
-<td>在 pair representation 中指一個 (i, j) 位置的 128 個數字</td>
-<td>per-token 量化的單位</td>
+<td>在 pair representation 中指一個 (i, j) 位置（一<strong>對</strong>胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸</td>
+<td>1.2 節；per-token 量化的單位</td>
 </tr>
 <tr>
 <td><strong>Channel（C）</strong></td>
@@ -5996,8 +6065,8 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <tr>
 <td><strong>Activation</strong></td>
 <td>計算中產生的中間資料</td>
-<td>隨輸入大小（L）成長</td>
-<td>LightNobel 要壓縮的對象</td>
+<td>推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定</td>
+<td>1.2 節；LightNobel 要壓縮的對象</td>
 </tr>
 <tr>
 <td><strong>OOM</strong></td>
@@ -6857,6 +6926,7 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>每輪最多從 671 降到約 530 cycles，<strong>約快 1.27 倍</strong>。因為載入只佔 21%，就算完全藏起來也只能省下這 21%（Amdahl's Law）。（2.6、2.10）</li>
 <li>頻寬是「每秒能搬多少」，延遲是「從請求到拿到第一筆要等多久」。寬位元提高<strong>頻寬</strong>（每 cycle 搬 16 個 float）；burst 減少<strong>延遲</strong>的影響（一次請求連續拿很多筆，延遲只付一次）。（2.5）</li>
 <li><strong>√2 ≈ 1.41 倍</strong>。記憶體和 L² 成正比，所以 L 和記憶體的平方根成正比。（2.8、6.10）</li>
+<li>不會。scale 會和資料一起存下來，使用時乘回去（x̂ = s × q），數值回到原本的大小；量化只是換一種較省空間的記法，不像 LayerNorm 會改變數值的意義。（2.8）</li>
 </ol>
 <h2 id="ch11-第-3-章-工具原理">第 3 章　工具原理</h2>
 <ol>

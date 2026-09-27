@@ -23,7 +23,7 @@
 | **Triangle Multiplication** | 用「第三者」推論兩者關係 | `z[i][j][c] = Σ_k a[i][k][c]·b[j][k][c]`（outgoing） | **本專題實作的運算** |
 | **Outgoing / Incoming** | 兩種三角形方向 | outgoing 用 (i,k)、(j,k)；incoming 用 (k,i)、(k,j) | 我們做 outgoing |
 | **Triangle Attention** | 三角形版本的 attention | 中間值隨 L³ 成長，實作上需分塊；**長序列時最花時間**（1,410 aa 佔 75.9%） | 第 1 章 1.3 節（未實作，未來工作） |
-| **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置的 128 個數字 | per-token 量化的單位 |
+| **Token** | 一格資料 | 在 pair representation 中指一個 (i, j) 位置（一**對**胺基酸）的 128 個數字；在 sequence representation 中才是一個胺基酸 | 1.2 節；per-token 量化的單位 |
 | **Channel（C）** | 每格的數字個數 | 特徵維度，ESMFold 的 pair 為 128 | `trimul.h` 的 `C = 128` |
 | **LayerNorm / Linear / Gating** | 模型中的標準運算 | 正規化、線性轉換、用 sigmoid 控制資訊流 | 產生 a、b 的步驟（未實作） |
 | **Chunking** | 分批計算 | 一次只算一部分以降低記憶體峰值，代價是時間 | 第 2 章 2.9 節 |
@@ -40,7 +40,7 @@
 | **Memory-bound** | 等搬資料 | 效能受限於記憶體頻寬或延遲，而非運算能力 | v0、v2 的載入部分 |
 | **Compute-bound** | 廚師忙不過來 | 效能受限於運算單元數量 | v2 的 mac 部分 |
 | **Weights（權重）** | 模型學到的參數 | 大小固定，與 L 無關 | 第 1 章 1.4 節 |
-| **Activation** | 計算中產生的中間資料 | 隨輸入大小（L）成長 | LightNobel 要壓縮的對象 |
+| **Activation** | 計算中產生的中間資料 | 推論時每一步算出來的資料（pair representation 是最主要的一份）；隨 L 成長，權重則固定 | 1.2 節；LightNobel 要壓縮的對象 |
 | **OOM** | 記憶體不夠 | Out of Memory | 長序列在 GPU 上的問題 |
 | **FLOP** | 一次浮點運算 | 一次乘法或一次加法 | 一次乘加 = 2 FLOP |
 | **GFLOP/s** | 每秒十億次運算 | 效能單位 | v2 約 7.3 GFLOP/s |

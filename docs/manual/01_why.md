@@ -91,6 +91,28 @@ MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEK...
 Pair representation 可以想成一張 **L × L 的表格，每一格放 128 個數字**。
 第 (i, j) 格記錄模型對「i 和 j 距離多遠、有沒有交互作用」的理解。
 
+### 兩個常被搞混的詞：activation 與 token
+
+**Activation = 模型推論過程中算出來的所有中間資料。** 它是一個總稱，不是某種特定的運算。
+| | 是什麼 | 做菜的比喻 | 大小會不會隨輸入改變 |
+|---|---|---|---|
+| **權重（weight）** | 訓練時學到的參數，例如 128×128 的 linear 矩陣 | 食譜 | 不會，固定（ESMFold 約 7.9 GB） |
+| **Activation** | 用這次的輸入一步步算出來的資料 | 做菜過程中的每一盤半成品 | 會，蛋白質越長越大 |
+
+Pair representation 就是**最主要的 activation**，但不只它一份：Triangle Multiplication 一個 block 裡，
+LayerNorm 的結果、5 個 linear 的結果、gating 後的 a、b、einsum 的結果……
+**每一步算出來的 L×L×128 張量都是 activation**（完整的流程圖見 6.3 節）。
+
+**Token = 資料的「一格」。** 在不同的 representation 裡，一格代表的東西不同：
+| | Sequence representation | Pair representation |
+|---|---|---|
+| 一個 token 代表 | 一個胺基酸 i | **一對**胺基酸 (i, j) |
+| 每個 token 有幾個數 | 1024 | 128 |
+| token 的數量 | L 個 | **L × L 個**（L = 1000 時是 100 萬個） |
+
+本手冊（以及 LightNobel 的量化）說的 token，**都是指 pair representation 的一格 (i, j)**。
+模型裡的 LayerNorm、linear 都是「一個 token 的 128 個數自己算自己的」，所以 token 是很自然的處理單位。
+
 ---
 
 ## 1.3 Triangle Multiplication 在做什麼？

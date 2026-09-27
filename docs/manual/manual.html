@@ -879,6 +879,16 @@ LayerNorm 的結果、5 個 linear 的結果、gating 後的 a、b、einsum 的�
 | 一個 token 代表 | 一個胺基酸 i | <strong>一對</strong>胺基酸 (i, j) |
 | 每個 token 有幾個數 | 1024 | 128 |
 | token 的數量 | L 個 | <strong>L × L 個</strong>（L = 1000 時是 100 萬個） |</p>
+<p><strong>為什麼一個胺基酸有 1024 個數，一對胺基酸卻只有 128 個？</strong> 這兩個數字不是由胺基酸決定的，而是<strong>模型設計者選的特徵維度</strong>
+（ESMFold 的設定：sequence 1024、pair 128）。每個數字是一個「學出來的特徵」，就像描述一個人可以用 1024 項屬性、描述兩個人之間的關係用 128 項屬性。
+設計者刻意讓 pair 的維度小，是因為 pair 的 token 數量是 L²：</p>
+<pre><code>L = 1000 時
+sequence：      1,000 個 token × 1024 =     約 100 萬個數
+pair：      1,000,000 個 token ×  128 =  約 1.28 億個數   ← 仍然大了 128 倍
+如果 pair 也用 1024： 1,000,000 × 1024 = 約 10 億個數     ← 再大 8 倍，一份就 4 GB（FP32）
+</code></pre>
+<p>所以<strong>每個 token 小，不代表總量小</strong>；pair representation 的問題在於 token 的<strong>數量</strong>隨 L² 成長。
+（ESM-2 語言模型本身的特徵是 2560 維，進入 folding trunk 前先投影到 1024 維。）</p>
 <p>本手冊（以及 LightNobel 的量化）說的 token，<strong>都是指 pair representation 的一格 (i, j)</strong>。
 模型裡的 LayerNorm、linear 都是「一個 token 的 128 個數自己算自己的」，所以 token 是很自然的處理單位。</p>
 <hr />

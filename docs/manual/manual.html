@@ -3338,14 +3338,15 @@ LightNobel 面對的 PPM 有四個特性：</p>
 <li>算 INT4 的 token 時，INT8、INT16 的乘法器全部閒置；</li>
 <li>而且三種的比例要事先固定，但 AAQ 的精度組合在<strong>執行時</strong>才知道（依 activation 所屬的組、outlier 的數量）。</li>
 </ul>
-<p>結果就是嚴重的<strong>利用率不足（underutilization）</strong>。RMPU 的做法是：<strong>只放一種最小的乘法器（4-bit），大的乘法用很多個小的拼起來。</strong>
+<p>結果就是嚴重的<strong>利用率不足（underutilization）</strong>。RMPU 的做法是：<strong>只放一種最小的乘法器（處理 4-bit 資料塊），大的乘法用很多個小的拼起來。</strong>
+（用語說明：本章說的「4-bit 小乘法器」是簡稱，指「處理 4-bit 資料塊的乘法器」；硬體上它的輸入是 5 bit，原因見 6.4.3 節。）
 這個想法來自 Bit Fusion（ISCA 2018，論文參考文獻 [57]）。</p>
 <h3 id="ch8-6-4-2-原理-位元拆解乘法">6.4.2 原理：位元拆解乘法</h3>
 <p>任何整數都可以拆成 4-bit 的小塊（chunk）：</p>
 <pre><code>A = a₀ + a₁·2⁴ + a₂·2⁸ + a₃·2¹²              （16-bit 的數拆成 4 塊）
 A × B = Σᵢ Σⱼ aᵢ·bⱼ · 2^(4(i+j))              （每一對小塊相乘，再移位相加）
 </code></pre>
-<p>每個 <code>aᵢ·bⱼ</code> 是 <strong>4-bit × 4-bit</strong> 的小乘法；<code>× 2^(4(i+j))</code> 只是<strong>左移</strong>，不需要乘法器。</p>
+<p>每個 <code>aᵢ·bⱼ</code> 是<strong>一對 4-bit 資料塊</strong>的小乘法；<code>× 2^(4(i+j))</code> 只是<strong>左移</strong>，不需要乘法器。</p>
 <p><strong>數字例子：INT4 的 activation × INT16 的權重</strong>（linear 裡最常見的情況：論文的權重是 INT16）</p>
 <pre><code>a = −5（INT4，只有 1 塊）
 w = 1234 = 0x04D2 → 從低到高 4 塊：[2, 13, 4, 0]
@@ -3358,7 +3359,7 @@ w = 1234 = 0x04D2 → 從低到高 4 塊：[2, 13, 4, 0]
                          合計   = −6,170   ← 正好等於 −5 × 1234
 </code></pre>
 <p>所以：
-| 乘法 | 需要幾個 4-bit 乘法器 |
+| 乘法 | 需要幾個小乘法器（5-bit 輸入） |
 |---|---|
 | INT4 × INT4 | 1 |
 | INT4 × INT16 | 1 × 4 = 4 |
@@ -3379,6 +3380,22 @@ w = 1234 = 0x04D2 → 從低到高 4 塊：[2, 13, 4, 0]
 </ul>
 <p>有號塊的範圍是 −8～7，無號塊是 0～15，要同時裝得下兩者，<strong>每塊要 5 bit</strong>（−16～15）。
 這就是論文 Fig. 9(a) 裡乘法器輸入標成「5bit」的原因。</p>
+<p><strong>所以「5-bit」是乘法器的輸入寬度，「4-bit」是資料塊的寬度：</strong></p>
+<pre><code>4-bit 資料塊 → RDA 擴充成 5-bit 有號數 → 5×5 有號乘法器 → 部分積 → 移位 → 加法樹
+例：−93 = 0xA3
+  高位塊 1010 → 符號延伸 → 11010 = −6
+  低位塊 0011 → 補 0     → 00011 =  3
+</code></pre>
+<ul>
+<li>
+<p><strong>為什麼不用 4×4 就好？</strong> 4-bit 有號只到 7、4-bit 無號沒有負數，都無法同時表示 −8～15。
+  擴充成 5-bit 有號後，<strong>同一種乘法器就能處理所有塊</strong>，不用區分有號、無號；代價是乘法器從 4×4 變成 5×5，面積大一些。</p>
+</li>
+<li>
+<p><strong>輸出有幾 bit？</strong> 兩個 5-bit 有號數相乘最多 10 bit；以實際會出現的值（−8×15 = −120 到 15×15 = 225）也至少要 9 bit。
+  之後由移位器移 4(i+j) 位，再由加法樹加總。</p>
+</li>
+</ul>
 <h3 id="ch8-6-4-4-階層式的結構-PE-PE-Lane-PE-Cluster-RMPU-Engine">6.4.4 階層式的結構：PE → PE Lane → PE Cluster → RMPU Engine</h3>
 <pre><code>PE（Processing Element）
   16 個 5-bit 乘法器 ＋ 移位器 ＋ 16-to-1 加法樹
@@ -3391,7 +3408,7 @@ PE Lane = 8 個 PE（共 128 個小乘法器）
 PE Cluster = 20 個 PE Lane ＋ DAL（動態累加邏輯）
 
 RMPU Engine = 4 個 PE Cluster
-  = 80 個 PE Lane = 640 個 PE = 10,240 個 4-bit 乘法器
+  = 80 個 PE Lane = 640 個 PE = 10,240 個小乘法器（5-bit 輸入）
   → 一次最多同時處理 20 個 token
 </code></pre>
 <h3 id="ch8-6-4-5-為什麼一個-Cluster-是-20-個-Lane-最小公倍數">6.4.5 為什麼一個 Cluster 是 20 個 Lane？（最小公倍數）</h3>

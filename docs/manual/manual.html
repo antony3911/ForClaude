@@ -141,6 +141,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch5-3-5-運算融合-讓中間值不寫回記憶體">3.5 運算融合：讓中間值不寫回記憶體</a></li>
 <li><a href="#ch5-3-6-重算-用計算換記憶體">3.6 重算：用計算換記憶體</a></li>
 <li><a href="#ch5-3-7-分塊-token-wise-attention-與其他手法">3.7 分塊、token-wise attention 與其他手法</a></li>
+<li><a href="#ch5-每一批算完就丟-晶片內永遠只有-m-ℓ-和輸出累加-o-對-Triangle-Attention-來說-被省掉的就是-L-L-L-的-score-matrix-公式見-6-6-節">每一批算完就丟，晶片內永遠只有 m、ℓ（和輸出累加 o）。對 Triangle Attention 來說，被省掉的就是 L × L × L 的 score matrix（公式見 6.6 節）。</a></li>
 <li><a href="#ch5-3-8-總整理-每一招解決了什麼">3.8 總整理：每一招解決了什麼</a></li>
 <li><a href="#ch5-本章小結">本章小結</a></li>
 <li><a href="#ch5-自我檢測">自我檢測</a></li>
@@ -2270,6 +2271,61 @@ v0 在最內層迴圈改變 k，每次跳過 128 個數字（stride = C），<st
 <p>例：頻寬 19.2 GB/s、延遲約 64 cycles（300 MHz 下約 213 ns）
 → 需要約 4 KB 的資料同時在路上，才能讓頻寬不空轉。
 <strong>一次只要一小筆、等到了才要下一筆，永遠用不滿頻寬。</strong> 這也說明了 burst 和下一節 double buffering 的重要性。</p>
+<h3 id="ch5-實際的行為-同一個-tile-的一輪-k-v1-和-v2-各做了什麼">實際的行為：同一個 tile 的一輪 k，v1 和 v2 各做了什麼</h3>
+<p>接著 3.1 節的真實大小：<strong>tile = 8×8、C = 128、每個數是 32-bit float</strong>。看其中一輪 k（載入 8 個 a token、8 個 b token，再做乘加）。</p>
+<p><strong>一個 token 在記憶體裡的樣子（128 個 float，連續存放）：</strong></p>
+<pre><code>位址 →  c0 c1 c2 … c15 | c16 … c31 | … | c112 … c127
+v1 看到的：128 個 32-bit 的數，一次拿 1 個        → 要 128 拍
+v2 看到的： word0      | word1      | … | word7        → 每個 word 512 bit = 16 個數，8 拍拿完
+</code></pre>
+<p><strong>v1：一個 cycle 讀 1 個數、做 1 次乘加</strong></p>
+<pre><code>load_a：8 個 token × 128 個數 = 1,024 拍
+load_b：8 個 token × 128 個數 = 1,024 拍
+mac   ：8 × 8 個輸出 × 128 個 channel = 8,192 次乘加 → 8,192 拍（一次一個）
+這一輪 k 約 1 萬拍
+</code></pre>
+<p><strong>v2：一個 cycle 讀 1 個 word（16 個數）、做 16 次乘加</strong></p>
+<pre><code>load  ：8 個 token × 8 個 word = 64 拍，加上一次延遲與啟動 77 拍     = 141 拍（a、b 兩個 port 同時讀）
+mac   ：8 × 8 × 8 個 word = 512 拍，加上 pipeline 深度 14 拍         = 526 拍（16 個乘法器一起算）
+這一輪 k ≈ 141 ＋ 526 ＋ 4 = 671 拍                                   ← 和 HLS 報告一致
+</code></pre>
+<p><strong>Burst 在時間軸上的樣子（v2 載入 a 的 64 個 word）：</strong></p>
+<pre><code>cycle:   0 ─────────── 約 77 ──┬── 78 ── 79 ── 80 ── … ── 141
+AXI:     發出一次讀取請求          word0  word1  word2  …  word63
+         └──── 延遲（等 HBM）────┘ └──── 每拍到一個 word，不用再等 ────┘
+</code></pre>
+<p>如果不是 burst（每個 word 都各發一次請求、各等一次），同樣 64 個 word 要付 64 次延遲，時間會變成好幾千拍。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>v1</th>
+<th>v2</th>
+<th>倍數</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>每拍搬幾個數</td>
+<td>1</td>
+<td>16</td>
+<td>16×</td>
+</tr>
+<tr>
+<td>每拍做幾次乘加</td>
+<td>1</td>
+<td>16</td>
+<td>16×</td>
+</tr>
+<tr>
+<td>一輪 k 的 cycle</td>
+<td>約 10,000</td>
+<td>671</td>
+<td>約 15×</td>
+</tr>
+</tbody>
+</table>
+<p>倍數沒有剛好 16，是因為 v2 多了固定的延遲（77）和 pipeline 深度（14），這些不會因為變寬而縮短，下一節的 double buffering 就是要處理它們。</p>
 <h3 id="ch5-這是-解法-的原因_1">這是「解法」的原因</h3>
 <p>寬位元讓<strong>每個 cycle 能搬的量</strong>變 16 倍；burst 讓<strong>延遲只付一次</strong>。
 兩者結合，同樣的搬運量所需的時間大幅下降。同時，因為一次拿到 16 個數，也能讓 16 個運算單元同時工作，
@@ -2318,6 +2374,64 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
 
 時間減少 ≈ (671 − 530) ÷ 671 ≈ 21%     → 速度約 1.27 倍
 </code></pre>
+<h3 id="ch5-實際的行為-用-L-4-看-v3-的兩組-buffer-怎麼輪流">實際的行為：用 L = 4 看 v3 的兩組 buffer 怎麼輪流</h3>
+<p>v3 的程式裡有兩組 buffer：<code>buf0</code>（la0、lb0）和 <code>buf1</code>（la1、lb1）。規則是：</p>
+<pre><code>迴圈開始前：把 k=0 載入 buf0
+k 是偶數：mac 用 buf0，同時把 k+1 載入 buf1
+k 是奇數：mac 用 buf1，同時把 k+1 載入 buf0
+</code></pre>
+<p>用 L = 4（一個 tile 只有 4 輪 k）、真實的 cycle 數畫出時間軸：</p>
+<table>
+<thead>
+<tr>
+<th>時段（cycle）</th>
+<th>計算單元（mac）</th>
+<th>載入單元（load）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0 ～ 141</td>
+<td>閒置（還沒有資料）</td>
+<td>k=0 → buf0</td>
+</tr>
+<tr>
+<td>141 ～ 671</td>
+<td>算 k=0（讀 buf0）</td>
+<td>k=1 → buf1（141 拍就完成，之後閒置）</td>
+</tr>
+<tr>
+<td>671 ～ 1201</td>
+<td>算 k=1（讀 buf1）</td>
+<td>k=2 → buf0</td>
+</tr>
+<tr>
+<td>1201 ～ 1731</td>
+<td>算 k=2（讀 buf0）</td>
+<td>k=3 → buf1</td>
+</tr>
+<tr>
+<td>1731 ～ 2261</td>
+<td>算 k=3（讀 buf1）</td>
+<td>閒置（沒有下一輪了）</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>每一輪只要 max(526, 141) ＋ 4 = <strong>530 拍</strong>，load 完全藏在 mac 底下。</li>
+<li>
+<p>為什麼第 3 列可以放心把 k=2 寫進 buf0？因為 k=0 的 mac 在上一列就<strong>已經讀完</strong> buf0 了。
+  如果只有一組 buffer，載入 k+1 會蓋掉 mac 還在讀的 k 的資料——這就是需要<strong>兩組</strong>的原因（硬體上叫 WAR hazard，先讀後寫的衝突）。</p>
+</li>
+<li>
+<p>代價：la、lb 的 BRAM 用量變 2 倍。</p>
+</li>
+</ul>
+<p>比較同一個 tile：</p>
+<pre><code>v2：4 輪 × 671                = 2,684 拍
+v3：第一次載入 141 ＋ 4 × 530 = 2,261 拍      → 快 1.19 倍
+</code></pre>
+<p>L 越大，開頭那一次 141 拍的比例越小：<code>(141 + L × 530) ÷ (L × 671)</code>，L = 256 時就接近 671 ÷ 530 ≈ <strong>1.27 倍</strong>。</p>
 <h3 id="ch5-為什麼上限只有約-21">為什麼上限只有約 21%？</h3>
 <p>因為<strong>搬運只佔 21% 的時間</strong>。即使把搬運完全藏起來，最多也只能省下這 21%。
 這是 <strong>Amdahl's Law</strong> 的例子（見 2.6 節）。</p>
@@ -2367,6 +2481,47 @@ v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
 </tr>
 </tbody>
 </table>
+<h3 id="ch5-實際的行為-一輪-k-的載入-分開放和擠在一起差多少-估算">實際的行為：一輪 k 的載入，分開放和擠在一起差多少（估算）</h3>
+<p>以 v2 的一輪 k 為例：a 的 8 個 token ＝ 8 × 128 × 4 bytes = <strong>4 KB</strong>，b 也是 4 KB。單一 PC 約 14 GB/s，300 MHz 下一拍約 3.3 ns。</p>
+<pre><code>分開放（a 在 PC0、b 在 PC8）：
+  PC0：a 的 4 KB ÷ 14 GB/s ≈ 0.29 µs ≈  88 拍 ┐ 同時進行
+  PC8：b 的 4 KB ÷ 14 GB/s ≈ 0.29 µs ≈  88 拍 ┘ → 約 88 拍（再加延遲）
+
+擠在一起（a、b 都在 PC0）：
+  PC0：先服務 a、再服務 b（或交錯），總共 8 KB ÷ 14 GB/s ≈ 0.57 µs ≈ 176 拍（再加延遲）
+</code></pre>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>分開放</th>
+<th>擠在同一個 PC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一輪 k 的載入（估算）</td>
+<td>約 88 拍 ＋ 延遲</td>
+<td>約 176 拍 ＋ 延遲</td>
+</tr>
+<tr>
+<td>v2（載入和計算相加）</td>
+<td>會變慢</td>
+<td>多約 90 拍，變慢約 13%</td>
+</tr>
+<tr>
+<td>v3（載入藏在 526 拍的計算底下）</td>
+<td>看不出差別</td>
+<td><strong>也可能看不出差別</strong>（176 &lt; 526）</td>
+</tr>
+</tbody>
+</table>
+<p>這個例子說明兩件事：</p>
+<ol>
+<li><strong>通道衝突的影響要看「搬運是不是在關鍵路徑上」。</strong> v3 已經把載入藏起來，只要擠在一起後仍然比計算短，就不會變慢。</li>
+<li>反過來，當計算變快（v4 一拍 64 個乘法、tile 變大、或多個 kernel 同時跑），載入時間不再藏得住，這時分開放的效果才會顯現。</li>
+</ol>
+<p>⚠️ 以上是用平均頻寬做的<strong>估算</strong>，沒有考慮 HBM 的 row switch、refresh 和 AXI 的交錯方式；真實數字要上板量（第二階段）。</p>
 <h3 id="ch5-這是-解法-的原因_3">這是「解法」的原因</h3>
 <p>頻寬是「每條路的頻寬 × 同時使用的路數」。讓不同資料走不同的 PC，
 等於把公式中的 <code>頻寬</code> 乘上倍數；反之，全部擠在同一個 PC 會互相排隊。
@@ -2414,6 +2569,56 @@ GPU 上的融合實作分析也是這個量級（見 10.6 節的參考資料）�
 <li>如果 consumer 在 producer 產生資料後<strong>馬上</strong>用掉，資料就可以留在晶片內（暫存器、BRAM），不必寫回 HBM。</li>
 <li>這個「產生到使用之間的距離」叫做 <strong>reuse distance</strong>。距離越短，越容易融合。</li>
 </ul>
+<h3 id="ch5-實際的行為-一個-token-在兩種做法下走過的路">實際的行為：一個 token 在兩種做法下走過的路</h3>
+<p>以一個 token (i, k)、FP32（每個 token 128 × 4 = 512 bytes）為例。</p>
+<p><strong>不融合（每一步都是獨立的函式，結果寫回 HBM）：</strong></p>
+<pre><code>1. 讀 z[i][k]（512 B）      → LayerNorm        → 寫 z_ln（512 B）
+2. 讀 z_ln                  → linear_a_p       → 寫 a_p（512 B）
+3. 讀 z_ln                  → linear_a_g → sigmoid → 寫 a_g（512 B）
+4. 讀 a_p、a_g              → 相乘 × mask      → 寫 a（512 B）
+5～7. b 同樣走一遍                              → 寫 b_p、b_g、b
+8. 讀 z_ln                  → linear_g → sigmoid → 寫 g（512 B）
+</code></pre>
+<p>這個 token 的中間值在 HBM 上<strong>落地 8 次</strong>（z_ln、a_p、a_g、a、b_p、b_g、b、g），每次都要寫出去再讀回來。</p>
+<p><strong>融合（producer kernel，一個 token 全部在晶片內做完）：</strong></p>
+<pre><code>讀 z[i][k] 的 128 個數（512 B）─► 暫存器／BRAM
+   │ LayerNorm：算平均、變異數（2 個暫存器）→ 128 個 z_ln，留在晶片內
+   │ 5 個 linear：z_ln × 5 個 128×128 的權重（權重常駐晶片內）
+   │ sigmoid、gating、mask：逐元素，直接在 linear 的輸出上做
+   │ 量化：找 max|a|、max|b| → 算尺 → 轉成 INT8
+   ▼
+寫出 a（128 B ＋ 4 B 的尺）、b（128 B ＋ 4 B）= 264 B       ← 這個 token 唯一落地的東西
+（g 不寫出去，交給 consumer 重算，見 3.6 節）
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>每個 token</th>
+<th>不融合</th>
+<th>融合</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>從 HBM 讀（不含 einsum）</td>
+<td>約 10 次 × 512 B</td>
+<td>1 次 × 512 B</td>
+</tr>
+<tr>
+<td>寫回 HBM</td>
+<td>8 次 × 512 B = 4 KB</td>
+<td>264 B</td>
+</tr>
+<tr>
+<td>L = 1000 時，中間值總寫入量</td>
+<td>約 4 GB</td>
+<td>約 264 MB</td>
+</tr>
+</tbody>
+</table>
+<p>（不融合的次數依框架而不同，這裡是逐步落地的粗算；3.5 節開頭說的「約 7 份」指的是<strong>同時存在</strong>的峰值，不是總流量。）</p>
+<p><strong>硬體上要付出的：</strong> 5 個 128×128 的權重要常駐晶片內（FP16 約 160 KB，INT16 也一樣大）。
+這些權重被全部 L² 個 token 重複使用，只載入一次——這和 3.1 節 tiling 的「重用」是同一個道理，只是重用的對象從 a、b 換成了權重。</p>
 <h3 id="ch5-為什麼-Triangle-Multiplication-適合融合">為什麼 Triangle Multiplication 適合融合</h3>
 <p>LayerNorm、5 個 linear、sigmoid、gating、量化，<strong>全部都是「每個 token 自己算自己的」</strong>：</p>
 <pre><code>token (i, k) 的 128 個數
@@ -2443,6 +2648,46 @@ einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
   L = 4096 → 約 3%
 </code></pre>
 <p><strong>序列越長，重算的代價越小</strong>，而省下的記憶體（每個 L² 512 bytes）越重要。這正好就是長序列的情境。</p>
+<h3 id="ch5-實際的行為-consumer-算完一個輸出之後做什麼">實際的行為：consumer 算完一個輸出之後做什麼</h3>
+<p>Consumer（einsum kernel）算完 z_out[i][j] 的 128 個累加值之後，進入 <strong>epilogue</strong>（收尾階段）：</p>
+<pre><code>acc[128]（einsum 結果，在晶片內）
+  → LayerNorm_out → linear_z                          → 得到 x[128]
+  → 讀 z[i][j]（512 B）→ LayerNorm → linear_g → sigmoid → 得到 g[128]    ← 重算
+  → x × g → 寫出（512 B）
+</code></pre>
+<p>和「producer 先把 g 存起來」比較，L = 1000、FP32：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>存 g</th>
+<th>重算 g</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>額外的記憶體</td>
+<td>L² × 512 B = <strong>512 MB</strong></td>
+<td>0（z 本來就在，residual 也要用它）</td>
+</tr>
+<tr>
+<td>consumer 每個輸出要讀</td>
+<td>g[i][j]（512 B）</td>
+<td>z[i][j]（512 B）——<strong>流量一樣</strong></td>
+</tr>
+<tr>
+<td>producer 要多寫</td>
+<td>g（總共 512 MB）</td>
+<td>不用</td>
+</tr>
+<tr>
+<td>額外的計算</td>
+<td>0</td>
+<td>每個輸出多 32,768 FLOP，約 einsum 的 128 ÷ 1000 ≈ <strong>13%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>重點：讀 z 和讀 g 的流量<strong>一樣大</strong>，所以重算不增加讀取量，只多花約 13% 的計算，就省下 512 MB 的容量和 512 MB 的寫入。</p>
 <h3 id="ch5-一般原則-Recomputation">一般原則：Recomputation</h3>
 <p>「<strong>不存、需要時再算</strong>」是記憶體不夠時的常見手法（訓練大型模型時的 activation checkpointing 也是同樣的想法）。
 判斷值不值得的方法：</p>
@@ -2488,7 +2733,51 @@ einsum 本身的運算量 = 2 × L × C = 256 × L FLOP / 每個輸出位置
 </tr>
 </tbody>
 </table>
-<hr />
+<h3 id="ch5-實際的行為一-chunking-省了什麼-多付了什麼-示意">實際的行為一：chunking 省了什麼、多付了什麼（示意）</h3>
+<p>以 TriMul outgoing、L = 1000、FP32 為例（每份 L×L×128 張量 = 512 MB）。einsum 是 <code>z[i][j] = Σ_k a[i][k] · b[j][k]</code>。
+把 <strong>i 切成每塊 64 列</strong>：</p>
+<pre><code>不分塊：a 整份（512 MB）＋ b 整份（512 MB）＋ 輸出整份（512 MB）同時存在
+分塊：  for 每一塊 i（共 ⌈1000 ÷ 64⌉ = 16 塊）：
+          只算這 64 列的 a（64 × 1000 × 128 × 4 B ≈ 33 MB）
+          和整份 b 做 einsum → 得到這 64 列的輸出（約 33 MB）→ 用完就丟
+</code></pre>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>不分塊</th>
+<th>每塊 64 列</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a 的峰值</td>
+<td>512 MB</td>
+<td>約 33 MB</td>
+</tr>
+<tr>
+<td>b 要被讀幾次</td>
+<td>1 次</td>
+<td><strong>16 次</strong>（每塊都要整份 b）</td>
+</tr>
+</tbody>
+</table>
+<p>這就是 3.1 節 tiling 的取捨換到記憶體階層上一層：塊越小，峰值越低，另一邊（b）重複讀越多次。</p>
+<h3 id="ch5-實際的行為二-線上-softmax-一批一批算-token-wise-attention-的核心">實際的行為二：線上 softmax 一批一批算（token-wise attention 的核心）</h3>
+<p>假設某個 query 對 4 個 key 的分數是 s = [2, 5, 1, 4]，一次只能看 2 個。完整做法要先存下 4 個分數：</p>
+<pre><code>m = 5，ℓ = e^(2−5) + e^(5−5) + e^(1−5) + e^(4−5) = 0.0498 + 1 + 0.0183 + 0.3679 = 1.4360
+</code></pre>
+<p>線上做法只維護 m（目前最大值）和 ℓ（目前總和）：</p>
+<pre><code>第 1 批 [2, 5]：m = 5，ℓ = e^(−3) + e^0                          = 1.0498
+第 2 批 [1, 4]：新最大值仍是 5，舊 ℓ 不用縮放
+               ℓ = 1.0498 + e^(1−5) + e^(4−5)                     = 1.4360   ← 和完整做法一樣
+</code></pre>
+<p>如果順序反過來，最大值會在中途改變：</p>
+<pre><code>第 1 批 [1, 4]：m = 4，ℓ = e^(−3) + e^0                          = 1.0498
+第 2 批 [2, 5]：新最大值 5 &gt; 4 → 舊 ℓ 要乘 e^(4−5) 重新對齊
+               ℓ = 1.0498 × e^(−1) + e^(2−5) + e^(5−5)            = 1.4360   ← 還是一樣
+</code></pre>
+<h2 id="ch5-每一批算完就丟-晶片內永遠只有-m-ℓ-和輸出累加-o-對-Triangle-Attention-來說-被省掉的就是-L-L-L-的-score-matrix-公式見-6-6-節">每一批算完就丟，晶片內永遠只有 m、ℓ（和輸出累加 o）。對 Triangle Attention 來說，被省掉的就是 L × L × L 的 score matrix（公式見 6.6 節）。</h2>
 <h2 id="ch5-3-8-總整理-每一招解決了什麼">3.8 總整理：每一招解決了什麼</h2>
 <table>
 <thead>
@@ -2849,6 +3138,54 @@ FP16 的 16 個 bit：1 個正負號 ＋ 5 個 bit 存次方（−11）＋ 10 �
 </code></pre>
 <p>所以 v4 的 <code>mac</code> 迴圈每個 k 先算一次 <code>s = s_a × s_b</code>，再讓 64 個 lane 的整數乘積都乘上 s 才累加。
 這就是 v4 的代價表中「每次乘加要多乘上 <code>s_a × s_b</code>」的原因，也讓 v4 需要較多的 DSP。</p>
+<p><strong>數字例子：只看一個 channel，k 只有兩項。</strong> 每個 token 用 2 個 channel 代表（[c0, c1]），看 c1 的結果。</p>
+<pre><code>a[i][0] = [0.10, −0.04]   a[i][1] = [2.0, 0.9]      ← 一小一大
+b[j][0] = [3.0,  1.2 ]    b[j][1] = [−0.4, 0.3]
+正確答案（c1）：(−0.04)(1.2) + (0.9)(0.3) = −0.048 + 0.270 = 0.222
+</code></pre>
+<p>v4 的 mac 迴圈實際做的事：</p>
+<table>
+<thead>
+<tr>
+<th>k</th>
+<th>s_a（= max ÷ 127）</th>
+<th>q_a</th>
+<th>s_b</th>
+<th>q_b</th>
+<th>整數乘積（c1）</th>
+<th>s = s_a × s_b</th>
+<th>乘上 s</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>0.000787</td>
+<td>[127, −51]</td>
+<td>0.02362</td>
+<td>[127, 51]</td>
+<td>−51 × 51 = −2,601</td>
+<td>1.860e−5</td>
+<td>−0.04838</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0.01575</td>
+<td>[127, 57]</td>
+<td>0.00315</td>
+<td>[−127, 95]</td>
+<td>57 × 95 = 5,415</td>
+<td>4.960e−5</td>
+<td>0.26858</td>
+</tr>
+</tbody>
+</table>
+<pre><code>累加：−0.04838 + 0.26858 = 0.22021     （誤差 0.8%）
+</code></pre>
+<p><strong>如果錯誤地把尺提出來</strong>（整數先加完，最後乘 k=0 的尺）：</p>
+<pre><code>(−2,601 + 5,415) × 1.860e−5 = 0.0523     ← 差了 4 倍多
+</code></pre>
+<p>兩個 k 的尺差了將近 3 倍（1.86e−5 vs 4.96e−5），不能共用。這就是 v4 每個 k 都要先乘自己的 s 再累加的原因。</p>
 <blockquote>
 <p><strong>給硬體設計的觀察：</strong> 如果改用 per-channel 的尺（每個 c 一把），尺在 k 方向上是固定的，就可以提出來、最後乘一次，
 硬體比較省；但精度可能比較差。這是「精度 vs 硬體成本」的取捨，10.4 節的真實資料誤差表（<code>rel_l2_grid</code>）可以幫忙判斷。</p>

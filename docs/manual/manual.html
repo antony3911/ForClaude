@@ -2085,6 +2085,86 @@ v1 <strong>一次搬一批到料理台，把這批能做的菜都做完</strong>
     搬 b[j0..j0+TJ−1][k][:]   （TJ × C 個數）
     做 TI × TJ × C 次乘加     ← 每個 a 用 TJ 次、每個 b 用 TI 次
 </code></pre>
+<h3 id="ch5-實際的行為-用-L-4-走一遍">實際的行為：用 L = 4 走一遍</h3>
+<p>為了看清楚，用最小的例子：<strong>L = 4、只看 1 個 channel（C = 1）、tile 大小 TI = TJ = 2</strong>。
+要算的是 4 × 4 = 16 個輸出 z[i][j]，每個都要把 k = 0～3 的 4 個乘積加起來，總共 64 次乘加。</p>
+<p><strong>v0：每次乘加都去 HBM 拿兩個數</strong></p>
+<pre><code>for i = 0..3:
+  for j = 0..3:
+    acc = 0                                  ← 一個暫存器
+    for k = 0..3:
+      acc += a[i][k] × b[j][k]               ← 每次都從 HBM 讀 a[i][k]、b[j][k]
+    z[i][j] = acc                            ← 寫回 HBM
+</code></pre>
+<p>實際發生的讀取（前兩個輸出）：</p>
+<pre><code>算 z[0][0]：讀 a00 b00 → 讀 a01 b01 → 讀 a02 b02 → 讀 a03 b03
+算 z[0][1]：讀 a00 b10 → 讀 a01 b11 → 讀 a02 b12 → 讀 a03 b13     ← a00～a03 又讀了一次！
+算 z[0][2]：讀 a00 b20 → …                                        ← 再讀一次
+算 z[0][3]：讀 a00 b30 → …                                        ← 再讀一次
+</code></pre>
+<ul>
+<li>同一個 a00 被讀了 <strong>4 次</strong>（每個 j 一次），同一個 b00 也被讀了 4 次（每個 i 一次）。</li>
+<li>總共讀 <strong>128 次</strong>（64 次乘加 × 2）。晶片內只放一個累加器，<strong>什麼都沒有留下來重用</strong>。</li>
+</ul>
+<p><strong>v1：一次搬一小批進晶片，用到不能再用才丟</strong></p>
+<pre><code>for 每個 2×2 的 tile（i0, j0）：                 ← 共 4 個 tile
+  acc[2][2] = 0                                  ← 4 個累加器放在晶片內（BRAM）
+  for k = 0..3:
+    la[0..1] ← 從 HBM 讀 a[i0][k]、a[i0+1][k]      ← 讀 2 個
+    lb[0..1] ← 從 HBM 讀 b[j0][k]、b[j0+1][k]      ← 讀 2 個
+    4 次乘加：acc[ii][jj] += la[ii] × lb[jj]       ← 每個 la 用 2 次、每個 lb 用 2 次
+  把 4 個 acc 寫回 z                              ← 這個 tile 做完
+</code></pre>
+<p>第一個 tile（負責 z00、z01、z10、z11）實際發生的事：</p>
+<pre><code>k=0：讀 a00 a10 b00 b10 → acc00+=a00·b00  acc01+=a00·b10  acc10+=a10·b00  acc11+=a10·b10
+k=1：讀 a01 a11 b01 b11 → acc00+=a01·b01  acc01+=a01·b11  acc10+=a11·b01  acc11+=a11·b11
+k=2：讀 a02 a12 b02 b12 → …
+k=3：讀 a03 a13 b03 b13 → …
+寫回 z00 z01 z10 z11
+</code></pre>
+<ul>
+<li>每讀一次 a00，就在晶片內用 <strong>2 次</strong>（給 z00 和 z01）；v0 則是每用一次就要讀一次。</li>
+<li>一個 tile 讀 4 × 4 = 16 次，4 個 tile 共 <strong>64 次</strong>，是 v0 的一半。</li>
+<li>a00 總共只被讀 <strong>2 次</strong>（第一列的兩個 tile 各一次），v0 是 4 次。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>v0</th>
+<th>v1（2×2 tile）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>晶片內放什麼</td>
+<td>1 個累加器</td>
+<td>la（2 個）、lb（2 個）、acc（4 個）</td>
+</tr>
+<tr>
+<td>每讀一個 a，用幾次</td>
+<td>1</td>
+<td>TJ = 2</td>
+</tr>
+<tr>
+<td>同一個 a 總共被讀幾次</td>
+<td>L = 4</td>
+<td>L ÷ TJ = 2</td>
+</tr>
+<tr>
+<td>總讀取次數</td>
+<td>128</td>
+<td>64</td>
+</tr>
+</tbody>
+</table>
+<p><strong>把例子放大到真實情況：</strong> 實際的 L = 256、C = 128、tile = 8×8。</p>
+<ul>
+<li>每個 a 在晶片內重用 8 次，讀取量變成 v0 的 1/8。</li>
+<li>「讀 a[i0][k]」一次讀的是<strong>一整個 token 的 128 個連續的數</strong>，所以可以用 burst 一口氣讀完（3.2 節）。</li>
+<li>v0 的最內層迴圈是 k，每次跳 128 個數（<code>a[(i·L + k)·C + c]</code>，k 加 1 位址就跳 C），沒辦法 burst，這是它慢的第二個原因。</li>
+</ul>
+<p>下面把這個行為寫成一般的公式。</p>
 <h3 id="ch5-公式推導-總搬運量">公式推導：總搬運量</h3>
 <p><strong>v0（沒有重用）：</strong> 每次乘加讀一個 a 和一個 b。</p>
 <pre><code>讀取次數 = 2 × L³ × C    （每個 z[i][j][c] 要 L 次乘加）

@@ -26,7 +26,7 @@ LightNobel 面對的 PPM 有四個特性：
 
 ---
 
-## 6.2 整體架構與一個 linear 的資料流
+## 6.2 整體架構與資料流
 
 ### 方塊圖（依論文 Fig. 8 簡化）
 ```
@@ -54,13 +54,47 @@ LightNobel 面對的 PPM 有四個特性：
      Controller: generates control signals for all units
 ```
 
-### 一個 linear 怎麼流過這顆晶片
+### 先釐清：方塊圖是「有哪些單元」，不是「運算的順序」
+這顆晶片的硬體是**分時共用**的，比較像一台依指令執行的機器，而不是把某個運算焊死成固定管線：
+- **RMPU** 負責所有矩陣乘法類的運算：linear、einsum、Q×K。
+- **VVPU** 負責所有逐元素、向量類的運算：LayerNorm、sigmoid、gating、residual、softmax、執行時量化。
+- **GCN** 讓資料在兩者之間任意繞送，順序可以是 VVPU → RMPU → VVPU；論文也寫到「RMPU **或** VVPU 從 scratchpad 取 token」（Sec. 5）。
+- **Controller** 決定每一趟要做哪些運算。
+
+一個模型的運算要**分好幾趟**跑完；每一趟都是「從記憶體讀 → 在晶片內串接幾個運算 → 寫回記憶體」。
+
+### 一趟計算怎麼流過這顆晶片
 1. **Token Aligner** 從 HBM 讀進一批（block）壓縮過的 token，拆解、排整齊後放進 **Token Scratchpad**。
    Token Scratchpad 有兩份（128 KB × 2），一份給運算單元讀，另一份同時從記憶體裝下一批，也就是 **double buffering**（3.3 節），藏住記憶體延遲。
-2. 權重事先載入 **Weight Scratchpad**（64 KB），**整個 linear 的期間都不動**（weight-stationary）。
-3. **RMPU** 從兩個 scratchpad 取 token 和權重做矩陣乘法，一次最多 20 個 token。
-4. 結果直接送給 **VVPU**（管線，不回記憶體），VVPU 做 LayerNorm、gating、residual，最後做**執行時量化**。
-5. 量化好的 token 經 **Output Scratchpad** 寫回 HBM。
+2. 這一趟要用的權重事先載入 **Weight Scratchpad**（64 KB），整趟都不動（weight-stationary）。
+3. 需要時，**VVPU 先做前處理**（例如 linear 之前的 LayerNorm）。
+4. **RMPU** 做矩陣乘法，一次最多 20 個 token。
+5. 結果直接以管線送給 **VVPU**（不回記憶體），做後續的向量運算（例如 sigmoid、gating、residual），最後做**執行時量化**。
+6. 量化好的 token 經 **Output Scratchpad** 寫回 HBM。
+
+「RMPU → VVPU」這種「矩陣運算後面接向量運算」的組合在模型裡最常見（例如 linear 後面接 sigmoid 和 gating），所以論文特別強調這條管線。
+
+### Triangle Multiplication 怎麼對應到這顆晶片（推測）
+**論文沒有寫出每個運算的排程**；下面是依照運算的相依關係（1.5 節）和論文描述的硬體能力推出來的：
+```
+第 1 趟（逐 token，對每一格 (i, k)）
+  讀 z → VVPU：LayerNorm
+        → RMPU：4 個 linear（a_p、a_g、b_p、b_g）
+        → VVPU：sigmoid、gating、mask、執行時量化（C 組 → INT4）
+        → 寫回 HBM：a、b          ← 必須寫出去（einsum 要跨 token 讀）
+
+第 2 趟（einsum，跨 token）
+  讀 a、b（INT4）→ RMPU：x[i][j] = Σ_k a[i][k]·b[j][k]
+                → VVPU：反量化、累加
+
+第 3 趟（逐 token，對每一格 (i, j)，可以接在第 2 趟後面做成管線）
+  → VVPU：LayerNorm_out
+  → RMPU：linear_z、linear_g
+  → VVPU：sigmoid、× g、residual 相加、執行時量化（A 組 → INT8 ＋ outlier）
+  → 寫回 HBM：新的 z
+```
+重點：**einsum 是矩陣乘法，在 RMPU 上做；它一定在 LayerNorm、gating 之後；而且中間一定要經過一次 HBM。**
+這就是 1.5 節說的「融合的邊界」，在 LightNobel 的硬體上也一樣存在。
 
 ### 為什麼是 weight-stationary？
 「stationary」是指**哪一種資料留在運算單元旁邊不動**。常見的選擇有三種：

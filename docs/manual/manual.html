@@ -173,7 +173,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
 <li><a href="#ch8-第-6-章-案例研究-下-LightNobel-的硬體架構">第 6 章 案例研究（下）：LightNobel 的硬體架構</a>
 <ol>
 <li><a href="#ch8-6-1-從需求推導架構-設計者面對的四個問題">6.1 從需求推導架構：設計者面對的四個問題</a></li>
-<li><a href="#ch8-6-2-整體架構與一個-linear-的資料流">6.2 整體架構與一個 linear 的資料流</a></li>
+<li><a href="#ch8-6-2-整體架構與資料流">6.2 整體架構與資料流</a></li>
 <li><a href="#ch8-6-3-Token-Aligner-記憶體的格式和運算的格式不一樣">6.3 Token Aligner：記憶體的格式和運算的格式不一樣</a></li>
 <li><a href="#ch8-6-4-RMPU-用-4-bit-小乘法器拼出任何精度">6.4 RMPU：用 4-bit 小乘法器拼出任何精度</a></li>
 <li><a href="#ch8-6-5-VVPU-向量運算-排序與執行時量化">6.5 VVPU：向量運算、排序與執行時量化</a></li>
@@ -3207,7 +3207,7 @@ LightNobel 面對的 PPM 有四個特性：</p>
 </table>
 <p>再加上一個全域的限制：<strong>記憶體容量與頻寬</strong>（第 1、2 章），所以還需要 scratchpad、double buffering，以及不存中間值的資料流（6.6 節）。</p>
 <hr />
-<h2 id="ch8-6-2-整體架構與一個-linear-的資料流">6.2 整體架構與一個 linear 的資料流</h2>
+<h2 id="ch8-6-2-整體架構與資料流">6.2 整體架構與資料流</h2>
 <h3 id="ch8-方塊圖-依論文-Fig-8-簡化">方塊圖（依論文 Fig. 8 簡化）</h3>
 <pre><code>          External Memory（80 GB HBM2E, 2 TB/s）
                  |                         ^
@@ -3232,19 +3232,50 @@ LightNobel 面對的 PPM 有四個特性：</p>
                          +---------------------------------+
      Controller: generates control signals for all units
 </code></pre>
-<h3 id="ch8-一個-linear-怎麼流過這顆晶片">一個 linear 怎麼流過這顆晶片</h3>
+<h3 id="ch8-先釐清-方塊圖是-有哪些單元-不是-運算的順序">先釐清：方塊圖是「有哪些單元」，不是「運算的順序」</h3>
+<p>這顆晶片的硬體是<strong>分時共用</strong>的，比較像一台依指令執行的機器，而不是把某個運算焊死成固定管線：</p>
+<ul>
+<li><strong>RMPU</strong> 負責所有矩陣乘法類的運算：linear、einsum、Q×K。</li>
+<li><strong>VVPU</strong> 負責所有逐元素、向量類的運算：LayerNorm、sigmoid、gating、residual、softmax、執行時量化。</li>
+<li><strong>GCN</strong> 讓資料在兩者之間任意繞送，順序可以是 VVPU → RMPU → VVPU；論文也寫到「RMPU <strong>或</strong> VVPU 從 scratchpad 取 token」（Sec. 5）。</li>
+<li><strong>Controller</strong> 決定每一趟要做哪些運算。</li>
+</ul>
+<p>一個模型的運算要<strong>分好幾趟</strong>跑完；每一趟都是「從記憶體讀 → 在晶片內串接幾個運算 → 寫回記憶體」。</p>
+<h3 id="ch8-一趟計算怎麼流過這顆晶片">一趟計算怎麼流過這顆晶片</h3>
 <ol>
 <li>
 <p><strong>Token Aligner</strong> 從 HBM 讀進一批（block）壓縮過的 token，拆解、排整齊後放進 <strong>Token Scratchpad</strong>。
    Token Scratchpad 有兩份（128 KB × 2），一份給運算單元讀，另一份同時從記憶體裝下一批，也就是 <strong>double buffering</strong>（3.3 節），藏住記憶體延遲。</p>
 </li>
 <li>
-<p>權重事先載入 <strong>Weight Scratchpad</strong>（64 KB），<strong>整個 linear 的期間都不動</strong>（weight-stationary）。</p>
+<p>這一趟要用的權重事先載入 <strong>Weight Scratchpad</strong>（64 KB），整趟都不動（weight-stationary）。</p>
 </li>
-<li><strong>RMPU</strong> 從兩個 scratchpad 取 token 和權重做矩陣乘法，一次最多 20 個 token。</li>
-<li>結果直接送給 <strong>VVPU</strong>（管線，不回記憶體），VVPU 做 LayerNorm、gating、residual，最後做<strong>執行時量化</strong>。</li>
+<li>需要時，<strong>VVPU 先做前處理</strong>（例如 linear 之前的 LayerNorm）。</li>
+<li><strong>RMPU</strong> 做矩陣乘法，一次最多 20 個 token。</li>
+<li>結果直接以管線送給 <strong>VVPU</strong>（不回記憶體），做後續的向量運算（例如 sigmoid、gating、residual），最後做<strong>執行時量化</strong>。</li>
 <li>量化好的 token 經 <strong>Output Scratchpad</strong> 寫回 HBM。</li>
 </ol>
+<p>「RMPU → VVPU」這種「矩陣運算後面接向量運算」的組合在模型裡最常見（例如 linear 後面接 sigmoid 和 gating），所以論文特別強調這條管線。</p>
+<h3 id="ch8-Triangle-Multiplication-怎麼對應到這顆晶片-推測">Triangle Multiplication 怎麼對應到這顆晶片（推測）</h3>
+<p><strong>論文沒有寫出每個運算的排程</strong>；下面是依照運算的相依關係（1.5 節）和論文描述的硬體能力推出來的：</p>
+<pre><code>第 1 趟（逐 token，對每一格 (i, k)）
+  讀 z → VVPU：LayerNorm
+        → RMPU：4 個 linear（a_p、a_g、b_p、b_g）
+        → VVPU：sigmoid、gating、mask、執行時量化（C 組 → INT4）
+        → 寫回 HBM：a、b          ← 必須寫出去（einsum 要跨 token 讀）
+
+第 2 趟（einsum，跨 token）
+  讀 a、b（INT4）→ RMPU：x[i][j] = Σ_k a[i][k]·b[j][k]
+                → VVPU：反量化、累加
+
+第 3 趟（逐 token，對每一格 (i, j)，可以接在第 2 趟後面做成管線）
+  → VVPU：LayerNorm_out
+  → RMPU：linear_z、linear_g
+  → VVPU：sigmoid、× g、residual 相加、執行時量化（A 組 → INT8 ＋ outlier）
+  → 寫回 HBM：新的 z
+</code></pre>
+<p>重點：<strong>einsum 是矩陣乘法，在 RMPU 上做；它一定在 LayerNorm、gating 之後；而且中間一定要經過一次 HBM。</strong>
+這就是 1.5 節說的「融合的邊界」，在 LightNobel 的硬體上也一樣存在。</p>
 <h3 id="ch8-為什麼是-weight-stationary">為什麼是 weight-stationary？</h3>
 <p>「stationary」是指<strong>哪一種資料留在運算單元旁邊不動</strong>。常見的選擇有三種：</p>
 <table>

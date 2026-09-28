@@ -129,12 +129,16 @@ LIST_RE = re.compile(r"^((?:> ?)*)(\s*)([-*+]|\d+\.)\s")
 
 
 def add_blank_before_lists(text):
-    """Python-Markdown 要求清單前有空行（GitHub 不需要）；在需要的地方自動補上。"""
+    """Python-Markdown 要求清單與表格前有空行（GitHub 不需要）；在需要的地方自動補上。"""
     out, prev = [], ""
     in_code = False
     for line in text.split("\n"):
         if line.lstrip("> ").startswith("```"):
             in_code = not in_code
+        # 表格前也要空行，否則 Python-Markdown 會把表格併進上一段文字
+        if (not in_code and line.startswith("|") and prev.strip()
+                and not prev.startswith("|") and not prev.lstrip().startswith("```")):
+            out.append("")
         m = LIST_RE.match(line)
         if m and not in_code:
             prefix = m.group(1)

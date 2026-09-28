@@ -999,20 +999,61 @@ v0～v4 算的是同一件事，差別只在<strong>怎麼搬資料</strong>（�
 </ol>
 <p>所以 z 最終的意義是「<strong>每一對胺基酸之間距離與交互作用的描述</strong>」。a、b、g、x 這些都是從 z 算出來、用完就丟的中間值，形狀和 z 一樣，但不是 z 本身。</p>
 <h3 id="ch3-兩個常被搞混的詞-activation-與-token">兩個常被搞混的詞：activation 與 token</h3>
-<p><strong>Activation = 模型推論過程中算出來的所有中間資料。</strong> 它是一個總稱，不是某種特定的運算。
-| | 是什麼 | 做菜的比喻 | 大小會不會隨輸入改變 |
-|---|---|---|---|
-| <strong>權重（weight）</strong> | 訓練時學到的參數，例如 128×128 的 linear 矩陣 | 食譜 | 不會，固定（ESMFold 約 7.9 GB） |
-| <strong>Activation</strong> | 用這次的輸入一步步算出來的資料 | 做菜過程中的每一盤半成品 | 會，蛋白質越長越大 |</p>
+<p><strong>Activation = 模型推論過程中算出來的所有中間資料。</strong> 它是一個總稱，不是某種特定的運算。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>是什麼</th>
+<th>做菜的比喻</th>
+<th>大小會不會隨輸入改變</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>權重（weight）</strong></td>
+<td>訓練時學到的參數，例如 128×128 的 linear 矩陣</td>
+<td>食譜</td>
+<td>不會，固定（ESMFold 約 7.9 GB）</td>
+</tr>
+<tr>
+<td><strong>Activation</strong></td>
+<td>用這次的輸入一步步算出來的資料</td>
+<td>做菜過程中的每一盤半成品</td>
+<td>會，蛋白質越長越大</td>
+</tr>
+</tbody>
+</table>
 <p>Pair representation 就是<strong>最主要的 activation</strong>，但不只它一份：Triangle Multiplication 一個 block 裡，
 LayerNorm 的結果、5 個 linear 的結果、gating 後的 a、b、einsum 的結果……
 <strong>每一步算出來的 L×L×128 張量都是 activation</strong>（流程見 1.2 節第 3 層，每個運算的意義見 1.5 節）。</p>
-<p><strong>Token = 資料的「一格」。</strong> 在不同的 representation 裡，一格代表的東西不同：
-| | Sequence representation | Pair representation |
-|---|---|---|
-| 一個 token 代表 | 一個胺基酸 i | <strong>一對</strong>胺基酸 (i, j) |
-| 每個 token 有幾個數 | 1024 | 128 |
-| token 的數量 | L 個 | <strong>L × L 個</strong>（L = 1000 時是 100 萬個） |</p>
+<p><strong>Token = 資料的「一格」。</strong> 在不同的 representation 裡，一格代表的東西不同：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sequence representation</th>
+<th>Pair representation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>一個 token 代表</td>
+<td>一個胺基酸 i</td>
+<td><strong>一對</strong>胺基酸 (i, j)</td>
+</tr>
+<tr>
+<td>每個 token 有幾個數</td>
+<td>1024</td>
+<td>128</td>
+</tr>
+<tr>
+<td>token 的數量</td>
+<td>L 個</td>
+<td><strong>L × L 個</strong>（L = 1000 時是 100 萬個）</td>
+</tr>
+</tbody>
+</table>
 <p><strong>為什麼一個胺基酸有 1024 個數，一對胺基酸卻只有 128 個？</strong> 這兩個數字不是由胺基酸決定的，而是<strong>模型設計者選的特徵維度</strong>
 （ESMFold 的設定：sequence 1024、pair 128）。每個數字是一個「學出來的特徵」，就像描述一個人可以用 1024 項屬性、描述兩個人之間的關係用 128 項屬性。
 設計者刻意讓 pair 的維度小，是因為 pair 的 token 數量是 L²：</p>
@@ -2072,12 +2113,33 @@ TI = TJ = 32 → 32 倍
 32×32 → 1024 ÷ 128 = 8 FLOP/byte
 </code></pre>
 <h3 id="ch5-代價-晶片內記憶體">代價：晶片內記憶體</h3>
-<p>累加器要放下整個 tile 的輸出：<code>TI × TJ × C</code> 個 float。
-| Tile | 累加器大小 | 佔晶片內記憶體 |
-|---|---|---|
-| 8×8 | 8,192 個 float = 32 KB | 很少 |
-| 16×16 | 32,768 個 = 128 KB | 少 |
-| 32×32 | 131,072 個 = 512 KB | 開始明顯 |</p>
+<p>累加器要放下整個 tile 的輸出：<code>TI × TJ × C</code> 個 float。</p>
+<table>
+<thead>
+<tr>
+<th>Tile</th>
+<th>累加器大小</th>
+<th>佔晶片內記憶體</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8×8</td>
+<td>8,192 個 float = 32 KB</td>
+<td>很少</td>
+</tr>
+<tr>
+<td>16×16</td>
+<td>32,768 個 = 128 KB</td>
+<td>少</td>
+</tr>
+<tr>
+<td>32×32</td>
+<td>131,072 個 = 512 KB</td>
+<td>開始明顯</td>
+</tr>
+</tbody>
+</table>
 <p><strong>Tile 越大 → 搬運越少，但晶片內記憶體用越多。</strong> 這就是 tile size sweep 實驗要量的 trade-off。</p>
 <h3 id="ch5-這是-解法-的原因">這是「解法」的原因</h3>
 <p>Tiling 不改變計算結果，只改變<strong>計算順序</strong>，卻讓<strong>搬運總量</strong>直接除以 4～16 倍。
@@ -2147,12 +2209,29 @@ v3（double buffering，兩組 buffer 輪流用）：
            ↑ 搬運藏在計算底下
 </code></pre>
 <h3 id="ch5-用實際數字看-v2-的-HLS-報告">用實際數字看：v2 的 HLS 報告</h3>
-<p>每一輪 <code>loop_k</code>：
-| 步驟 | cycles |
-|---|---|
-| 載入 a、b（兩個並行） | 141 |
-| 計算（mac） | 526 |
-| <strong>合計</strong> | <strong>約 671</strong> |</p>
+<p>每一輪 <code>loop_k</code>：</p>
+<table>
+<thead>
+<tr>
+<th>步驟</th>
+<th>cycles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>載入 a、b（兩個並行）</td>
+<td>141</td>
+</tr>
+<tr>
+<td>計算（mac）</td>
+<td>526</td>
+</tr>
+<tr>
+<td><strong>合計</strong></td>
+<td><strong>約 671</strong></td>
+</tr>
+</tbody>
+</table>
 <p>套用 2.4 節的公式：</p>
 <pre><code>v2（輪流）：T ≈ T_compute + T_memory = 526 + 141 ≈ 671 cycles
 v3（重疊）：T ≈ max(T_compute, T_memory) = max(526, 141) ≈ 530 cycles
@@ -3455,13 +3534,33 @@ w = 1234 = 0x04D2 → 從低到高 4 塊：[2, 13, 4, 0]
 −5 ×  0  =     0       &lt;&lt; 12  =      0
                          合計   = −6,170   ← 正好等於 −5 × 1234
 </code></pre>
-<p>所以：
-| 乘法 | 需要幾個小乘法器（5-bit 輸入） |
-|---|---|
-| INT4 × INT4 | 1 |
-| INT4 × INT16 | 1 × 4 = 4 |
-| INT8 × INT16 | 2 × 4 = 8 |
-| INT16 × INT16 | 4 × 4 = 16 |</p>
+<p>所以：</p>
+<table>
+<thead>
+<tr>
+<th>乘法</th>
+<th>需要幾個小乘法器（5-bit 輸入）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INT4 × INT4</td>
+<td>1</td>
+</tr>
+<tr>
+<td>INT4 × INT16</td>
+<td>1 × 4 = 4</td>
+</tr>
+<tr>
+<td>INT8 × INT16</td>
+<td>2 × 4 = 8</td>
+</tr>
+<tr>
+<td>INT16 × INT16</td>
+<td>4 × 4 = 16</td>
+</tr>
+</tbody>
+</table>
 <p><strong>同一組硬體，精度低就同時算很多個，精度高就合起來算一個</strong>，所有乘法器都不會閒著。</p>
 <h3 id="ch8-6-4-3-有正負號的數怎麼拆-sign-extension">6.4.3 有正負號的數怎麼拆？（sign extension）</h3>
 <p>二補數（two's complement）的整數，<strong>只有最高位的那一塊帶正負號</strong>，其他塊都是無號數。例如 INT8 的 −93：</p>
@@ -3558,13 +3657,38 @@ RMPU Engine = 4 個 PE Cluster
 我們的 einsum 是沿著 k 跨 token 加總，每一項的尺都不同（4.4 節情況二），所以 v4 每個 k 都要乘尺。</p>
 </blockquote>
 <h3 id="ch8-6-4-7-RMPU-的輸出有很多種-粒度">6.4.7 RMPU 的輸出有很多種「粒度」</h3>
-<p>加法樹的每一層都有意義，RMPU Engine 把不同層的結果都拉出來用：
-| 取出的位置 | 意義 | 用途 |
-|---|---|---|
-| 2 個 PE 的和 | head 維度 32 的內積 | multi-head attention |
-| 4 或 5 個 Lane 的和 | 一個量化 token 的內積 | 量化的 linear（經過 DAL） |
-| 8 或 16 個 Lane 的和 | 沒量化的 token 的內積 | 高精度的運算 |
-| 80 個 PE 的和 | 更大的內積 | 多個 RMPU 合作 |</p>
+<p>加法樹的每一層都有意義，RMPU Engine 把不同層的結果都拉出來用：</p>
+<table>
+<thead>
+<tr>
+<th>取出的位置</th>
+<th>意義</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2 個 PE 的和</td>
+<td>head 維度 32 的內積</td>
+<td>multi-head attention</td>
+</tr>
+<tr>
+<td>4 或 5 個 Lane 的和</td>
+<td>一個量化 token 的內積</td>
+<td>量化的 linear（經過 DAL）</td>
+</tr>
+<tr>
+<td>8 或 16 個 Lane 的和</td>
+<td>沒量化的 token 的內積</td>
+<td>高精度的運算</td>
+</tr>
+<tr>
+<td>80 個 PE 的和</td>
+<td>更大的內積</td>
+<td>多個 RMPU 合作</td>
+</tr>
+</tbody>
+</table>
 <p>最後一層還有 ReLU。同一組乘法器，靠「從加法樹的哪一層取結果」支援不同的運算。</p>
 <hr />
 <h2 id="ch8-6-5-VVPU-向量運算-排序與執行時量化">6.5 VVPU：向量運算、排序與執行時量化</h2>
@@ -3725,12 +3849,33 @@ LightNobel 用 <strong>swizzle switch</strong>（參考文獻 [55]）這種面�
 <li>對設計者的啟示：想省面積，先檢討<strong>是否真的需要全互連</strong>。如果資料的移動模式是固定的（例如只需要相鄰交換），用簡單的網路就能大幅縮小面積。</li>
 </ul>
 <h3 id="ch8-Scratchpad-為什麼叫-scratchpad-不叫-cache">Scratchpad 為什麼叫 scratchpad，不叫 cache？</h3>
-<p>兩者都是晶片內的小記憶體，差別在<strong>誰決定放什麼</strong>：
-| | Cache | Scratchpad |
-|---|---|---|
-| 放什麼由誰決定 | 硬體自動（依位址、替換策略） | <strong>設計者／程式明確指定</strong> |
-| 命中率 | 不確定 | 確定（事先規劃好） |
-| 需要的額外硬體 | tag、比較器、替換邏輯 | 幾乎沒有 |</p>
+<p>兩者都是晶片內的小記憶體，差別在<strong>誰決定放什麼</strong>：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Cache</th>
+<th>Scratchpad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>放什麼由誰決定</td>
+<td>硬體自動（依位址、替換策略）</td>
+<td><strong>設計者／程式明確指定</strong></td>
+</tr>
+<tr>
+<td>命中率</td>
+<td>不確定</td>
+<td>確定（事先規劃好）</td>
+</tr>
+<tr>
+<td>需要的額外硬體</td>
+<td>tag、比較器、替換邏輯</td>
+<td>幾乎沒有</td>
+</tr>
+</tbody>
+</table>
 <p>加速器的資料流是事先規劃好的（哪個 token 什麼時候用），不需要 cache 的猜測機制，用 scratchpad 更省面積也更可預測。
 我們 FPGA kernel 裡的 BRAM 陣列（<code>acc</code>、<code>la</code>、<code>lb</code>）也是 scratchpad。</p>
 <hr />
@@ -4202,13 +4347,33 @@ v1～v4 把迴圈順序換掉，讓相鄰的迭代更新<strong>不同的</stron
 </tbody>
 </table>
 <h3 id="ch9-可合成的-C-有什麼限制">可合成的 C++ 有什麼限制</h3>
-<p>HLS 只能處理「<strong>能對應到固定硬體</strong>」的 C++：
-| 不能用 | 原因 |
-|---|---|
-| <code>new</code> / <code>malloc</code>（動態記憶體） | 硬體的記憶體大小必須在合成時決定 |
-| 遞迴 | 無法事先知道要幾層硬體 |
-| 系統呼叫（檔案、<code>printf</code> 等） | 硬體沒有作業系統 |
-| 大小不固定的陣列 | 同動態記憶體 |</p>
+<p>HLS 只能處理「<strong>能對應到固定硬體</strong>」的 C++：</p>
+<table>
+<thead>
+<tr>
+<th>不能用</th>
+<th>原因</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>new</code> / <code>malloc</code>（動態記憶體）</td>
+<td>硬體的記憶體大小必須在合成時決定</td>
+</tr>
+<tr>
+<td>遞迴</td>
+<td>無法事先知道要幾層硬體</td>
+</tr>
+<tr>
+<td>系統呼叫（檔案、<code>printf</code> 等）</td>
+<td>硬體沒有作業系統</td>
+</tr>
+<tr>
+<td>大小不固定的陣列</td>
+<td>同動態記憶體</td>
+</tr>
+</tbody>
+</table>
 <p>所以 kernel 裡的陣列大小都寫成常數（<code>TI</code>、<code>TJ</code>、<code>C</code>），而讀檔、印結果都放在 testbench 或 host。</p>
 <hr />
 <h2 id="ch9-7-4-為什麼-C-可以直接模擬">7.4 為什麼 C++ 可以直接模擬？</h2>
@@ -5413,12 +5578,33 @@ load        = max(TI, TJ) × C/16 ＋ 77             （77 = HBM 延遲與啟動
 mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 </code></pre>
 <h3 id="ch11-校正-calibration">校正（calibration）</h3>
-<p>公式裡有一些<strong>無法事先知道的常數</strong>（例如 77、14），要從實際的 HLS 報告反推：
-| 報告中的數字 | 公式 | 反推出的常數 |
-|---|---|---|
-| load = 141 | 8 × 8 ＋ overhead | overhead = <strong>77</strong> |
-| mac = 526 | 8 × 8 × 8 ＋ depth | depth = <strong>14</strong> |
-| store = 586 | 512 ＋ overhead | overhead = <strong>74</strong> |</p>
+<p>公式裡有一些<strong>無法事先知道的常數</strong>（例如 77、14），要從實際的 HLS 報告反推：</p>
+<table>
+<thead>
+<tr>
+<th>報告中的數字</th>
+<th>公式</th>
+<th>反推出的常數</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>load = 141</td>
+<td>8 × 8 ＋ overhead</td>
+<td>overhead = <strong>77</strong></td>
+</tr>
+<tr>
+<td>mac = 526</td>
+<td>8 × 8 × 8 ＋ depth</td>
+<td>depth = <strong>14</strong></td>
+</tr>
+<tr>
+<td>store = 586</td>
+<td>512 ＋ overhead</td>
+<td>overhead = <strong>74</strong></td>
+</tr>
+</tbody>
+</table>
 <h3 id="ch11-驗證-validation">驗證（validation）</h3>
 <p>用校正好的模型預測 v2：<strong>177,029,120 cycles</strong>；HLS 報告：<strong>177,029,185 cycles</strong> → 誤差 &lt; 0.01%。</p>
 <p>⚠️ 注意：用同一份報告校正又驗證，當然會很準。<strong>真正的驗證</strong>是：</p>
@@ -5436,13 +5622,33 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <hr />
 <h2 id="ch11-9-3-設計空間探索-DSE-與-Pareto-前緣">9.3 設計空間探索（DSE）與 Pareto 前緣</h2>
 <h3 id="ch11-設計空間">設計空間</h3>
-<p>所有「可以調的旋鈕」組成的空間：
-| 旋鈕 | 可選值 |
-|---|---|
-| 版本 | v2、v3、v4、v5、融合 |
-| Tile 大小 | 4、8、16、32 |
-| 平行度 | 16、32、64 lane |
-| 精度 | FP32、INT8、INT4（v5） |</p>
+<p>所有「可以調的旋鈕」組成的空間：</p>
+<table>
+<thead>
+<tr>
+<th>旋鈕</th>
+<th>可選值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>版本</td>
+<td>v2、v3、v4、v5、融合</td>
+</tr>
+<tr>
+<td>Tile 大小</td>
+<td>4、8、16、32</td>
+</tr>
+<tr>
+<td>平行度</td>
+<td>16、32、64 lane</td>
+</tr>
+<tr>
+<td>精度</td>
+<td>FP32、INT8、INT4（v5）</td>
+</tr>
+</tbody>
+</table>
 <p>組合起來有上百種，每種都去合成太慢，所以用模型快速評估。</p>
 <h3 id="ch11-Pareto-前緣">Pareto 前緣</h3>
 <p>通常沒有「各方面都最好」的設計：快的用比較多資源、省資源的比較慢。
@@ -5908,12 +6114,33 @@ Kernel 2：Consumer（einsum ＋ epilogue）
 </ul>
 <h3 id="ch12-硬體成本估算-producer">硬體成本估算（producer）</h3>
 <p>每個 token 要做 4 個 128×128 的 linear（a_p、a_g、b_p、b_g）＝ 4 × 16,384 = <strong>65,536 次乘加</strong>。
-如果要每 T 個 cycle 處理一個 token，需要 65,536 ÷ T 個乘加器：
-| 每個 token 的 cycle 數 T | 需要的乘加器 | FP32 約需 DSP（每個約 5） |
-|---|---|---|
-| 1,024 | 64 | 約 320 |
-| 256 | 256 | 約 1,280 |
-| 128 | 512 | 約 2,560 |</p>
+如果要每 T 個 cycle 處理一個 token，需要 65,536 ÷ T 個乘加器：</p>
+<table>
+<thead>
+<tr>
+<th>每個 token 的 cycle 數 T</th>
+<th>需要的乘加器</th>
+<th>FP32 約需 DSP（每個約 5）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1,024</td>
+<td>64</td>
+<td>約 320</td>
+</tr>
+<tr>
+<td>256</td>
+<td>256</td>
+<td>約 1,280</td>
+</tr>
+<tr>
+<td>128</td>
+<td>512</td>
+<td>約 2,560</td>
+</tr>
+</tbody>
+</table>
 <p>U55C 有 9,024 個 DSP。這個表就是<strong>設計空間探索</strong>的一個維度：用多少資源換多少速度。</p>
 <hr />
 <h2 id="ch12-10-4-硬體細節-LayerNorm-量化在源頭完成-該用幾個-bit">10.4 硬體細節：LayerNorm、量化在源頭完成、該用幾個 bit</h2>
@@ -5944,11 +6171,28 @@ per-token 量化需要知道「這個 token 128 個數的最大絕對值」。
 </ul>
 <h3 id="ch12-先驗證-再實作-兩步驟">先驗證，再實作：兩步驟</h3>
 <p><strong>第一步：用真實資料確認假設</strong>（第 1 週，<code>python/dump_trimul_inputs.py</code>）。
-輸出的 JSON 裡有兩組數字：
-| 欄位 | 內容 | 要看什麼 |
-|---|---|---|
-| <code>paper_group_C_check</code> | a、b 每個 token 的平均絕對值、超過 3σ 的值平均有幾個 | 是否接近論文 C 組（3.85、0.64 個）；如果 outlier 明顯更多，a、b 可能需要 outlier 處理 |
-| <code>rel_l2_grid</code> | INT8／INT4 × per-token／per-channel／per-tensor 的 einsum 誤差 | INT4 per-token 的誤差是否可接受；per-token 是否真的比 per-channel 好 |</p>
+輸出的 JSON 裡有兩組數字：</p>
+<table>
+<thead>
+<tr>
+<th>欄位</th>
+<th>內容</th>
+<th>要看什麼</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>paper_group_C_check</code></td>
+<td>a、b 每個 token 的平均絕對值、超過 3σ 的值平均有幾個</td>
+<td>是否接近論文 C 組（3.85、0.64 個）；如果 outlier 明顯更多，a、b 可能需要 outlier 處理</td>
+</tr>
+<tr>
+<td><code>rel_l2_grid</code></td>
+<td>INT8／INT4 × per-token／per-channel／per-tensor 的 einsum 誤差</td>
+<td>INT4 per-token 的誤差是否可接受；per-token 是否真的比 per-channel 好</td>
+</tr>
+</tbody>
+</table>
 <p>這張表也能回答兩個取捨：per-token 是否真的比 per-channel 準（4.2 節，論文的觀察）；
 以及值不值得為了硬體省事改用 per-channel（per-channel 的尺在 einsum 裡可以最後乘一次，見 4.4 節）。</p>
 <p><strong>第二步：v5 kernel</strong>（第 2 週）。從 v4 改：</p>

@@ -87,7 +87,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
   <div class="meta">
     專題 reference：LightNobel (ISCA 2025)<br>
     程式碼：github.com/antony3911/ForClaude（分支 claude/lightnobel-memory-optimization-yhokyc）<br>
-    產生日期：2026-09-27
+    產生日期：2026-09-28
   </div>
 </div>
 <div class="toc chapter"><h1>目錄</h1><ol>
@@ -2896,6 +2896,83 @@ AI = 2·L³·C ÷ [L³·(1/TI+1/TJ)·(C + 4)]
 <li>top-k 是<strong>執行時</strong>才算的（VVPU 用 bitonic 排序），所以每個 token 的 outlier 位置可以不同。</li>
 <li>白話：大件行李另外托運，其他的壓縮裝箱，箱子依序排好方便拿。</li>
 </ul>
+<h3 id="ch7-這些優化分別作用在哪裡">這些優化分別作用在哪裡？</h3>
+<p>LightNobel <strong>只加速 Protein Folding Block</strong>（trunk）；ESM-2 語言模型和 structure module 不在它的硬體上（Sec. 8.2）。</p>
+<table>
+<thead>
+<tr>
+<th>優化</th>
+<th>作用在哪裡</th>
+<th>沒有作用的地方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AAQ 量化（A、B、C 組）</td>
+<td>Folding Block 裡 <strong>pair representation 資料流的 activation</strong>（Sec. 4.1）</td>
+<td>權重（INT16，不量化）；Fig. 6 裡畫成黑線的 activation</td>
+</tr>
+<tr>
+<td>RMPU</td>
+<td>Folding Block 裡的矩陣運算（linear、einsum、Q×K…）</td>
+<td>ESM-2、structure module</td>
+</tr>
+<tr>
+<td>VVPU</td>
+<td>LayerNorm、softmax、residual、執行時量化、top-k</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>Token-wise attention</td>
+<td>Triangle Attention（不存 L³ 的 score matrix）</td>
+<td>Triangle Multiplication 本來就沒有 score matrix</td>
+</tr>
+</tbody>
+</table>
+<p><strong>本專題的 einsum 對應到其中很小的一片：</strong> Triangle Multiplication 的 einsum 在 Folding Block 裡，輸入 a、b 屬於 C 組（INT4），
+在 RMPU 上計算。einsum 並不是 LightNobel 特別挑出來優化的地方，選它是本專題自己的範圍決定（10.1 節）。</p>
+<h3 id="ch7-試過但沒有採用的做法">試過但沒有採用的做法</h3>
+<table>
+<thead>
+<tr>
+<th>嘗試</th>
+<th>結果</th>
+<th>出處</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A 組用 INT4</td>
+<td>要處理 32 個以上的 outlier 才保得住精度，資料反而變大</td>
+<td>Fig. 11(a)</td>
+</tr>
+<tr>
+<td>A 組用 INT8 但 outlier 少於 4 個</td>
+<td>TM-score 下降</td>
+<td>Fig. 11(a)</td>
+</tr>
+<tr>
+<td>B 組用 INT8</td>
+<td>精度沒問題，但資料變大，不划算</td>
+<td>Fig. 11(b)</td>
+</tr>
+<tr>
+<td>非對稱量化</td>
+<td>對稱量化加上 outlier 處理就夠了，硬體更簡單</td>
+<td>Sec. 4.1</td>
+</tr>
+<tr>
+<td>channel-wise、tensor-wise 量化</td>
+<td>和其他方法比較，token-wise 最好</td>
+<td>Table 1、Sec. 3.3</td>
+</tr>
+<tr>
+<td>每個 RMPU 配超過 4 個 VVPU；超過 32 個 RMPU</td>
+<td>效能不再提升，不值得多花面積</td>
+<td>Fig. 12（6.5.4、6.8 節）</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="ch7-5-4-記憶體是靠什麼省下來的">5.4 記憶體是靠什麼省下來的？</h2>
 <p>LightNobel 的記憶體節省來自<strong>兩個不同的機制</strong>，論文把它們放在一起報告，所以不容易看出各自的貢獻。</p>
@@ -5364,6 +5441,9 @@ mac         = TI × TJ × C/16 ＋ 14                 （14 = pipeline 深度）
 <li>量化的效果（per-token vs per-tensor）可以直接呼應 LightNobel。</li>
 </ol>
 <blockquote>
+<p><strong>einsum 是 LightNobel 的重點嗎？</strong> 不是。LightNobel 優化的是整個 Folding Block，最大的收益來自 Triangle Attention 不存 score matrix 與全面的量化（5.3、5.4 節）。
+選 einsum 是本專題的範圍決定：它最單純、是 Triangle Multiplication 裡唯一跨 token 且搬運最多的一步，也是三週內、第一次用 FPGA 做得完的範圍。
+報告時可以說：「LightNobel 優化整個 Folding Block；我們從其中最基本、最能代表 memory-bound 行為的矩陣運算開始，逐步拆解每一招的效果。」</p>
 <p><strong>誠實說明：</strong> 長序列時最花時間的是 Triangle Attention（75.9%），不是 Triangle Multiplication。
 Triangle Attention 多了 softmax 和立方大小的 score matrix，需要 FlashAttention 式的 token-wise 做法（LightNobel 的 Sec. 5.4），
 三週內做不完，列為<strong>未來工作</strong>。本專題的 tiling、寬位元、double buffering、量化和分析模型都可以直接沿用過去。</p>

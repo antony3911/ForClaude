@@ -88,6 +88,29 @@
 - top-k 是**執行時**才算的（VVPU 用 bitonic 排序），所以每個 token 的 outlier 位置可以不同。
 - 白話：大件行李另外托運，其他的壓縮裝箱，箱子依序排好方便拿。
 
+### 這些優化分別作用在哪裡？
+LightNobel **只加速 Protein Folding Block**（trunk）；ESM-2 語言模型和 structure module 不在它的硬體上（Sec. 8.2）。
+
+| 優化 | 作用在哪裡 | 沒有作用的地方 |
+|---|---|---|
+| AAQ 量化（A、B、C 組） | Folding Block 裡 **pair representation 資料流的 activation**（Sec. 4.1） | 權重（INT16，不量化）；Fig. 6 裡畫成黑線的 activation |
+| RMPU | Folding Block 裡的矩陣運算（linear、einsum、Q×K…） | ESM-2、structure module |
+| VVPU | LayerNorm、softmax、residual、執行時量化、top-k | 同上 |
+| Token-wise attention | Triangle Attention（不存 L³ 的 score matrix） | Triangle Multiplication 本來就沒有 score matrix |
+
+**本專題的 einsum 對應到其中很小的一片：** Triangle Multiplication 的 einsum 在 Folding Block 裡，輸入 a、b 屬於 C 組（INT4），
+在 RMPU 上計算。einsum 並不是 LightNobel 特別挑出來優化的地方，選它是本專題自己的範圍決定（10.1 節）。
+
+### 試過但沒有採用的做法
+| 嘗試 | 結果 | 出處 |
+|---|---|---|
+| A 組用 INT4 | 要處理 32 個以上的 outlier 才保得住精度，資料反而變大 | Fig. 11(a) |
+| A 組用 INT8 但 outlier 少於 4 個 | TM-score 下降 | Fig. 11(a) |
+| B 組用 INT8 | 精度沒問題，但資料變大，不划算 | Fig. 11(b) |
+| 非對稱量化 | 對稱量化加上 outlier 處理就夠了，硬體更簡單 | Sec. 4.1 |
+| channel-wise、tensor-wise 量化 | 和其他方法比較，token-wise 最好 | Table 1、Sec. 3.3 |
+| 每個 RMPU 配超過 4 個 VVPU；超過 32 個 RMPU | 效能不再提升，不值得多花面積 | Fig. 12（6.5.4、6.8 節） |
+
 ---
 
 ## 5.4 記憶體是靠什麼省下來的？

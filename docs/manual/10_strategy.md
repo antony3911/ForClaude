@@ -23,6 +23,10 @@
 3. 可以清楚展示「同樣的計算，不同搬運方式」的差異。
 4. 量化的效果（per-token vs per-tensor）可以直接呼應 LightNobel。
 
+> **einsum 是 LightNobel 的重點嗎？** 不是。LightNobel 優化的是整個 Folding Block，最大的收益來自 Triangle Attention 不存 score matrix 與全面的量化（5.3、5.4 節）。
+> 選 einsum 是本專題的範圍決定：它最單純、是 Triangle Multiplication 裡唯一跨 token 且搬運最多的一步，也是三週內、第一次用 FPGA 做得完的範圍。
+> 報告時可以說：「LightNobel 優化整個 Folding Block；我們從其中最基本、最能代表 memory-bound 行為的矩陣運算開始，逐步拆解每一招的效果。」
+
 > **誠實說明：** 長序列時最花時間的是 Triangle Attention（75.9%），不是 Triangle Multiplication。
 > Triangle Attention 多了 softmax 和立方大小的 score matrix，需要 FlashAttention 式的 token-wise 做法（LightNobel 的 Sec. 5.4），
 > 三週內做不完，列為**未來工作**。本專題的 tiling、寬位元、double buffering、量化和分析模型都可以直接沿用過去。

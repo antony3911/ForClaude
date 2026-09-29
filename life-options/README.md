@@ -22,7 +22,7 @@
 
 ### 🇺🇸 美國：主線上的其他入口
 1. **外商台灣分公司 → 內部轉調美國（L-1B）**：在台灣的美商做滿 1 年就有資格，不用付學費、不用抽 H-1B，2025 年 L-1B 核准率約 92%，配偶也能直接工作。**台灣的美商正在擴張**：NVIDIA 北投士林的台灣總部 2026 年動工（員工目標約 4,000 人）、Google 在台北士林有美國以外最大的 AI 硬體研發中心、AMD 在台灣的研發和中山大學合作。缺點是你無法掌控、簽證綁公司，**適合和 MS 申請並行**。→ [01](01-work-first.md#3-深入外商台灣分公司--內部轉調美國l-1)
-2. **Knight-Hennessy（史丹佛全額）、Fulbright 對台灣人開放**；**UCSC 的科學傳播碩士**是全美唯一要求理工背景和研究經驗的科學寫作研究所（一年制，每年約 10 人）。→ [11](11-prestige-scholarships.md)、[05](05-writing-and-humanities.md)
+2. **美國 MS 最實際的獎學金是教育部留學獎學金**（碩士可申請，每年 US$16,000、最長 2 年，2026 年錄取率約 24%）；**Knight-Hennessy**（史丹佛全額）是衝刺選項（2026 年 5,144 位合格申請者錄取 87 人）。⚠️ **Fulbright 雖然也給碩士，但它是 J-1，結束後要先回台灣住滿 2 年才能申請 H-1B 或綠卡**，和留美的目標衝突。→ [11](11-prestige-scholarships.md)
 3. **高頻交易公司的 FPGA 工程師**，是少數「FPGA 經驗比 ASIC 更值錢」的領域，薪資極高，重鎮在 **Chicago、New York**。→ [04](04-pivots.md)
 4. **MS 以外的入口**：**一年制 MEng**（UCLA 學費約 US$5.3 萬）省錢省時間；**美國 PhD 在 2026 年變難**（頂尖研究型大學的錄取人數少了約 15%），**MS → PhD** 比較實際，University of Florida 同時允許第二碩士、有轉博程序、RA 有學費減免加每年至少 US$32,000；對管理有興趣的話，**工程管理碩士（MEM）是 STEM 的「年輕版 EMBA」**。→ [08](08-us-paths.md)
 
@@ -55,7 +55,7 @@
 | 06 | [其他主動提升的學習形式](06-structured-learning.md) | EMBA／MBA／MiM 的現實、英文課程、**日本語言學校**、短期研究、線上學位 |
 | 07 | [人生劇本](07-life-scripts.md) | **十二種五年劇本**（依國家權重排列）與比較表、劇本怎麼串接、怎麼選 |
 | 08 | [美國的其他入口](08-us-paths.md) | **PhD 再評估（2026 年的環境）、MS → PhD、一年制 MEng、工程管理碩士（MEM）、美國的 MiM、線上碩士** |
-| 11 | [有聲望的全額獎學金](11-prestige-scholarships.md) | Chevening、Gates Cambridge、Clarendon、Knight-Hennessy、Fulbright |
+| 11 | [獎學金](11-prestige-scholarships.md) | **美國優先**：Knight-Hennessy、Fulbright（J-1 兩年返國）、教育部留學獎學金、學校資助、博士才適用的（公費留考、世界百大、NVIDIA）；其他：交流協會、Chevening、Gates、Clarendon |
 | — | [工作紀錄](WORKLOG.md) | 探索進度、篩選條件、待探索清單、排程（給之後的對話接手用） |
 | — | [archive](archive/) | 已排除的選項（僅供參考） |
 

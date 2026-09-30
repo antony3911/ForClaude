@@ -231,13 +231,23 @@ def hunting_horn():
                             bevel=0.003, tip_taper=0.05)
     top_z, ring_r = yoke_z + 0.42, 0.09
     # Arms: open lyre horns rising from the yoke, flaring outward at the top.
+    xz = m.plane_mapper((0, 0, 0), (1, 0, 0), (0, 0, 1))
     for s in (-1, 1):
         arm = [V(s * 0.14, 0, yoke_z + 0.05), V(s * 0.19, 0, yoke_z + 0.17), V(s * 0.15, 0, yoke_z + 0.32),
                V(s * 0.155, 0, yoke_z + 0.45), V(s * 0.23, 0, yoke_z + 0.54)]
-        fan = [V(s * 0.06, 0, 0.06), V(s * 0.075, 0, -0.01), V(s * 0.01, 0, 0.08)]
-        objs += m.strand_bundle(f"Arm_{s}", m.catmull(arm, 40), 0.02, mats["ivory"], rng, n=24,
-                                split_at=0.8, fan=fan, sub_radius=0.0065, bevel=0.0032, twist=9,
-                                radius_fn=lambda u: 1.0 - 0.35 * u, tip_taper=0.12)
+        path = m.catmull(arm, 40)
+        objs += m.strand_bundle(f"Arm_{s}", path, 0.02, mats["ivory"], rng, n=24, bevel=0.0032, twist=9,
+                                radius_fn=lambda u: 1.0 - 0.35 * u, tip_taper=0.04)
+        # Horn tips: three scrolls of different size, the long one rolling outward and down
+        # like a ram's horn, the others curling up and inward.
+        d = path[-1] - path[-2]
+        h = math.degrees(math.atan2(d.z, d.x))
+        tp = (path[-1].x, path[-1].z)
+        objs += m.tendril(f"Arm_Tip_Out_{s}", xz, tp, h - s * 8, 0.22, -s * 1.45, 0.0095, mats,
+                          offshoots=[(0.35, s, 0.38, s * 1.2), (0.55, -s, 0.25, -s * 1.0)])
+        objs += m.tendril(f"Arm_Tip_Up_{s}", xz, tp, h + s * 45, 0.15, s * 1.25, 0.0078, mats,
+                          offshoots=[(0.45, -s, 0.35, -s * 1.0)])
+        objs += m.tendril(f"Arm_Tip_In_{s}", xz, tp, h + s * 100, 0.1, s * 1.1, 0.0065, mats)
     # The crossbar is a halo floating between the arms.
     objs += m.halo("Crown_Halo", (0, 0, top_z), ring_r, 0.0075, (0, 1, 0), mats["light"])
     objs += m.halo("Crown_Halo_Inner", (0, -0.004, top_z), ring_r - 0.02, 0.0028, (0, 1, 0), mats["light"])
@@ -453,8 +463,9 @@ def switch_axe():
 # ------------------------------------------------------------------ charge blade
 
 def charge_blade():
-    """Sword and shield. The shield is the tree-sigil energy shield with five phials of
-    light set into its rim and a crescent edge that becomes the axe blade."""
+    """Sword & shield mode. The shield is the tree-sigil energy shield with five phials of
+    light set into its rim and a floating edge on its lower-left rim that becomes the axe's
+    cutting edge. Axe mode (the shield reshaped around the sword) is charge_blade_axe."""
     import blades
     mats = m.materials()
     rng = random.Random(91)
@@ -503,6 +514,88 @@ def charge_blade():
     views = [("front", 0, 4), ("three_quarter", 30, 10)]
     m.render_sheets(OUT, "charge_blade", mats, (-0.05, 0, 0.5), 2.3, views, res=(1000, 900), cols=2,
                     extra=[("shield", (0.2, 0, 0.55), 1.1, [("shield", 15, 5)])])
+
+
+def charge_blade_axe():
+    """Axe mode. The sword slides into the shield and becomes the haft and the spine of the
+    head; because the shield is light, its halo does not stay round but reshapes into a
+    bardiche outline: a pointed upper horn, a long convex cutting edge, a beard hanging
+    below and a concave underside. The membrane and the tree sigil re-flow into the new
+    shape (stretched), a floating wedge of light rides the cutting edge with its
+    afterimage, the five phials line up along the back in small halos, all lit (charged),
+    and scrollwork dresses the joint."""
+    import blades
+    import sword_shield as ss
+    mats = m.materials()
+    rng = random.Random(92)
+    blades.BLADE_LEN = 0.8
+    blades.build_sword("CB_Sword", mats["ivory"], mats["light"], mats["blade"], mats["core"], seed=9)
+    gz = blades.GUARD_Z + 0.13
+    m.halo("Sword_Phial_Ring", (0, 0, gz), 0.06, 0.0028, (0, 0, 1), mats["light"], tilt_deg=10)
+
+    # Head outline (XZ plane), counter-clockwise from the top of the neck: a short, narrow
+    # neck against the sword, concave flares above and below, a pointed upper horn, a long
+    # convex edge and a hooked beard, so it reads as an axe rather than a stretched shield.
+    horn, beard = V(0.1, 0, 1.3), V(0.09, 0, 0.34)
+    ctrl = [V(-0.03, 0, 1.03), V(0.01, 0, 1.08), V(0.05, 0, 1.18), horn, V(0.17, 0, 1.24), V(0.26, 0, 1.12),
+            V(0.31, 0, 0.96), V(0.315, 0, 0.8), V(0.28, 0, 0.64), V(0.2, 0, 0.48), beard, V(0.07, 0, 0.44),
+            V(0.05, 0, 0.56), V(0.02, 0, 0.67), V(-0.03, 0, 0.73), V(-0.04, 0, 0.88)]
+    loop = m.resample(m.catmull(ctrl + [ctrl[0]], 200), 240)
+    centroid = sum(loop, V(0, 0, 0)) / len(loop)
+    # Rim of light (the halo, reshaped) and a thinner inner line.
+    m.path_blade("Axe_Rim", loop, (0, 1, 0), lambda t: 0.009, lambda t: 0.009, mats["light"], samples=240, subsurf=0)
+    inner = [centroid.lerp(p, 0.93) for p in loop]
+    c.curve_tube("Axe_Rim_Inner", [p + V(0, -0.002, 0) for p in inner], [1.0] * len(inner), mats["light"],
+                 bevel=0.0022, resolution=2)
+    membrane = m.membrane_material("Axe_Membrane", 0.34, 0.5, rim=0.12, center=0.01)
+    mats["axe_membrane"] = membrane
+    m.flat_fill("Axe_Membrane", loop[:-1], membrane, center_origin=True)
+    # The sigil, re-flowed (stretched) into the taller head.
+    ss.FRONT = -0.004
+    leaves = ss.LeafBuilder()
+    sig = ss.trunk(mats["light"]) + ss.crown(mats["light"], leaves, random.Random(9)) + ss.pods(mats["light"])
+    sig.append(leaves.finish(mats["light"]))
+    holder = m.group("Axe_Sigil", sig, location=(0.16, 0, 0.85))
+    holder.scale = (0.8, 1, 1.2)
+    # Cutting edge: a floating single-edged wedge riding outside the convex side.
+    i0 = min(range(len(loop)), key=lambda i: (loop[i] - horn).length)
+    i1 = min(range(len(loop)), key=lambda i: (loop[i] - beard).length)
+    seg = loop[i0:i1 + 1]
+    spine, edge = [], []
+    knots = [(0.0, 0.004), (0.12, 0.022), (0.4, 0.045), (0.62, 0.055), (0.82, 0.04), (0.94, 0.016), (1.0, 0.0)]
+    for i, p in enumerate(seg):
+        t = i / (len(seg) - 1)
+        out = (p - centroid)
+        out.y = 0
+        out.normalize()
+        s = p + out * (0.022 + 0.02 * t ** 2)
+        spine.append(s)
+        edge.append(s + out * m.interp1d(knots, t))
+
+    def thick(t):
+        return 0.013 * (0.5 + 0.5 * math.sin(math.pi * t)) + 0.001
+
+    m.wedge_blade("Axe_Edge", spine, edge, thick, mats["blade"])
+    blade_dressing("Axe_Edge", spine, edge, thick, mats, trail=(0.15, 0.92), temper_u=0.35)
+    # Phials along the back, each in a small halo, all lit.
+    charged = c.make_material("Phial_Charged", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"],
+                              strength=3.0)
+    for k in range(5):
+        z = 0.76 + 0.075 * k
+        pos = V(-0.09, 0, z)
+        m.droplet(f"Phial_{k}", pos, 0.012, (-1, 0, 0.35), charged, stretch=1.4)
+        m.halo(f"Phial_Halo_{k}", pos + V(0.004, 0, 0), 0.022, 0.0018, (1, 0, 0.3), mats["light"])
+    # Scrollwork at the joint where the head meets the haft.
+    xz = m.plane_mapper((0, 0, 0), (1, 0, 0), (0, 0, 1))
+    m.tendril("Joint_Cord", xz, (-0.02, 0.71), 200, 0.05, 0.0, 0.01, mats, curl_start=0.99)
+    jp = (-0.068, 0.693)
+    m.tendril("Joint_Down", xz, jp, 250, 0.24, 1.3, 0.009, mats, offshoots=[(0.35, -1, 0.35, -1.2)])
+    m.tendril("Joint_Out", xz, jp, 178, 0.17, -1.35, 0.008, mats, offshoots=[(0.45, 1, 0.3, 1.0)])
+    m.tendril("Joint_Up", xz, (-0.03, 1.03), 112, 0.17, 1.3, 0.0075, mats, offshoots=[(0.4, -1, 0.3, -1.0)])
+    ss.add_backdrop()
+    views = [("front", 0, 4), ("three_quarter", 30, 10)]
+    m.render_sheets(OUT, "charge_blade_axe", mats, (0.1, 0, 0.62), 2.3, views, res=(800, 1000), cols=2,
+                    extra=[("head", (0.13, 0, 0.84), 1.05, [("head", 15, 6)])])
 
 
 # ------------------------------------------------------------------ insect glaive
@@ -670,6 +763,7 @@ WEAPONS = {
     "gunlance": gunlance,
     "switch_axe": switch_axe,
     "charge_blade": charge_blade,
+    "charge_blade_axe": charge_blade_axe,
     "insect_glaive": insect_glaive,
     "bow": bow,
 }

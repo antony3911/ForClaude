@@ -161,14 +161,14 @@ RE Mesh Editor 內建 Wilds 的 MDF 材質預設，其中 **Weapon Emissive**（
 - 材質名稱對應原版的 `.mdf2`
 - 在遊戲裡實際顯示
 
-## 13. 從 Wilds 完整檔名清單推測的路徑（未進遊戲確認）
+## 13. 從 Wilds 完整檔名清單推測的路徑（部分已用 MDF-XL 資料庫確認，其餘未進遊戲確認）
 
 來源：REE.PAK.Tool 的 `MHWs_STM_Release.list`（265,677 個檔案、16,859 個模型）。路徑在清單裡是小寫，例如 `natives/stm/art/model/...`。
 
 ### 武器：`art/model/item/it00` ~ `it13`
 
 - 14 個資料夾剛好對應 14 種武器，每個模型有 `_0`、`_1` 兩個檔案（例：`it02/00/0002/it0200_0002_0.mesh`、`..._1.mesh`）
-- 編號推測跟 MH World 同順序（MDF-XL 裡的 `Wp10Insect` 對應操蟲棍，吻合）：
+- 編號跟 MH World 同順序，**已由 MDF-XL 的武器資料庫確認**（`WeaponTypes: 0 = Great Sword | 1 = Sword & Shield | 2 = Dual Blades | 3 = Long Sword | ... | 12 = Heavy Bowgun | 13 = Light Bowgun`）：
 
 | 編號 | 武器 | 內部名稱（`gamedesign/common/weapon/*.user`） |
 |---|---|---|
@@ -180,7 +180,9 @@ RE Mesh Editor 內建 Wilds 的 MDF 材質預設，其中 **Weapon Emissive**（
 | **it12** | **重弩** | HeavyBowgun |
 | **it13** | **輕弩** | LightBowgun |
 
-- `_0` / `_1` 推測是兩個部件：雙劍 = 左右兩把、片手劍 = 劍 + 盾、太刀 = 刀 + 鞘（待確認）
+- `_0` / `_1` 是兩個部件（**MDF-XL 資料庫確認**）：雙劍 `_0` = 左手、`_1` = 右手；片手劍 `_0` = 劍、`_1` = 盾；太刀 `_0` = 刀、`_1` = 刀鞘；弓 `_1` = 箭筒
+  - 例：`it0200_0002_0` = Guild Knight Sabers (L)、`it0100_0002_1` = Quematrice Cuchillo (Shield)、`it0300_0000_1` = Dosha Fatecleaver (Scabbard)
+  - 重弩、輕弩在資料庫裡**沒有**武器類型和路徑（只有 Hope Cannon、Hope Rifle 兩筆）→ 弩可能是組裝式的，換模型會比較麻煩，要進遊戲確認
 - 雙劍約 31 款、太刀 28 款、重弩 13 款、輕弩 13 款左右（以不重複模型數估計）
 
 ### 人物
@@ -189,16 +191,120 @@ RE Mesh Editor 內建 Wilds 的 MDF 材質預設，其中 **Weapon Emissive**（
 |---|---|---|
 | `character/ch02/...` | 男性體型（Type 1）的防具 | 社群防具清單 |
 | `character/ch03/...` | 女性體型（Type 2）的防具 | 社群防具清單 |
-| `character/ch02/000/000/6/ch02_000_0006` | **男性的內衣身體**（系列 000 不是一般防具） | 只有這一個部件，有 albd / nrro 貼圖 |
-| `character/ch03/000/000/{1,2,4,5}/` | 女性的內衣各部件 | 胸部件有 `.clsp` 碰撞檔 |
+| ~~`ch02_000_0006` 是男性內衣身體~~ | **錯誤，已更正**：部件編號 `_0006` 是投射器，這是系列 000 的預設投射器 | MDF-XL 資料庫：`ch02_001_0006 = Hope Slinger` |
+| `character/ch02/002/000/{1,2,4,5}/` | **男性內衣 a**：`_0001` 手、`_0002` 身體、`_0004` 腿、`_0005` 腰（`_0006` 投射器） | MDF-XL 資料庫：`ch02_002_0002 = Innerwear a Mail` |
+| `character/ch02/002/100/...`（`ch02_002_1xxx`） | 男性內衣 b | 同上 |
+| `character/ch03/002/...` | 女性內衣 a / b | 同上 |
+| `character/ch02/000/900/ch02_000_9000.fbxskel` | **男性骨架定義**（還有 `.jcns` 關節限制、捏體型用的動作檔） | 檔名清單 |
 | `character/ch01/000/0/001` ~ | **捏臉髮型**（約 48 款） | 有 `chain2` 物理檔、`alba`（顏色＋透明，髮片用）、`hf_msk`、`fa_msk` 貼圖 |
 | `character/ch01/000/1/...` | 臉 / 皮膚 | 貼圖叫 `skin_alba` |
 | `character/ch01/000/2/...` | 眉毛或鬍子之類 | `ho_alba` 貼圖 |
 | `character/ch01/001/...` | 另一個體型的同樣內容 | 結構跟 000 相同 |
 
+### 防具部件編號（MDF-XL 資料庫）
+
+| 結尾 | 部件 | 備註 |
+|---|---|---|
+| `_0001` | 手（Vambraces） | |
+| `_0002` | 身體（Mail） | |
+| `_0003` | 頭（Mask / Helm） | 內衣沒有頭 |
+| `_0004` | 腿（Greaves） | |
+| `_0005` | 腰（Coil） | |
+| `_0006` | 投射器（Slinger） | |
+| `_001x` | 同一套的 B 型（Type 1B） | `ch02_001_0011` = Hope Vambraces（1B） |
+
 ### 對米凱拉計畫的意義
 
 - 米凱拉是男性骨架 → 用 **ch02（Type 1）**
-- 人物本體要替換的大概是：`ch02_000_0006`（內衣身體 → 身體＋長袍）、`ch01/000/0/` 其中一款髮型（→ 米凱拉的髮型＋`chain2` 擺動物理）
+- 人物本體要替換的大概是：**內衣 a 的四個部件** `ch02_002_000{1,2,4,5}`（→ 身體＋長袍，可以把全部放進身體部件，其他三個換成空模型）、`ch01/000/0/` 其中一款髮型（→ 米凱拉的髮型＋`chain2` 擺動物理）
+  - 內衣的身體和腰部件本來就有 `chain2`（擺動）和 `.clsp`（碰撞形狀），長袍下擺可以參考它們的設定
+  - 另一條路：不替換任何檔案，用腳本把模型掛到獵人身上（見第 15 節）
 - 髮型用的是 `alba`（有透明通道的髮片）→ 散髮要做成**髮片**，不是一根根的管子
 - 以上都要回家用 RE Asset Library 實際打開確認
+
+## 14. 頭髮：遊戲的做法和我們的原型
+
+### 一款捏臉髮型包含的檔案（檔名清單，`ch01/000/0/001` 為例）
+
+| 檔案 | 內容 |
+|---|---|
+| `ch01_000_0001.mesh` / `.mdf2` | 髮片模型和材質 |
+| `ch01_000_0001.chain2` | 擺動物理 |
+| `_alba` | 髮片顏色 ＋ 透明度（A） |
+| `_nrro` | 法線、粗糙度、AO |
+| `_atos` | 透明、半透光、AO、SSS |
+| `_hf_msk3` | 髮流方向（Hair Flow，控制高光沿著髮絲走） |
+| `_hss_msk3` | 高度、高光遮罩、高光偏移（Height / Spec mask / Shift） |
+| `_ho_alba` | 捏臉的「挑染／漸層」遮罩（對應材質裡的 HairOverColor A/B） |
+| `_scalp_alba` / `_scalp_nrro` | **頭皮上畫的頭髮**（我們原型裡的「頭皮蓋」就是這個） |
+
+另外 `streaming/` 底下有同名的高解析度版本。
+
+### Wilds 頭髮材質（RE Mesh Editor 的 `MHWILDS/Hair.json` 預設）
+
+- 主材質：`MaterialShader/Variation/Base_ATOS_VFX_Hair_NoPDO.mmtr`
+- 貼圖欄位：`BaseAlphaMap`（ALBA）、`NormalRoughnessOcclusionMap`（NRRO）、`AlphaTranslucentOcclusionSSSMap`（ATOS）、`HairFlowMap`（HF_MSK3）、`Hair_Height_SpecMask_Shift_Map`（HSS_MSK3）、`HairOverMap`（HO_ALBA）
+- 重要參數：
+  - `AlphaTest_Ref` 0.1、`UseTempDither` 1 → **透明是「抖動＋TAA」的 alpha test**，不是真的半透明混合
+  - `EdgeFade` 0.76、`EdgeWidth` 0.38 → **遊戲自己會淡化髮片邊緣**（原型裡用頂點屬性模擬）
+  - `Primaly_Anisotropy`、`Specular_ShiftOffset`、`Secondary_ShiftOffset` → 兩層各向異性高光（頭髮特有的光澤帶）
+  - `ColorParam`（顏色倍率）、`HairOverColorA/B`（捏臉髮色）
+  - `UseVertexColor_mask` 1 → 頂點顏色有用途（可能是 AO 或擺動遮罩，待確認）
+
+### ⚠ 頭髮材質沒有發光參數
+
+`Base_ATOS_VFX_Hair` 裡**沒有** `Emissive_*`。設計上頭髮要有 15–20% 的微光，可能的做法（要實測）：
+
+1. **提亮代替發光**：`ColorParam` 調高、`PrimalySpecularColor` 偏金 → 看起來像自帶光，但暗處會變暗
+2. **VFX 混合**：材質有 `VFX_ColorParam1/2`、`Enable_VFXMaterialBlend`、`VFX_Texture2D` → 遊戲的屬性特效（例如發光狀態）可能就是用這組參數，用 MDF-XL 試試看能不能拿來做常駐微光
+3. **改用 `Base_Equip`（Character Emissive 預設）**：有 `Emissive_*`，也支援 alpha test 和抖動，還有 `UseCounterExposureEmit`（發光不受曝光影響）；但會失去頭髮專用的各向異性高光
+4. **混搭**：散髮用頭髮材質，編髮（實心、不需要透明）用 `Base_Equip` 加微弱發光 → 發光集中在編髮上，也比較像參考圖裡的光感
+
+### 原型做法（`prototypes/scripts/character_concept.py`）
+
+- **髮絲貼圖**：程式產生 512×1024 的 ALBA（RGB 顏色、A 覆蓋率），約 900 根細絲、18 個髮束，髮根密、髮尾往髮束中心收攏，左右可以無縫重複
+- **三層**：頭皮蓋（不透明，髮絲間的空隙畫成暗金色）→ 背後底層（不透明，髮尾用貼圖透明度切出不規則邊）→ 約 140 張髮片（分三層、由內往外）
+- 每張髮片：3 個頂點寬、沿路徑 44 段、中間微微拱起；U 取貼圖的隨機一段、V 從髮根到髮尾；邊緣和髮根用透明度淡出
+- 髮片路徑：從中分線（或後腦）沿頭皮走到耳後／後腦離開頭部，再沿著背後的弧面往下，髮尾位置中間長、兩側短
+- 編髮蓋在髮片上面：側編髮和主編髮都往外推一點，所以不會被散髮蓋掉
+- 總共約 1.2 萬個面（遊戲的髮型通常是 1–3 萬個三角面，在合理範圍內）
+
+→ 正式版的流程一樣：髮片模型 + ALBA + 頭皮 scalp_alba，再補 NRRO、ATOS、HF（髮流）貼圖。髮流貼圖可以直接從髮片的 V 方向算出來（每張髮片的髮絲方向都沿著 V）。
+
+## 15. 不替換原版檔案的做法：用腳本把模型掛到獵人身上（從 MDF-XL 學到的）
+
+MDF-XL 有兩個功能用的就是這個技巧，完全不需要覆蓋遊戲原本的檔案：
+
+**1. 自帶的「基本身體」**（`MDFXL_MPlayerBase`）
+
+```lua
+-- 在場景裡生成一個新的物件，只帶 via.render.Mesh 元件
+func.spawn_gameobj("MDFXL_MPlayerBase", Vector3f.new(0,0,0), Vector4f.new(0,0,0,1), 0, {"via.render.Mesh"})
+-- 指定模型和材質（檔案放在 natives/STM/MDF-XL/MaleBase/ 底下，是 mod 自己的檔案）
+local mesh = func.create_resource("via.render.MeshResource", "MDF-XL/MaleBase/MDFXL_MPlayerBase.mesh")
+local mdf  = func.create_resource("via.render.MeshMaterialResource", "MDF-XL/MaleBase/MDFXL_MPlayerBase.mdf2")
+renderMesh:setMesh(mesh)
+renderMesh:set_Material(mdf)
+-- 掛到獵人身上，並讓同名骨頭跟著獵人的骨架動
+xf:setParent(masterPlayer:get_Object():get_Transform(), true)
+xf:set_SameJointsConstraint(true)
+```
+
+→ **米凱拉的身體＋長袍、頭髮都可以這樣掛上去**：模型裡的骨頭名稱跟獵人骨架一樣，就會自動跟著動。好處：
+- 不用決定要犧牲哪一件內衣或哪一款髮型
+- 可以用選單開關，也不會跟其他替換同一個檔案的 mod 衝突
+- 缺點：要同時把原本的防具／內衣／髮型隱藏（`set_DrawSelf(false)` 或關閉材質），而且擺動物理（chain2）要另外處理（MDF-XL 的武器換裝會一起換 `chain2`：`chain2:set_ChainAsset(...)`）
+
+**2. 武器換裝（Transmog）**
+
+```lua
+renderMesh:setMesh(meshResource)          -- 換模型
+renderMesh:set_Material(mdfResource)      -- 換材質
+chain2:set_ChainAsset(chain2Resource)     -- 換擺動（沒有的話用一個空的 chain2）
+```
+
+→ 光劍可以**只在拿特定一把武器時**換成我們的模型，不用覆蓋原版武器檔。收刀隱藏腳本也可以合併進同一個腳本。
+
+**`create_resource` / `spawn_gameobj`**：MDF-XL 用的是 `_SharedCore/Functions.lua`（另一個 mod 的共用函式庫），這次沒有抓到原始碼。REFramework 的常見寫法是 `sdk.create_resource(型別, 路徑):add_ref()`，再 `:create_holder(型別 .. "Holder"):add_ref()` 取得可以傳給 `setMesh` 的 holder → 回家時直接看 `_SharedCore` 的實作最保險。
+
+**偵察腳本**：`mods/miquella/mhws/MiquellaLight_Scout/`（只讀取、不改任何東西）會列出獵人目前的武器、防具、所有帶模型的子物件的 `.mesh` / `.mdf2` 路徑、材質名稱和骨頭名稱，還能存成 `reframework/data/MiquellaLight/scout.json`。回家第一件事跑它，就能確認上面所有推測。

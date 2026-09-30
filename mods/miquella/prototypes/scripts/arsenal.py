@@ -121,8 +121,8 @@ def great_sword():
     n = 140
     ts = [i / (n - 1) for i in range(n)]
     spine = [V(-0.035 * math.sin(math.pi * t) + 0.075 * t ** 3, 0, z0 + length * t) for t in ts]
-    width_knots = [(0.0, 0.012), (0.1, 0.05), (0.24, 0.075), (0.42, 0.14), (0.6, 0.195),
-                   (0.76, 0.175), (0.88, 0.1), (0.96, 0.035), (1.0, 0.0)]
+    width_knots = [(0.0, 0.012), (0.1, 0.055), (0.24, 0.085), (0.42, 0.165), (0.6, 0.23),
+                   (0.76, 0.2), (0.88, 0.11), (0.96, 0.038), (1.0, 0.0)]
     edge, normals = [], []
     for i, t in enumerate(ts):
         d = spine[min(i + 1, n - 1)] - spine[max(i - 1, 0)]
@@ -167,8 +167,9 @@ def great_sword():
     for k, t in enumerate((0.52, 0.66, 0.8)):
         i = int(t * (n - 1))
         d = (spine[i + 1] - spine[i - 1]).normalized()
-        objs += m.halo(f"Spine_Ring_{k}", spine[i] - normals[i] * 0.004, 0.03 - 0.004 * k, 0.0028, d,
-                       mats["light"], tilt_deg=10 - 10 * k)
+        # Steeply tilted so they read as rings, not ticks, from the side of the blade.
+        objs += m.halo(f"Spine_Ring_{k}", spine[i] - normals[i] * 0.004, 0.034 - 0.005 * k, 0.003, d,
+                       mats["light"], tilt_deg=38 if k % 2 == 0 else -34, tilt_axis=(1, 0, 0))
     target = (0.04, 0, 0.78)
     views = [("front", 0, 4), ("three_quarter", 35, 10), ("back", 180, 4)]
     m.render_sheets(OUT, "great_sword", mats, target, 3.3, views, res=(700, 1000),

@@ -1,0 +1,13 @@
+build/
+hls_prj/
+*.exe
+emconfig.json
+*.log
+*.jou
+.run/
+.Xil/
+_x/
+xrt.run_summary
+*.wdb
+*.wcfg
+*.protoinst

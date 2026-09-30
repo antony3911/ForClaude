@@ -76,6 +76,30 @@ def spiral_end(path, radius, turns, side, n=24):
     return pts
 
 
+def blade_dressing(prefix, spine, edge, thick, mats, trail=(0.28, 0.84), temper_u=0.32):
+    """Temper line on both faces of a wedge blade and a faint afterimage of light trailing
+    its edge, detached from it."""
+    n = len(spine)
+    objs = []
+    for face in (-1, 1):
+        line = []
+        for i in range(int(0.07 * n), int(0.9 * n), 2):
+            t = i / (n - 1)
+            h = thick(t) / 2 * (1 - temper_u ** 1.15) ** 0.85
+            line.append(spine[i].lerp(edge[i], temper_u ** 1.15) + V(0, face * (h + 0.0006), 0))
+        objs.append(c.curve_tube(f"{prefix}_Temper_{face}", line,
+                                 [1 - 0.7 * (k / (len(line) - 1)) ** 2 for k in range(len(line))],
+                                 mats["core"], bevel=0.0014, resolution=2))
+    i0, i1 = int(trail[0] * n), int(trail[1] * n)
+    pts = []
+    for i in range(i0, i1):
+        out = (edge[i] - spine[i]).normalized()
+        pts.append(edge[i] + out * (0.016 + 0.012 * math.sin(math.pi * (i - i0) / (i1 - i0))))
+    objs += m.path_blade(f"{prefix}_Afterimage", pts, (0, 1, 0), lambda t: 0.006 * math.sin(math.pi * t) + 0.0008,
+                         lambda t: 0.0016, mats["light"], samples=90)
+    return objs
+
+
 def great_sword():
     """Asymmetric single-edged great sword whose blade of light floats above the hilt.
 
@@ -111,20 +135,7 @@ def great_sword():
         return 0.024 * (1 - 0.45 * t) * smoothstep(t / 0.06) * (1 - t ** 8) + 0.001
 
     objs += m.wedge_blade("Blade", spine, edge, thick, mats["blade"])
-    # Temper line on both faces, a third of the way from spine to edge.
-    for face in (-1, 1):
-        line = []
-        for i in range(10, n - 14, 2):
-            t = ts[i]
-            u = 0.32
-            h = thick(t) / 2 * (1 - u ** 1.15) ** 0.85
-            line.append(spine[i].lerp(edge[i], u ** 1.15) + V(0, face * (h + 0.0006), 0))
-        objs.append(c.curve_tube(f"Temper_{face}", line, [1 - 0.7 * (k / (len(line) - 1)) ** 2 for k in range(len(line))],
-                                 mats["core"], bevel=0.0014, resolution=2))
-    # Afterimage: a faint ribbon of light trailing the edge, detached from it.
-    trail = [edge[i] + normals[i] * (0.018 + 0.012 * math.sin(math.pi * (i - 40) / 76)) for i in range(40, 117)]
-    objs += m.path_blade("Edge_Afterimage", trail, (0, 1, 0), lambda t: 0.006 * math.sin(math.pi * t) + 0.0008,
-                         lambda t: 0.0016, mats["light"], samples=90)
+    objs += blade_dressing("Blade", spine, edge, thick, mats, trail=(0.29, 0.83))
 
     # Levitation ring between guard and blade, and the ivory cradle (no contact).
     objs += m.halo("Levitation_Halo", (0, 0, gt + 0.055), 0.032, 0.003, (0, 0, 1), mats["light"])
@@ -289,10 +300,9 @@ def energy_shield(mats, location, scale, stretch=1.18):
     ss.FRONT = -0.004
     rng = random.Random(9)
     R = ss.R
-    membrane = m.membrane_material("Shield_Membrane", R, 0.5, rim=0.2, center=0.015)
+    membrane = m.membrane_material("Shield_Membrane", R, 0.45, rim=0.1, center=0.008)
     mats["shield_membrane"] = membrane
-    objs = m.halo("Shield_Halo", (0, 0, 0), R, 0.0055, (0, 1, 0), mats["light"])
-    objs += m.halo("Shield_Halo_Inner", (0, -0.002, 0), R - 0.02, 0.0022, (0, 1, 0), mats["light"])
+    objs = m.halo("Shield_Halo", (0, 0, 0), R, 0.0048, (0, 1, 0), mats["light"])
     objs += m.membrane_disc("Shield_Membrane", (0, 0.001, 0), R - 0.004, (0, 1, 0), membrane)
     leaves = ss.LeafBuilder()
     objs += ss.trunk(mats["light"])
@@ -351,8 +361,8 @@ def gunlance():
     rng = random.Random(71)
     objs = lance_grip(mats, rng)
     base, tip = 0.46, 1.74
-    objs.append(c.curve_tube("Conduit", [V(0, 0, base), V(0, 0, tip)], [1, 0.8], mats["core"],
-                             bevel=0.0055, resolution=4))
+    objs.append(c.curve_tube("Conduit", [V(0, 0, base), V(0, 0, tip)], [1, 0.8], mats["light"],
+                             bevel=0.004, resolution=4))
     for k in range(3):
         a = math.radians(90 + 120 * k)
         radial = V(math.cos(a), math.sin(a), 0)
@@ -374,52 +384,37 @@ def gunlance():
 
 # ------------------------------------------------------------------ switch axe
 
-def leaf_pairs(paths, mat, every=7, length=0.026, width=0.01, y=0.0):
-    """Leaves of light in pairs along branch paths lying in the XZ plane (the sigil's leaves)."""
-    import sword_shield as ss
-    ss.FRONT = y
-    leaves = ss.LeafBuilder()
-    for path in paths:
-        for k in range(every + 1, len(path) - 4, every):
-            d = path[k + 1] - path[k - 1]
-            ang = math.atan2(d.z, d.x)
-            for side in (-1, 1):
-                leaves.add(path[k].x, path[k].z, ang + side * math.radians(50), length=length, width=width)
-    return [leaves.finish(mat)]
-
-
 def switch_axe():
-    """Axe mode, openwork: a bearded axe head drawn by a cutting edge of light and slim light
-    outlines around a see-through veil; the shaft's strands part into three and grow through
-    the veil as leafy tracery out to the edge. The phial is a droplet vial between two rings."""
+    """Axe mode. The head is a sculpted wedge of light (thick at the back, sharp at the edge)
+    that floats beside the shaft without touching it: a bearded outline with a sinuous edge,
+    a temper line and a trailing afterimage. Three ivory prongs reach from the shaft toward
+    it and curl short of it; two floating collars mark where it hovers. Three curls on the
+    back, a light spike on top, and the phial as a droplet vial between two rings."""
     mats = m.materials()
     rng = random.Random(81)
     top = 1.1
     objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.019, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.019)
-    # Head outline: upper edge -> cutting arc -> beard, closing along the shaft.
-    ac, ar = V(0.02, 0, 0.94), 0.28
-    arc = [ac + V(ar * math.cos(math.radians(a)), 0, ar * math.sin(math.radians(a))) for a in range(50, -62, -4)]
-    upper = m.catmull([V(0.018, 0, 1.05), V(0.1, 0, 1.1), arc[0]], 20)
-    lower = m.catmull([arc[-1], V(0.1, 0, 0.8), V(0.018, 0, 0.87)], 20)
-    objs += m.path_blade("Cutting_Edge", arc, (0, 1, 0), lambda t: 0.018 * (0.6 + 0.4 * math.sin(math.pi * t)),
-                         lambda t: 0.006, mats["blade"], offset_fn=lambda t: -0.004)
-    for name, path in (("Upper_Edge", upper), ("Beard_Edge", lower)):
-        objs += m.path_blade(name, path, (0, 1, 0), lambda t: 0.008, lambda t: 0.004, mats["blade"])
-    mats["veil"] = m.veil_material("Axe_Veil", 0.16, 0.8)
-    objs += m.flat_fill("Axe_Veil", upper + arc[1:-1] + lower, mats["veil"])
-    # Tracery: three branches from the shaft to the edge, with leaves.
-    root = V(0.015, 0, 0.955)
-    branches = []
-    for a, bend in ((32, 0.03), (0, 0.0), (-38, -0.03)):
-        end = ac + V((ar - 0.012) * math.cos(math.radians(a)), 0, (ar - 0.012) * math.sin(math.radians(a)))
-        mid = root.lerp(end, 0.5) + V(0, 0, bend)
-        branches.append(m.catmull([root, mid, end], 36))
-    for i, path in enumerate(branches):
-        objs += m.strand_bundle(f"Tracery_{i}", path, 0.008, mats["ivory"], rng, n=8, bevel=0.0022, twist=7,
-                                tip_taper=0.25, radius_fn=lambda u: 1 - 0.45 * u)
-    objs += leaf_pairs(branches, mats["light"], every=8, length=0.022, width=0.0085)
-    objs += collar(mats, 0.955, 0.021, "Head_Collar")
+    n = 110
+    spine_ctrl = [V(0.05, 0, 0.8), V(0.043, 0, 0.9), V(0.046, 0, 1.0), V(0.055, 0, 1.08)]
+    edge_ctrl = [V(0.17, 0, 0.69), V(0.24, 0, 0.75), V(0.27, 0, 0.82), V(0.3, 0, 0.93), V(0.3, 0, 1.03),
+                 V(0.26, 0, 1.11), V(0.17, 0, 1.16)]
+    spine = m.resample(m.catmull(spine_ctrl, 60), n)
+    edge = m.resample(m.catmull(edge_ctrl, 80), n)
+
+    def thick(t):
+        return 0.022 * (0.55 + 0.45 * math.sin(math.pi * t)) + 0.001
+
+    objs += m.wedge_blade("Axe_Head", spine, edge, thick, mats["blade"])
+    objs += blade_dressing("Axe", spine, edge, thick, mats, trail=(0.08, 0.92), temper_u=0.38)
+    # Prongs reaching toward the head, curling short of it.
+    for k, (z, dz) in enumerate(((0.86, -0.02), (0.95, 0.0), (1.04, 0.02))):
+        path = m.catmull([V(0.012, 0, z), V(0.026, 0, z + dz * 0.5), V(0.034, 0, z + dz)], 16)
+        full = spiral_end(path, 0.012, 0.8, V(0, 0, 1 if dz >= 0 else -1))
+        objs += m.strand_bundle(f"Prong_{k}", full, 0.006, mats["ivory"], rng, n=7, bevel=0.002, twist=7,
+                                tip_taper=0.25, samples=50)
+    for k, z in enumerate((0.8, 1.08)):
+        objs += m.halo(f"Float_Collar_{k}", (0, 0, z), 0.03, 0.0026, (0, 0, 1), mats["light"], tilt_deg=8 * (1 - 2 * k))
     # Back: a trident of small curls.
     for k, dz in enumerate((0.5, 0.0, -0.5)):
         objs += m.curl(f"Back_Curl_{k}", (-0.018, 0, 0.955 + dz * 0.07), (-1, 0, dz * 0.6), 0.09,
@@ -434,7 +429,7 @@ def switch_axe():
         objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.03, 0.0025, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
     m.render_sheets(OUT, "switch_axe", mats, (0.08, 0, 0.6), 2.7, views, res=(800, 1000),
-                    extra=[("head", (0.12, 0, 0.94), 1.0, [("head", 20, 8)])])
+                    extra=[("head", (0.14, 0, 0.93), 0.9, [("head", 25, 8)])])
 
 
 # ------------------------------------------------------------------ charge blade

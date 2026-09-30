@@ -186,30 +186,33 @@ def hunting_horn():
     # Yoke: a shallow U of strands carrying the arms.
     yoke = [V(-0.14, 0, yoke_z + 0.05), V(-0.07, 0, yoke_z + 0.005), V(0, 0, yoke_z),
             V(0.07, 0, yoke_z + 0.005), V(0.14, 0, yoke_z + 0.05)]
-    objs += m.strand_bundle("Yoke", m.catmull(yoke, 30), 0.022, mats["ivory"], rng, n=26, twist=8,
-                            bevel=0.0034, tip_taper=0.05)
-    top_z, ring_r = 1.1, 0.105
+    objs += m.strand_bundle("Yoke", m.catmull(yoke, 30), 0.018, mats["ivory"], rng, n=20, twist=8,
+                            bevel=0.003, tip_taper=0.05)
+    top_z, ring_r = yoke_z + 0.42, 0.09
+    # Arms: open lyre horns rising from the yoke, flaring outward at the top.
     for s in (-1, 1):
-        arm = [V(s * 0.14, 0, yoke_z + 0.05), V(s * 0.23, 0, yoke_z + 0.2), V(s * 0.2, 0, yoke_z + 0.36),
-               V(s * 0.12, 0, top_z - 0.06), V(s * 0.1, 0, top_z + 0.02)]
-        fan = [V(s * 0.085, 0, 0.07), V(s * 0.02, 0, 0.12), V(-s * 0.03, 0, 0.1)]
-        objs += m.strand_bundle(f"Arm_{s}", m.catmull(arm, 40), 0.024, mats["ivory"], rng, n=30,
-                                split_at=0.82, fan=fan, sub_radius=0.008, bevel=0.0036, twist=9,
+        arm = [V(s * 0.14, 0, yoke_z + 0.05), V(s * 0.19, 0, yoke_z + 0.17), V(s * 0.15, 0, yoke_z + 0.32),
+               V(s * 0.155, 0, yoke_z + 0.45), V(s * 0.23, 0, yoke_z + 0.54)]
+        fan = [V(s * 0.06, 0, 0.06), V(s * 0.075, 0, -0.01), V(s * 0.01, 0, 0.08)]
+        objs += m.strand_bundle(f"Arm_{s}", m.catmull(arm, 40), 0.02, mats["ivory"], rng, n=24,
+                                split_at=0.8, fan=fan, sub_radius=0.0065, bevel=0.0032, twist=9,
                                 radius_fn=lambda u: 1.0 - 0.35 * u, tip_taper=0.12)
-    objs += m.halo("Crown_Halo", (0, 0, top_z), ring_r, 0.009, (0, 1, 0), mats["light"])
-    objs += m.halo("Crown_Halo_Inner", (0, -0.004, top_z), ring_r - 0.024, 0.003, (0, 1, 0), mats["light"])
-    # Strings of light from the yoke to the halo.
-    for i, x in enumerate((-0.075, -0.037, 0.0, 0.037, 0.075)):
+    # The crossbar is a halo floating between the arms.
+    objs += m.halo("Crown_Halo", (0, 0, top_z), ring_r, 0.0075, (0, 1, 0), mats["light"])
+    objs += m.halo("Crown_Halo_Inner", (0, -0.004, top_z), ring_r - 0.02, 0.0028, (0, 1, 0), mats["light"])
+    # Strings of light from the yoke up to the halo.
+    for i, x in enumerate((-0.06, -0.03, 0.0, 0.03, 0.06)):
         z_top = top_z - math.sqrt(max(ring_r ** 2 - x ** 2, 0)) + 0.004
         objs.append(c.curve_tube(f"String_{i}", [V(x, 0, yoke_z + 0.02 + 0.03 * abs(x) / 0.075), V(x, 0, z_top)],
-                                 [1, 1], mats["core"], bevel=0.0018, resolution=2))
-    objs += m.droplet("Resonance_Core", (0, 0, yoke_z + 0.035), 0.022, (0, 0, 1), mats["light"], stretch=1.2)
-    # Sound rings rippling out in front of the strings.
-    for i, (r, y) in enumerate(((0.07, -0.05), (0.11, -0.1), (0.15, -0.155))):
-        objs += m.halo(f"Sound_Ring_{i}", (0, y, 0.84), r, 0.0035 - 0.0007 * i, (0, 1, 0), mats["light"])
+                                 [1, 1], mats["core"], bevel=0.0016, resolution=2))
+    objs += m.droplet("Resonance_Core", (0, 0, yoke_z + 0.035), 0.02, (0, 0, 1), mats["light"], stretch=1.2)
+    # Sound: rings rippling forward out of the crown halo, each wider and fainter.
+    for i in range(3):
+        objs += m.halo(f"Sound_Ring_{i}", (0, -0.05 * (i + 1), top_z), ring_r + 0.022 * (i + 1),
+                       0.0034 - 0.0008 * i, (0, 1, 0), mats["light"])
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("side", 90, 6)]
     m.render_sheets(OUT, "hunting_horn", mats, (0, 0, 0.6), 2.3, views, res=(800, 1000),
-                    extra=[("lyre", (0, 0, 0.86), 1.0, [("lyre", 20, 8)])])
+                    extra=[("lyre", (0, -0.05, 0.86), 1.0, [("lyre", 25, 8)])])
 
 
 # ------------------------------------------------------------------ lance and gunlance

@@ -87,7 +87,7 @@ def great_sword():
                          lambda t: 0.0065 * (1 - 0.5 * t), mats["blade"], offset_fn=lambda t: 0.004, samples=140)
     objs += m.strand_bundle("Base_Bar", [V(-0.03, 0, base - 0.01), V(0.045, 0, base)], 0.008, mats["ivory"], rng,
                             n=8, bevel=0.0022, twist=6, samples=30, tip_taper=0.05)
-    mats["veil"] = m.veil_material("Blade_Veil", 0.16, 0.8)
+    mats["veil"] = m.veil_material("Blade_Veil", 0.08, 0.7)
     objs += m.flat_fill("Blade_Veil", spine[1:] + list(reversed(edge))[1:-1], mats["veil"])
 
     # Branches from the trunk, rising diagonally toward the edge.
@@ -96,21 +96,23 @@ def great_sword():
         return best.x
 
     branches = []
-    for z0, rise in ((base + 0.08, 0.16), (base + 0.28, 0.2), (base + 0.48, 0.2), (base + 0.68, 0.18),
-                     (base + 0.88, 0.14)):
+    # Irregular on purpose: spacing, rise, reach and bend all vary, like a real branch.
+    for z0, rise, reach, bend in ((base + 0.07, 0.13, 0.85, 0.035), (base + 0.3, 0.24, 1.0, 0.02),
+                                  (base + 0.46, 0.15, 0.75, 0.045), (base + 0.7, 0.22, 1.0, 0.015),
+                                  (base + 0.9, 0.12, 0.8, 0.03)):
         x0 = -0.03 + 0.026 * (z0 - base) / (tip - base)
         z1 = z0 + rise
-        x1 = edge_x(z1) - 0.018
-        mid = V((x0 + x1) / 2, 0, (z0 + z1) / 2 + 0.03)
+        x1 = x0 + (edge_x(z1) - 0.018 - x0) * reach
+        mid = V((x0 + x1) / 2, 0, (z0 + z1) / 2 + bend)
         branches.append(m.catmull([V(x0, 0, z0), mid, V(x1, 0, z1)], 36))
     for i, path in enumerate(branches):
         objs += m.strand_bundle(f"Branch_{i}", path, 0.0065, mats["ivory"], rng, n=7, bevel=0.002, twist=7,
                                 tip_taper=0.3, radius_fn=lambda u: 1 - 0.4 * u)
     objs += leaf_pairs(branches, mats["light"], every=7, length=0.024, width=0.0095)
     # Small rings threaded on the trunk, shrinking toward the point.
-    for k, (z, r) in enumerate(((base + 0.55, 0.032), (base + 0.75, 0.027), (base + 0.95, 0.022))):
+    for k, (z, r) in enumerate(((base + 0.58, 0.046), (base + 0.78, 0.038), (base + 0.98, 0.031))):
         x = -0.03 + 0.026 * (z - base) / (tip - base)
-        objs += m.halo(f"Spine_Ring_{k}", (x, 0, z), r, 0.0028, (0.022, 0, 1), mats["light"], tilt_deg=8 - 8 * k)
+        objs += m.halo(f"Spine_Ring_{k}", (x, 0, z), r, 0.0036, (0.022, 0, 1), mats["light"], tilt_deg=10 - 10 * k)
     # One-sided guard: a trident arm on the back, a tilted halo on the edge side.
     arm = [V(-0.01, 0, gt + 0.01), V(-0.08, 0, gt + 0.03), V(-0.17, 0, gt + 0.05)]
     fan = [V(0.01, 0, 0.07), V(-0.05, 0, 0.012), V(0.012, 0, -0.06)]

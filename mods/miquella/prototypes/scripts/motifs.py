@@ -56,7 +56,7 @@ def glow_mode(mats):
             m.node_tree.nodes["Membrane_Emission"].inputs["Strength"].default_value *= 2.0
 
 
-def membrane_material(name, radius, strength):
+def membrane_material(name, radius, strength, rim=0.32, center=0.03):
     """Mostly transparent sheet of gold light, brighter toward its rim (object space,
     so the object's origin must be at the sheet's center)."""
     mat = bpy.data.materials.new(name)
@@ -78,9 +78,9 @@ def membrane_material(name, radius, strength):
     gradient.gradient_type = "SPHERICAL"
     ramp = nodes.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].position = 0.0
-    ramp.color_ramp.elements[0].color = (0.32, 0.32, 0.32, 1)
+    ramp.color_ramp.elements[0].color = (rim, rim, rim, 1)
     ramp.color_ramp.elements[1].position = 0.38
-    ramp.color_ramp.elements[1].color = (0.03, 0.03, 0.03, 1)
+    ramp.color_ramp.elements[1].color = (center, center, center, 1)
     links.new(coords.outputs["Object"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], gradient.inputs["Vector"])
     links.new(gradient.outputs["Fac"], ramp.inputs["Fac"])
@@ -241,8 +241,8 @@ def halo_rail(name, p0, p1, n, r0, r1, mat, minor0=0.0045, minor1=None, tilt=4.0
 
 
 def membrane_disc(name, center, radius, axis, mat, scale=(1.0, 1.0)):
-    """Thin disc of membrane light (origin at its center, see membrane_material)."""
-    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=0.002, vertices=128, location=Vector(center))
+    """Single-sided disc of membrane light (origin at its center, see membrane_material)."""
+    bpy.ops.mesh.primitive_circle_add(radius=radius, vertices=128, fill_type="NGON", location=Vector(center))
     disc = bpy.context.active_object
     disc.name = name
     disc.rotation_mode = "QUATERNION"

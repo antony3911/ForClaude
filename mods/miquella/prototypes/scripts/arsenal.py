@@ -247,13 +247,25 @@ def lance_grip(mats, rng):
     return objs
 
 
-def energy_shield(mats, location, scale):
+def energy_shield(mats, location, scale, stretch=1.18):
+    """The tree-sigil energy shield, drawn light: a slim halo, a faint single membrane and
+    the sigil (from sword_shield), made taller than the sword & shield's."""
     import sword_shield as ss
-    membrane = ss.membrane_material(0.6)
+    ss.FRONT = -0.004
+    rng = random.Random(9)
+    R = ss.R
+    membrane = m.membrane_material("Shield_Membrane", R, 0.5, rim=0.2, center=0.015)
     mats["shield_membrane"] = membrane
-    root = ss.shield(mats["light"], membrane, mats["ivory"])
-    root.location = location
-    root.scale = (scale, scale, scale * 1.18)       # taller than the sword & shield's
+    objs = m.halo("Shield_Halo", (0, 0, 0), R, 0.0055, (0, 1, 0), mats["light"])
+    objs += m.halo("Shield_Halo_Inner", (0, -0.002, 0), R - 0.02, 0.0022, (0, 1, 0), mats["light"])
+    objs += m.membrane_disc("Shield_Membrane", (0, 0.001, 0), R - 0.004, (0, 1, 0), membrane)
+    leaves = ss.LeafBuilder()
+    objs += ss.trunk(mats["light"])
+    objs += ss.crown(mats["light"], leaves, rng)
+    objs += ss.pods(mats["light"])
+    objs.append(leaves.finish(mats["light"]))
+    root = m.group("EnergyShield", objs, location)
+    root.scale = (scale, scale, scale * stretch)
     return root
 
 

@@ -112,16 +112,19 @@ def veil_material(name, opacity, strength):
     return mat
 
 
-def flat_fill(name, outline, mat):
-    """Flat polygon filling a closed outline (points in order), e.g. a blade's veil."""
+def flat_fill(name, outline, mat, center_origin=False):
+    """Flat polygon filling a closed outline (points in order), e.g. a blade's veil. With
+    center_origin the object's origin sits at the outline's centroid."""
     bm = bmesh.new()
-    verts = [bm.verts.new(Vector(p)) for p in outline]
+    ctr = sum((Vector(p) for p in outline), Vector()) / len(outline) if center_origin else Vector()
+    verts = [bm.verts.new(Vector(p) - ctr) for p in outline]
     bm.faces.new(verts)
     bmesh.ops.triangulate(bm, faces=bm.faces[:])
     mesh = bpy.data.meshes.new(name)
     bm.to_mesh(mesh)
     bm.free()
     obj = c.link(bpy.data.objects.new(name, mesh))
+    obj.location = ctr
     obj.data.materials.append(mat)
     return [obj]
 
@@ -316,25 +319,6 @@ def strand_bundle(name, path, radius, mat, rng, n=18, twist=7.0, split_at=None, 
     return objs
 
 
-def curl(name, root, direction, length, mat, side, bevel=0.003, turns=0.9, rng=None):
-    """Single strand that runs out and rolls into a small spiral (tip ornament)."""
-    u, v, w = basis(direction)
-    side_v = Vector(side).normalized()
-    pts, radii = [], []
-    n = 60
-    for i in range(n):
-        t = i / (n - 1)
-        straight = Vector(root) + Vector(direction).normalized() * length * min(t / 0.6, 1.0)
-        if t > 0.6:
-            s = (t - 0.6) / 0.4
-            a = turns * 2 * math.pi * s
-            r = length * 0.18 * (1 - 0.6 * s)
-            straight += (Vector(direction).normalized() * math.sin(a) + side_v * (1 - math.cos(a))) * r
-        pts.append(straight)
-        radii.append(1.0 - 0.8 * t ** 2)
-    return [c.curve_tube(name, pts, radii, mat, bevel=bevel, resolution=2)]
-
-
 def droplet(name, center, radius, direction, mat, stretch=1.0):
     """Glowing teardrop pointing along `direction`."""
     bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, segments=32, ring_count=16, location=(0, 0, 0))
@@ -352,6 +336,97 @@ def droplet(name, center, radius, direction, mat, stretch=1.0):
     drop.data.materials.append(mat)
     bpy.ops.object.shade_smooth()
     return [drop]
+
+
+# ------------------------------------------------------------------ tendrils (luxury scrollwork)
+
+def plane_mapper(origin, ex, ey):
+    """Map 2D (x, y) to 3D on the plane through `origin` spanned by ex and ey."""
+    o, ex, ey = Vector(origin), Vector(ex).normalized(), Vector(ey).normalized()
+    return lambda x, y: o + ex * x + ey * y
+
+
+def volute(length, turns, curl_start=0.4, bend=0.0, n=160, tight=0.86):
+    """2D centerline starting at the origin heading +x: a stem that bends gently (`bend`
+    radians in total), then a scroll whose radius of curvature shrinks steadily, so it
+    rolls into a generous spiral that tightens toward the centre (`turns` revolutions,
+    positive = counter-clockwise). Returns points and headings."""
+    ls = length * curl_start
+    lc = length - ls
+    sign = 1.0 if turns >= 0 else -1.0
+    rho0 = lc * (-math.log(1 - tight) / tight) / (abs(turns) * 2 * math.pi) if turns else None
+    ramp = 0.08 * length
+    ds = length / (n - 1)
+    x = y = th = 0.0
+    pts, ths = [(0.0, 0.0)], [0.0]
+    for i in range(1, n):
+        s = i * ds
+        k_stem = bend / ls if ls > 0 else 0.0
+        if rho0 is None:
+            k = k_stem
+        elif s < ls:
+            f = smoothstep((s - (ls - ramp)) / ramp)
+            k = k_stem * (1 - f) + sign / rho0 * f * 0.6
+        else:
+            k = sign / (rho0 * (1 - tight * (s - ls) / lc))
+        th += k * ds
+        x += math.cos(th) * ds
+        y += math.sin(th) * ds
+        pts.append((x, y))
+        ths.append(th)
+    return pts, ths
+
+
+def rope(name, center, radius, mats, strands=3, gold=True, taper=0.85, merge=0.82):
+    """Ivory strands twisted around each other along `center` (a cord), thick to thin,
+    merging into one near the end, with a thread of gold light wound between them."""
+    n = len(center)
+    tans, us, vs = frames(center)
+    s_acc = [0.0]
+    for i in range(1, n):
+        s_acc.append(s_acc[-1] + (center[i] - center[i - 1]).length)
+    twist = 1.0 / (radius * 6.5)                      # turns per metre: a visible rope lay
+    objs = []
+
+    def r_at(u):
+        return radius * max(1 - taper * u ** 1.2, 0.07)
+
+    for k in range(strands + (1 if gold else 0)):
+        is_gold = k == strands
+        pts, radii = [], []
+        for i in range(n):
+            u = i / (n - 1)
+            r = r_at(u)
+            conv = 1 - smoothstep((u - merge) / (1 - merge))
+            base = (k + 0.5) if is_gold else k
+            a = 2 * math.pi * base / strands + 2 * math.pi * twist * s_acc[i]
+            off = r * (0.72 if is_gold else 0.55) * conv
+            pts.append(center[i] + (us[i] * math.cos(a) + vs[i] * math.sin(a)) * off)
+            radii.append(max(r / radius, 0.07) * (0.42 if is_gold else 1.0) * (1 - 0.6 * (1 - conv) if is_gold else 1))
+        mat = mats["light"] if is_gold else mats["ivory"]
+        objs.append(c.curve_tube(f"{name}_{'gold' if is_gold else k}", pts, radii, mat,
+                                 bevel=radius * 0.5, resolution=2))
+    return objs
+
+
+def tendril(name, mapper, origin2d, heading_deg, length, turns, radius, mats, strands=3, gold=True,
+            offshoots=(), curl_start=0.4, bend=0.0):
+    """A cord that leaves `origin2d` at `heading_deg` (in the mapper's 2D space), thins out
+    and rolls into a tightening volute. offshoots: (u, side, length_scale, turns) side
+    branches peeling off at fraction u, each curling on its own."""
+    pts, ths = volute(length, turns, curl_start, bend)
+    h = math.radians(heading_deg)
+    ch, sh = math.cos(h), math.sin(h)
+    p2 = [(origin2d[0] + x * ch - y * sh, origin2d[1] + x * sh + y * ch) for x, y in pts]
+    th2 = [h + t for t in ths]
+    center = [mapper(x, y) for x, y in p2]
+    objs = rope(name, center, radius, mats, strands=strands, gold=gold)
+    for k, (u, side, scale, t_c) in enumerate(offshoots):
+        i = int(u * (len(p2) - 1))
+        r_here = radius * max(1 - 0.85 * u ** 1.2, 0.07)
+        objs += tendril(f"{name}_b{k}", mapper, p2[i], math.degrees(th2[i]) + side * 40, length * scale, t_c,
+                        r_here * 0.85, mats, strands=2, gold=True, curl_start=0.3, bend=side * 0.25)
+    return objs
 
 
 # ------------------------------------------------------------------ blades

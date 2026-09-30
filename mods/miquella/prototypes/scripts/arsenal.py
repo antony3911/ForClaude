@@ -317,15 +317,15 @@ def gunlance():
     objs = lance_grip(mats, rng)
     base, tip = 0.46, 1.74
     objs.append(c.curve_tube("Conduit", [V(0, 0, base), V(0, 0, tip)], [1, 0.8], mats["core"],
-                             bevel=0.009, resolution=4))
+                             bevel=0.0055, resolution=4))
     for k in range(3):
         a = math.radians(90 + 120 * k)
         radial = V(math.cos(a), math.sin(a), 0)
-        path = [V(0, 0, base + 0.06) + radial * 0.036, V(0, 0, 1.15) + radial * 0.05,
+        path = [V(0, 0, base + 0.06) + radial * 0.04, V(0, 0, 1.1) + radial * 0.068,
                 V(0, 0, tip + 0.16) + radial * 0.012]
-        objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.022 * (1 - t) ** 0.6 + 0.002,
+        objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.026 * (1 - t) ** 0.6 + 0.002,
                              lambda t: 0.007 * (1 - t) ** 0.6, mats["blade"])
-    objs += double_helix("Binding", base + 0.1, 1.45, 0.058, 0.05, 3.0, mats["ivory"], 0.0026, phase=0.3)
+    objs += double_helix("Binding", base + 0.1, 1.45, 0.07, 0.06, 3.0, mats["ivory"], 0.0026, phase=0.3)
     objs += m.droplet("Energy_Core", (0, 0, base + 0.03), 0.028, (0, 0, 1), mats["light"], stretch=1.4)
     for k, z in enumerate((0.95, 1.32)):
         objs += m.halo(f"Barrel_Halo_{k}", (0, 0, z), 0.085, 0.0035, (0, 0, 1), mats["light"], tilt_deg=5 - 10 * k)

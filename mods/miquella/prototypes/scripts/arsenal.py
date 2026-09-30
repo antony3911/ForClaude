@@ -62,70 +62,106 @@ def trident_arms(mats, rng, z, reach, n=24, radius=0.016, lift=0.02, name="Arm")
 
 # ------------------------------------------------------------------ great sword
 
+def spiral_end(path, radius, turns, side, n=24):
+    """Continue a path into a small flat spiral curling toward `side` (tip ornament)."""
+    last, prev = Vector(path[-1]), Vector(path[-2])
+    d = (last - prev).normalized()
+    side = Vector(side).normalized()
+    pts = list(path)
+    for i in range(1, n + 1):
+        s = i / n
+        a = turns * 2 * math.pi * s
+        r = radius * (1 - 0.65 * s)
+        pts.append(last + (d * math.sin(a) + side * (1 - math.cos(a))) * r)
+    return pts
+
+
 def great_sword():
-    """Asymmetric, single-edged and openwork. The back is a straight ivory trunk from guard
-    to point, threaded with small floating rings; the one edge is a slim blade of light that
-    swells out in a long convex sweep and returns to meet the trunk at the point. Between
-    them a see-through veil, crossed by leafy branches growing from the trunk toward the
-    edge like a feather's barbs. The guard is one-sided too: a trident arm on the back, a
-    steeply tilted halo on the edge side. Long reach, little mass."""
+    """Asymmetric single-edged great sword whose blade of light floats above the hilt.
+
+    The blade is a sculpted wedge (thick spine, sharp edge) with a sinuous edge: narrow
+    shard-like root, a slight inward curve, a full belly, then a clipped return to the point,
+    all on a gently curving spine. It hovers a hand's width above the guard, held in a
+    levitation ring and cradled, without contact, by three ivory prongs that grow from the
+    grip. A thin temper line runs along both faces and a faint afterimage of light trails the
+    edge. The guard is one-sided: a trident arm on the back, a tilted halo around the blade."""
     mats = m.materials()
     rng = random.Random(31)
     gt = 0.36
-    base, tip = gt + 0.03, 1.58
+    z0, length = gt + 0.1, 1.2
     objs = m.woven_tube("Grip", [V(0, 0, 0), V(0, 0, gt)], 0.017, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.017)
     objs += collar(mats, gt - 0.005, 0.019)
-    # Back (-X): the trunk, straight, leaning slightly toward the point.
-    spine = [V(-0.03, 0, base - 0.02).lerp(V(-0.004, 0, tip), i / 49) for i in range(50)]
-    objs += m.strand_bundle("Spine", [V(0, 0, gt - 0.01)] + spine, 0.016, mats["ivory"], rng, n=18,
-                            bevel=0.0028, twist=10, tip_taper=0.12, radius_fn=lambda u: 1 - 0.55 * u, samples=140)
-    # Edge (+X): one long convex sweep of light from the base to the point.
-    edge = m.catmull([V(0.045, 0, base), V(0.14, 0, base + 0.22), V(0.2, 0, base + 0.5), V(0.215, 0, base + 0.72),
-                      V(0.17, 0, base + 0.95), V(0.08, 0, tip - 0.08), V(-0.004, 0, tip)], 80)
-    objs += m.path_blade("Edge", edge, (0, 1, 0), lambda t: 0.022 * (1 - 0.6 * t ** 2) + 0.002,
-                         lambda t: 0.0065 * (1 - 0.5 * t), mats["blade"], offset_fn=lambda t: 0.004, samples=140)
-    objs += m.strand_bundle("Base_Bar", [V(-0.03, 0, base - 0.01), V(0.045, 0, base)], 0.008, mats["ivory"], rng,
-                            n=8, bevel=0.0022, twist=6, samples=30, tip_taper=0.05)
-    mats["veil"] = m.veil_material("Blade_Veil", 0.08, 0.7)
-    objs += m.flat_fill("Blade_Veil", spine[1:] + list(reversed(edge))[1:-1], mats["veil"])
 
-    # Branches from the trunk, rising diagonally toward the edge.
-    def edge_x(z):
-        best = min(edge, key=lambda p: abs(p.z - z))
-        return best.x
+    # Blade geometry: spine curve, its in-plane normal, and the edge offset along it.
+    n = 140
+    ts = [i / (n - 1) for i in range(n)]
+    spine = [V(-0.035 * math.sin(math.pi * t) + 0.075 * t ** 3, 0, z0 + length * t) for t in ts]
+    width_knots = [(0.0, 0.012), (0.1, 0.05), (0.24, 0.075), (0.42, 0.14), (0.6, 0.195),
+                   (0.76, 0.175), (0.88, 0.1), (0.96, 0.035), (1.0, 0.0)]
+    edge, normals = [], []
+    for i, t in enumerate(ts):
+        d = spine[min(i + 1, n - 1)] - spine[max(i - 1, 0)]
+        tan = d.normalized()
+        nrm = V(tan.z, 0, -tan.x)
+        normals.append(nrm)
+        edge.append(spine[i] + nrm * m.interp1d(width_knots, t))
 
-    branches = []
-    # Irregular on purpose: spacing, rise, reach and bend all vary, like a real branch.
-    for z0, rise, reach, bend in ((base + 0.07, 0.13, 0.85, 0.035), (base + 0.3, 0.24, 1.0, 0.02),
-                                  (base + 0.46, 0.15, 0.75, 0.045), (base + 0.7, 0.22, 1.0, 0.015),
-                                  (base + 0.9, 0.12, 0.8, 0.03)):
-        x0 = -0.03 + 0.026 * (z0 - base) / (tip - base)
-        z1 = z0 + rise
-        x1 = x0 + (edge_x(z1) - 0.018 - x0) * reach
-        mid = V((x0 + x1) / 2, 0, (z0 + z1) / 2 + bend)
-        branches.append(m.catmull([V(x0, 0, z0), mid, V(x1, 0, z1)], 36))
-    for i, path in enumerate(branches):
-        objs += m.strand_bundle(f"Branch_{i}", path, 0.0065, mats["ivory"], rng, n=7, bevel=0.002, twist=7,
-                                tip_taper=0.3, radius_fn=lambda u: 1 - 0.4 * u)
-    objs += leaf_pairs(branches, mats["light"], every=7, length=0.024, width=0.0095)
-    # Small rings threaded on the trunk, shrinking toward the point.
-    for k, (z, r) in enumerate(((base + 0.58, 0.046), (base + 0.78, 0.038), (base + 0.98, 0.031))):
-        x = -0.03 + 0.026 * (z - base) / (tip - base)
-        objs += m.halo(f"Spine_Ring_{k}", (x, 0, z), r, 0.0036, (0.022, 0, 1), mats["light"], tilt_deg=10 - 10 * k)
-    # One-sided guard: a trident arm on the back, a tilted halo on the edge side.
-    arm = [V(-0.01, 0, gt + 0.01), V(-0.08, 0, gt + 0.03), V(-0.17, 0, gt + 0.05)]
+    def thick(t):
+        return 0.024 * (1 - 0.45 * t) * smoothstep(t / 0.06) * (1 - t ** 8) + 0.001
+
+    objs += m.wedge_blade("Blade", spine, edge, thick, mats["blade"])
+    # Temper line on both faces, a third of the way from spine to edge.
+    for face in (-1, 1):
+        line = []
+        for i in range(10, n - 14, 2):
+            t = ts[i]
+            u = 0.32
+            h = thick(t) / 2 * (1 - u ** 1.15) ** 0.85
+            line.append(spine[i].lerp(edge[i], u ** 1.15) + V(0, face * (h + 0.0006), 0))
+        objs.append(c.curve_tube(f"Temper_{face}", line, [1 - 0.7 * (k / (len(line) - 1)) ** 2 for k in range(len(line))],
+                                 mats["core"], bevel=0.0014, resolution=2))
+    # Afterimage: a faint ribbon of light trailing the edge, detached from it.
+    trail = [edge[i] + normals[i] * (0.018 + 0.012 * math.sin(math.pi * (i - 40) / 76)) for i in range(40, 117)]
+    objs += m.path_blade("Edge_Afterimage", trail, (0, 1, 0), lambda t: 0.006 * math.sin(math.pi * t) + 0.0008,
+                         lambda t: 0.0016, mats["light"], samples=90)
+
+    # Levitation ring between guard and blade, and the ivory cradle (no contact).
+    objs += m.halo("Levitation_Halo", (0, 0, gt + 0.055), 0.032, 0.003, (0, 0, 1), mats["light"])
+    objs += m.halo("Levitation_Halo_Inner", (0, 0, gt + 0.075), 0.022, 0.0018, (0, 0, 1), mats["light"], tilt_deg=10)
+    stem = [V(0, 0, gt - 0.01), V(0, 0, gt + 0.035)]
+    objs += m.strand_bundle("Cradle_Stem", stem, 0.012, mats["ivory"], rng, n=12, bevel=0.0024, twist=8,
+                            samples=24, tip_taper=0.02)
+    prongs = [
+        (m.catmull([V(0, 0, gt + 0.03), V(-0.03, 0, gt + 0.09), V(-0.058, 0, gt + 0.2), V(-0.055, 0, gt + 0.31)], 30),
+         0.022, 0.8, V(1, 0, 0)),
+        (m.catmull([V(0, 0, gt + 0.03), V(0.045, 0, gt + 0.075), V(0.105, 0, gt + 0.13), V(0.13, 0, gt + 0.22)], 30),
+         0.02, 0.9, V(-1, 0, 0)),
+        (m.catmull([V(0, 0, gt + 0.03), V(0.005, -0.03, gt + 0.09), V(0.01, -0.04, gt + 0.17)], 24),
+         0.016, 0.9, V(0, 1, 0)),
+    ]
+    for k, (path, r, turns, side) in enumerate(prongs):
+        full = spiral_end(path, r, turns, side)
+        objs += m.strand_bundle(f"Cradle_Prong_{k}", full, 0.0075, mats["ivory"], rng, n=8, bevel=0.0022,
+                                twist=7, tip_taper=0.2, radius_fn=lambda u: 1 - 0.55 * u, samples=70)
+    # One-sided guard: trident arm on the back; a tilted halo floating around the blade.
+    arm = [V(-0.01, 0, gt + 0.005), V(-0.08, 0, gt + 0.025), V(-0.17, 0, gt + 0.045)]
     fan = [V(0.01, 0, 0.07), V(-0.05, 0, 0.012), V(0.012, 0, -0.06)]
-    objs += m.strand_bundle("Guard_Arm", arm, 0.017, mats["ivory"], rng, n=22, split_at=0.45, fan=fan,
-                            sub_radius=0.006, bevel=0.0032, twist=6)
-    objs += m.halo("Guard_Halo", (0.06, 0, gt + 0.08), 0.1, 0.004, (0, 0, 1), mats["light"], tilt_deg=32,
-                   tilt_axis=(0, 1, 0))
-    objs += m.halo("Guard_Halo_Inner", (0.07, 0, gt + 0.1), 0.075, 0.0022, (0, 0, 1), mats["light"], tilt_deg=38,
-                   tilt_axis=(0, 1, 0))
-    target = (0.05, 0, 0.74)
+    objs += m.strand_bundle("Guard_Arm", arm, 0.016, mats["ivory"], rng, n=20, split_at=0.45, fan=fan,
+                            sub_radius=0.006, bevel=0.003, twist=6)
+    i_h = int(0.24 * (n - 1))
+    objs += m.halo("Blade_Halo", spine[i_h].lerp(edge[i_h], 0.45), 0.13, 0.0042, (0, 0, 1), mats["light"],
+                   tilt_deg=28, tilt_axis=(0, 1, 0))
+    # Small rings floating on the spine, shrinking toward the point.
+    for k, t in enumerate((0.52, 0.66, 0.8)):
+        i = int(t * (n - 1))
+        d = (spine[i + 1] - spine[i - 1]).normalized()
+        objs += m.halo(f"Spine_Ring_{k}", spine[i] - normals[i] * 0.004, 0.03 - 0.004 * k, 0.0028, d,
+                       mats["light"], tilt_deg=10 - 10 * k)
+    target = (0.04, 0, 0.78)
     views = [("front", 0, 4), ("three_quarter", 35, 10), ("back", 180, 4)]
-    m.render_sheets(OUT, "great_sword", mats, target, 3.4, views, res=(700, 1000),
-                    extra=[("blade", (0.08, 0, 0.95), 1.4, [("blade", 12, 5)])])
+    m.render_sheets(OUT, "great_sword", mats, target, 3.3, views, res=(700, 1000),
+                    extra=[("float", (0.02, 0, gt + 0.2), 0.9, [("float", 25, 10)])])
 
 
 # ------------------------------------------------------------------ hammer

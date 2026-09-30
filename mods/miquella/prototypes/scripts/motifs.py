@@ -388,6 +388,50 @@ def path_blade(name, path, plane_normal, width_fn, thick_fn, mat, offset_fn=None
     return [mesh_obj(name, bm, mat, subsurf=subsurf)]
 
 
+def interp1d(knots, t):
+    """Smooth (Catmull-Rom) interpolation through (t, value) knots sorted by t."""
+    ts = [k[0] for k in knots]
+    vs = [k[1] for k in knots]
+    t = min(max(t, ts[0]), ts[-1])
+    i = max(0, min(len(ts) - 2, next((j for j in range(len(ts) - 1) if t <= ts[j + 1]), len(ts) - 2)))
+    u = (t - ts[i]) / (ts[i + 1] - ts[i])
+    p0 = vs[max(i - 1, 0)]
+    p1, p2 = vs[i], vs[i + 1]
+    p3 = vs[min(i + 2, len(vs) - 1)]
+    return 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u
+                  + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u)
+
+
+def wedge_blade(name, spine_pts, edge_pts, thick_fn, mat, n_u=9, plane_normal=(0, 1, 0), subsurf=1):
+    """Single-edged blade lofted between a spine curve and an edge curve (same sample count):
+    thick along the spine, tapering to a sharp edge (a wedge, not a flat plate)."""
+    n_plane = Vector(plane_normal).normalized()
+    count = len(spine_pts)
+    bm = bmesh.new()
+    rings = []
+    for i in range(count):
+        t = i / (count - 1)
+        s, e = Vector(spine_pts[i]), Vector(edge_pts[i])
+        th = max(thick_fn(t), 0.0004)
+        top, bottom = [], []
+        for j in range(n_u):
+            u = (j / (n_u - 1)) ** 1.15
+            h = th / 2 * (1 - u) ** 0.85
+            p = s.lerp(e, u)
+            top.append(p + n_plane * h)
+            bottom.append(p - n_plane * h)
+        ring = [bm.verts.new(p) for p in top] + [bm.verts.new(p) for p in reversed(bottom[:-1])]
+        rings.append(ring)
+    k = len(rings[0])
+    for i in range(count - 1):
+        for j in range(k):
+            jj = (j + 1) % k
+            bm.faces.new((rings[i][j], rings[i][jj], rings[i + 1][jj], rings[i + 1][j]))
+    bm.faces.new(list(reversed(rings[0])))
+    bm.faces.new(rings[-1])
+    return [mesh_obj(name, bm, mat, subsurf=subsurf)]
+
+
 def core_lines(name, path, plane_normal, thick_fn, mat, reach=0.82, bevel=0.0016):
     """Bright fuller lines along both faces of a blade."""
     pts = resample(catmull(path, 32) if len(path) > 2 else path, 40)

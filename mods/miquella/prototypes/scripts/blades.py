@@ -108,10 +108,8 @@ def core_line(material):
 def grip_and_guard(material, drop_material, rng):
     """Strand-wrapped grip; at the guard the strands split into three curling prongs."""
     objs = []
-    n_strands = 16
+    n_strands = 27
     grip_r = 0.0135
-    prongs = (  # direction in XZ plane (deg from +Z toward +X), length, curl sign
-        (72, 0.075, 1), (0, 0.09, 0), (-72, 0.075, -1))
     # Solid core so the woven strands never show gaps.
     bpy.ops.mesh.primitive_cylinder_add(radius=grip_r * 0.82, depth=GUARD_Z - 0.01,
                                         location=(0, 0, (GUARD_Z + 0.01) / 2))
@@ -133,30 +131,40 @@ def grip_and_guard(material, drop_material, rng):
             a = phi + omega * u
             pts.append(Vector((r * math.cos(a), r * math.sin(a), z)))
             radii.append(1.0)
-        # Guard: strands gather into their prong and sweep out/up with a curl.
-        ang_deg, length, curl = prongs[prong]
-        d = Vector((math.sin(math.radians(ang_deg)), 0, math.cos(math.radians(ang_deg))))
+        # Guard: the center prong wraps the blade base; the two side prongs reach far
+        # outward and each ends in its own trident split (balanced left and right).
         start = pts[-1].copy()
         a_end = phi + omega
-        for i in range(1, 46):
-            v = i / 45
-            center = Vector((0, 0, GUARD_Z)) + d * (length * v)
-            # Center prong wraps the blade base instead of leaving it.
+        j = k // 3                      # index of this strand inside its prong
+        sub = j % 3                     # 0 = up branch, 1 = straight, 2 = down branch
+        for i in range(1, 61):
+            v = i / 60
             if prong == 1:
-                center = Vector((0, 0, GUARD_Z + length * v))
-            # Curl the side prongs back toward the blade near their tips.
-            if curl:
-                bend = smoothstep((v - 0.45) / 0.55)
-                center += Vector((-curl * 0.03 * bend, 0, 0.022 * bend))
-            a = a_end + 7 * v
-            spread = 0.0045 * (1 - 0.6 * v) if prong != 1 else (BLADE_W * 0.45 + 0.002) * (1 - 0.7 * v)
-            y_scale = 1.0 if prong != 1 else 0.3
-            offset = Vector((spread * math.cos(a), spread * y_scale * math.sin(a), 0))
-            w = smoothstep(v / 0.25)
-            p = start * (1 - w) + (center + offset) * w
-            pts.append(p)
-            radii.append(1.0 - 0.85 * smoothstep((v - 0.6) / 0.4))
-        objs.append(c.curve_tube(f"Strand_{k}", pts, radii, material, bevel=0.0028, resolution=3))
+                center = Vector((0, 0, GUARD_Z + 0.09 * v))
+                spread = (BLADE_W * 0.45 + 0.002) * (1 - 0.7 * v)
+                a = a_end + 7 * v
+                offset = Vector((spread * math.cos(a), spread * 0.3 * math.sin(a), 0))
+                tip_v = 0.6
+            else:
+                side = 1 if prong == 0 else -1
+                arm = 0.095
+                center = Vector((side * arm * v, 0, GUARD_Z + 0.004 + 0.01 * math.sin(math.pi * v * 0.8)))
+                f = smoothstep((v - 0.48) / 0.52)
+                bend = smoothstep((v - 0.75) / 0.25)
+                if sub == 0:     # up, curling back toward the blade
+                    center += Vector((-side * (0.006 * f * f + 0.012 * bend), 0, 0.03 * f + 0.004 * bend))
+                elif sub == 1:   # straight out, reaching furthest
+                    center += Vector((side * 0.014 * f, 0, 0.004 * f))
+                else:            # down, curling back toward the grip
+                    center += Vector((-side * (0.004 * f * f + 0.01 * bend), 0, -0.026 * f - 0.003 * bend))
+                spread = 0.0058 * (1 - 0.3 * v) * (1 - f) + 0.0022 * f
+                a = a_end + 9 * v
+                offset = Vector((0, spread * math.cos(a), spread * math.sin(a)))
+                tip_v = 0.8
+            w = smoothstep(v / 0.2)
+            pts.append(start * (1 - w) + (center + offset) * w)
+            radii.append(1.0 - 0.85 * smoothstep((v - tip_v) / (1 - tip_v)))
+        objs.append(c.curve_tube(f"Strand_{k}", pts, radii, material, bevel=0.0023, resolution=3))
     # Collar where the strands gather under the guard.
     bpy.ops.mesh.primitive_torus_add(major_radius=grip_r + 0.002, minor_radius=0.0032,
                                      location=(0, 0, GUARD_Z - 0.006))
@@ -189,9 +197,23 @@ def grip_and_guard(material, drop_material, rng):
     return objs
 
 
+def blade_halo(glow_material):
+    """Optional small floating halo ring circling the blade just above the guard."""
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.0022,
+                                     major_segments=72, minor_segments=12,
+                                     location=(0, 0, GUARD_Z + 0.06),
+                                     rotation=(math.radians(8), 0, 0))
+    ring = bpy.context.active_object
+    ring.name = "Blade_Halo"
+    ring.data.materials.append(glow_material)
+    bpy.ops.object.shade_smooth()
+    return [ring]
+
+
 def build_sword(name, ivory, drop_mat, blade_mat, core_mat, seed):
     rng = random.Random(seed)
     parts = [build_blade(blade_mat)] + core_line(core_mat) + grip_and_guard(ivory, drop_mat, rng)
+    parts += blade_halo(drop_mat)
     root = c.link(bpy.data.objects.new(name, None))
     for p in parts:
         p.parent = root
@@ -213,8 +235,8 @@ def main():
     right = build_sword("DualBlade_R", ivory, drop, blade, core, seed=3)
     # Mirror the right sword so the pair is symmetric.
     right.scale = (-1, 1, 1)
-    left.location = (-0.07, 0, 0)
-    right.location = (0.07, 0, 0)
+    left.location = (-0.14, 0, 0)
+    right.location = (0.14, 0, 0)
     left.rotation_euler = (0, math.radians(-4), 0)
     right.rotation_euler = (0, math.radians(4), 0)
 
@@ -225,9 +247,9 @@ def main():
     c.add_light("rim", "AREA", (0.0, 0.8, 0.9), 40, size=0.6, target=(0, 0, 0.4))
     target = (0, 0, 0.38)
     views = [("pair_front", 0, 5), ("pair_three_quarter", 35, 12), ("pair_edge", 90, 5)]
-    studio = c.render_views(OUT, "studio", target, 1.55, views, lens=60)
+    studio = c.render_views(OUT, "studio", target, 1.75, views, lens=60)
     # Close-up of the grip and guard.
-    close = c.render_views(OUT, "closeup", (0.07, 0, 0.13), 0.42,
+    close = c.render_views(OUT, "closeup", (0.14, 0, 0.15), 0.5,
                            [("guard_front", 10, 8), ("guard_three_quarter", 45, 20)], lens=60)
     c.contact_sheet(studio + close, os.path.join(OUT, "blades_studio_sheet.png"), cols=5)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "dual_blades.blend")))
@@ -237,7 +259,7 @@ def main():
     c.set_emission_strength(core, 7.0)
     c.set_emission_strength(drop, 5.0)
     c.setup_render(samples=32, res=(640, 900), world_hex="#0E0E12", world_strength=0.25, glare=True)
-    glow = c.render_views(OUT, "glow", target, 1.55, [views[0], views[1]], lens=60)
+    glow = c.render_views(OUT, "glow", target, 1.75, [views[0], views[1]], lens=60)
     c.contact_sheet(glow, os.path.join(OUT, "blades_glow_sheet.png"), cols=2)
     print("DONE", studio + close + glow)
 

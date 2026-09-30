@@ -103,16 +103,18 @@ me3 設定重點：mod 設定檔要寫 `savefile`（mod 專用存檔），不要
 | REFramework | mod 的基礎框架。Wilds 要打開 loose file loader | https://github.com/praydog/REFramework |
 | Fluffy Mod Manager | 管理、開關 mod | Nexus Mods（要註冊帳號） |
 | RE Mesh Editor | Blender 讀寫 RE 引擎模型、轉換貼圖，裝在 Blender 5.0 | https://github.com/NSACloud/RE-Mesh-Editor |
+| RE Chain Editor | 頭髮、長袍的擺動物理（chain 檔），支援 Rise: Sunbreak 和 Wilds | https://github.com/NSACloud/RE-Chain-Editor |
 | 解包工具 | 取出遊戲原本的檔案 | 待查 |
 
-注意：RE Mesh Editor 的作者已經宣布停止維護，之後遊戲更新可能會讓它失效。
+注意：RE Mesh Editor 和 RE Chain Editor 的作者都已經宣布停止維護，之後遊戲更新可能會讓它們失效。
 
-## 米凱拉搬到魔物獵人（構想）
+## 米凱拉風格角色（魔物獵人 Rise / Wilds）— 已決定的方向
 
-- 做法：**替換獵人的防具外觀**，動作沿用獵人原本的，不用做動畫
-- 流程：Soulstruct 匯入米凱拉模型 → Blender 調整身形、套到獵人骨架、轉移權重 → 貼圖轉成 RE 引擎格式 → RE Mesh Editor 匯出 → Fluffy 載入
-- 難點：
-  - 體型差很多（米凱拉是孩童身形，獵人是成人）
-  - 頭髮、衣服的物理擺動不會跟著搬過來，要另外設定，否則會是硬的
-  - 材質格式要轉換
-- **只能自己玩，不要公開發佈**：Nexus Mods 等平台禁止上傳從其他遊戲搬過來的素材
+- **不直接搬法環的模型**，以米凱拉為元素重新設計（官方設定圖、遊戲截圖當參考；別人的同人圖只參考風格）
+- **身體、長袍、頭髮分開生成**，再組合、各自設定擺動（第一種做法）
+- **外觀要完整呈現，不被防具擋住**：
+  - 把整套米凱拉模型做成一套「幻化（外觀）裝備」，其他部位設成不顯示
+  - 實際戰鬥穿什麼防具都行，外觀永遠是米凱拉
+  - 臉：做成完整頭部模型（最像，但過場動畫沒有表情），或用捏臉 + 自製頭髮（保留表情）→ 待決定
+- Rise 和 Wilds 的骨架不同，要各做一次 → 先選一款做
+- 發佈：自己重做的模型不算搬運素材，但角色仍是 FromSoftware 的 IP

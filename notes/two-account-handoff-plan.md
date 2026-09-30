@@ -77,7 +77,7 @@
 
 - **Blender 要裝兩個版本**（兩個外掛的版本需求衝突）：
   - **Blender 5.1 以上** → 法環用。Soulstruct for Blender 要求 5.1 以上
-  - **Blender 5.0** → 魔物獵人用。RE Mesh Editor 說 5.1 有 bug，匯入匯出會非常慢
+  - **Blender 4.3.2 ~ 5.0** → 魔物獵人用。RE Mesh Editor / RE Asset Library 要 4.3.2 以上，RE Mesh Editor 說 5.1 有 bug，匯入匯出會非常慢
   - 做法：一個用安裝版，另一個用 zip 免安裝版，放在不同資料夾
   - 下載：https://www.blender.org/download/
 - Blender MCP（選用，讓 Claude 直接操作 Blender）：https://github.com/ahujasid/blender-mcp
@@ -104,10 +104,15 @@ me3 設定重點：mod 設定檔要寫 `savefile`（mod 專用存檔），不要
 | Fluffy Mod Manager | 管理、開關 mod | Nexus Mods（要註冊帳號） |
 | RE Mesh Editor | Blender 讀寫 RE 引擎模型、轉換貼圖，裝在 Blender 5.0 | https://github.com/NSACloud/RE-Mesh-Editor |
 | RE Chain Editor | 頭髮、長袍的擺動物理（chain 檔），支援 Rise: Sunbreak 和 Wilds | https://github.com/NSACloud/RE-Chain-Editor |
-| ree-pak | 解包 Wilds 的遊戲檔案（配合檔名清單 MHWs_STM_Release.list.zst）；Rise 待查 | 待查下載來源 |
+| **RE Asset Library** | **解包首選**：Blender 外掛，在 Blender 裡搜尋遊戲模型，只解包需要的類型（省空間），也是 RE Mesh Editor 產生 Wilds 用 patch pak 的必要條件 | https://github.com/NSACloud/RE-Asset-Library |
+| RE Toolbox | 批次整理權重等（RE Mesh Editor 的輔助外掛） | https://github.com/NSACloud/RE-Toolbox |
+| MDF-XL | 遊戲中即時調整材質參數（調發光顏色、強度很方便），需要 _ScriptCore | https://github.com/SilverEzredes/MDF-XL |
+| ree-pak-gui（備用） | 解包 Wilds 遊戲檔案 | https://github.com/eigeen/ree-pak-gui |
 | 特效（EFX）工具 | Wilds：CritColorTool（Nexus Mods，Python 改特效顏色的例子）；Rise：NSACloud/MHR-EFX-Template | https://github.com/NSACloud/MHR-EFX-Template |
 
-注意：RE Mesh Editor 和 RE Chain Editor 的作者都已經宣布停止維護，之後遊戲更新可能會讓它們失效。
+注意：RE Mesh Editor、RE Chain Editor、RE Asset Library 的作者都已經宣布停止維護，之後遊戲更新可能會讓它們失效。
+
+**Wilds 的貼圖一定要打包成 patch pak（放 `pak_mods` 資料夾），不能用散檔**，詳見 `mods/research/mhws_modding_notes.md`。
 
 ## 米凱拉風格角色（魔物獵人 Rise / Wilds）— 已決定的方向
 

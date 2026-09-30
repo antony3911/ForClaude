@@ -385,40 +385,57 @@ def gunlance():
 
 # ------------------------------------------------------------------ switch axe
 
+def sickle_blade(name, ctrl, wmax, thick_max, mats, side=1, n=80):
+    """A slim curved single-edged wedge of light along a control path; the edge lies on the
+    `side` of the path (turning right when side=1)."""
+    spine = m.resample(m.catmull(ctrl, 40), n)
+    knots = [(0.0, 0.005), (0.22, 0.55 * wmax), (0.58, wmax), (0.84, 0.6 * wmax), (1.0, 0.0)]
+    edge = []
+    for i in range(n):
+        tan = (spine[min(i + 1, n - 1)] - spine[max(i - 1, 0)]).normalized()
+        edge.append(spine[i] + V(tan.z, 0, -tan.x) * side * m.interp1d(knots, i / (n - 1)))
+
+    def thick(t):
+        return thick_max * (0.4 + 0.6 * math.sin(math.pi * min(t / 0.6, 1.0) * 0.5 + 0.0)) * (1 - t ** 6) + 0.0008
+
+    objs = m.wedge_blade(name, spine, edge, thick, mats["blade"])
+    objs += blade_dressing(name, spine, edge, thick, mats, trail=(0.3, 0.9), temper_u=0.35)
+    return objs, spine
+
+
 def switch_axe():
-    """Axe mode. The head is a sculpted wedge of light (thick at the back, sharp at the edge)
-    that floats beside the shaft without touching it: a bearded outline with a sinuous edge,
-    a temper line and a trailing afterimage. Three ivory prongs reach from the shaft toward
-    it and curl short of it; two floating collars mark where it hovers. Three curls on the
-    back, a light spike on top, and the phial as a droplet vial between two rings."""
+    """Axe mode. The head is Miquella's trident made of light: three slim curved blades
+    floating in a fan beside the shaft (the upper one sweeping up, the middle one reaching
+    out, the lower one hanging as the beard), edges all turned the same way like a
+    pinwheel. Their outer ends draw the axe's silhouette. Three ivory prongs reach from the
+    shaft toward the blade roots and curl short of them; floating collars mark the head.
+    Three curls on the back, a light spike on top, the phial as a droplet vial in two rings."""
     mats = m.materials()
     rng = random.Random(81)
     top = 1.1
     objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.019, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.019)
-    n = 110
-    spine_ctrl = [V(0.05, 0, 0.8), V(0.043, 0, 0.9), V(0.046, 0, 1.0), V(0.055, 0, 1.08)]
-    edge_ctrl = [V(0.17, 0, 0.69), V(0.24, 0, 0.75), V(0.27, 0, 0.82), V(0.3, 0, 0.93), V(0.3, 0, 1.03),
-                 V(0.26, 0, 1.11), V(0.17, 0, 1.16)]
-    spine = m.resample(m.catmull(spine_ctrl, 60), n)
-    edge = m.resample(m.catmull(edge_ctrl, 80), n)
-
-    def thick(t):
-        return 0.022 * (0.55 + 0.45 * math.sin(math.pi * t)) + 0.001
-
-    objs += m.wedge_blade("Axe_Head", spine, edge, thick, mats["blade"])
-    objs += blade_dressing("Axe", spine, edge, thick, mats, trail=(0.08, 0.92), temper_u=0.38)
-    # Prongs reaching toward the head, curling short of it.
-    for k, (z, dz) in enumerate(((0.86, -0.02), (0.95, 0.0), (1.04, 0.02))):
-        path = m.catmull([V(0.012, 0, z), V(0.026, 0, z + dz * 0.5), V(0.034, 0, z + dz)], 16)
-        full = spiral_end(path, 0.012, 0.8, V(0, 0, 1 if dz >= 0 else -1))
-        objs += m.strand_bundle(f"Prong_{k}", full, 0.006, mats["ivory"], rng, n=7, bevel=0.002, twist=7,
+    specs = [
+        ("Blade_Upper", [V(0.05, 0, 1.0), V(0.13, 0, 1.04), V(0.22, 0, 1.11), V(0.27, 0, 1.2)], 0.055),
+        ("Blade_Middle", [V(0.05, 0, 0.94), V(0.16, 0, 0.955), V(0.26, 0, 0.945), V(0.33, 0, 0.92)], 0.065),
+        ("Blade_Lower", [V(0.05, 0, 0.88), V(0.13, 0, 0.84), V(0.2, 0, 0.76), V(0.23, 0, 0.66)], 0.06),
+    ]
+    roots = []
+    for name, ctrl, w in specs:
+        o, spine = sickle_blade(name, ctrl, w, 0.011, mats)
+        objs += o
+        roots.append(spine[0])
+    # Prongs reaching toward each blade root, curling short of it.
+    for k, r in enumerate(roots):
+        path = m.catmull([V(0.012, 0, r.z), V(0.024, 0, r.z + 0.004), V(0.036, 0, r.z)], 16)
+        full = spiral_end(path, 0.011, 0.8, V(0, 0, 1 if k == 0 else -1))
+        objs += m.strand_bundle(f"Prong_{k}", full, 0.0055, mats["ivory"], rng, n=7, bevel=0.0019, twist=7,
                                 tip_taper=0.25, samples=50)
-    for k, z in enumerate((0.8, 1.08)):
+    for k, z in enumerate((0.84, 1.05)):
         objs += m.halo(f"Float_Collar_{k}", (0, 0, z), 0.03, 0.0026, (0, 0, 1), mats["light"], tilt_deg=8 * (1 - 2 * k))
     # Back: a trident of small curls.
     for k, dz in enumerate((0.5, 0.0, -0.5)):
-        objs += m.curl(f"Back_Curl_{k}", (-0.018, 0, 0.955 + dz * 0.07), (-1, 0, dz * 0.6), 0.09,
+        objs += m.curl(f"Back_Curl_{k}", (-0.018, 0, 0.94 + dz * 0.07), (-1, 0, dz * 0.6), 0.09,
                        mats["ivory"], side=(0, 0, 1 if dz >= 0 else -1), bevel=0.004)
     objs += m.path_blade("Top_Spike", [V(0, 0, top - 0.02), V(0, 0, top + 0.16)], (0, 1, 0),
                          lambda t: 0.034 * (1 - t), lambda t: 0.01 * (1 - t), mats["blade"])
@@ -430,7 +447,7 @@ def switch_axe():
         objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.03, 0.0025, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
     m.render_sheets(OUT, "switch_axe", mats, (0.08, 0, 0.6), 2.7, views, res=(800, 1000),
-                    extra=[("head", (0.14, 0, 0.93), 0.9, [("head", 25, 8)])])
+                    extra=[("head", (0.15, 0, 0.93), 0.9, [("head", 25, 8)])])
 
 
 # ------------------------------------------------------------------ charge blade

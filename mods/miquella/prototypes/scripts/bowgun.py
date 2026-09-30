@@ -203,13 +203,13 @@ def muzzle_halo(glow_mat, ivory, rng):
 def energy_core(glow_mat, ivory):
     """Glowing droplet cradled on top of the receiver."""
     objs = []
-    center = Vector((0, -0.01, 0.135))
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.03, segments=32, ring_count=16, location=center)
+    center = Vector((0, -0.01, 0.112))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.04, segments=32, ring_count=16, location=center)
     drop = bpy.context.active_object
     drop.name = "Energy_Core"
     for v in drop.data.vertices:
         if v.co.y > 0:   # teardrop pointing forward
-            f = v.co.y / 0.03
+            f = v.co.y / 0.04
             v.co.x *= 1 - 0.7 * f
             v.co.z *= 1 - 0.7 * f
             v.co.y *= 1 + 1.0 * f
@@ -217,14 +217,14 @@ def energy_core(glow_mat, ivory):
     bpy.ops.object.shade_smooth()
     objs.append(drop)
     # Cradle: four strand arcs from the receiver hugging the droplet.
-    for k in range(4):
-        a = math.pi / 4 + k * math.pi / 2
+    for k in range(2):
+        a = k * math.pi
         pts = []
         for i in range(30):
             u = i / 29
             ang = math.pi * u
-            r = 0.038
-            p = Vector((r * math.cos(a) * math.sin(ang), -0.05 + 0.09 * u, 0.085 + 0.06 * math.sin(ang) * (0.6 + 0.4 * math.sin(a))))
+            r = 0.044
+            p = Vector((r * math.cos(a) * math.sin(ang), -0.06 + 0.12 * u, 0.085 + 0.03 * math.sin(ang)))
             pts.append(p)
         objs.append(c.curve_tube(f"Cradle_{k}", pts, [1.0 - 0.5 * abs(0.5 - i / 29) for i in range(30)],
                                  ivory, bevel=0.0035, resolution=2))
@@ -232,29 +232,44 @@ def energy_core(glow_mat, ivory):
 
 
 def side_wings(material, rng):
-    """Strand bundles sweeping back and up from the receiver sides (circlet echo)."""
+    """Dense strand bundles sweeping back and up from the receiver sides, splitting into
+    three sub-bundles (the circlet's trident motif)."""
     objs = []
     for side in (-1, 1):
-        root = Vector((side * 0.07, 0.04, 0.03))
-        for k in range(10):
+        root = Vector((side * 0.075, 0.05, 0.035))
+        for k in range(32):
             phi = rng.uniform(0, 2 * math.pi)
-            rr = rng.uniform(0.3, 1.0)
-            omega = rng.uniform(5, 8)
+            rr = rng.uniform(0.35, 1.0)
+            omega = rng.uniform(4, 7) * (1 if rng.random() < 0.8 else -1)
             split = k % 3
             pts, radii = [], []
-            for i in range(80):
-                u = i / 79
-                # Main sweep: back and up, flaring outward.
-                ctr = root + Vector((side * 0.05 * u ** 1.3, -0.3 * u, 0.13 * u ** 1.5))
-                # Trident split in the last half.
-                fan = (split - 1) * 0.07 * smoothstep((u - 0.5) / 0.5)
-                ctr += Vector((0, 0, fan)) + Vector((side * abs(fan) * 0.3, 0, 0))
-                r = (0.012 * (1 - 0.4 * u)) * (1 - 0.5 * smoothstep((u - 0.5) / 0.5)) * rr
+            for i in range(90):
+                u = i / 89
+                ctr = root + Vector((side * 0.045 * u ** 1.3, -0.27 * u, 0.075 * u ** 1.5))
+                f = smoothstep((u - 0.45) / 0.55)
+                fan = (split - 1) * 0.04 * f
+                ctr += Vector((side * abs(fan) * 0.35, -0.02 * abs(split - 1) * f, fan))
+                r = 0.018 * (1 - 0.3 * u) * (1 - f) + 0.008 * f
                 a = phi + omega * u
-                p = ctr + Vector((side * r * math.cos(a) * 0.6, r * 0.3 * math.sin(a), r * math.sin(a)))
+                p = ctr + Vector((side * r * math.cos(a) * 0.7, r * 0.35 * math.sin(a), r * math.sin(a))) * rr
                 pts.append(p)
-                radii.append(1.0 - 0.85 * smoothstep((u - 0.8) / 0.2))
-            objs.append(c.curve_tube(f"Wing_{side}_{k}", pts, radii, material, bevel=0.0035, resolution=2))
+                radii.append(1.0 - 0.85 * smoothstep((u - 0.82) / 0.18))
+            objs.append(c.curve_tube(f"Wing_{side}_{k}", pts, radii, material, bevel=0.0038, resolution=2))
+    return objs
+
+
+def conduit_rings(glow_mat):
+    """Floating halo rings along the conduit, like accelerator rings."""
+    objs = []
+    for y, r, minor in ((0.34, 0.1, 0.0042), (0.56, 0.094, 0.0038)):
+        bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=minor,
+                                         major_segments=96, minor_segments=12,
+                                         location=(0, y, CONDUIT_Z), rotation=(math.pi / 2, 0, 0))
+        ring = bpy.context.active_object
+        ring.name = f"Conduit_Halo_{y}"
+        ring.data.materials.append(glow_mat)
+        bpy.ops.object.shade_smooth()
+        objs.append(ring)
     return objs
 
 
@@ -273,21 +288,22 @@ def main():
     parts += muzzle_halo(glow, ivory, rng)
     parts += energy_core(glow, ivory)
     parts += side_wings(ivory, rng)
+    parts += conduit_rings(glow)
 
     c.setup_render(samples=32, res=(900, 600), world_hex="#2E2E33", world_strength=0.5)
     c.add_light("key", "AREA", (1.0, -0.6, 1.0), 120, size=1.0, target=(0, 0.1, 0))
     c.add_light("fill", "AREA", (-1.0, 0.2, 0.4), 40, size=1.0, target=(0, 0.1, 0))
     c.add_light("rim", "AREA", (0.0, 1.4, 0.9), 70, size=0.8, target=(0, 0.1, 0))
-    target = (0, 0.12, 0.0)
+    target = (0, 0.2, 0.02)
     views = [("side", 90, 4), ("front_three_quarter", 140, 18), ("back_three_quarter", 45, 20),
              ("top", 90, 75), ("muzzle", 175, 8), ("low_side", 70, -12)]
-    studio = c.render_views(OUT, "studio", target, 1.75, views, lens=50)
+    studio = c.render_views(OUT, "studio", target, 2.6, views, lens=50)
     c.contact_sheet(studio, os.path.join(OUT, "bowgun_studio_sheet.png"), cols=3)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "heavy_bowgun.blend")))
 
     c.set_emission_strength(glow, 5.0)
     c.setup_render(samples=32, res=(900, 600), world_hex="#0E0E12", world_strength=0.25, glare=True)
-    glow_paths = c.render_views(OUT, "glow", target, 1.75, [views[0], views[1]], lens=50)
+    glow_paths = c.render_views(OUT, "glow", target, 2.6, [views[0], views[1]], lens=50)
     c.contact_sheet(glow_paths, os.path.join(OUT, "bowgun_glow_sheet.png"), cols=2)
     print("DONE", studio + glow_paths)
 

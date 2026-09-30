@@ -191,7 +191,7 @@ def hammer():
         objs += m.rope(f"Hoop_{s}", ring, 0.008, mats, strands=3, gold=True, taper=0.0, merge=0.999)
 
     def barrel_map(x, v):
-        r = barrel_radius(x) + 0.006
+        r = barrel_radius(x) + 0.013             # lies on top of the cage strands
         a = v / 0.14
         return V(x, r * math.cos(a), head_z + r * math.sin(a))
 
@@ -199,7 +199,7 @@ def hammer():
         v0 = (2 * math.pi * k / 6 + 0.45) * 0.14
         sgn = 1 if k % 2 == 0 else -1
         # Gold filigree laid over the ivory cage.
-        objs += m.tendril(f"Scroll_{k}", barrel_map, (-0.12, v0), 8 * sgn, 0.2, 1.3 * sgn, 0.005, mats, strands=2,
+        objs += m.tendril(f"Scroll_{k}", barrel_map, (-0.12, v0), 8 * sgn, 0.21, 1.3 * sgn, 0.0072, mats, strands=2,
                           gold=False, strand_mat="light", offshoots=[(0.45, -sgn, 0.38, -1.1 * sgn)])
     # Floating belt ring around the middle of the head.
     objs += m.halo("Belt_Halo", (0, 0, head_z), 0.2, 0.0042, (1, 0, 0), mats["light"], tilt_deg=14,

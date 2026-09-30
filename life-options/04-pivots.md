@@ -21,13 +21,82 @@
 ## 2. 一個一個看
 
 ### ⚡ 高頻交易（HFT）的 FPGA 工程師：**你的 FPGA 經驗在這裡最值錢**
-- **在做什麼**：把交易邏輯直接做在 FPGA 上，追求奈秒等級的延遲。這是 FPGA 應用裡對延遲要求最極端的領域
-- **誰在招**：Optiver、IMC、Jump Trading、Citadel Securities、Hudson River Trading、Jane Street、DRW、Tower Research 等
-- **地點（英語系國家）**：**Chicago**、**New York**、**London**、**Sydney**；新加坡（邊界選項）也有據點
-- **薪資**：業界普遍認為極高。例如有資料顯示 Jump Trading 的新鮮人整體薪酬在 US$25–50 萬之間；IMC 的 FPGA 工程師平均年薪約 US$18 萬（Glassdoor）
-- **例如 Optiver 在 Chicago 有 FPGA Engineer 職缺**；各公司也有給應屆畢業生的 Graduate FPGA Engineer 職位
-- **挑戰**：錄取門檻很高（演算法、低階硬體、系統的面試都很難）；工作壓力大；需要一點金融直覺
-- **為什麼值得你知道**：這是少數「**FPGA 經驗比 ASIC 經驗更有價值**」的領域
+
+> 2026-09-30 依佇列 U4 深入補充，**以美國（Chicago、New York）為主**。
+
+**在做什麼**
+- 把交易系統的關鍵路徑直接做在 FPGA 上，也就是「**tick-to-trade**」：從網路線收到交易所的行情封包 → 解析 Ethernet／IP／UDP 和交易所的協定（例如 FAST）→ 更新委託簿 → 觸發策略 → 從另一條網路線送出下單封包
+- 追求的是**奈秒級**的延遲：學術論文裡的 10G 系統，從收到行情到送出下單約 433 奈秒；軟體通常要數微秒
+- 工具：Verilog／SystemVerilog（偶爾用 HLS），AMD（Xilinx）或 Intel（Altera）的 FPGA；有些公司（例如 Hudson River Trading）的硬體團隊也做 ASIC
+
+**誰在招（美國）**
+- **Chicago**：Jump Trading、Optiver、IMC、DRW、Citadel Securities 等
+- **New York**：Hudson River Trading（HRT）、Jane Street、Tower Research 等
+- 其他據點：London、Sydney（新加坡為邊界選項）
+
+**薪資（第三方資料，差異很大，僅供參考）**
+
+| 公司 | 數字 | 來源 |
+|---|---|---|
+| Jump Trading | 新鮮人 FPGA 工程師總薪酬約 **US$28–45 萬**；5 年以上 US$50–100 萬 | Quantt（2026） |
+| Jump Trading | FPGA 工程師平均年薪約 US$25 萬 | Indeed |
+| Hudson River Trading | FPGA 工程師平均年薪約 US$17.7 萬（9 筆回報，範圍 US$8.9–27.5 萬） | Indeed |
+| Jane Street | 研究類職位（包括 FPGA 工程師）底薪約 US$30 萬 | 第三方整理 |
+
+> 對照：NVIDIA 美國的 ASIC 驗證新鮮人底薪約 US$10–16.7 萬（見 [01](01-work-first.md)）。
+
+**簽證：HFT 對國際生特別友善**
+- 自營交易公司高度依賴國際人才，**普遍積極擔保 H-1B 和綠卡**，很多有自己的移民團隊（例如 Citadel Securities、Jane Street 在這方面的口碑很好）
+- **2026 年起 H-1B 改成依薪資加權抽籤**：薪資等級 IV 的人在籤池裡有 4 個名額、等級 I 只有 1 個。FY2027 的模型估計：**等級 I 約 15%、等級 IV 約 61%**。HFT 的薪資很可能落在最高等級（我的推論；等級要看職業與地區的標準薪資），**抽中的機率遠高於一般新鮮人**
+
+**面試長什麼樣子**
+
+| 階段 | 內容（依網路上的面試經驗整理） |
+|---|---|
+| 線上測驗 | Optiver：約 60 分鐘的選擇題加 RTL 除錯，或約 2 小時、30 題左右的底層 FPGA 題目 |
+| 技術電話面試 | HRT：數位團隊的人連續快問 RTL、計算機結構、驗證，例如快取階層、hazard、CDC、SRAM 存取 |
+| 回家作業 | HRT：約 1 小時的計算機結構與 FPGA 問題之後，給一週做一個設計題 |
+| 現場面試 | 較長的 HDL 實作；**基礎觀念被追問到你答不出來為止**（metastability、CDC、timing closure）；網路相關的題目；系統設計題：「從網路線進來到網路線出去，你會怎麼設計 tick-to-trade 的路徑？」 |
+
+**常考的題目**
+- **同步 FIFO**（參數化、full／empty 旗標要正確）、**固定優先權的仲裁器**、**解析「長度前綴」訊息的狀態機**
+- **CDC**：單一位元怎麼跨時脈（兩級同步器）、整個 word 怎麼跨（非同步 FIFO 或 request-acknowledge 握手）、不做會壞在哪裡
+- **靜態時序分析**：setup、hold、slack、skew，以及「為什麼 hold 檢查裡沒有時脈週期」
+- **reset 同步器**、valid／ready 握手、pipelining 與延遲和吞吐量的取捨
+- 面試官在意的不是語法完美，而是「**你知不知道資料什麼時候有效、用了幾個 cycle、邏輯有沒有暫存到能在真的晶片上收斂時序**」
+
+**給你的準備清單**
+1. **基礎觀念**：STA、CDC、metastability、reset，要能講到很深
+2. **RTL 手寫練習**：FIFO、仲裁器、封包解析 FSM，每個都要搭配 testbench（HRT 的實習是用 Python 建驗證環境）
+3. **網路**：Ethernet／IP／UDP 的封包格式；讀開源的 **verilog-ethernet** 和 **Corundum**（開源的 FPGA 網卡，支援 10G／25G／100G 和 PCIe DMA，發表在 FCCM 2020）
+4. **一個作品**：在實驗室的 FPGA 板上做一個 **UDP 封包解析器或簡單的行情處理器**，量測延遲是幾個 cycle。這會是你履歷上最有說服力的一項
+5. **你的研究也能用**：蛋白質預測加速器的 pipelining、記憶體頻寬、延遲取捨，都是很好的面試故事
+6. C++ 與 Linux 的基本功（部分關卡會考）
+
+**實際的進入方式**
+- **從台灣直接應徵美國的職位很難**（要公司願意直接辦簽證）；**最實際的路是先讀美國 MS，在碩士期間拿到暑期實習，再轉正職**
+  - HRT 的 2027 年暑期硬體實習：在 New York，要求 2028 年畢業的電機、計算機工程學生，用 SystemVerilog 設計、用 Python 驗證
+  - Optiver Chicago 的 2027 年暑期 FPGA 實習：學士、碩士、博士都可以
+  - Jump Trading Chicago 的 FPGA 實習：要有 FPGA 或硬體設計經驗，**最好有過實習經驗**
+- 也就是說：**如果你讀 1.5–2 年的 MS，第一個暑假就是關鍵**，入學後的第一個秋天就要開始投
+
+**挑戰與風險**
+- 錄取門檻很高、工作壓力大、要一點金融直覺
+- 技能偏向網路與低延遲 FPGA，**和 AI 加速器的 ASIC 架構職涯有一段距離**；想回晶片業的話，網路晶片、SmartNIC、資料中心硬體是比較順的方向
+
+### 🧠 美國的 AI 晶片新創與大型雲端公司的自研晶片（和你的主線最接近）
+
+> 這其實不算「轉換跑道」，而是**你原本目標在美國的具體雇主地圖**，放在這裡和 HFT 對照。
+
+| 類型 | 例子（2026） | 對你的意義 |
+|---|---|---|
+| **AI 晶片新創** | Etched（2026/09 在加州有 17 個職缺）、MatX、Tenstorrent、d-Matrix、SambaNova；Cerebras 在 2026/05 於 Nasdaq 上市；Groq 在 2025/12 由 NVIDIA 以授權加收編大部分團隊的方式整合 | 小團隊、一個人碰得到架構到 RTL；**FPGA 原型經驗有用** |
+| **大型雲端公司的自研晶片** | Google TPU、AWS（Annapurna Labs）Trainium、Meta MTIA、Microsoft Maia；OpenAI 與 Broadcom 合作的晶片；Anthropic 也在組自研晶片團隊 | 穩定、規模大；和台灣的供應鏈（TSMC、設計服務）關係密切 |
+
+**薪資參考（美國，2026）**
+- 半導體工程師平均年薪約 **US$18.9 萬**（25 百分位 US$14.3 萬、75 百分位 US$25.4 萬；Glassdoor，2026/05）
+- RTL 驗證工程師平均約 US$14.9 萬（ZipRecruiter，2026/06）
+- 懂 **CDC／RDC**（跨時脈、跨 reset 域）的驗證專家，在約聘市場有 20–35% 的溢價
 
 ### 📊 半導體產業分析師
 - **在做什麼**：分析晶片公司、技術趨勢、供應鏈，寫研究報告給投資人或企業
@@ -104,7 +173,11 @@
 ---
 
 ## 來源
-- HFT：[Optiver：FPGA Engineer](https://optiver.com/working-at-optiver/career-opportunities/7887188002/)、[Built In：Graduate FPGA Engineer](https://builtin.com/job/graduate-fpga-engineer/7142593)、[Quantt：Jump Trading Salary 2026](https://www.quantt.co.uk/resources/jump-trading-salary)、[Glassdoor：IMC FPGA Engineer](https://www.glassdoor.com/Salary/IMC-Trading-FPGA-Engineer-Salaries-E278100_D_KO12,25.htm)、[KORE1：How to Hire FPGA Engineers in 2026](https://www.kore1.com/hire-fpga-engineers-2026/)
+- HFT 面試與工作內容：[techinterview.org：Inside the FPGA interview at a low-latency trading firm](https://www.techinterview.org/post/3233477296/fpga-interview-low-latency-trading-firm/)、[Glassdoor：HRT FPGA Engineer Interview](https://www.glassdoor.com/Interview/Hudson-River-Trading-FPGA-Engineer-Interview-Questions-EI_IE470937.0,20_KO21,34.htm)、[Glassdoor：Optiver FPGA Engineer Interview](https://www.glassdoor.com/Interview/Optiver-FPGA-Engineer-Interview-Questions-EI_IE243355.0,7_KO8,21.htm)、[HDL Factory：FPGA Hardware Interview Guide（2026/07）](https://www.hdlfactory.com/post/2026/07/23/fpga-hardware-interview-guide/)、[IEEE：FPGA-Based HFT System for 10GbE（433 ns）](https://ieeexplore.ieee.org/document/9768065/)、[Corundum（GitHub）](https://github.com/corundum/corundum)、[Corundum 論文（FCCM 2020）](https://cseweb.ucsd.edu/~snoeren/papers/corundum-fccm20.pdf)、[Alex Forencich（verilog-ethernet）](https://github.com/alexforencich)
+- HFT 實習：[HRT：Hardware Engineer Internship – Summer 2027](https://www.hudsonrivertrading.com/hrt-job/hardware-engineer-internship-summer-2027/)、[Optiver：FPGA Engineer Intern（Summer 2027 – Chicago）](https://www.optiver.com/join-us/jobs/technology/chicago/fpga-engineer-intern-summer-2027-chicago/)、[LinkedIn：Jump Trading Campus FPGA Engineer（Intern）](https://www.linkedin.com/jobs/view/campus-fpga-engineer-intern-at-jump-trading-group-3688508124)
+- HFT 薪資與簽證：[Indeed：HRT FPGA Engineer Salaries](https://www.indeed.com/cmp/Hudson-River-Trading/salaries/FPGA-Engineer)、[Indeed：Jump Trading FPGA Engineer Salaries](https://www.indeed.com/cmp/Jump-Trading/salaries/FPGA-Engineer)、[techinterview.org：Visa Sponsorship at Wall Street Firms in 2026](https://www.techinterview.org/post/3233474736/visa-sponsorship-wall-street-firms/)、[f1jobs：Quant Researcher H-1B Sponsorship at Prop Trading Firms](https://www.f1jobs.io/resources/blog/quant-researcher-prop-trading-firm-visa-sponsorship)、[Citadel Securities：FPGA Engineer](https://www.citadelsecurities.com/careers/details/fpga-engineer/)、[Hodgson Russ：FY27 H-1B Registration](https://www.hodgsonruss.com/immigration-insights/fy27-h-1b-registration-what-employers-need-to-know)、[Visa Pros：H-1B Weighted Lottery odds](https://visa-pros.com/h-1b-weighted-lottery/)、[Ogletree：USCIS Completes FY2027 H-1B Lottery](https://ogletree.com/insights-resources/blog-posts/uscis-completes-fiscal-year-2027-h-1b-lottery/)
+- AI 晶片雇主：[Hashrate Index：Independent AI Chip Companies 2026](https://hashrateindex.com/blog/independent-ai-chip-companies-ai-asic-market-part-3/)、[Tom's Hardware：Custom AI ASIC state of play（2026/05）](https://www.tomshardware.com/tech-industry/semiconductors/custom-ai-asics-examined-from-broadcom-to-mtia)、[TechRepublic：Anthropic custom AI chip team](https://www.techrepublic.com/article/news-anthropic-custom-ai-chip-team-confirmed/)、[ZipRecruiter：Etched Jobs](https://www.ziprecruiter.com/co/etched/Jobs/--in-California)、[Glassdoor：RTL Verification Engineer Salary](https://www.glassdoor.com/Salaries/rtl-verification-engineer-salary-SRCH_KO0,25.htm)、[ZipRecruiter：RTL Verification Engineer Salary](https://www.ziprecruiter.com/Salaries/Rtl-Verification-Engineer-Salary)、[HeroHunt：Hardware Talent Recruiting 2026](https://www.herohunt.ai/blog/hardware-talent-recruiting-in-the-ai-age-2026/)
+- HFT（第一版）：[Optiver：FPGA Engineer](https://optiver.com/working-at-optiver/career-opportunities/7887188002/)、[Built In：Graduate FPGA Engineer](https://builtin.com/job/graduate-fpga-engineer/7142593)、[Quantt：Jump Trading Salary 2026](https://www.quantt.co.uk/resources/jump-trading-salary)、[Glassdoor：IMC FPGA Engineer](https://www.glassdoor.com/Salary/IMC-Trading-FPGA-Engineer-Salaries-E278100_D_KO12,25.htm)、[KORE1：How to Hire FPGA Engineers in 2026](https://www.kore1.com/hire-fpga-engineers-2026/)
 - 政策：[CSET：Research Analysts](https://cset.georgetown.edu/job/research-analysts/)
 - 專利：[104 薪資情報：專利工程師](https://guide.104.com.tw/salary/job/2002002009?analyze=workexp&salary=annual)、[北美智權報：全球專利人才荒](https://naipnews.naipo.com/37363/)、[Cake：專利師與專利工程師](https://www.cake.me/resources/industry-job-overview/patent-attorney-salary-jobs-interview?locale=en)
 - 產業：[聯合新聞網：台灣半導體業今年最缺哪些人才](https://udn.com/news/story/6839/9305554)、[INSIDE：專訪創鑫智慧](https://www.inside.com.tw/feature/ai-new-chip-war/34813-neuchips-interview)、[行政院：晶創臺灣方案](https://www.ey.gov.tw/Page/5A8A0CB5B41DA11E/6dd41826-ed84-4b92-9f51-e6ebeb8621f8)

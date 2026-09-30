@@ -67,9 +67,9 @@ def halo_rail(glow_mat):
     n = 4
     for i in range(n):
         t = i / (n - 1)
-        y = start + (hb.MUZZLE + 0.06 - start) * t
+        y = start + (hb.MUZZLE - 0.04 - start) * t
         r = 0.07 - 0.022 * t
-        tilt = math.radians(9 if i % 2 == 0 else -9)
+        tilt = math.radians(4 if i % 2 == 0 else -4)
         bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.0042 - 0.001 * t,
                                          major_segments=96, minor_segments=12,
                                          location=(0, y, hb.CONDUIT_Z),
@@ -81,7 +81,7 @@ def halo_rail(glow_mat):
         objs.append(ring)
     # Double halo at the muzzle.
     bpy.ops.mesh.primitive_torus_add(major_radius=0.062, minor_radius=0.0055, major_segments=96,
-                                     minor_segments=12, location=(0, hb.MUZZLE + 0.12, hb.CONDUIT_Z),
+                                     minor_segments=12, location=(0, hb.MUZZLE + 0.01, hb.CONDUIT_Z),
                                      rotation=(math.pi / 2, 0, 0))
     muzzle = bpy.context.active_object
     muzzle.name = "Muzzle_Halo"

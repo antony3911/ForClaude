@@ -11,6 +11,7 @@ from mathutils import Vector
 # Palette from DESIGN.md (section 2), as linear-ish sRGB hex.
 PALETTE = {
     "ivory": "#EFE8D2",
+    "circlet": "#EED9A6",     # pale gold, a little lighter than the hair (user spec)
     "ivory_shadow": "#D9C9A0",
     "glow": "#FFA526",        # bright gold (not white): halo, rings, droplets
     "hair": "#DCC08A",

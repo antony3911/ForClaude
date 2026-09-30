@@ -352,7 +352,7 @@ def twigs(material, side, seed=7):
 
 def build(glow_strength):
     c.reset_scene()
-    ivory = c.make_material("Circlet_Ivory", c.PALETTE["ivory"], roughness=0.32, coat=0.3,
+    ivory = c.make_material("Circlet_PaleGold", c.PALETTE["circlet"], roughness=0.32, coat=0.3,
                             emission=c.PALETTE["glow"], strength=glow_strength, subsurface=0.15)
     drop_mat = c.make_material("Circlet_Droplet", c.PALETTE["glow"], roughness=0.08, coat=0.6,
                                emission=c.PALETTE["glow"], strength=glow_strength * 1.3)
@@ -402,6 +402,10 @@ def main():
     c.set_emission_strength(ivory, 1.3)
     c.set_emission_strength(drop, 2.0)
     c.setup_render(samples=32, res=(640, 640), world_hex="#101014", world_strength=0.3, glare=True)
+    # Dim the studio lights so the golden emission dominates.
+    for obj in bpy.data.objects:
+        if obj.type == "LIGHT":
+            obj.data.energy *= 0.3
     glow = c.render_views(OUT, "glow", target, 0.6, [views[0], views[1], views[3]])
     c.contact_sheet(glow, os.path.join(OUT, "circlet_glow_sheet.png"), cols=3)
     print("DONE", studio + glow)

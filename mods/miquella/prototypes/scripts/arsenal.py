@@ -426,15 +426,20 @@ def charge_blade():
     for k in range(5):
         a = math.radians(55 + 17.5 * k)
         pos = V(0.2 + (rad + 0.03) * math.cos(a), -0.01, 0.55 + (rad + 0.03) * 1.18 * math.sin(a))
-        m.droplet(f"Shield_Phial_{k}", pos, 0.016, (math.cos(a), 0, math.sin(a)), mats["light"], stretch=1.3)
-    # Axe edge: a crescent of light hugging the lower-left rim.
-    arc = []
-    for i in range(20):
-        a = math.radians(160 + 90 * i / 19)
-        arc.append(V(0.2 + (rad + 0.045) * math.cos(a), -0.005, 0.55 + (rad + 0.045) * 1.18 * math.sin(a)))
-    m.path_blade("Axe_Edge", arc, (0, 1, 0), lambda t: 0.07 * math.sin(math.pi * t) ** 0.7 + 0.003,
-                 lambda t: 0.012 * math.sin(math.pi * t) ** 0.6 + 0.002, mats["blade"],
-                 offset_fn=lambda t: 0.012 * math.sin(math.pi * t))
+        m.droplet(f"Shield_Phial_{k}", pos, 0.012, (math.cos(a), 0, math.sin(a)), mats["light"], stretch=1.3)
+    # Axe edge: a slim edge of light running along the lower-left rim (the axe blade in axe
+    # mode), tied to the halo by three short ivory strands.
+    def rim(a_deg, off):
+        a = math.radians(a_deg)
+        return V(0.2 + (rad + off) * math.cos(a), -0.005, 0.55 + (rad + off) * 1.18 * math.sin(a))
+
+    arc = [rim(140 + 125 * i / 29, 0.035) for i in range(30)]
+    m.path_blade("Axe_Edge", arc, (0, 1, 0), lambda t: 0.034 * math.sin(math.pi * t) ** 0.6 + 0.003,
+                 lambda t: 0.008 * math.sin(math.pi * t) ** 0.5 + 0.002, mats["blade"],
+                 offset_fn=lambda t: 0.008 * math.sin(math.pi * t))
+    for k, a in enumerate((165, 202, 240)):
+        m.strand_bundle(f"Edge_Tie_{k}", [rim(a, 0.008), rim(a + 4, 0.022), rim(a, 0.034)], 0.006,
+                        mats["ivory"], rng, n=6, bevel=0.0018, twist=6, samples=30)
     import sword_shield as ss
     ss.add_backdrop()
     views = [("front", 0, 4), ("three_quarter", 30, 10)]

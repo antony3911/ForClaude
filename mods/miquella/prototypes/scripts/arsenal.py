@@ -458,19 +458,29 @@ def charge_blade():
         a = math.radians(55 + 17.5 * k)
         pos = V(0.2 + (rad + 0.03) * math.cos(a), -0.01, 0.55 + (rad + 0.03) * 1.18 * math.sin(a))
         m.droplet(f"Shield_Phial_{k}", pos, 0.012, (math.cos(a), 0, math.sin(a)), mats["light"], stretch=1.3)
-    # Axe edge: a slim edge of light running along the lower-left rim (the axe blade in axe
-    # mode), tied to the halo by three short ivory strands.
+    # Axe edge (the axe blade in axe mode): a floating single-edged wedge beside the lower-left
+    # rim, like the great sword's blade: narrow at the top, a full belly low down, a sinuous
+    # return to a point that sweeps past the rim. Not a crescent hugging the circle.
     def rim(a_deg, off):
         a = math.radians(a_deg)
         return V(0.2 + (rad + off) * math.cos(a), -0.005, 0.55 + (rad + off) * 1.18 * math.sin(a))
 
-    arc = [rim(140 + 125 * i / 29, 0.035) for i in range(30)]
-    m.path_blade("Axe_Edge", arc, (0, 1, 0), lambda t: 0.034 * math.sin(math.pi * t) ** 0.6 + 0.003,
-                 lambda t: 0.008 * math.sin(math.pi * t) ** 0.5 + 0.002, mats["blade"],
-                 offset_fn=lambda t: 0.008 * math.sin(math.pi * t))
-    for k, a in enumerate((165, 202, 240)):
-        m.strand_bundle(f"Edge_Tie_{k}", [rim(a, 0.008), rim(a + 4, 0.022), rim(a, 0.034)], 0.006,
-                        mats["ivory"], rng, n=6, bevel=0.0018, twist=6, samples=30)
+    n_e = 90
+    spine, edge = [], []
+    knots = [(0.0, 0.004), (0.15, 0.02), (0.4, 0.045), (0.62, 0.07), (0.8, 0.06), (0.93, 0.03), (1.0, 0.0)]
+    for i in range(n_e):
+        t = i / (n_e - 1)
+        a = 150 + 108 * t
+        s = rim(a, 0.024 + 0.05 * t ** 3)               # leaves the rim toward the point
+        out = (s - V(0.2, -0.005, 0.55)).normalized()
+        spine.append(s)
+        edge.append(s + out * m.interp1d(knots, t))
+
+    def thick(t):
+        return 0.012 * (0.5 + 0.5 * math.sin(math.pi * t)) + 0.001
+
+    m.wedge_blade("Axe_Edge", spine, edge, thick, mats["blade"])
+    blade_dressing("Axe_Edge", spine, edge, thick, mats, trail=(0.35, 0.9), temper_u=0.35)
     import sword_shield as ss
     ss.add_backdrop()
     views = [("front", 0, 4), ("three_quarter", 30, 10)]

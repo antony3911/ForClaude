@@ -419,22 +419,27 @@ def switch_axe():
         objs += o
         roots.append(spine[0])
     xz = m.plane_mapper((0, 0, 0), (1, 0, 0), (0, 0, 1))
-    # Small scrolls reaching toward each blade root, curling short of it.
-    for k, (r, turns, head) in enumerate(zip(roots, (1.3, -1.1, -1.4), (10, 0, -10))):
-        objs += m.tendril(f"Prong_{k}", xz, (0.012, r.z), head, 0.045, turns, 0.0045, mats, curl_start=0.35)
+    # Scrolls reaching out beneath each blade root, curling short of it.
+    for k, (r, turns, head) in enumerate(zip(roots, (1.3, -1.2, -1.4), (14, -4, -18))):
+        objs += m.tendril(f"Prong_{k}", xz, (0.012, r.z), head, 0.085, turns, 0.0055, mats, curl_start=0.45)
+    # A gold-threaded cord winding up the shaft like a vine, ending in a scroll.
+    vine = m.cylinder_mapper((0, 0, 0.46), 0.027)
+    objs += m.tendril("Shaft_Vine", vine, (0, 0), 32, 0.56, 1.1, 0.0058, mats, curl_start=0.8,
+                      offshoots=[(0.3, 1, 0.25, 1.1), (0.55, -1, 0.22, -1.0)])
     for k, z in enumerate((0.84, 1.05)):
         objs += m.halo(f"Float_Collar_{k}", (0, 0, z), 0.03, 0.0026, (0, 0, 1), mats["light"], tilt_deg=8 * (1 - 2 * k))
     # Back: a cord leaving the shaft parts into three scrolls of different size.
-    objs += m.tendril("Back_Cord", xz, (-0.012, 0.95), 182, 0.05, 0.0, 0.011, mats, curl_start=0.99)
-    bp = (-0.062, 0.948)
-    objs += m.tendril("Back_Up", xz, bp, 125, 0.13, 1.35, 0.0078, mats, offshoots=[(0.4, -1, 0.4, -1.1)])
-    objs += m.tendril("Back_Out", xz, bp, 185, 0.17, -1.5, 0.0088, mats, offshoots=[(0.35, 1, 0.35, 1.2)])
-    objs += m.tendril("Back_Down", xz, bp, 238, 0.1, -1.15, 0.007, mats)
+    objs += m.tendril("Back_Cord", xz, (-0.012, 0.95), 182, 0.06, 0.0, 0.012, mats, curl_start=0.99)
+    bp = (-0.072, 0.948)
+    objs += m.tendril("Back_Up", xz, bp, 122, 0.22, 1.35, 0.0092, mats, offshoots=[(0.38, -1, 0.4, -1.2)])
+    objs += m.tendril("Back_Out", xz, bp, 186, 0.29, -1.55, 0.0105, mats,
+                      offshoots=[(0.3, 1, 0.35, 1.2), (0.52, -1, 0.25, -1.0)])
+    objs += m.tendril("Back_Down", xz, bp, 240, 0.18, -1.2, 0.0082, mats, offshoots=[(0.45, 1, 0.35, 1.0)])
     objs += m.path_blade("Top_Spike", [V(0, 0, top - 0.02), V(0, 0, top + 0.16)], (0, 1, 0),
                          lambda t: 0.034 * (1 - t), lambda t: 0.01 * (1 - t), mats["blade"])
     objs += m.halo("Top_Halo", (0, 0, top + 0.01), 0.045, 0.0032, (0, 0, 1), mats["light"], tilt_deg=8)
     # Phial: a droplet vial of light behind the shaft, between two floating rings.
-    px, pz = -0.05, 0.64
+    px, pz = -0.05, 0.36     # low on the shaft, clear of the vine
     objs += m.droplet("Phial", (px, 0, pz - 0.02), 0.02, (0, 0, 1), mats["light"], stretch=2.2)
     for k, z in enumerate((pz - 0.05, pz + 0.05)):
         objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.03, 0.0025, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))

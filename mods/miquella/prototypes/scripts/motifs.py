@@ -346,6 +346,14 @@ def plane_mapper(origin, ex, ey):
     return lambda x, y: o + ex * x + ey * y
 
 
+def cylinder_mapper(axis_origin, radius, axis=(0, 0, 1)):
+    """Map 2D (x, y) onto a cylinder: x runs along the axis, y is arc length around it,
+    so a tendril laid out at an angle becomes a vine spiralling around a shaft."""
+    o = Vector(axis_origin)
+    u, v, w = basis(axis)
+    return lambda x, y: o + w * x + (u * math.cos(y / radius) + v * math.sin(y / radius)) * radius
+
+
 def volute(length, turns, curl_start=0.4, bend=0.0, n=160, tight=0.86):
     """2D centerline starting at the origin heading +x: a stem that bends gently (`bend`
     radians in total), then a scroll whose radius of curvature shrinks steadily, so it

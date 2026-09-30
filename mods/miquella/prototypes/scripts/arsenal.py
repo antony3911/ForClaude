@@ -425,8 +425,9 @@ def switch_axe():
         objs += m.tendril(f"Prong_{k}", xz, (0.012, r.z), head, 0.085, turns, 0.0055, mats, curl_start=0.45)
     # A gold-threaded cord winding up the shaft like a vine, ending in a scroll.
     vine = m.cylinder_mapper((0, 0, 0.46), 0.027)
-    objs += m.tendril("Shaft_Vine", vine, (0, 0), 32, 0.56, 1.1, 0.0058, mats, curl_start=0.8,
-                      offshoots=[(0.3, 1, 0.25, 1.1), (0.55, -1, 0.22, -1.0)])
+    # Gold, so it reads against the ivory shaft.
+    objs += m.tendril("Shaft_Vine", vine, (0, 0), 32, 0.56, 1.1, 0.0068, mats, curl_start=0.8, gold=False,
+                      strand_mat="light", offshoots=[(0.3, 1, 0.25, 1.1), (0.55, -1, 0.22, -1.0)])
     for k, z in enumerate((0.84, 1.05)):
         objs += m.halo(f"Float_Collar_{k}", (0, 0, z), 0.03, 0.0026, (0, 0, 1), mats["light"], tilt_deg=8 * (1 - 2 * k))
     # Back: a cord leaving the shaft parts into three scrolls of different size.
@@ -633,7 +634,7 @@ def bow():
                           offshoots=[(0.45, -s, 0.35, -s * 1.0)])
         objs += m.tendril(f"Tip_Back_{s}", xz, tp, h - s * 58, 0.12, -s * 1.1, 0.0068, mats)
         # A gold-threaded cord winding along the limb out to the scrolls.
-        objs += m.wound_cord(f"Limb_Vine_{s}", path, 0.021, 4.5, 0.0045, mats, phase=1.0 + s)
+        objs += m.wound_cord(f"Limb_Vine_{s}", path, 0.021, 4.5, 0.0045, mats, phase=1.0 + s, strand_mat="light")
         # Scrolls at the end of the grip, curling forward.
         objs += m.tendril(f"Riser_Scroll_{s}", xz, (grip_x - 0.012, s * 0.125), 180 - s * 32, 0.13, s * 1.25, 0.0072,
                           mats, offshoots=[(0.4, -s, 0.35, -s * 1.1)])

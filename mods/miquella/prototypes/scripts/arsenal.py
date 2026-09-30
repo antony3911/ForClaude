@@ -198,8 +198,9 @@ def hammer():
     for k in range(6):
         v0 = (2 * math.pi * k / 6 + 0.45) * 0.14
         sgn = 1 if k % 2 == 0 else -1
-        objs += m.tendril(f"Scroll_{k}", barrel_map, (-0.12, v0), 8 * sgn, 0.2, 1.3 * sgn, 0.0055, mats, strands=2,
-                          offshoots=[(0.45, -sgn, 0.38, -1.1 * sgn)])
+        # Gold filigree laid over the ivory cage.
+        objs += m.tendril(f"Scroll_{k}", barrel_map, (-0.12, v0), 8 * sgn, 0.2, 1.3 * sgn, 0.005, mats, strands=2,
+                          gold=False, strand_mat="light", offshoots=[(0.45, -sgn, 0.38, -1.1 * sgn)])
     # Floating belt ring around the middle of the head.
     objs += m.halo("Belt_Halo", (0, 0, head_z), 0.2, 0.0042, (1, 0, 0), mats["light"], tilt_deg=14,
                    tilt_axis=(0, 0, 1))

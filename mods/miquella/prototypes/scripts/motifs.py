@@ -385,7 +385,7 @@ def volute(length, turns, curl_start=0.4, bend=0.0, n=160, tight=0.86):
     return pts, ths
 
 
-def rope(name, center, radius, mats, strands=3, gold=True, taper=0.85, merge=0.82):
+def rope(name, center, radius, mats, strands=3, gold=True, taper=0.85, merge=0.82, strand_mat="ivory"):
     """Ivory strands twisted around each other along `center` (a cord), thick to thin,
     merging into one near the end, with a thread of gold light wound between them."""
     n = len(center)
@@ -411,7 +411,7 @@ def rope(name, center, radius, mats, strands=3, gold=True, taper=0.85, merge=0.8
             off = r * (0.72 if is_gold else 0.55) * conv
             pts.append(center[i] + (us[i] * math.cos(a) + vs[i] * math.sin(a)) * off)
             radii.append(max(r / radius, 0.07) * (0.42 if is_gold else 1.0) * (1 - 0.6 * (1 - conv) if is_gold else 1))
-        mat = mats["light"] if is_gold else mats["ivory"]
+        mat = mats["light"] if is_gold else mats[strand_mat]
         objs.append(c.curve_tube(f"{name}_{'gold' if is_gold else k}", pts, radii, mat,
                                  bevel=radius * 0.5, resolution=2))
     return objs
@@ -429,7 +429,7 @@ def wound_cord(name, path, wrap_radius, turns, radius, mats, phase=0.0, n=220, t
 
 
 def tendril(name, mapper, origin2d, heading_deg, length, turns, radius, mats, strands=3, gold=True,
-            offshoots=(), curl_start=0.4, bend=0.0):
+            offshoots=(), curl_start=0.4, bend=0.0, strand_mat="ivory"):
     """A cord that leaves `origin2d` at `heading_deg` (in the mapper's 2D space), thins out
     and rolls into a tightening volute. offshoots: (u, side, length_scale, turns) side
     branches peeling off at fraction u, each curling on its own."""
@@ -439,12 +439,13 @@ def tendril(name, mapper, origin2d, heading_deg, length, turns, radius, mats, st
     p2 = [(origin2d[0] + x * ch - y * sh, origin2d[1] + x * sh + y * ch) for x, y in pts]
     th2 = [h + t for t in ths]
     center = [mapper(x, y) for x, y in p2]
-    objs = rope(name, center, radius, mats, strands=strands, gold=gold)
+    objs = rope(name, center, radius, mats, strands=strands, gold=gold, strand_mat=strand_mat)
     for k, (u, side, scale, t_c) in enumerate(offshoots):
         i = int(u * (len(p2) - 1))
         r_here = radius * max(1 - 0.85 * u ** 1.2, 0.07)
         objs += tendril(f"{name}_b{k}", mapper, p2[i], math.degrees(th2[i]) + side * 40, length * scale, t_c,
-                        r_here * 0.85, mats, strands=2, gold=True, curl_start=0.3, bend=side * 0.25)
+                        r_here * 0.85, mats, strands=2, gold=gold, curl_start=0.3, bend=side * 0.25,
+                        strand_mat=strand_mat)
     return objs
 
 

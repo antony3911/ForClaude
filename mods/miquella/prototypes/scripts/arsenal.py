@@ -658,7 +658,7 @@ def bow():
                         mats["light"], minor0=0.0045)
     objs += m.halo("Rest_Halo", (grip_x - 0.03, 0, az), 0.04, 0.003, (1, 0, 0), mats["light"])
     views = [("profile", 0, 4), ("three_quarter", 35, 12), ("archer_view", 75, 6)]
-    m.render_sheets(OUT, "bow", mats, (-0.2, 0, 0.0), 2.4, views, res=(1000, 900),
+    m.render_sheets(OUT, "bow", mats, (-0.18, 0, 0.0), 2.8, views, res=(1000, 900),
                     extra=[("rail", (-0.4, 0, 0.02), 1.1, [("rail", 60, 10)])])
 
 

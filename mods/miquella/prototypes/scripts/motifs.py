@@ -91,6 +91,41 @@ def membrane_material(name, radius, strength):
     return mat
 
 
+def veil_material(name, opacity, strength):
+    """Evenly faint, see-through light (the hollow interior of an openwork blade)."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for n in list(nodes):
+        nodes.remove(n)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = opacity
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    emission = nodes.new("ShaderNodeEmission")
+    emission.name = "Membrane_Emission"
+    emission.inputs["Color"].default_value = c.hex_to_linear(c.PALETTE["glow"])
+    emission.inputs["Strength"].default_value = strength
+    links.new(transparent.outputs["BSDF"], mix.inputs[1])
+    links.new(emission.outputs["Emission"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return mat
+
+
+def flat_fill(name, outline, mat):
+    """Flat polygon filling a closed outline (points in order), e.g. a blade's veil."""
+    bm = bmesh.new()
+    verts = [bm.verts.new(Vector(p)) for p in outline]
+    bm.faces.new(verts)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = c.link(bpy.data.objects.new(name, mesh))
+    obj.data.materials.append(mat)
+    return [obj]
+
+
 # ------------------------------------------------------------------ geometry helpers
 
 def basis(axis):

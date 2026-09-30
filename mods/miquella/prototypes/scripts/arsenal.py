@@ -63,36 +63,70 @@ def trident_arms(mats, rng, z, reach, n=24, radius=0.016, lift=0.02, name="Arm")
 # ------------------------------------------------------------------ great sword
 
 def great_sword():
+    """Openwork great sword: the broad blade is drawn only by two slim edges of light around
+    a see-through veil, with ivory tracery branching inside it like the tree sigil, and
+    small leaves of light on the branches. Long reach, little mass: Miquella is slight, so
+    nothing in the set may look heavy."""
+    import sword_shield as ss
     mats = m.materials()
     rng = random.Random(31)
-    grip_top, blade_len = 0.38, 1.16
-    objs = m.woven_tube("Grip", [V(0, 0, 0.0), V(0, 0, grip_top)], 0.021, mats["ivory"], rng)
-    objs += pommel(mats, -0.012, 0.021)
-    objs += collar(mats, grip_top - 0.006, 0.024)
-    objs += trident_arms(mats, rng, grip_top + 0.01, 0.27, n=40, radius=0.026)
+    gt, blade_len = 0.36, 1.18
+    base = gt + 0.03
+    objs = m.woven_tube("Grip", [V(0, 0, 0), V(0, 0, gt)], 0.017, mats["ivory"], rng)
+    objs += pommel(mats, -0.01, 0.017)
+    objs += collar(mats, gt - 0.005, 0.019)
+    objs += trident_arms(mats, rng, gt + 0.008, 0.22, n=22, radius=0.016)
 
-    def width(t):
-        return 0.27 * (0.96 + 0.08 * math.sin(math.pi * t * 0.9)) * (1 - t ** 4.5)
+    def half_w(t):
+        return 0.12 * (0.96 + 0.08 * math.sin(math.pi * t * 0.9)) * (1 - t ** 4.5)
 
-    def thick(t):
-        return 0.028 * (1 - 0.5 * t) * (1 - t ** 4)
+    ts = [i / 59 for i in range(60)]
+    edges = {s: [V(s * half_w(t), 0, base + blade_len * t) for t in ts] for s in (-1, 1)}
+    for s in (-1, 1):
+        objs += m.path_blade(f"Edge_{s}", edges[s], (0, 1, 0), lambda t: 0.016 * (1 - 0.55 * t),
+                             lambda t: 0.006 * (1 - 0.5 * t), mats["blade"],
+                             offset_fn=lambda t, s=s: -s * 0.006, samples=120)
+    objs += m.path_blade("Edge_Base", [V(-half_w(0), 0, base), V(half_w(0), 0, base)], (0, 1, 0),
+                         lambda t: 0.009, lambda t: 0.005, mats["blade"])
+    mats["veil"] = m.veil_material("Blade_Veil", 0.16, 0.8)
+    objs += m.flat_fill("Blade_Veil", edges[-1] + list(reversed(edges[1]))[1:-1], mats["veil"])
 
-    blade_path = [V(0, 0, grip_top + 0.02), V(0, 0, grip_top + 0.02 + blade_len)]
-    objs += m.path_blade("Blade", blade_path, (0, 1, 0), width, thick, mats["blade"])
-    # Ivory spine up the middle of both faces, branching into three across the blade.
-    spine = [V(0, 0, grip_top), V(0, 0, grip_top + 0.5), V(0, 0, grip_top + 0.62)]
-    fan = [V(-0.085, 0, 0.2), V(0, 0, 0.3), V(0.085, 0, 0.2)]
-    objs += m.strand_bundle("Spine", spine, 0.024, mats["ivory"], rng, n=42, split_at=0.5, fan=fan,
-                            sub_radius=0.009, bevel=0.0038, twist=9, tip_taper=0.25)
-    # Halos: a stacked pair at the blade root, one tilted ring orbiting higher up.
-    objs += m.halo("Root_Halo", (0, 0, grip_top + 0.09), 0.2, 0.007, (0, 0, 1), mats["light"], tilt_deg=6)
-    objs += m.halo("Root_Halo_Inner", (0, 0, grip_top + 0.14), 0.17, 0.0038, (0, 0, 1), mats["light"], tilt_deg=-5)
-    objs += m.halo("Orbit_Halo", (0, 0, grip_top + 0.8), 0.19, 0.005, (0, 0, 1), mats["light"], tilt_deg=24,
+    # Ivory tracery: trunk, a long central fork, branches reaching out to touch the edges.
+    ivory = mats["ivory"]
+    split = base + 0.3
+    objs += m.strand_bundle("Trunk", [V(0, 0, gt), V(0, 0, split)], 0.011, ivory, rng, n=12,
+                            bevel=0.0024, twist=8, tip_taper=0.05)
+    objs += m.strand_bundle("Crown", [V(0, 0, split - 0.02), V(0, 0, base + 0.66)], 0.009, ivory, rng, n=12,
+                            split_at=0.5, fan=[V(-0.05, 0, 0.3), V(0, 0, 0.4), V(0.05, 0, 0.3)],
+                            sub_radius=0.004, bevel=0.0022, twist=8, tip_taper=0.25)
+    branches = []
+    for s in (-1, 1):
+        branches.append(m.catmull([V(0, 0, split), V(s * 0.035, 0, base + 0.4), V(s * 0.075, 0, base + 0.54),
+                                   V(s * 0.098, 0, base + 0.7), V(s * 0.094, 0, base + 0.83)], 40))
+        branches.append(m.catmull([V(0, 0, base + 0.1), V(s * 0.05, 0, base + 0.19), V(s * 0.1, 0, base + 0.29),
+                                   V(s * 0.114, 0, base + 0.36)], 30))
+    for i, path in enumerate(branches):
+        objs += m.strand_bundle(f"Branch_{i}", path, 0.0065, ivory, rng, n=7, bevel=0.002, twist=7,
+                                tip_taper=0.3, radius_fn=lambda u: 1 - 0.4 * u)
+    # Leaves of light along the branches (the sigil's leaf pairs).
+    ss.FRONT = 0.0
+    leaves = ss.LeafBuilder()
+    for path in branches:
+        for k in range(8, len(path) - 4, 7):
+            d = path[k + 1] - path[k - 1]
+            ang = math.atan2(d.z, d.x)
+            for side in (-1, 1):
+                leaves.add(path[k].x, path[k].z, ang + side * math.radians(50), length=0.026, width=0.01)
+    objs.append(leaves.finish(mats["light"]))
+    # Thin halos: a pair at the blade root, one orbiting higher up.
+    objs += m.halo("Root_Halo", (0, 0, gt + 0.09), 0.17, 0.0045, (0, 0, 1), mats["light"], tilt_deg=6)
+    objs += m.halo("Root_Halo_Inner", (0, 0, gt + 0.14), 0.14, 0.0025, (0, 0, 1), mats["light"], tilt_deg=-5)
+    objs += m.halo("Orbit_Halo", (0, 0, gt + 0.8), 0.16, 0.0032, (0, 0, 1), mats["light"], tilt_deg=24,
                    tilt_axis=(1, 0.3, 0))
     target = (0, 0, 0.72)
     views = [("front", 0, 4), ("three_quarter", 35, 10), ("side", 90, 4)]
     m.render_sheets(OUT, "great_sword", mats, target, 3.4, views, res=(700, 1000),
-                    extra=[("guard", (0, 0, grip_top + 0.08), 1.2, [("guard", 30, 14)])])
+                    extra=[("blade", (0, 0, 0.95), 1.5, [("blade", 15, 6)])])
 
 
 # ------------------------------------------------------------------ hammer
@@ -103,34 +137,36 @@ def hammer():
     mats = m.materials()
     rng = random.Random(41)
     head_z, half = 1.04, 0.2
-    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, head_z - 0.13)], 0.022, mats["ivory"], rng)
-    objs += pommel(mats, -0.012, 0.022)
+    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, head_z - 0.13)], 0.019, mats["ivory"], rng)
+    objs += pommel(mats, -0.01, 0.019)
     # Orb and cage.
     bpy.ops.mesh.primitive_uv_sphere_add(radius=0.095, segments=48, ring_count=24, location=(0, 0, head_z))
     orb = bpy.context.active_object
     orb.name = "Sun_Orb"
-    orb.data.materials.append(mats["light"])
+    # Brighter than the other light so it shines out between the strands.
+    sun = c.make_material("Sun", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"], strength=4.0)
+    orb.data.materials.append(sun)
     bpy.ops.object.shade_smooth()
     objs.append(orb)
     barrel = [V(x, 0, head_z) for x in (-half, 0, half)]
-    objs += m.strand_bundle("Cage", barrel, 0.14, mats["ivory"], rng, n=34, twist=5.5,
+    objs += m.strand_bundle("Cage", barrel, 0.14, mats["ivory"], rng, n=18, twist=5.5,
                             radius_fn=lambda u: 0.78 + 0.22 * math.sin(math.pi * u), spread=(1, 1),
-                            bevel=0.0055, tip_taper=0.02)
+                            bevel=0.0042, tip_taper=0.02)
     # Striking faces: thick halos filled with membrane light, a thinner ring inside.
     face = m.membrane_material("Face_Membrane", 0.11, 0.7)
     mats["face"] = face
     for s in (-1, 1):
         x = s * (half + 0.004)
-        objs += m.halo(f"Face_Halo_{s}", (x, 0, head_z), 0.112, 0.014, (1, 0, 0), mats["light"])
+        objs += m.halo(f"Face_Halo_{s}", (x, 0, head_z), 0.112, 0.009, (1, 0, 0), mats["light"])
         objs += m.halo(f"Face_Halo_Inner_{s}", (x + s * 0.012, 0, head_z), 0.072, 0.004, (1, 0, 0), mats["light"])
         objs += m.membrane_disc(f"Face_Light_{s}", (x, 0, head_z), 0.105, (1, 0, 0), face)
     # Floating belt ring around the middle of the head.
-    objs += m.halo("Belt_Halo", (0, 0, head_z), 0.2, 0.006, (1, 0, 0), mats["light"], tilt_deg=14,
+    objs += m.halo("Belt_Halo", (0, 0, head_z), 0.2, 0.0042, (1, 0, 0), mats["light"], tilt_deg=14,
                    tilt_axis=(0, 0, 1))
     # Neck: the shaft's strands part into three and grip the underside of the head.
     neck = [V(0, 0, head_z - 0.2), V(0, 0, head_z - 0.15)]
     fan = [V(-0.13, 0, 0.06), V(0, -0.035, 0.035), V(0.13, 0, 0.06)]
-    objs += m.strand_bundle("Neck", neck, 0.026, mats["ivory"], rng, n=30, split_at=0.15, fan=fan,
+    objs += m.strand_bundle("Neck", neck, 0.022, mats["ivory"], rng, n=20, split_at=0.15, fan=fan,
                             sub_radius=0.008, bevel=0.0036, twist=6)
     views = [("front", 0, 6), ("three_quarter", 35, 14), ("face_on", 90, 8)]
     m.render_sheets(OUT, "hammer", mats, (0, 0, 0.62), 2.6, views, res=(800, 1000),
@@ -145,8 +181,8 @@ def hunting_horn():
     mats = m.materials()
     rng = random.Random(51)
     yoke_z = 0.62
-    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, yoke_z - 0.02)], 0.021, mats["ivory"], rng)
-    objs += pommel(mats, -0.012, 0.021)
+    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, yoke_z - 0.02)], 0.018, mats["ivory"], rng)
+    objs += pommel(mats, -0.01, 0.018)
     # Yoke: a shallow U of strands carrying the arms.
     yoke = [V(-0.14, 0, yoke_z + 0.05), V(-0.07, 0, yoke_z + 0.005), V(0, 0, yoke_z),
             V(0.07, 0, yoke_z + 0.005), V(0.14, 0, yoke_z + 0.05)]
@@ -179,22 +215,32 @@ def hunting_horn():
 # ------------------------------------------------------------------ lance and gunlance
 
 def lance_grip(mats, rng):
-    """Woven grip and a flower-like vamplate of strands flaring forward, rimmed by a halo."""
-    objs = m.woven_tube("Grip", [V(0, 0, 0), V(0, 0, 0.36)], 0.024, mats["ivory"], rng)
-    objs += pommel(mats, -0.012, 0.024)
-    for k in range(44):
-        phi = 2 * math.pi * k / 44 + rng.uniform(-0.05, 0.05)
-        pts, radii = [], []
+    """Slim woven grip and an openwork vamplate: eight petal outlines flaring forward with
+    open space between them, rimmed by a thin halo."""
+    objs = m.woven_tube("Grip", [V(0, 0, 0), V(0, 0, 0.34)], 0.019, mats["ivory"], rng)
+    objs += pommel(mats, -0.01, 0.019)
+    objs += collar(mats, 0.335, 0.022, "Grip_Collar")
+    n_petals = 8
+    for k in range(n_petals):
+        phi = 2 * math.pi * k / n_petals
+        side_pts = {-1: [], 1: []}
+        rib = []
         for i in range(40):
             t = i / 39
-            r = 0.026 + 0.14 * t ** 1.4
-            z = 0.33 + 0.17 * t - 0.03 * smoothstep((t - 0.75) / 0.25)     # rim rolls back
-            a = phi + 0.7 * t
-            pts.append(V(r * math.cos(a), r * math.sin(a), z))
-            radii.append(1.0 - 0.6 * t ** 3)
-        objs.append(c.curve_tube(f"Vamplate_{k}", pts, radii, mats["ivory"], bevel=0.0042, resolution=2))
-    objs += m.halo("Vamplate_Halo", (0, 0, 0.5), 0.175, 0.007, (0, 0, 1), mats["light"])
-    objs += collar(mats, 0.35, 0.027, "Grip_Collar")
+            r = 0.022 + 0.11 * t ** 1.2
+            z = 0.33 + 0.15 * t - 0.02 * smoothstep((t - 0.8) / 0.2)
+            w = 0.2 * math.sin(math.pi * t) ** 0.8
+            for s in (-1, 1):
+                a = phi + s * w
+                side_pts[s].append(V(r * math.cos(a), r * math.sin(a), z))
+            if t < 0.75:
+                rib.append(V(r * math.cos(phi), r * math.sin(phi), z))
+        outline = side_pts[-1] + list(reversed(side_pts[1]))
+        objs.append(c.curve_tube(f"Petal_{k}", outline, [1.0] * len(outline), mats["ivory"], bevel=0.0028,
+                                 resolution=2))
+        objs.append(c.curve_tube(f"Petal_Rib_{k}", rib, [1 - 0.6 * i / (len(rib) - 1) for i in range(len(rib))],
+                                 mats["ivory"], bevel=0.002, resolution=2))
+    objs += m.halo("Vamplate_Halo", (0, 0, 0.475), 0.14, 0.0045, (0, 0, 1), mats["light"])
     return objs
 
 
@@ -208,60 +254,72 @@ def energy_shield(mats, location, scale):
     return root
 
 
+def double_helix(name, z0, z1, r0, r1, turns, mat, bevel, phase=0.0, n=160):
+    """Two strands spiralling around the axis, like the sigil's braided trunk."""
+    objs = []
+    for k in range(2):
+        pts, radii = [], []
+        for i in range(n):
+            t = i / (n - 1)
+            r = r0 + (r1 - r0) * t
+            a = phase + k * math.pi + 2 * math.pi * turns * t
+            pts.append(V(r * math.cos(a), r * math.sin(a), z0 + (z1 - z0) * t))
+            radii.append(1 - 0.5 * t)
+        objs.append(c.curve_tube(f"{name}_{k}", pts, radii, mat, bevel=bevel, resolution=2))
+    return objs
+
+
 def lance():
-    """A spear of light with four edges (two crossed blades), rings shrinking toward the
-    point, and a tall energy shield bearing the tree sigil."""
+    """Openwork lance: the shaft of the spear is a double helix of light around a thin core,
+    only the point is a solid blade; rings shrink toward the point; a tall energy shield."""
     mats = m.materials()
     rng = random.Random(61)
     objs = lance_grip(mats, rng)
-    tip = 1.95
+    tip = 1.98
+    objs.append(c.curve_tube("Spear_Core", [V(0, 0, 0.4), V(0, 0, tip - 0.3)], [1, 0.6], mats["core"],
+                             bevel=0.0038, resolution=3))
+    objs += double_helix("Spear_Helix", 0.42, tip - 0.3, 0.034, 0.008, 4.5, mats["light"], 0.0036)
 
     def width(t):
-        return 0.085 * (1 - t) ** 0.85 * (0.85 + 0.15 * math.sin(math.pi * min(t / 0.3, 1)))
+        return 0.05 * (1 - t) ** 0.8 * (0.8 + 0.2 * math.sin(math.pi * min(t / 0.35, 1)))
 
-    def thick(t):
-        return 0.013 * (1 - t) ** 0.8
-
-    for name, normal in (("Spear_A", (0, 1, 0)), ("Spear_B", (1, 0, 0))):
-        objs += m.path_blade(name, [V(0, 0, 0.42), V(0, 0, tip)], normal, width, thick, mats["blade"])
-    objs += m.halo_rail("Spear_Rail", (0, 0, 0.72), (0, 0, 1.6), 4, 0.085, 0.035, mats["light"], minor0=0.005)
-    energy_shield(mats, (0.5, -0.05, 0.95), 1.35)
+    for name, normal in (("Point_A", (0, 1, 0)), ("Point_B", (1, 0, 0))):
+        objs += m.path_blade(name, [V(0, 0, tip - 0.36), V(0, 0, tip)], normal, width,
+                             lambda t: 0.009 * (1 - t) ** 0.8, mats["blade"])
+    objs += m.halo_rail("Spear_Rail", (0, 0, 0.72), (0, 0, 1.5), 4, 0.07, 0.03, mats["light"], minor0=0.0038)
+    energy_shield(mats, (0.46, -0.05, 0.92), 1.2)
     views = [("front", 0, 5), ("three_quarter", 30, 10), ("back_three_quarter", 150, 10)]
-    m.render_sheets(OUT, "lance", mats, (0.22, 0, 0.95), 3.4, views, res=(900, 1000),
-                    extra=[("rail", (0, 0, 1.1), 1.4, [("rail", 25, 25)])])
+    m.render_sheets(OUT, "lance", mats, (0.2, 0, 0.95), 3.4, views, res=(900, 1000),
+                    extra=[("spear", (0, 0, 1.1), 1.4, [("spear", 25, 20)])])
 
 
 def gunlance():
-    """Three prongs of light around a glowing conduit (the trident as a gun barrel), an
-    energy core at their root, and the muzzle halos at the tip for shelling."""
+    """Openwork gunlance: three slim ribs of light around a thin glowing conduit (the
+    trident as a gun barrel), bound by an ivory spiral; a small energy core at the root
+    and light muzzle halos at the tip for shelling."""
     mats = m.materials()
     rng = random.Random(71)
     objs = lance_grip(mats, rng)
-    base, tip = 0.5, 1.72
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=tip - base, vertices=48,
-                                        location=(0, 0, (base + tip) / 2))
-    conduit = bpy.context.active_object
-    conduit.name = "Conduit"
-    conduit.data.materials.append(mats["core"])
-    bpy.ops.object.shade_smooth()
-    objs.append(conduit)
+    base, tip = 0.46, 1.74
+    objs.append(c.curve_tube("Conduit", [V(0, 0, base), V(0, 0, tip)], [1, 0.8], mats["core"],
+                             bevel=0.009, resolution=4))
     for k in range(3):
         a = math.radians(90 + 120 * k)
         radial = V(math.cos(a), math.sin(a), 0)
-        path = [V(0, 0, base + 0.06) + radial * 0.05, V(0, 0, 1.2) + radial * 0.062,
-                V(0, 0, tip + 0.18) + radial * 0.018]
-        normal = radial                       # blade width tangential to the barrel
-        objs += m.path_blade(f"Prong_{k}", path, normal,
-                             lambda t: 0.055 * (1 - t) ** 0.7 * (0.8 + 0.2 * math.sin(math.pi * min(t / 0.3, 1))),
-                             lambda t: 0.011 * (1 - t) ** 0.7, mats["blade"])
-    objs += m.droplet("Energy_Core", (0, 0, base + 0.02), 0.04, (0, 0, 1), mats["light"], stretch=1.4)
-    objs += m.halo_rail("Barrel_Rail", (0, 0, 0.85), (0, 0, 1.45), 3, 0.1, 0.085, mats["light"], minor0=0.0045)
-    objs += m.halo("Muzzle_Halo", (0, 0, tip + 0.02), 0.075, 0.0075, (0, 0, 1), mats["light"])
-    objs += m.halo("Muzzle_Halo_Inner", (0, 0, tip - 0.02), 0.055, 0.003, (0, 0, 1), mats["light"])
-    energy_shield(mats, (0.5, -0.05, 0.95), 1.35)
+        path = [V(0, 0, base + 0.06) + radial * 0.036, V(0, 0, 1.15) + radial * 0.05,
+                V(0, 0, tip + 0.16) + radial * 0.012]
+        objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.022 * (1 - t) ** 0.6 + 0.002,
+                             lambda t: 0.007 * (1 - t) ** 0.6, mats["blade"])
+    objs += double_helix("Binding", base + 0.1, 1.45, 0.058, 0.05, 3.0, mats["ivory"], 0.0026, phase=0.3)
+    objs += m.droplet("Energy_Core", (0, 0, base + 0.03), 0.028, (0, 0, 1), mats["light"], stretch=1.4)
+    for k, z in enumerate((0.95, 1.32)):
+        objs += m.halo(f"Barrel_Halo_{k}", (0, 0, z), 0.085, 0.0035, (0, 0, 1), mats["light"], tilt_deg=5 - 10 * k)
+    objs += m.halo("Muzzle_Halo", (0, 0, tip + 0.03), 0.06, 0.005, (0, 0, 1), mats["light"])
+    objs += m.halo("Muzzle_Halo_Inner", (0, 0, tip - 0.01), 0.045, 0.0025, (0, 0, 1), mats["light"])
+    energy_shield(mats, (0.46, -0.05, 0.92), 1.2)
     views = [("front", 0, 5), ("three_quarter", 30, 10), ("back_three_quarter", 150, 10)]
-    m.render_sheets(OUT, "gunlance", mats, (0.22, 0, 0.95), 3.4, views, res=(900, 1000),
-                    extra=[("muzzle", (0, 0, 1.5), 1.2, [("muzzle", 25, 35)])])
+    m.render_sheets(OUT, "gunlance", mats, (0.2, 0, 0.95), 3.4, views, res=(900, 1000),
+                    extra=[("muzzle", (0, 0, 1.45), 1.2, [("muzzle", 25, 30)])])
 
 
 # ------------------------------------------------------------------ switch axe
@@ -272,8 +330,8 @@ def switch_axe():
     mats = m.materials()
     rng = random.Random(81)
     top = 1.08
-    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.022, mats["ivory"], rng)
-    objs += pommel(mats, -0.012, 0.022)
+    objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.019, mats["ivory"], rng)
+    objs += pommel(mats, -0.01, 0.019)
     cx, cz, R = 0.03, 0.98, 0.26
     arc = [V(cx + R * math.cos(math.radians(a)), 0, cz + R * math.sin(math.radians(a)))
            for a in range(-72, 81, 8)]

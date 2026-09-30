@@ -255,13 +255,14 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "dual_blades.blend")))
 
     # Glow look.
-    c.set_emission_strength(blade, 3.0)
-    c.set_emission_strength(core, 7.0)
-    c.set_emission_strength(drop, 5.0)
+    c.set_emission_strength(blade, 2.2)
+    c.set_emission_strength(core, 3.0)
+    c.set_emission_strength(drop, 3.0)
     c.setup_render(samples=32, res=(640, 900), world_hex="#0E0E12", world_strength=0.25, glare=True)
     glow = c.render_views(OUT, "glow", target, 1.75, [views[0], views[1]], lens=60)
     c.contact_sheet(glow, os.path.join(OUT, "blades_glow_sheet.png"), cols=2)
     print("DONE", studio + close + glow)
 
 
-main()
+if __name__ == "__main__":
+    main()

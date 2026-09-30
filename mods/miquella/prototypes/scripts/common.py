@@ -12,14 +12,14 @@ from mathutils import Vector
 PALETTE = {
     "ivory": "#EFE8D2",
     "ivory_shadow": "#D9C9A0",
-    "glow": "#FFF4DA",
+    "glow": "#FFA526",        # bright gold (not white): halo, rings, droplets
     "hair": "#DCC08A",
     "skin": "#F3D6BE",
     "robe": "#E8E0CC",
     "gold": "#946E1C",
     "gold_hi": "#B8933D",
-    "blade_core": "#FFF6E0",
-    "blade_edge": "#F2D98C",
+    "blade_core": "#FFB445",  # pale bright gold
+    "blade_edge": "#FF9A1A",  # deeper gold at glancing edges
     "proxy": "#8A8A8A",
 }
 
@@ -113,8 +113,9 @@ def setup_render(samples=64, res=(900, 900), world_hex="#2B2B2E", world_strength
     scene.cycles.use_denoising = True
     scene.render.resolution_x, scene.render.resolution_y = res
     scene.render.film_transparent = False
-    scene.view_settings.view_transform = "AgX"
-    scene.view_settings.look = "AgX - Medium High Contrast"
+    # Filmic keeps bright emission golden; AgX washes it out toward white.
+    scene.view_settings.view_transform = "Filmic"
+    scene.view_settings.look = "Medium High Contrast"
 
     world = bpy.data.worlds.new("World")
     world.use_nodes = True
@@ -133,7 +134,7 @@ def setup_render(samples=64, res=(900, 900), world_hex="#2B2B2E", world_strength
         g = tree.nodes.new("CompositorNodeGlare")
         g.glare_type = "FOG_GLOW"
         g.quality = "HIGH"
-        g.threshold = 0.9
+        g.threshold = 0.6
         g.size = 8
         g.mix = 0.0
         tree.links.new(rl.outputs["Image"], g.inputs["Image"])

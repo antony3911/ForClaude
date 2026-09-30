@@ -301,11 +301,12 @@ def main():
     c.contact_sheet(studio, os.path.join(OUT, "bowgun_studio_sheet.png"), cols=3)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "heavy_bowgun.blend")))
 
-    c.set_emission_strength(glow, 5.0)
+    c.set_emission_strength(glow, 2.5)
     c.setup_render(samples=32, res=(900, 600), world_hex="#0E0E12", world_strength=0.25, glare=True)
     glow_paths = c.render_views(OUT, "glow", target, 2.6, [views[0], views[1]], lens=50)
     c.contact_sheet(glow_paths, os.path.join(OUT, "bowgun_glow_sheet.png"), cols=2)
     print("DONE", studio + glow_paths)
 
 
-main()
+if __name__ == "__main__":
+    main()

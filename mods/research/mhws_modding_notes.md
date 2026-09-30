@@ -305,6 +305,8 @@ chain2:set_ChainAsset(chain2Resource)     -- 換擺動（沒有的話用一個�
 
 → 光劍可以**只在拿特定一把武器時**換成我們的模型，不用覆蓋原版武器檔。收刀隱藏腳本也可以合併進同一個腳本。
 
+→ **已寫成草稿**：`mods/miquella/mhws/MiquellaLight_Weapons/`（含收刀隱藏），並用模擬 API 的測試跑過完整流程（`mods/miquella/mhws/tests/`）。
+
 **`create_resource` / `spawn_gameobj`**：MDF-XL 用的是 `_SharedCore/Functions.lua`（另一個 mod 的共用函式庫），這次沒有抓到原始碼。REFramework 的常見寫法是 `sdk.create_resource(型別, 路徑):add_ref()`，再 `:create_holder(型別 .. "Holder"):add_ref()` 取得可以傳給 `setMesh` 的 holder → 回家時直接看 `_SharedCore` 的實作最保險。
 
 **偵察腳本**：`mods/miquella/mhws/MiquellaLight_Scout/`（只讀取、不改任何東西）會列出獵人目前的武器、防具、所有帶模型的子物件的 `.mesh` / `.mdf2` 路徑、材質名稱和骨頭名稱，還能存成 `reframework/data/MiquellaLight/scout.json`。回家第一件事跑它，就能確認上面所有推測。

@@ -50,7 +50,9 @@ local function get_player_character()
 end
 
 -- Track whether the local player's weapon is drawn.
-sdk.hook(sdk.find_type_definition("app.HunterCharacter"):get_method("checkWeaponOn()"),
+-- If a game update renamed this method, keep the script running (weapons stay visible).
+local hookOk = pcall(function()
+    sdk.hook(sdk.find_type_definition("app.HunterCharacter"):get_method("checkWeaponOn()"),
     function(args)
         local hunter = sdk.to_managed_object(args[2])
         if hunter ~= nil and hunter:ToString():match("MasterPlayer") then
@@ -60,7 +62,9 @@ sdk.hook(sdk.find_type_definition("app.HunterCharacter"):get_method("checkWeapon
     function(retval)
         return retval
     end
-)
+    )
+end)
+if not hookOk then isWeaponDrawn = true end
 
 local function is_target(name)
     if config.applyToAll then return true end

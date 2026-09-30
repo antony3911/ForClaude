@@ -15,6 +15,7 @@
 | 片手劍＋能量盾 | 光的盾：光環裡面是米凱拉的樹狀紋章，盾面半透明 | `prototypes/sword_shield/` |
 | 角色（人台驗證） | 長袍、編髮、頭冠戴在頭髮上；**v4 頭髮改成遊戲用的髮片做法** | `prototypes/character_concept/` |
 | 收刀隱藏腳本 | REFramework 草稿（語法檢查通過，**還沒在遊戲裡測**） | `mhws/MiquellaLight_HideSheathed/` |
+| **光劍換裝腳本** | 不覆蓋原版檔案，在遊戲裡選哪把武器要換成光劍；含收刀隱藏。用模擬遊戲 API 的測試跑過全部流程（**還沒在遊戲裡測**） | `mhws/MiquellaLight_Weapons/` |
 | 偵察腳本 | 只讀取：列出目前武器／防具／子物件的模型路徑、材質、骨頭，可存成 JSON（**還沒在遊戲裡測**） | `mhws/MiquellaLight_Scout/` |
 | 研究筆記 | 15 節：工具、檔案格式、打包、材質參數、Wilds 檔案路徑、頭髮材質、不覆蓋原版檔案的掛載法 | `../research/mhws_modding_notes.md` |
 
@@ -35,8 +36,9 @@
 1. 裝 REFramework、Fluffy Mod Manager、Blender 4.3.2–5.0、RE Mesh Editor、RE Asset Library（清單在 `notes/two-account-handoff-plan.md`）
 2. **跑偵察腳本**（`mhws/MiquellaLight_Scout/`，只讀取不改東西）：在 REFramework 選單按「Scan hunter」再按「Save report」，把 `reframework/data/MiquellaLight/scout.json` 給我 → 武器、內衣、髮型的路徑和骨頭名稱一次確認
    - 分別拿雙劍、太刀、片手劍、重弩、輕弩各掃一次（穿內衣、不戴頭盔更好）
-3. **選一把要被替換的雙劍**，照素材包 README 的 7 個步驟做 → 這會是第一個真的能在遊戲裡看到的東西
-4. 測收刀隱藏腳本（REFramework 的 Script Generated UI 裡會有選單）
+3. **看到第一把光劍**：把雙劍素材包打包成 patch pak（RE Mesh Editor 的「Create Pak Patch」），裝上光劍換裝腳本，拿雙劍在選單裡選 `DualBlades` → 不用犧牲任何原版武器
+   - 如果換裝腳本行不通，再退回素材包 README 的「覆蓋原版檔案」做法
+4. 回報光劍的方向、大小、位置對不對（第一次幾乎一定要調）
 5. 用 MDF-XL 在遊戲裡調發光顏色和強度
 
 ## 需要你決定的事

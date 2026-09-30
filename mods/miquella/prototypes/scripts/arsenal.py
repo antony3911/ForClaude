@@ -532,15 +532,15 @@ def bow():
     rng = random.Random(111)
     grip_x = -0.14
     objs = m.woven_tube("Riser", [V(grip_x + 0.01, 0, -0.13), V(grip_x - 0.005, 0, 0), V(grip_x + 0.01, 0, 0.13)],
-                        0.021, mats["ivory"], rng)
+                        0.018, mats["ivory"], rng)
     tips = []
     for s in (1, -1):
         limb = [V(grip_x + 0.01, 0, s * 0.12), V(grip_x - 0.05, 0, s * 0.33), V(grip_x + 0.0, 0, s * 0.53),
                 V(grip_x + 0.12, 0, s * 0.65), V(grip_x + 0.2, 0, s * 0.69)]
         tips.append(limb[-1])
         fan = [V(0.05, 0, s * 0.05), V(0.075, 0, -s * 0.005), V(0.035, 0, -s * 0.05)]
-        objs += m.strand_bundle(f"Limb_{s}", m.catmull(limb, 40), 0.024, mats["ivory"], rng, n=32, twist=10,
-                                split_at=0.86, fan=fan, sub_radius=0.007, bevel=0.0036,
+        objs += m.strand_bundle(f"Limb_{s}", m.catmull(limb, 40), 0.017, mats["ivory"], rng, n=18, twist=12,
+                                split_at=0.86, fan=fan, sub_radius=0.006, bevel=0.003,
                                 radius_fn=lambda u: 1.0 - 0.45 * u, tip_taper=0.1)
     string_x = grip_x + 0.2
     objs.append(c.curve_tube("String", [V(string_x, 0, 0.69), V(string_x, 0, -0.69)], [1, 1], mats["core"],

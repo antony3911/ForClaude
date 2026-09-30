@@ -566,7 +566,7 @@ def kinsect(mats, center, scale):
 
 
 def insect_glaive():
-    """A staff with light blades at both ends, halos at each blade root, scrollwork guards at
+    """A staff with light blades at both ends, halos at each blade root, a trident guard at
     each end of the grip, and a butterfly of light as the kinsect."""
     mats = m.materials()
     rng = random.Random(101)
@@ -592,13 +592,11 @@ def insect_glaive():
                          lambda t: 0.01 * (1 - t ** 2), mats["blade"])
     for name, z, zdir in (("Top", top, 1), ("Bottom", bottom, -1)):
         objs += m.halo(f"{name}_Halo", (0, 0, z + zdir * 0.07), 0.065, 0.004, (0, 0, 1), mats["light"], tilt_deg=8)
-        # Guard: on each side a large scroll rolling toward the blade and a smaller one rolling
-        # away from it (local x points outward, local y toward the blade).
         for s in (-1, 1):
-            side = m.plane_mapper((0, 0, z - zdir * 0.012), (s, 0, 0), (0, 0, zdir))
-            objs += m.tendril(f"{name}_Guard_Main_{s}", side, (0.01, 0), 14, 0.15, 1.35, 0.0075, mats,
-                              offshoots=[(0.4, -1, 0.35, -1.1)])
-            objs += m.tendril(f"{name}_Guard_Small_{s}", side, (0.01, 0), -28, 0.095, -1.2, 0.006, mats)
+            path = [V(0, 0, z - zdir * 0.02), V(s * 0.05, 0, z + zdir * 0.01), V(s * 0.09, 0, z + zdir * 0.02)]
+            fan = [V(s * 0.0, 0, zdir * 0.05), V(s * 0.04, 0, zdir * 0.0), V(s * 0.0, 0, -zdir * 0.035)]
+            objs += m.strand_bundle(f"{name}_Guard_{s}", path, 0.012, mats["ivory"], rng, n=16, split_at=0.4,
+                                    fan=fan, sub_radius=0.004, bevel=0.0022, twist=6)
     kinsect(mats, (0.36, -0.08, 1.2), 1.4)
     views = [("front", 0, 5), ("three_quarter", 30, 10), ("side", 90, 5)]
     m.render_sheets(OUT, "insect_glaive", mats, (0.1, 0, 0.82), 3.5, views, res=(800, 1000),

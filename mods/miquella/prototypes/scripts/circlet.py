@@ -398,8 +398,9 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(os.path.join(OUT, "circlet.blend")))
 
     # Pass 2: in-game glow look, dark background, bloom.
-    c.set_emission_strength(ivory, 2.5)
-    c.set_emission_strength(drop, 3.0)
+    # Keep the halo golden: too much emission pushes the ivory toward white.
+    c.set_emission_strength(ivory, 1.3)
+    c.set_emission_strength(drop, 2.0)
     c.setup_render(samples=32, res=(640, 640), world_hex="#101014", world_strength=0.3, glare=True)
     glow = c.render_views(OUT, "glow", target, 0.6, [views[0], views[1], views[3]])
     c.contact_sheet(glow, os.path.join(OUT, "circlet_glow_sheet.png"), cols=3)

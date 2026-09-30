@@ -104,7 +104,8 @@ me3 設定重點：mod 設定檔要寫 `savefile`（mod 專用存檔），不要
 | Fluffy Mod Manager | 管理、開關 mod | Nexus Mods（要註冊帳號） |
 | RE Mesh Editor | Blender 讀寫 RE 引擎模型、轉換貼圖，裝在 Blender 5.0 | https://github.com/NSACloud/RE-Mesh-Editor |
 | RE Chain Editor | 頭髮、長袍的擺動物理（chain 檔），支援 Rise: Sunbreak 和 Wilds | https://github.com/NSACloud/RE-Chain-Editor |
-| 解包工具 | 取出遊戲原本的檔案 | 待查 |
+| ree-pak | 解包 Wilds 的遊戲檔案（配合檔名清單 MHWs_STM_Release.list.zst）；Rise 待查 | 待查下載來源 |
+| 特效（EFX）工具 | Wilds：CritColorTool（Nexus Mods，Python 改特效顏色的例子）；Rise：NSACloud/MHR-EFX-Template | https://github.com/NSACloud/MHR-EFX-Template |
 
 注意：RE Mesh Editor 和 RE Chain Editor 的作者都已經宣布停止維護，之後遊戲更新可能會讓它們失效。
 
@@ -160,7 +161,15 @@ me3 設定重點：mod 設定檔要寫 `savefile`（mod 專用存檔），不要
     - 延伸（之後再做）：拔刀、收刀時加光粒子特效，重用遊戲裡現有的特效
     - 設計方向：刀柄用跟頭冠同樣的象牙白細枝雕刻風格（整體統一）；刀身是發光的白金色光
     - 限制：沿用該武器種類原本的動作，刀身長度要接近原本的武器，攻擊判定才對得上
-    - 待決定：武器種類（太刀、片手劍、雙劍、大劍……）
+    - **已決定武器種類：雙劍 + 重弩**
+      - 雙劍：兩把光劍；可以順便把鬼人化的紅色氣場改成金色（特效改色）
+      - 重弩：收起來時也消失（重弩摺在背上，跟長髮穿模最嚴重）
+    - **重弩技能「米凱拉的光」（使用者提案）**：
+      - 原作參考：法環 DLC 禱告「米凱拉的光」，巨大的光柱加爆炸，施放後還會持續攻擊
+      - Wilds 重弩的特殊彈：龍擊炮類（Wyvernheart 連射、Wyvernpiercer 貫通、Wyvernblast 放置炸彈、Wyverncounter），另有集中攻擊 Wyvern Howl；Rise 的特殊彈不同，待查
+      - 候選：Wyvernblast → 爆炸改成光柱（最像原作）；或 Wyvernpiercer → 白金色光束
+      - 難度分級：① 把現有特效改成白金色：可行（Wilds 有人用 Python 腳本改暴擊特效顏色）② 換成其他現有特效的外型：要實測 ③ 改成原作那種從天而降、持續攻擊的行為：很難，可能做不到
+    - 建議順序：雙劍（練流程）→ 重弩外型 → 米凱拉人物（最難）→ 重弩技能特效
   - **光環（重點，要還原）**：
     - 已查證：遊戲道具說明提到「米凱拉閃耀的光環」（戰技「米凱拉的光環」會召喚它射出去），是一圈發光的環
     - 做法：做成發光材質的環，綁在頭部骨頭上跟著頭動；戴頭盔時也已經隱藏防具，不會擋到

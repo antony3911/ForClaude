@@ -450,6 +450,21 @@ def tendril(name, mapper, origin2d, heading_deg, length, turns, radius, mats, st
     return objs
 
 
+def floating_phials(prefix, points, drop_dir, halo_axis, mats, size=0.012):
+    """Lit droplets floating at `points`, each held in its own small halo (the phial motif,
+    first used on the charge blade's axe mode)."""
+    if "phial_lit" not in mats:
+        mats["phial_lit"] = c.make_material("Phial_Lit", c.PALETTE["glow"], roughness=0.1,
+                                            emission=c.PALETTE["glow"], strength=3.0)
+    d = Vector(drop_dir).normalized()
+    objs = []
+    for k, p in enumerate(points):
+        p = Vector(p)
+        objs += droplet(f"{prefix}_{k}", p, size, d, mats["phial_lit"], stretch=1.4)
+        objs += halo(f"{prefix}_Halo_{k}", p + d * (size / 3), size * 1.85, size * 0.15, halo_axis, mats["light"])
+    return objs
+
+
 # ------------------------------------------------------------------ blades
 
 def path_blade(name, path, plane_normal, width_fn, thick_fn, mat, offset_fn=None, n_sec=12,

@@ -107,6 +107,7 @@ def main():
     parts += hb.conduit(beam)
     parts += hb.energy_core(glow, ivory)
     parts += halo_rail(glow)
+    parts += hb.stock_phials({"light": glow}, count=4, y0=-0.39, y1=-0.18, gap=0.05, size=0.013)
     # Adapt heavy-bowgun parts to the slimmer frame.
     for obj in parts:
         if obj.name == "Light_Conduit":

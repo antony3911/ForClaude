@@ -389,6 +389,12 @@ def gunlance():
 
 # ------------------------------------------------------------------ switch axe
 
+def phial_column(prefix, x, z0, count, step, mats, size=0.012):
+    """Phials as a column of lit droplets floating beside the weapon, each in a small halo."""
+    return m.floating_phials(prefix, [V(x, 0, z0 + step * k) for k in range(count)], (-1, 0, 0.35), (1, 0, 0.3),
+                             mats, size=size)
+
+
 def sickle_blade(name, ctrl, wmax, thick_max, mats, side=1, n=80):
     """A slim curved single-edged wedge of light along a control path; the edge lies on the
     `side` of the path (turning right when side=1)."""
@@ -413,7 +419,8 @@ def switch_axe():
     out, the lower one hanging as the beard), edges all turned the same way like a
     pinwheel. Their outer ends draw the axe's silhouette. Three ivory prongs reach from the
     shaft toward the blade roots and curl short of them; floating collars mark the head.
-    Three curls on the back, a light spike on top, the phial as a droplet vial in two rings."""
+    Scrollwork on the back, a light spike on top, the phials as lit droplets floating in
+    small halos behind the shaft."""
     mats = m.materials()
     rng = random.Random(81)
     top = 1.1
@@ -450,11 +457,8 @@ def switch_axe():
     objs += m.path_blade("Top_Spike", [V(0, 0, top - 0.02), V(0, 0, top + 0.16)], (0, 1, 0),
                          lambda t: 0.034 * (1 - t), lambda t: 0.01 * (1 - t), mats["blade"])
     objs += m.halo("Top_Halo", (0, 0, top + 0.01), 0.045, 0.0032, (0, 0, 1), mats["light"], tilt_deg=8)
-    # Phial: a droplet vial of light behind the shaft, between two floating rings.
-    px, pz = -0.05, 0.36     # low on the shaft, clear of the vine
-    objs += m.droplet("Phial", (px, 0, pz - 0.02), 0.02, (0, 0, 1), mats["light"], stretch=2.2)
-    for k, z in enumerate((pz - 0.05, pz + 0.05)):
-        objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.03, 0.0025, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))
+    # Phial: lit droplets floating in a column behind the shaft, each in a small halo.
+    objs += phial_column("Phial", -0.078, 0.5, 5, 0.068, mats)
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
     m.render_sheets(OUT, "switch_axe", mats, (0.08, 0, 0.6), 2.7, views, res=(800, 1000),
                     extra=[("head", (0.15, 0, 0.93), 0.9, [("head", 25, 8)])])
@@ -578,13 +582,7 @@ def charge_blade_axe():
     m.wedge_blade("Axe_Edge", spine, edge, thick, mats["blade"])
     blade_dressing("Axe_Edge", spine, edge, thick, mats, trail=(0.15, 0.92), temper_u=0.35)
     # Phials along the back, each in a small halo, all lit.
-    charged = c.make_material("Phial_Charged", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"],
-                              strength=3.0)
-    for k in range(5):
-        z = 0.76 + 0.075 * k
-        pos = V(-0.09, 0, z)
-        m.droplet(f"Phial_{k}", pos, 0.012, (-1, 0, 0.35), charged, stretch=1.4)
-        m.halo(f"Phial_Halo_{k}", pos + V(0.004, 0, 0), 0.022, 0.0018, (1, 0, 0.3), mats["light"])
+    phial_column("Phial", -0.09, 0.76, 5, 0.075, mats)
     # Scrollwork at the joint where the head meets the haft.
     xz = m.plane_mapper((0, 0, 0), (1, 0, 0), (0, 0, 1))
     m.tendril("Joint_Cord", xz, (-0.02, 0.71), 200, 0.05, 0.0, 0.01, mats, curl_start=0.99)

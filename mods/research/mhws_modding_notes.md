@@ -118,3 +118,41 @@ MDF-XL 在某些選單開啟時不隱藏武器（避免裝備畫面預覽看不�
 - [ ] 原版武器的 `.mdf2` 有沒有發光相關的參數或 EMI 貼圖槽
 - [ ] 有沒有現成的半透明發光材質可以借給能量盾用
 - [ ] 收刀隱藏腳本實測：`checkWeaponOn()` 在 Wilds 目前版本還存不存在、隱藏時有沒有影響裝備畫面
+
+## 11. Wilds 材質：發光武器怎麼做（從 RE Mesh Editor 的材質預設查到）
+
+RE Mesh Editor 內建 Wilds 的 MDF 材質預設，其中 **Weapon Emissive**（`WeaponEmissiveMat`）就是發光武器用的材質：
+
+- Master Material：`MaterialShader/Variation/Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`（跟一般 Weapon 預設同一個，只是參數不同）
+- 發光相關參數：
+  - `Emissive_Color`：發光顏色（RGBA）→ 設成我們的亮金色
+  - `Emissive_Intensity`：預設 1.5（一般武器 1.0）
+  - `Emissive_Power`：預設 1.0（一般武器 0.0 = 不發光）
+  - `RayTrace_Emissive_Booster`：預設 300（光追模式下的加強）
+  - `Use_Basecolor_to_Emissive`：可以直接拿顏色貼圖當發光色
+- 貼圖槽 `EmissiveMap`：發光遮罩（EMI），決定哪些部位發光 → 光刃整片白、刀柄黑
+- 另有 `AlphaTest_Ref`、`AlphaAdjust`、`TranslucentParam` 等透明相關參數 → 能量盾的光膜可以從這裡下手
+
+另外還有 Character Emissive 預設（`CharacterEmissiveMat_UseSC`，`Base_Equip.mmtr`），可以給頭冠用。
+
+## 12. 管線測試：用腳本把原型匯出成 Wilds 模型檔（已成功）
+
+在這個雲端環境用 Blender 4.5（無介面）+ RE Mesh Editor 0.66 測試，腳本在 `mods/miquella/prototypes/scripts/export_wilds_test.py`。
+
+- **結果**：雙劍原型成功匯出成 `wp_miquella_test.mesh.241111606`（Wilds 格式，1.4 MB），重新匯入也正常讀回 4 個子模型
+- **匯出器會先檢查格式**，這次抓到兩個規則：
+  - 不能有孤立的頂點（沒有面的點）
+  - **每個子模型都要有 UV**
+  - → 腳本已自動處理：清除孤立頂點、沒有 UV 就自動展開
+- 匯出器會自動三角化、自動計算包圍盒
+- 無介面環境的小問題：外掛啟動後會留下背景執行緒，程式不會自己結束 → 腳本最後要強制結束；外掛的自動更新檢查也要關掉
+
+**發現的問題：面數太高**
+- 一把雙劍約 4.1 萬頂點、7.3 萬三角面，其中刀柄的編織細股就佔了 3.1 萬頂點
+- 遊戲武器應該要低很多（實際標準等拿到遊戲裡的原版武器再比對）
+- 做法：降低曲線的解析度、細股改少一點，**細節改用法線貼圖表現**（在 Blender 裡從高模烘焙到低模）
+
+**這個測試還沒做的**（需要遊戲檔案）：
+- 綁到原版武器的骨頭、對齊位置
+- 材質名稱對應原版的 `.mdf2`
+- 在遊戲裡實際顯示

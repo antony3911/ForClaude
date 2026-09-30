@@ -367,14 +367,14 @@ def gunlance():
     for k in range(3):
         a = math.radians(90 + 120 * k)
         radial = V(math.cos(a), math.sin(a), 0)
-        path = [V(0, 0, base + 0.06) + radial * 0.04, V(0, 0, 1.1) + radial * 0.068,
-                V(0, 0, tip + 0.16) + radial * 0.012]
-        objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.026 * (1 - t) ** 0.6 + 0.002,
+        path = [V(0, 0, base + 0.06) + radial * 0.045, V(0, 0, 1.05) + radial * 0.095,
+                V(0, 0, tip + 0.16) + radial * 0.016]
+        objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.016 * (1 - t) ** 0.6 + 0.002,
                              lambda t: 0.007 * (1 - t) ** 0.6, mats["blade"])
-    objs += double_helix("Binding", base + 0.1, 1.45, 0.07, 0.06, 3.0, mats["ivory"], 0.0026, phase=0.3)
+    objs += double_helix("Binding", base + 0.1, 1.45, 0.098, 0.07, 3.0, mats["ivory"], 0.0026, phase=0.3)
     objs += m.droplet("Energy_Core", (0, 0, base + 0.03), 0.028, (0, 0, 1), mats["light"], stretch=1.4)
     for k, z in enumerate((0.95, 1.32)):
-        objs += m.halo(f"Barrel_Halo_{k}", (0, 0, z), 0.085, 0.0035, (0, 0, 1), mats["light"], tilt_deg=5 - 10 * k)
+        objs += m.halo(f"Barrel_Halo_{k}", (0, 0, z), 0.12, 0.0035, (0, 0, 1), mats["light"], tilt_deg=5 - 10 * k)
     objs += m.halo("Muzzle_Halo", (0, 0, tip + 0.03), 0.06, 0.005, (0, 0, 1), mats["light"])
     objs += m.halo("Muzzle_Halo_Inner", (0, 0, tip - 0.01), 0.045, 0.0025, (0, 0, 1), mats["light"])
     energy_shield(mats, (0.46, -0.05, 0.92), 1.2)

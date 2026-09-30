@@ -1,6 +1,6 @@
 # LightNobel 與 FPGA Triangle Multiplication Kernel：技術摘要
 
-本文整理三部分內容：（1）LightNobel（Han、Choi、Kim，ISCA 2025，arXiv 2505.05893）的運作方式，這是一個針對蛋白質結構預測模型（PPM）的軟硬體協同設計加速器；（2）我們在 AMD Alveo U55C 上實作的 Triangle Multiplication einsum，版本 v0～v3；（3）用來評估它們的分析方法。標示 *（我們的解讀）* 的內容，論文中沒有明確寫出。
+本文整理三部分內容：（1）LightNobel（Han、Choi、Kim，ISCA 2025，arXiv 2505.05893）的運作方式，這是一個針對蛋白質結構預測模型（PPM）的軟硬體協同設計加速器；（2）我們針對 Triangle Multiplication einsum 提出的最佳化步驟（v0～v3），以 spatial accelerator 為對象；（3）用來評估它們的分析方法。標示 *（我們的解讀）* 的內容，論文中沒有明確寫出。
 
 ## 1. 背景：ESMFold 與 Pair Representation
 
@@ -262,94 +262,87 @@ pair representation 仍隨 L² 成長。
 | 融合的 GPU kernel | OpenFold3 融合 TriMul | 中間值不寫回記憶體 | 需手寫 kernel，受限於 GPU 架構 |
 | 專用加速器 | LightNobel | 量化、專用單元與 token-wise 資料流 | 以模擬評估，未實際流片 |
 
-## 3. Triangle Multiplication einsum 的 FPGA 實作
+## 3. Triangle Multiplication einsum 的最佳化方案（v0～v3）
 
-### 3.1 平台與 kernel 規格
+本章以與平台無關的方式描述各步最佳化，並用以下參數表示：
 
-| 項目 | 內容 |
+| 符號 | 意義 |
 |---|---|
-| 板卡 | AMD Alveo U55C，16 GB HBM2（32 個 pseudo-channel，各約 14 GB/s，總計約 460 GB/s） |
-| 工具鏈 | Vitis HLS（C++ → RTL）、Vitis v++ 連結、XRT host |
-| Kernel 時脈 | 目標 300 MHz（3.33 ns）；HLS 估計關鍵路徑 2.431 ns |
-| 運算 | `z[i][j][c] = Σ_k a[i][k][c] · b[j][k][c]`，C = 128，FP32 |
-| 資料排列 | `[row][col][channel]`，索引 `(row · L + col) · C + c`（與 PyTorch 相同） |
-| Tile | T_I = T_J = 8 |
+| L | 序列長度 |
+| C | 每個 token 的 channel 數（128） |
+| e | 每個元素的 bytes（FP32 為 4） |
+| T_I、T_J | 輸出 tile 在 i、j 方向的大小 |
+| W | 每個傳輸 cycle 送達的元素數（介面寬度 / e） |
+| P | 每個 cycle 的乘加（MAC）數 |
+| α | 每次記憶體請求的存取延遲（cycles） |
+| δ | 乘加資料路徑的 pipeline 深度（cycles） |
 
-在這種排列下，一個 token 的 128 個 channel 是連續的：512 bytes，剛好是 8 個 512-bit word。
+### 3.1 問題定義與資料排列
 
-U55C 的記憶體階層：
+kernel 計算 `z[i][j][c] = Σ_k a[i][k][c] · b[j][k][c]`，i、j < L，c < C，也就是 C 個獨立的 L × L 矩陣乘法 `z_c = a_c · b_cᵀ`。總工作量為 L² · C 個輸出，每個需要 L 次乘加，共 2 · L³ · C 次運算。
 
-| 層級 | 容量 | 存取延遲 |
-|---|---|---|
-| Flip-flop | 約 330 KB | 1 cycle |
-| BRAM | 4,032 × 18 Kb ≈ 9 MB | 1～2 cycles |
-| URAM | 960 × 288 Kb ≈ 35 MB | 1～2 cycles |
-| HBM2 | 16 GB（32 × 512 MB） | 數十～上百 cycles |
-
-L = 1,000 時，一份 L × L × 128 的 FP32 張量就佔 512 MB，而晶片內只有約 43 MB，因此 einsum 必須從 HBM 分批串流 tile。
-
-正確性以兩種方式驗證：
-
-- **C 模擬**：testbench 使用隨機 activation，其中 1% 的 token 放大 30 倍，並與 CPU 上的 double 精度參考結果比較。v0～v3 的 rel_l2 皆為 1.141 × 10⁻⁷（結果完全一致）。
-- **與 ESMFold 的等價性**：使用 HuggingFace 的 ESMFold 實作，`einsum("ikc,jkc->ijc", a, b)` 與模組內部的計算結果相比，最大絕對誤差為 0。
+三個張量都採用模型原生的 `[row][col][channel]` 排列。同一個 token 的 C 個 channel 是連續的（FP32 為 C · e = 512 bytes），因此 `a` 的第 i 列與 `b` 的第 j 列都是 L 個連續的 token。einsum 的兩個運算元都沿列讀取，不需要轉置任何一方。
 
 ### 3.2 v0：基準
 
-```c
-for i, for j, for c:
-    acc = 0
-    for k:  acc += a[(i*L + k)*C + c] * b[(j*L + k)*C + c]
-    z[(i*L + j)*C + c] = acc
-```
+每個輸出元素 `z[i][j][c]` 各自獨立計算，對 k 的歸約放在最內層。每次乘加都從外部記憶體取一個 `a` 元素與一個 `b` 元素，晶片內除了一個累加器外不保留任何資料。
 
-每次乘加都從 HBM 讀取兩個運算元，沒有任何晶片內的重用。最內層迴圈遞增 k，每次位址前進 C 個元素，存取模式不連續，HLS 無法推論 burst，每次存取都要付出完整的記憶體延遲。
+- **流量**：2 · L³ · C 次元素讀取，沒有重用。每個 `a` 元素對每個 j 都重讀一次，每個 `b` 元素對每個 i 都重讀一次。
+- **存取模式**：相鄰的 k 迭代存取的位址相差 C 個元素，請求無法合併成 burst，每個元素都要付出完整的延遲 α。
+- **算術強度**：每 2e bytes 做 2 次運算，FP32 為 0.25 FLOP/byte。
 
 ### 3.3 v1：Loop tiling 與晶片內 buffer
 
-```c
-for (i0 = 0; i0 < L; i0 += TI)  for (j0 = 0; j0 < L; j0 += TJ):
-    acc[TI][TJ][C] = 0                                   // BRAM，32 KB
-    for k:
-        load_a: la[ii][c] ← a[((i0+ii)*L + k)*C + c]     // TI 個 token，4 KB
-        load_b: lb[jj][c] ← b[((j0+jj)*L + k)*C + c]     // TJ 個 token，4 KB
-        mac:    acc[ii][jj][c] += la[ii][c] * lb[jj][c]  // ii、jj、c
-    store acc → z
+**想法**：把輸出空間切成 T_I × T_J 的 tile，一個 tile 的累加器（T_I · T_J · C 個值）在整個歸約過程中都留在晶片內（output-stationary），並把對 k 的歸約移到 tile 內部。對每個 k：
+
+1. 把 T_I 個 token `a[i0 … i0+T_I−1][k]` 與 T_J 個 token `b[j0 … j0+T_J−1][k]` 載入晶片內 buffer。
+2. 從這些 buffer 算出全部 T_I · T_J · C 個乘積。
+
+每個載入的 `a` 元素供 T_J 個輸出使用，每個 `b` 元素供 T_I 個輸出使用。
+
+**重用**：晶片外讀取量從 2 · L³ · C 降為 L³ · C · (1/T_I + 1/T_J)。8 × 8 的 tile 讓讀取量降為 1/8。
+
+**連續存取**：每次載入一個完整的 token，也就是 C 個連續元素，因此一個 token 可以用一次 burst 取回。延遲 α 變成每個 token 付一次，而不是每個元素付一次。
+
+**每個 k 的成本**（每 cycle 傳輸一個元素、做一次乘加）：
+
+```
+t_k(v1) ≈ (T_I + T_J) · C  +  T_I · T_J · C  +  延遲項
+        = 2,048 + 8,192 = 10,240 cycles        （T_I = T_J = 8，C = 128）
 ```
 
-- **Tiling 與重用**：把輸出空間切成 T_I × T_J 的 tile，其累加器留在晶片內（output-stationary）。對每個 k，只載入一次 T_I 個 `a` token 與 T_J 個 `b` token，並在 `mac` 迴圈中重複使用：每個 `la` 元素供 T_J 個輸出使用，每個 `lb` 元素供 T_I 個輸出使用。8 × 8 的 tile 讓晶片外讀取量降為 1/8。
-- **Burst 推論**：載入迴圈的最內層沿 c 走訪連續位址，使 HLS 能為每個 token 推論出一個 128 拍的 AXI burst；延遲變成每個 token 付一次，而不是每個元素付一次。
-- **Pipeline**：所有迴圈都以 II = 1 做 pipeline。`acc` 上的相依性 pragma（`inter false`）告訴 HLS：同一個累加器每 T_I · T_J · C 次迭代才更新一次，因此浮點加法器的延遲不會限制 initiation interval。
-- **限制**：仍是 32-bit port，每個 cycle 只有一次乘加。每一輪 k 約需 1,024 ＋ 1,024 ＋ 8,192 個 cycle，以計算為主（估算值）。
+計算佔了 80%，所以下一步必須提高乘加速率，而不只是提高傳輸速率。
 
-### 3.4 v2：寬位元記憶體介面與向量化
+### 3.4 v2：寬位元傳輸與向量化
 
-v2 把介面、晶片內 buffer 與運算資料路徑同時加寬為 16 lane：
+**想法**：einsum 的 C 個 channel 彼此獨立（不對 c 做歸約），在記憶體中也是連續的。因此不需要重新排列資料，就能每次傳輸處理 W 個 channel、每個乘加 cycle 處理 P 個 channel。v2 一致地加寬三個部分：
 
-- **介面**：指標型別從 `float*` 改為 16 個 float 組成的 512-bit struct（`f16`），HLS 因此產生 512-bit 的 AXI master port。`a`、`b`、`z` 使用不同的 bundle（gmem0／1／2），形成三個獨立的 port，連接到不同的 HBM pseudo-channel。在 300 MHz 下，每個 port 的頻寬從 1.2 GB/s 提升到 19.2 GB/s。一個 token 變成 8 拍的 burst，多個未完成的請求（outstanding request）讓連續 token 的延遲互相重疊。
-- **Buffer**：`la`、`lb`、`acc` 宣告為 `[rows][16]`，並在 lane 維度完全切割（complete partition），每個 cycle 可以讀寫 16 個值。
-- **資料路徑**：pipeline 化的 `mac` 迴圈中，lane 迴圈被完全展開成 16 組平行的浮點乘加單元（峰值 16 × 2 × 300 MHz = 9.6 GFLOP/s）。
+1. **傳輸寬度**：每次記憶體傳輸 W 個元素（例如 512-bit 傳輸可攜帶 W = 16 個 FP32）。一個 token 只需 C / W 次傳輸。
+2. **晶片內 buffer**：buffer 沿 channel 維度切成 W（= P）個獨立的 bank，每個 cycle 可以讀出 P 個運算元。
+3. **資料路徑**：P 個平行的乘加單元，每個 cycle 處理同一組 (i, j, k) 的 P 個 channel。
 
-HLS 報告（L = 256，T_I = T_J = 8）：
+`a` 與 `b` 經由各自獨立的輸入串流讀取，因此兩者的 tile 載入可以同時進行。
 
-| 模組 | 延遲（cycles） | 拆解 |
-|---|---|---|
-| init | 514 | 512 ＋ 2 |
-| load_a／load_b（平行） | 141 | 64 個 word ＋ 77 |
-| mac | 526 | 8 · 8 · 8 = 512 ＋ pipeline 深度 14 |
-| loop_k 每輪 | 671 | 141 ＋ 526 ＋ 4 |
-| store | 586 | 512 ＋ 74 |
-| 每個 tile | 172,880 | |
-| 總計 | 177,029,185（0.590 秒） | 1,024 個 tile |
+**每個 k 的成本**：
+
+```
+t_load = max(T_I, T_J) · C / W + α
+t_mac  = T_I · T_J · C / P + δ
+t_k(v2) = t_load + t_mac
+例（T = 8，C = 128，W = P = 16）：t_load = 64 + α，t_mac = 512 + δ
+```
+
+相對於 v1，傳輸項縮小 W 倍，計算項縮小 P 倍。以 α ≈ 80、δ ≈ 15 cycles（示意值）計算，t_k 從約 10,240 降到約 671 cycles，約 15 倍。沒有達到 16 倍，是因為 α 與 δ 不會隨寬度縮小。
 
 ### 3.5 v3：Double buffering
 
-v2 中載入與計算輪流進行：每 671 個 cycle 中有 141 個 cycle 乘加單元閒置。v3 讓兩者重疊：
+**想法**：v2 在載入一段 tile 資料時，乘加單元是閒置的（每 t_k 個 cycle 中有 t_load 個）。v3 讓 k+1 的載入與 k 的計算重疊：
 
-- **Buffer**：兩組 buffer（`la0/lb0`、`la1/lb1`）。
-- **模組**：載入與計算拆成兩個函式（`load_ab`、`mac`），並設定 `INLINE off`，使兩者各自成為獨立的硬體模組。
-- **排程**：進入 k 迴圈前，先把 `k = 0` 載入第 0 組。k 為偶數時，`load_ab(k+1 → 第 1 組)` 與 `mac(第 0 組)` 同時執行；k 為奇數時角色互換。兩個呼叫存取的陣列互不重疊，HLS 便將它們排成平行執行。
-- **為什麼需要兩組**：只用一組 buffer 會產生 write-after-read hazard：下一次載入會覆蓋目前 `mac` 仍在讀取的資料。
-- **代價**：`la`／`lb` 的 BRAM 用量加倍；晶片外流量、port 寬度與乘加單元數量不變。
+- **兩組 buffer**：配置兩組輸入 buffer（第 0 組與第 1 組）。
+- **排程**：歸約開始前先把 k = 0 載入第 0 組。k 為偶數時，把 k+1 載入第 1 組，同時使用第 0 組計算；k 為奇數時角色互換。
+- **互不相依**：載入與計算存取的 buffer 互不重疊，因此可以作為兩個獨立的硬體單元同時執行。
+- **為什麼要兩組**：只用一組 buffer 會產生 write-after-read hazard：下一次載入會覆蓋乘加單元仍在讀取的資料。
+- **代價**：輸入 buffer 的記憶體加倍；流量、傳輸寬度與乘加單元數不變。
 
 ```
 v2:  [load k=0][ mac k=0 ][load k=1][ mac k=1 ][load k=2][ mac k=2 ] ...
@@ -357,24 +350,25 @@ v3:  [load k=0][ mac k=0 ][ mac k=1 ][ mac k=2 ][ mac k=3 ] ...
                [load k=1] [load k=2] [load k=3]
 ```
 
-每輪時間從相加變為取最大值：
+**每個 tile 的成本**：
 
 ```
-v2: T_iter = T_load + T_mac + 4        = 141 + 526 + 4 = 671 cycles
-v3: T_iter = max(T_load, T_mac) + 4    = 530 cycles（模型預測）
-每個 tile：v2 = L · 671，v3 = 141 + L · 530   →  L 很大時加速比 → 671 / 530 ≈ 1.27
+v2：  L · (t_load + t_mac)
+v3：  t_load + L · max(t_load, t_mac)
+加速比（L 很大時）= (t_load + t_mac) / max(t_load, t_mac)  ≤ 2
+例（t_load ≈ 144，t_mac ≈ 527）：671 / 527 ≈ 1.27
 ```
 
-加速的上限取決於載入所佔的比例（21%），符合 Amdahl's law。v3 的數字是模型預測，尚待 HLS 合成確認。
+效益的上限取決於載入所佔的時間比例（例子中約 21%），符合 Amdahl's law；只有在 t_load ≈ t_mac 時才會達到最大值 2。
 
 ### 3.6 v0～v3 總整理
 
-| 版本 | 手法 | 晶片外讀取量（元素數） | 每 cycle 乘加數 | 算術強度（FLOP/byte） | 狀態 |
-|---|---|---|---|---|---|
-| v0 | 基準 | 2 L³ C | 1 | 0.25 | C 模擬驗證 |
-| v1 | loop tiling、晶片內 buffer、burst 存取 | L³ C (1/T_I + 1/T_J) | 1 | 2 | C 模擬驗證 |
-| v2 | 512-bit AXI、array partitioning、16-lane SIMD | 同 v1 | 16 | 2 | C 模擬驗證、HLS 報告 |
-| v3 | double buffering | 同 v1 | 16 | 2 | C 模擬驗證、HLS 待跑 |
+| 版本 | 想法 | 晶片外讀取量（元素數） | 每 cycle 乘加數 | 每個歸約步的時間 |
+|---|---|---|---|---|
+| v0 | 基準，歸約在最內層 | 2 L³ C | 1 | 每個元素受延遲限制 |
+| v1 | tiling、晶片內累加器與 buffer、以 token 為單位連續載入 | L³ C (1/T_I + 1/T_J) | 1 | (T_I + T_J) C + T_I T_J C |
+| v2 | 寬位元傳輸（W）、沿 channel 向量化乘加（P） | 同 v1 | P | t_load + t_mac |
+| v3 | double buffering | 同 v1 | P | max(t_load, t_mac) |
 
 ## 4. 計算方法
 
@@ -384,7 +378,7 @@ v3: T_iter = max(T_load, T_mac) + 4    = 530 cycles（模型預測）
 不重疊：  T ≈ T_compute + T_memory
 重疊：    T ≈ max(T_compute, T_memory)
 T_compute = 運算次數 / (每 cycle 運算數 × f_clk)
-T_memory  = 搬運量 / 頻寬 + 延遲 × 未被重疊的請求次數
+T_memory  = 搬運量 / 頻寬 + α × 未被重疊的請求次數
 ```
 
 每種最佳化作用在其中一項：
@@ -392,10 +386,10 @@ T_memory  = 搬運量 / 頻寬 + 延遲 × 未被重疊的請求次數
 | 手法 | 作用的項 | 版本 |
 |---|---|---|
 | Tiling | 搬運量 ↓ | v1 |
-| 寬位元介面、burst | 頻寬 ↑、未被重疊的請求 ↓ | v1、v2 |
+| 連續（burst）存取 | 未被重疊的請求 ↓ | v1 |
+| 寬位元傳輸 | 頻寬 ↑ | v2 |
 | 平行乘加單元 | 每 cycle 運算數 ↑ | v2 |
 | Double buffering | 相加 → 取最大值 | v3 |
-| 多個 HBM 通道 | 頻寬 ↑ | 設定檔對照實驗 |
 
 ### 4.2 晶片外流量
 
@@ -405,69 +399,69 @@ v1：  R_1 = (L/T_I)(L/T_J) · L · (T_I + T_J) · C = L³ · C · (1/T_I + 1/T_
 R_0 / R_1 = 2 / (1/T_I + 1/T_J)  =  8（8×8）、16（16×16）、32（32×32）
 ```
 
+輸出的寫入量（L² · C）在各版本都相同，L 很大時相對於讀取量可以忽略。
+
 ### 4.3 算術強度與 roofline
 
 ```
-AI = FLOPs / bytes = 2 L³ C / (4 · R)
-v0：     AI = 2 L³ C / (4 · 2 L³ C) = 0.25 FLOP/byte
-v1～v3：  AI = T_I · T_J / (2 (T_I + T_J))  =  2（8×8）、4（16×16）、8（32×32）
+AI = FLOPs / bytes = 2 L³ C / (e · R)
+v0：     AI = 1 / e                              = 0.25 FLOP/byte（FP32）
+v1～v3：  AI = 2 T_I T_J / (e (T_I + T_J))        = 2（8×8）、4（16×16）、8（32×32），e = 4
 可達效能 = min(峰值運算能力, AI × 頻寬)
 ```
 
-v2 的 16 個乘加單元最多消耗 9.6 GFLOP/s。在 AI = 2 FLOP/byte 下只需 4.8 GB/s，遠低於兩個 512-bit 輸入 port 提供的 38.4 GB/s，因此 tiling 後的 kernel 是 compute-bound。這與 HLS 報告一致：每輪 671 個 cycle 中 `mac` 佔 526 個。v0 則是 memory-bound：每次乘加都要等兩次無法 burst 的存取。
+**Compute-bound 的條件**：向量化設計的峰值運算能力為 2 · P · f_clk，兩個輸入串流提供 2 · W · e · f_clk bytes/s。當以下條件成立時，kernel 為 compute-bound：
 
-### 4.4 Cycle 模型與校正
+```
+2 P f / AI  ≤  2 W e f     ⇔     P / AI ≤ W · e
+```
+
+P = W = 16、e = 4、AI = 2 時，左邊為 8、右邊為 64，因此 tiling 後的 kernel 是 compute-bound，不需要為了頻寬再加大 tile。v0（AI = 0.25，無 burst）則同時受延遲與記憶體限制。
+
+### 4.4 Cycle 模型與校正方法
 
 ```
 cycles_total = (L/T_I)(L/T_J) · cycles_tile
-cycles_tile  = t_init + L · t_iter + t_store + ε
-t_load  = max(T_I, T_J) · C/16 + α        （α：記憶體延遲與迴圈啟動成本）
-t_mac   = T_I · T_J · C/16 + δ            （δ：pipeline 深度）
-t_iter  = t_load + t_mac + 4               （v2）
-t_iter  = max(t_load, t_mac) + 4           （v3）
-t_store = T_I · T_J · C/16 + σ
+cycles_tile  = t_init + L · t_k + t_store
+t_load  = max(T_I, T_J) · C/W + α
+t_mac   = T_I · T_J · C/P + δ
+t_k     = t_load + t_mac                    （v2）
+t_k     = max(t_load, t_mac)                （v3，每個 tile 另加一次初始 t_load）
+t_init  = t_store ≈ T_I · T_J · C/P + σ
 ```
 
-常數由 v2 的 HLS 報告校正：
-
-| 報告數值 | 結構項 | 校正出的常數 |
-|---|---|---|
-| load = 141 | 8 · 8 = 64 | α = 77 |
-| mac = 526 | 8 · 8 · 8 = 512 | δ = 14 |
-| store = 586 | 512 | σ = 74 |
-
-校正後的模型預測 v2 為 177,029,120 cycles，報告為 177,029,185（誤差 < 0.01%）。由於校正與比較使用同一份報告，這只檢查了一致性，並非預測能力。驗證要使用校正時沒用過的設定：tile 大小 16 × 16 與 32 × 32（`make hls-sweep`），以及 v3、v4 版本（`make hls-all`），目標誤差在 10% 以內。
-
-模型有三項限制：
-
-- HLS 的延遲本身是估計值。
-- 沒有模擬共用同一 HBM 通道的 port 之間的競爭。
-- 資源數字（DSP、BRAM）只供參考。
+結構項由迴圈邊界直接推得。常數 α、δ、σ 取決於實作平台，先用一個參考設定（合成估計或實測）校正，再用校正時沒用過的設定（其他 tile 大小、v3）驗證，目標誤差在 10% 以內。此模型沒有考慮多個串流共用同一記憶體通道時的競爭。
 
 ### 4.5 晶片內記憶體
 
 ```
-acc = T_I · T_J · C · 4 B          （8×8：32 KB；16×16：128 KB；32×32：512 KB）
-la  = T_I · C · 4 B，lb = T_J · C · 4 B   （8 個 token：各 4 KB；v3 加倍）
+累加器   = T_I · T_J · C · e          （8×8：32 KB；16×16：128 KB；32×32：512 KB）
+輸入 buffer = (T_I + T_J) · C · e      （8×8：8 KB；double buffering 時加倍）
 ```
 
-tile 越大，算術強度越高，但 BRAM 用量以平方成長。設計空間探索在「cycle 數對 BRAM 用量」的 Pareto 前緣上，選擇膝點作為 tile 大小。
+算術強度隨 tile 大小線性成長，累加器用量則以平方成長。tile 大小選在「cycle 數對晶片內記憶體」Pareto 前緣的膝點。
 
 ### 4.6 容量模型
 
-記憶體需求隨 L² 成長，因此最大序列長度只隨可用記憶體的平方根成長：
+記憶體需求隨 L² 成長，因此最大序列長度只隨可用容量 M 的平方根成長：
 
 ```
 記憶體 = L² · (每個 pair 位置的 bytes)
-L_max  = sqrt(容量 / 每個 pair 位置的 bytes)
+L_max  = sqrt(M / 每個 pair 位置的 bytes)
 ```
 
-以 16 GB 的 U55C、FP16 為基準（ESMFold 與 LightNobel 比較時使用的精度）：
+相對提升與 M 無關。以 FP16 為基準（ESMFold 與 LightNobel 比較時使用的精度）：
 
-| 配置 | 每個 L² 位置的 bytes | L_max | 相對 |
-|---|---|---|---|
-| 未融合（約 7 份同時存在的 L × L × 128 張量，FP16） | 7 × 256 = 1,792 | ≈ 3,096 | 1.00× |
-| 融合 producer／consumer，FP16 `z`，INT8 `a`、`b`（設計估算） | 2 × 256 ＋ 2 × 132 = 776 | ≈ 4,705 | 1.52× |
-| 同上，改用 INT4 `a`、`b`（設計估算） | 2 × 256 ＋ 2 × 68 = 648 | ≈ 5,148 | 1.66× |
+| 配置 | 每個 L² 位置的 bytes | L_max 相對值 |
+|---|---|---|
+| 未融合的 TriMul（約 7 份同時存在的 L × L × 128 張量，FP16） | 7 × 256 = 1,792 | 1.00× |
+| 融合 producer／consumer，FP16 `z`，INT8 `a`、`b`（per-token scale） | 2 × 256 ＋ 2 × 132 = 776 | sqrt(1,792 / 776) ≈ 1.52× |
+| 同上，改用 INT4 `a`、`b` | 2 × 256 ＋ 2 × 68 = 648 | sqrt(1,792 / 648) ≈ 1.66× |
 
-INT8 token 為 128 B 加 4 bytes 的 scale；INT4 token 為 64 B 加 4 bytes 的 scale。融合的配置是分析估算，尚未實作。由於 L 只隨記憶體減少倍數的平方根成長，每個位置的 bytes 減少 2.3 倍，L 約提升 1.5 倍。
+INT8 token 佔 128 B 加 4 bytes 的 scale，INT4 token 佔 64 B 加 4 bytes 的 scale。融合配置的假設如下：
+
+- `a`、`b` 逐 token 產生（LayerNorm、linear、gating 與量化融合在一起）。
+- `g` 在 consumer 中重算而不儲存。
+- 只有 `z`、輸出、`a`、`b` 會寫到記憶體。
+
+由於 L 只隨記憶體減少倍數的平方根成長，每個位置的 bytes 減少 2.3 倍，L 約提升 1.5 倍。

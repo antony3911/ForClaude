@@ -1,6 +1,6 @@
 # LightNobel and FPGA Triangle-Multiplication Kernels: Technical Summary
 
-This document summarizes (1) the operation of LightNobel (Han, Choi, Kim, ISCA 2025, arXiv 2505.05893), a hardware–software co-designed accelerator for protein structure prediction models (PPMs); (2) our FPGA implementation of the Triangle Multiplication einsum on an AMD Alveo U55C, versions v0–v3; and (3) the analytical methods used to evaluate them. Statements marked *(our interpretation)* are not stated explicitly in the paper.
+This document summarizes (1) the operation of LightNobel (Han, Choi, Kim, ISCA 2025, arXiv 2505.05893), a hardware–software co-designed accelerator for protein structure prediction models (PPMs); (2) our proposed optimization steps (v0–v3) for the Triangle Multiplication einsum on a spatial accelerator; and (3) the analytical methods used to evaluate them. Statements marked *(our interpretation)* are not stated explicitly in the paper.
 
 ## 1. Background: ESMFold and the Pair Representation
 
@@ -239,94 +239,87 @@ The pair representation still grows as L².
 | Fused GPU kernels | OpenFold3 fused TriMul | intermediates not materialized | hand-written kernels, GPU-specific |
 | Dedicated accelerator | LightNobel | quantization, specialized units and token-wise dataflow | simulated, not fabricated |
 
-## 3. FPGA Implementation of the Triangle-Multiplication Einsum
+## 3. Proposed Kernel Optimizations for the Triangle-Multiplication Einsum (v0–v3)
 
-### 3.1 Target and kernel specification
+This section describes the optimization steps in platform-independent terms. Each step is expressed through the following parameters:
 
-| Item | Value |
+| Symbol | Meaning |
 |---|---|
-| Board | AMD Alveo U55C, 16 GB HBM2 (32 pseudo-channels, ~14 GB/s each, ~460 GB/s total) |
-| Toolchain | Vitis HLS (C++ → RTL), Vitis v++ linking, XRT host |
-| Kernel clock | 300 MHz target (3.33 ns); HLS estimated critical path 2.431 ns |
-| Operation | `z[i][j][c] = Σ_k a[i][k][c] · b[j][k][c]`, C = 128, FP32 |
-| Layout | `[row][col][channel]`, index `(row · L + col) · C + c` (same as PyTorch) |
-| Tile | T_I = T_J = 8 |
+| L | sequence length |
+| C | channels per token (128) |
+| e | bytes per element (4 for FP32) |
+| T_I, T_J | output tile size along i and j |
+| W | elements delivered per memory transfer cycle (interface width / e) |
+| P | multiply–accumulate (MAC) operations per cycle |
+| α | memory access latency per request (cycles) |
+| δ | pipeline depth of the MAC datapath (cycles) |
 
-With this layout the 128 channels of one token are contiguous: 512 bytes, or exactly eight 512-bit words.
+### 3.1 Problem formulation and data layout
 
-U55C memory hierarchy:
+The kernel computes `z[i][j][c] = Σ_k a[i][k][c] · b[j][k][c]` for all i, j < L and c < C, i.e. C independent L × L matrix products `z_c = a_c · b_cᵀ`. The total work is L² · C outputs, each requiring L MACs, i.e. 2 · L³ · C operations.
 
-| Level | Capacity | Access latency |
-|---|---|---|
-| Flip-flops | about 330 KB | 1 cycle |
-| BRAM | 4,032 × 18 Kb ≈ 9 MB | 1–2 cycles |
-| URAM | 960 × 288 Kb ≈ 35 MB | 1–2 cycles |
-| HBM2 | 16 GB (32 × 512 MB) | tens to hundreds of cycles |
-
-One L × L × 128 FP32 tensor at L = 1,000 occupies 512 MB, compared with about 43 MB on chip. The einsum therefore has to stream tiles from HBM.
-
-Correctness was checked in two ways:
-
-- **C simulation.** The testbench uses random activations with 1% of tokens scaled by 30× and compares against a double-precision CPU reference. v0–v3 all give rel_l2 = 1.141 × 10⁻⁷ (identical results).
-- **Equivalence with ESMFold.** Using the HuggingFace ESMFold implementation, `einsum("ikc,jkc->ijc", a, b)` equals the module's internal computation with maximum absolute difference 0.
+All three tensors use the layout `[row][col][channel]`, the native layout of the model. The C channels of one token are contiguous (C · e = 512 bytes for FP32). Row i of `a` and row j of `b` are therefore sequences of L contiguous tokens. Both operands of the einsum are read along rows, so neither needs to be transposed.
 
 ### 3.2 v0: baseline
 
-```c
-for i, for j, for c:
-    acc = 0
-    for k:  acc += a[(i*L + k)*C + c] * b[(j*L + k)*C + c]
-    z[(i*L + j)*C + c] = acc
-```
+Each output element `z[i][j][c]` is computed independently with the reduction over k innermost. Every MAC fetches one element of `a` and one of `b` from external memory, and nothing is kept on chip except a single accumulator.
 
-Every multiply-accumulate reads two operands from HBM, so there is no on-chip reuse. The innermost loop advances k, which moves the address by C elements per iteration. The access pattern is strided, HLS cannot infer bursts, and each access pays the full memory latency.
+- **Traffic.** 2 · L³ · C element reads, with no reuse: each element of `a` is re-read for every j and each element of `b` for every i.
+- **Access pattern.** Consecutive k iterations access addresses C elements apart. Requests cannot be merged into bursts, so each element incurs the full latency α.
+- **Arithmetic intensity.** 2 operations per 2e bytes = 0.25 FLOP/byte for FP32.
 
 ### 3.3 v1: loop tiling with on-chip buffers
 
-```c
-for (i0 = 0; i0 < L; i0 += TI)  for (j0 = 0; j0 < L; j0 += TJ):
-    acc[TI][TJ][C] = 0                                   // BRAM, 32 KB
-    for k:
-        load_a: la[ii][c] ← a[((i0+ii)*L + k)*C + c]     // TI tokens, 4 KB
-        load_b: lb[jj][c] ← b[((j0+jj)*L + k)*C + c]     // TJ tokens, 4 KB
-        mac:    acc[ii][jj][c] += la[ii][c] * lb[jj][c]  // ii, jj, c
-    store acc → z
+**Idea.** The output space is partitioned into T_I × T_J tiles, and the accumulators of one tile (T_I · T_J · C values) are kept on chip for the whole reduction (output-stationary). The reduction over k is moved inside the tile. For each k:
+
+1. T_I tokens `a[i0 … i0+T_I−1][k]` and T_J tokens `b[j0 … j0+T_J−1][k]` are loaded into on-chip buffers.
+2. All T_I · T_J · C products are computed from these buffers.
+
+Each loaded element of `a` is used by T_J outputs and each element of `b` by T_I outputs.
+
+**Reuse.** Off-chip reads drop from 2 · L³ · C to L³ · C · (1/T_I + 1/T_J), a factor of 8 for 8 × 8 tiles.
+
+**Contiguous access.** Each load transfers one complete token, i.e. C contiguous elements. A token is fetched as one burst, so the latency α is paid once per token instead of once per element.
+
+**Per-k cost** with one element transferred and one MAC per cycle:
+
+```
+t_k(v1) ≈ (T_I + T_J) · C  +  T_I · T_J · C  +  latency terms
+        = 2,048 + 8,192 = 10,240 cycles        (T_I = T_J = 8, C = 128)
 ```
 
-- **Tiling and reuse.** The output space is partitioned into T_I × T_J tiles whose accumulators stay on chip (output-stationary). For each k, T_I tokens of `a` and T_J tokens of `b` are loaded once and reused inside the `mac` loop: each `la` element serves T_J outputs and each `lb` element serves T_I outputs. Off-chip reads fall by 8× for 8 × 8 tiles.
-- **Burst inference.** The innermost load loop iterates over c at consecutive addresses, which allows HLS to infer one AXI burst of 128 beats per token; the latency is then paid once per token instead of once per element.
-- **Pipelining.** All loops are pipelined with II = 1. A dependence pragma (`inter false`) on `acc` states that the same accumulator is updated only once every T_I · T_J · C iterations, so floating-point adder latency does not limit the initiation interval.
-- **Limitation.** The 32-bit ports and a single MAC per cycle remain. Each k iteration costs about 1,024 + 1,024 + 8,192 cycles, dominated by computation (estimate).
+Computation dominates (80%), so the next step must increase the MAC rate, not only the transfer rate.
 
-### 3.4 v2: wide memory interface and vectorization
+### 3.4 v2: wide interface and vectorization
 
-v2 widens the interface, the on-chip buffers and the datapath to 16 lanes at once:
+**Idea.** The C channels of the einsum are independent (no reduction over c) and contiguous in memory. The kernel can therefore process W channels per transfer and P channels per MAC cycle without any data reorganization. v2 widens three parts of the datapath consistently:
 
-- **Interface.** Pointer types change from `float*` to a 512-bit struct of 16 floats (`f16`), so HLS generates 512-bit AXI master ports. `a`, `b` and `z` use separate bundles (gmem0/1/2), giving three independent ports mapped to different HBM pseudo-channels. Per-port bandwidth rises from 1.2 GB/s to 19.2 GB/s at 300 MHz. One token becomes a burst of 8 beats, and multiple outstanding requests overlap the latency of consecutive tokens.
-- **Buffers.** `la`, `lb` and `acc` are declared `[rows][16]` and completely partitioned in the lane dimension, so 16 values can be read and written per cycle.
-- **Datapath.** The lane loop inside the pipelined `mac` loop is fully unrolled into 16 parallel floating-point MAC units (peak 16 × 2 × 300 MHz = 9.6 GFLOP/s).
+1. **Transfer width.** W elements per memory transfer (e.g. 512-bit transfers carry W = 16 FP32 values). One token then takes C / W transfers.
+2. **On-chip buffers.** Buffers are partitioned into W (= P) independent banks along the channel dimension, so P operands can be read per cycle.
+3. **Datapath.** P parallel MAC units process P channels of the same (i, j, k) triple per cycle.
 
-HLS report (L = 256, T_I = T_J = 8):
+`a` and `b` are read through separate input streams, so their tile loads proceed concurrently.
 
-| Module | Latency (cycles) | Decomposition |
-|---|---|---|
-| init | 514 | 512 + 2 |
-| load_a / load_b (parallel) | 141 | 64 words + 77 |
-| mac | 526 | 8 · 8 · 8 = 512 + pipeline depth 14 |
-| loop_k iteration | 671 | 141 + 526 + 4 |
-| store | 586 | 512 + 74 |
-| tile | 172,880 | |
-| total | 177,029,185 (0.590 s) | 1,024 tiles |
+**Per-k cost:**
+
+```
+t_load = max(T_I, T_J) · C / W + α
+t_mac  = T_I · T_J · C / P + δ
+t_k(v2) = t_load + t_mac
+Example (T = 8, C = 128, W = P = 16):  t_load = 64 + α,  t_mac = 512 + δ
+```
+
+Relative to v1, the transfer term shrinks by W and the compute term by P. With α ≈ 80 and δ ≈ 15 cycles (illustrative values), t_k drops from about 10,240 to about 671 cycles, roughly 15×. The ratio is below 16 because α and δ do not scale with width.
 
 ### 3.5 v3: double buffering
 
-In v2, loading and computation alternate: 141 of every 671 cycles leave the MAC units idle. v3 overlaps them:
+**Idea.** In v2 the MAC units are idle while a tile slice is loaded (t_load of every t_k cycles). v3 overlaps the loading of k+1 with the computation of k:
 
-- **Buffers.** Two buffer sets (`la0/lb0`, `la1/lb1`).
-- **Modules.** Loading and computation are separate functions (`load_ab`, `mac`) with `INLINE off`, so each becomes an independent hardware module.
-- **Schedule.** Before the k loop, `k = 0` is loaded into set 0. For even k, `load_ab(k+1 → set 1)` runs concurrently with `mac(set 0)`; for odd k the roles swap. Because the two calls access disjoint arrays, HLS schedules them in parallel.
-- **Why two sets.** A single buffer would create a write-after-read hazard: the next load would overwrite data the current `mac` is still reading.
-- **Cost.** BRAM for `la`/`lb` doubles. Off-chip traffic, port width and MAC count are unchanged.
+- **Two buffer sets.** Two sets of input buffers (set 0 and set 1) are allocated.
+- **Schedule.** Before the reduction, slice k = 0 is loaded into set 0. At each even k, slice k+1 is loaded into set 1 while set 0 is consumed; at each odd k the roles swap.
+- **Independence.** Loading and computation access disjoint buffers, so they can run concurrently as independent hardware units.
+- **Why two sets.** A single buffer would create a write-after-read hazard: the next load would overwrite data still being read by the MAC units.
+- **Cost.** Input-buffer memory doubles. Traffic, transfer width and MAC count are unchanged.
 
 ```
 v2:  [load k=0][ mac k=0 ][load k=1][ mac k=1 ][load k=2][ mac k=2 ] ...
@@ -334,24 +327,25 @@ v3:  [load k=0][ mac k=0 ][ mac k=1 ][ mac k=2 ][ mac k=3 ] ...
                [load k=1] [load k=2] [load k=3]
 ```
 
-The iteration time changes from a sum to a maximum:
+**Cost per tile:**
 
 ```
-v2: T_iter = T_load + T_mac + 4        = 141 + 526 + 4 = 671 cycles
-v3: T_iter = max(T_load, T_mac) + 4    = 530 cycles (model prediction)
-per tile: v2 = L · 671,  v3 = 141 + L · 530   →  speedup → 671 / 530 ≈ 1.27 for large L
+v2:  L · (t_load + t_mac)
+v3:  t_load + L · max(t_load, t_mac)
+speedup (large L) = (t_load + t_mac) / max(t_load, t_mac)  ≤ 2
+Example (t_load ≈ 144, t_mac ≈ 527):  671 / 527 ≈ 1.27
 ```
 
-The gain is bounded by the load share (21%), following Amdahl's law. The v3 figure is a model prediction pending HLS synthesis.
+The benefit is bounded by the fraction of time spent loading (about 21% in the example), following Amdahl's law. It reaches the maximum of 2 only when t_load ≈ t_mac.
 
 ### 3.6 Summary of v0–v3
 
-| Version | Technique | Off-chip reads (elements) | MACs per cycle | Arithmetic intensity (FLOP/byte) | Status |
-|---|---|---|---|---|---|
-| v0 | baseline | 2 L³ C | 1 | 0.25 | C-sim verified |
-| v1 | loop tiling, on-chip buffers, burst access | L³ C (1/T_I + 1/T_J) | 1 | 2 | C-sim verified |
-| v2 | 512-bit AXI, array partitioning, 16-lane SIMD | same as v1 | 16 | 2 | C-sim verified, HLS report |
-| v3 | double buffering | same as v1 | 16 | 2 | C-sim verified, HLS pending |
+| Version | Idea | Off-chip reads (elements) | MACs per cycle | Time per reduction step |
+|---|---|---|---|---|
+| v0 | baseline, reduction innermost | 2 L³ C | 1 | latency-bound per element |
+| v1 | tiling, on-chip accumulators and buffers, token-contiguous loads | L³ C (1/T_I + 1/T_J) | 1 | (T_I + T_J) C + T_I T_J C |
+| v2 | wide transfers (W), vectorized MACs (P) over channels | same as v1 | P | t_load + t_mac |
+| v3 | double buffering | same as v1 | P | max(t_load, t_mac) |
 
 ## 4. Computation Methods
 
@@ -361,7 +355,7 @@ The gain is bounded by the load share (21%), following Amdahl's law. The v3 figu
 no overlap:   T ≈ T_compute + T_memory
 overlap:      T ≈ max(T_compute, T_memory)
 T_compute = operations / (operations per cycle × f_clk)
-T_memory  = bytes / bandwidth + latency × number of non-overlapped requests
+T_memory  = bytes / bandwidth + α × number of non-overlapped requests
 ```
 
 Each optimization acts on one term:
@@ -369,10 +363,10 @@ Each optimization acts on one term:
 | Technique | Term affected | Version |
 |---|---|---|
 | Tiling | bytes ↓ | v1 |
-| Wide interface, bursts | bandwidth ↑, non-overlapped requests ↓ | v1, v2 |
+| Contiguous (burst) access | non-overlapped requests ↓ | v1 |
+| Wide transfers | bandwidth ↑ | v2 |
 | Parallel MAC units | operations per cycle ↑ | v2 |
 | Double buffering | sum → max | v3 |
-| Multiple HBM channels | bandwidth ↑ | configuration study |
 
 ### 4.2 Off-chip traffic
 
@@ -382,69 +376,63 @@ v1:  R_1 = (L/T_I)(L/T_J) · L · (T_I + T_J) · C = L³ · C · (1/T_I + 1/T_J)
 R_0 / R_1 = 2 / (1/T_I + 1/T_J)  =  8 (8×8),  16 (16×16),  32 (32×32)
 ```
 
+Output writes (L² · C) are identical in all versions and negligible compared with the reads for large L.
+
 ### 4.3 Arithmetic intensity and roofline
 
 ```
-AI = FLOPs / bytes = 2 L³ C / (4 · R)
-v0:  AI = 2 L³ C / (4 · 2 L³ C) = 0.25 FLOP/byte
-v1–v3:  AI = T_I · T_J / (2 (T_I + T_J))  =  2 (8×8),  4 (16×16),  8 (32×32)
+AI = FLOPs / bytes = 2 L³ C / (e · R)
+v0:     AI = 1 / e                              = 0.25 FLOP/byte (FP32)
+v1–v3:  AI = 2 T_I T_J / (e (T_I + T_J))        = 2 (8×8),  4 (16×16),  8 (32×32)  for e = 4
 attainable performance = min(peak compute, AI × bandwidth)
 ```
 
-In v2, the 16 MAC units consume at most 9.6 GFLOP/s. At AI = 2 FLOP/byte this requires 4.8 GB/s, well below the 38.4 GB/s supplied by the two 512-bit input ports, so the tiled kernel is compute-bound. This agrees with the HLS breakdown, in which `mac` takes 526 of 671 cycles per iteration. v0 is memory-bound: each MAC waits for two non-burst accesses.
+**Compute-bound condition.** For the vectorized design, peak compute is 2 · P · f_clk and the two input streams supply 2 · W · e · f_clk bytes/s. The kernel is compute-bound when
 
-### 4.4 Cycle model and calibration
+```
+2 P f / AI  ≤  2 W e f     ⇔     P / AI ≤ W · e
+```
+
+With P = W = 16, e = 4 and AI = 2, the left side is 8 and the right side 64, so the tiled kernel is compute-bound and larger tiles are not needed for bandwidth. v0 (AI = 0.25, no bursts) is latency- and memory-bound.
+
+### 4.4 Cycle model and calibration method
 
 ```
 cycles_total = (L/T_I)(L/T_J) · cycles_tile
-cycles_tile  = t_init + L · t_iter + t_store + ε
-t_load  = max(T_I, T_J) · C/16 + α        (α: memory latency and loop start-up)
-t_mac   = T_I · T_J · C/16 + δ            (δ: pipeline depth)
-t_iter  = t_load + t_mac + 4               (v2)
-t_iter  = max(t_load, t_mac) + 4           (v3)
-t_store = T_I · T_J · C/16 + σ
+cycles_tile  = t_init + L · t_k + t_store
+t_load  = max(T_I, T_J) · C/W + α
+t_mac   = T_I · T_J · C/P + δ
+t_k     = t_load + t_mac                    (v2)
+t_k     = max(t_load, t_mac)                (v3, plus one initial t_load per tile)
+t_init  = t_store ≈ T_I · T_J · C/P + σ
 ```
 
-The constants were calibrated from the v2 HLS report:
-
-| Report value | Structural term | Calibrated constant |
-|---|---|---|
-| load = 141 | 8 · 8 = 64 | α = 77 |
-| mac = 526 | 8 · 8 · 8 = 512 | δ = 14 |
-| store = 586 | 512 | σ = 74 |
-
-The calibrated model predicts 177,029,120 cycles for v2, against 177,029,185 in the report (< 0.01% error). Since calibration and comparison use the same report, this checks consistency rather than predictive accuracy. Validation uses configurations not seen during calibration: tile sizes 16 × 16 and 32 × 32 (`make hls-sweep`) and versions v3 and v4 (`make hls-all`), with a target error below 10%.
-
-The model has three limitations:
-
-- HLS latencies are estimates.
-- Contention between ports sharing an HBM channel is not modeled.
-- Resource figures (DSP, BRAM) are indicative only.
+The structural terms follow from the loop bounds. The constants α, δ and σ depend on the implementation platform and are calibrated from one reference configuration (synthesis estimate or measurement). The model is then validated on configurations not used for calibration (other tile sizes, v3), with a target error below 10%. The model does not capture contention when several streams share one memory channel.
 
 ### 4.5 On-chip memory
 
 ```
-acc = T_I · T_J · C · 4 B          (8×8: 32 KB;  16×16: 128 KB;  32×32: 512 KB)
-la  = T_I · C · 4 B,  lb = T_J · C · 4 B   (8 tokens: 4 KB each; doubled in v3)
+accumulators = T_I · T_J · C · e          (8×8: 32 KB;  16×16: 128 KB;  32×32: 512 KB)
+input buffers = (T_I + T_J) · C · e        (8×8: 8 KB; doubled by double buffering)
 ```
 
-Larger tiles increase arithmetic intensity but consume BRAM quadratically. The design-space exploration selects tile size at the knee of the cycles-versus-BRAM Pareto front.
+Arithmetic intensity grows linearly with tile size, while accumulator storage grows quadratically. The tile size is chosen at the knee of the cycles-versus-on-chip-memory Pareto front.
 
 ### 4.6 Capacity model
 
-Memory requirement scales with L², so the maximum sequence length scales with the square root of the available memory:
+Memory requirement scales with L², so the maximum sequence length scales with the square root of the available capacity M:
 
 ```
 memory = L² · (bytes per pair position)
-L_max  = sqrt(capacity / bytes per pair position)
+L_max  = sqrt(M / bytes per pair position)
 ```
 
-For the 16 GB U55C, with an FP16 baseline (the precision used by ESMFold and by the LightNobel comparison):
+The relative gain is independent of M. With an FP16 baseline (the precision used by ESMFold and by the LightNobel comparison):
 
-| Configuration | Bytes per L² position | L_max | Relative |
-|---|---|---|---|
-| Unfused (≈ 7 live L × L × 128 tensors, FP16) | 7 × 256 = 1,792 | ≈ 3,096 | 1.00× |
-| Fused producer/consumer, FP16 `z`, INT8 `a`, `b` (design estimate) | 2 × 256 + 2 × 132 = 776 | ≈ 4,705 | 1.52× |
-| Same with INT4 `a`, `b` (design estimate) | 2 × 256 + 2 × 68 = 648 | ≈ 5,148 | 1.66× |
+| Configuration | Bytes per L² position | Relative L_max |
+|---|---|---|
+| Unfused TriMul (≈ 7 live L × L × 128 tensors, FP16) | 7 × 256 = 1,792 | 1.00× |
+| Fused producer/consumer, FP16 `z`, INT8 `a`, `b` (per-token scale) | 2 × 256 + 2 × 132 = 776 | sqrt(1,792 / 776) ≈ 1.52× |
+| Same with INT4 `a`, `b` | 2 × 256 + 2 × 68 = 648 | sqrt(1,792 / 648) ≈ 1.66× |
 
-INT8 tokens are 128 B plus a 4-byte scale; INT4 tokens are 64 B plus a 4-byte scale. The fused configurations are analytical estimates and have not been implemented. Because L grows only with the square root of the memory reduction, a 2.3× reduction in bytes per position yields about 1.5× in L.
+An INT8 token occupies 128 B plus a 4-byte scale, and an INT4 token 64 B plus a 4-byte scale. The fused configurations assume that `a` and `b` are produced token-by-token (LayerNorm, linear layers, gating and quantization fused), that `g` is recomputed in the consumer instead of stored, and that only `z`, the output, `a` and `b` are materialized. Because L grows with the square root of the memory reduction, a 2.3× reduction in bytes per position yields about 1.5× in L.

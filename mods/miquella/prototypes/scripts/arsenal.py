@@ -626,10 +626,16 @@ def bow():
         d = path[-1] - path[-2]
         h = math.degrees(math.atan2(d.z, d.x))
         tp = (path[-1].x, path[-1].z)
-        objs += m.tendril(f"Tip_Long_{s}", xz, tp, h + s * 5, 0.14, -s * 1.4, 0.008, mats,
-                          offshoots=[(0.4, s, 0.4, s * 1.1)])
-        objs += m.tendril(f"Tip_Up_{s}", xz, tp, h + s * 62, 0.09, s * 1.2, 0.0065, mats)
-        objs += m.tendril(f"Tip_Back_{s}", xz, tp, h - s * 58, 0.07, -s * 1.0, 0.0055, mats)
+        objs += m.tendril(f"Tip_Long_{s}", xz, tp, h + s * 5, 0.24, -s * 1.4, 0.0095, mats,
+                          offshoots=[(0.35, s, 0.4, s * 1.2), (0.55, -s, 0.25, -s * 1.0)])
+        objs += m.tendril(f"Tip_Up_{s}", xz, tp, h + s * 62, 0.15, s * 1.25, 0.0078, mats,
+                          offshoots=[(0.45, -s, 0.35, -s * 1.0)])
+        objs += m.tendril(f"Tip_Back_{s}", xz, tp, h - s * 58, 0.12, -s * 1.1, 0.0068, mats)
+        # A gold-threaded cord winding along the limb out to the scrolls.
+        objs += m.wound_cord(f"Limb_Vine_{s}", path, 0.021, 4.5, 0.0045, mats, phase=1.0 + s)
+        # Scrolls at the end of the grip, curling forward.
+        objs += m.tendril(f"Riser_Scroll_{s}", xz, (grip_x - 0.012, s * 0.125), 180 - s * 32, 0.13, s * 1.25, 0.0072,
+                          mats, offshoots=[(0.4, -s, 0.35, -s * 1.1)])
     string_x = grip_x + 0.2
     objs.append(c.curve_tube("String", [V(string_x, 0, 0.69), V(string_x, 0, -0.69)], [1, 1], mats["core"],
                              bevel=0.0022, resolution=2))

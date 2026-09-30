@@ -417,6 +417,17 @@ def rope(name, center, radius, mats, strands=3, gold=True, taper=0.85, merge=0.8
     return objs
 
 
+def wound_cord(name, path, wrap_radius, turns, radius, mats, phase=0.0, n=220, taper=0.3):
+    """A gold-threaded cord winding around any (curved) path, like a vine around a limb."""
+    pts = resample([Vector(p) for p in path], n)
+    tans, us, vs = frames(pts)
+    center = []
+    for i in range(n):
+        a = phase + 2 * math.pi * turns * i / (n - 1)
+        center.append(pts[i] + (us[i] * math.cos(a) + vs[i] * math.sin(a)) * wrap_radius)
+    return rope(name, center, radius, mats, strands=2, gold=True, taper=taper, merge=0.999)
+
+
 def tendril(name, mapper, origin2d, heading_deg, length, turns, radius, mats, strands=3, gold=True,
             offshoots=(), curl_start=0.4, bend=0.0):
     """A cord that leaves `origin2d` at `heading_deg` (in the mapper's 2D space), thins out

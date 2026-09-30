@@ -339,47 +339,67 @@ def gunlance():
 
 # ------------------------------------------------------------------ switch axe
 
+def leaf_pairs(paths, mat, every=7, length=0.026, width=0.01, y=0.0):
+    """Leaves of light in pairs along branch paths lying in the XZ plane (the sigil's leaves)."""
+    import sword_shield as ss
+    ss.FRONT = y
+    leaves = ss.LeafBuilder()
+    for path in paths:
+        for k in range(every + 1, len(path) - 4, every):
+            d = path[k + 1] - path[k - 1]
+            ang = math.atan2(d.z, d.x)
+            for side in (-1, 1):
+                leaves.add(path[k].x, path[k].z, ang + side * math.radians(50), length=length, width=width)
+    return [leaves.finish(mat)]
+
+
 def switch_axe():
-    """Axe mode: a crescent moon of light held by a three-way strand fork, three curls on
-    the back, and the phial as a glowing vial floating in two rings on the shaft."""
+    """Axe mode, openwork: a bearded axe head drawn by a cutting edge of light and slim light
+    outlines around a see-through veil; the shaft's strands part into three and grow through
+    the veil as leafy tracery out to the edge. The phial is a droplet vial between two rings."""
     mats = m.materials()
     rng = random.Random(81)
-    top = 1.08
+    top = 1.1
     objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.019, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.019)
-    cx, cz, R = 0.03, 0.98, 0.26
-    arc = [V(cx + R * math.cos(math.radians(a)), 0, cz + R * math.sin(math.radians(a)))
-           for a in range(-72, 81, 8)]
-    objs += m.path_blade("Crescent", arc, (0, 1, 0),
-                         lambda t: 0.16 * math.sin(math.pi * t) ** 0.8 + 0.004,
-                         lambda t: 0.02 * math.sin(math.pi * t) ** 0.6 + 0.002, mats["blade"],
-                         offset_fn=lambda t: 0.035 * math.sin(math.pi * t))
-    # Fork: from the shaft to the crescent's inner edge, parting into three.
-    fork = [V(0, 0, 0.9), V(0.08, 0, 0.96)]
-    fan = [V(0.03, 0, 0.13), V(0.08, 0, 0.0), V(0.03, 0, -0.13)]
-    objs += m.strand_bundle("Fork", fork, 0.024, mats["ivory"], rng, n=30, split_at=0.2, fan=fan,
-                            sub_radius=0.008, bevel=0.0036, twist=6)
-    for k, (dx, dz) in enumerate(((-1, 0.5), (-1, 0.0), (-1, -0.5))):
-        objs += m.curl(f"Back_Curl_{k}", (-0.018, 0, 0.98 + dz * 0.06), (dx, 0, dz * 0.6), 0.1,
-                       mats["ivory"], side=(0, 0, 1 if dz >= 0 else -1), bevel=0.005)
+    # Head outline: upper edge -> cutting arc -> beard, closing along the shaft.
+    ac, ar = V(0.02, 0, 0.94), 0.28
+    arc = [ac + V(ar * math.cos(math.radians(a)), 0, ar * math.sin(math.radians(a))) for a in range(50, -62, -4)]
+    upper = m.catmull([V(0.018, 0, 1.05), V(0.1, 0, 1.1), arc[0]], 20)
+    lower = m.catmull([arc[-1], V(0.1, 0, 0.8), V(0.018, 0, 0.87)], 20)
+    objs += m.path_blade("Cutting_Edge", arc, (0, 1, 0), lambda t: 0.018 * (0.6 + 0.4 * math.sin(math.pi * t)),
+                         lambda t: 0.006, mats["blade"], offset_fn=lambda t: -0.004)
+    for name, path in (("Upper_Edge", upper), ("Beard_Edge", lower)):
+        objs += m.path_blade(name, path, (0, 1, 0), lambda t: 0.008, lambda t: 0.004, mats["blade"])
+    mats["veil"] = m.veil_material("Axe_Veil", 0.16, 0.8)
+    objs += m.flat_fill("Axe_Veil", upper + arc[1:-1] + lower, mats["veil"])
+    # Tracery: three branches from the shaft to the edge, with leaves.
+    root = V(0.015, 0, 0.955)
+    branches = []
+    for a, bend in ((32, 0.03), (0, 0.0), (-38, -0.03)):
+        end = ac + V((ar - 0.012) * math.cos(math.radians(a)), 0, (ar - 0.012) * math.sin(math.radians(a)))
+        mid = root.lerp(end, 0.5) + V(0, 0, bend)
+        branches.append(m.catmull([root, mid, end], 36))
+    for i, path in enumerate(branches):
+        objs += m.strand_bundle(f"Tracery_{i}", path, 0.008, mats["ivory"], rng, n=8, bevel=0.0022, twist=7,
+                                tip_taper=0.25, radius_fn=lambda u: 1 - 0.45 * u)
+    objs += leaf_pairs(branches, mats["light"], every=8, length=0.022, width=0.0085)
+    objs += collar(mats, 0.955, 0.021, "Head_Collar")
+    # Back: a trident of small curls.
+    for k, dz in enumerate((0.5, 0.0, -0.5)):
+        objs += m.curl(f"Back_Curl_{k}", (-0.018, 0, 0.955 + dz * 0.07), (-1, 0, dz * 0.6), 0.09,
+                       mats["ivory"], side=(0, 0, 1 if dz >= 0 else -1), bevel=0.004)
     objs += m.path_blade("Top_Spike", [V(0, 0, top - 0.02), V(0, 0, top + 0.16)], (0, 1, 0),
-                         lambda t: 0.04 * (1 - t), lambda t: 0.012 * (1 - t), mats["blade"])
-    objs += m.halo("Top_Halo", (0, 0, top + 0.01), 0.05, 0.004, (0, 0, 1), mats["light"], tilt_deg=8)
-    # Phial: a vial of light behind the shaft, held by two floating rings.
-    px, pz = -0.055, 0.66
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.019, depth=0.13, vertices=32, location=(px, 0, pz))
-    vial = bpy.context.active_object
-    vial.name = "Phial"
-    vial.data.materials.append(mats["light"])
-    bev = vial.modifiers.new("round", "BEVEL")
-    bev.width, bev.segments = 0.008, 4
-    bpy.ops.object.shade_smooth()
-    objs.append(vial)
-    for k, z in enumerate((pz - 0.045, pz + 0.045)):
-        objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.032, 0.003, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))
+                         lambda t: 0.034 * (1 - t), lambda t: 0.01 * (1 - t), mats["blade"])
+    objs += m.halo("Top_Halo", (0, 0, top + 0.01), 0.045, 0.0032, (0, 0, 1), mats["light"], tilt_deg=8)
+    # Phial: a droplet vial of light behind the shaft, between two floating rings.
+    px, pz = -0.05, 0.64
+    objs += m.droplet("Phial", (px, 0, pz - 0.02), 0.02, (0, 0, 1), mats["light"], stretch=2.2)
+    for k, z in enumerate((pz - 0.05, pz + 0.05)):
+        objs += m.halo(f"Phial_Ring_{k}", (px, 0, z), 0.03, 0.0025, (0, 0, 1), mats["light"], tilt_deg=6 * (1 - 2 * k))
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
-    m.render_sheets(OUT, "switch_axe", mats, (0.05, 0, 0.62), 2.7, views, res=(800, 1000),
-                    extra=[("head", (0.08, 0, 0.95), 1.1, [("head", 25, 10)])])
+    m.render_sheets(OUT, "switch_axe", mats, (0.08, 0, 0.6), 2.7, views, res=(800, 1000),
+                    extra=[("head", (0.12, 0, 0.94), 1.0, [("head", 20, 8)])])
 
 
 # ------------------------------------------------------------------ charge blade

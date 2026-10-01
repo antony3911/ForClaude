@@ -58,11 +58,21 @@ def wyvernblast():
     import devices
     import motifs as m
     mats = m.materials()
-    objs = devices.bud(mats, Vector((0, 0, 0)), 8, "Closed")
+    closed = devices.bud(mats, Vector((0, 0, 0)), 8, "Closed")
+    opened = devices.bud(mats, Vector((0, 0, 0)), 62, "Open")
     axes = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))     # z -> y, y -> -z
     to_file = Matrix.Translation((0, -0.13, 0)) @ Matrix.Scale(5.0, 4) @ axes
-    return {"name": "11_setbombshell_000", "rel": "Art/VFX/Mesh/Weapon/it13", "objects": objs, "to_file": to_file,
-            "groups": 3, "budget": 6000}
+    # The game's effect (11_it13_106) shows groups 0+1 while the shell flies and 0+2 once it has
+    # landed (its mesh elements' group ranges): 0 the light inside, 1 the closed bud, 2 the open
+    # flower on its scroll roots, so the bud opens as it lands (user, 2026-10-02: it never opened).
+    light = [o for o in closed if "_Light" in o.name]
+    parts = {0: light,
+             1: [o for o in closed if o not in light and "_Root_" not in o.name],
+             2: [o for o in opened if "_Light" not in o.name]}
+    for o in [o for o in opened if "_Light" in o.name] + [o for o in closed if "_Root_" in o.name]:
+        bpy.data.objects.remove(o, do_unlink=True)
+    return {"name": "11_setbombshell_000", "rel": "Art/VFX/Mesh/Weapon/it13", "objects": light, "to_file": to_file,
+            "parts": parts, "budget": 6000, "glow_material": True}
 
 
 def shot_arrow(name, groups):
@@ -250,7 +260,23 @@ def main():
     from re_mesh_editor.modules.mesh.blender_re_mesh import exportREMeshFile
     mesh_col = bpy.data.collections.new(f"{spec['name']}.mesh")
     bpy.context.scene.collection.children.link(mesh_col)
-    obj = build_mesh(spec, mesh_col)
+    if spec.get("parts"):
+        # A different part in each group (built one after another, objects of the others kept).
+        built = []
+        for g, objs in sorted(spec["parts"].items()):
+            part = build_mesh({**spec, "objects": objs}, mesh_col)
+            part.name = f"Group_{g}_Sub_0__lambert1"
+            built.append(part)
+        for o in list(bpy.data.objects):
+            if o not in built:
+                bpy.data.objects.remove(o, do_unlink=True)
+        log(f"groups: {sorted(spec['parts'])} (one part each)")
+    else:
+        export_groups(spec, build_mesh(spec, mesh_col), mesh_col)
+    finish(spec, kit, template_mdf, mesh_col)
+
+
+def export_groups(spec, obj, mesh_col):
     for o in list(bpy.data.objects):
         if o is not obj:
             bpy.data.objects.remove(o, do_unlink=True)
@@ -262,6 +288,10 @@ def main():
         copy_obj.name = f"Group_{g}_Sub_0__lambert1"
         mesh_col.objects.link(copy_obj)
     log(f"groups: {groups} (the whole model in each)")
+
+
+def finish(spec, kit, template_mdf, mesh_col):
+    from re_mesh_editor.modules.mesh.blender_re_mesh import exportREMeshFile
     natives = os.path.join(kit, "natives", "STM")
     out_dir = os.path.join(natives, *spec["rel"].split("/"))
     os.makedirs(out_dir, exist_ok=True)

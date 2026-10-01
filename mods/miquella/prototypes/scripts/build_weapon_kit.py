@@ -551,6 +551,10 @@ def heavy_bowgun():
     0.1 back); scaled 1.3: 1.7 m long like the originals (-0.74..0.96)."""
     import bowgun as hb
     hb.build()
+    # The conduit rings are named by their height (Conduit_Halo_0.34 / _0.56): give them names
+    # of their own, each gets a bone.
+    for o in [o for o in bpy.data.objects if o.name.startswith("Conduit_Halo_")]:
+        o.name = "Conduit_Halo_A" if "0.34" in o.name else "Conduit_Halo_B"
     k, bore_y, back = 1.3, -0.194, -0.10
     axes = Matrix(((-1, 0, 0, 0), (0, 0, 1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))      # x->-x, z->y, y->z
     to_file = (Matrix.Translation((0, bore_y, back)) @ Matrix.Scale(k, 4) @ axes
@@ -565,7 +569,12 @@ def heavy_bowgun():
         "objects": [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")], "to_file": to_file,
         "bones": {"VFX_Fire": muzzle, "VFX_FirePower": muzzle + Vector((0, 0, 0.38))},
         "materials": {"Ivory": "MiquellaIvory", "Light": "MiquellaGlow"},
-        "by_name": by_name, "floaters": {},
+        # Rings and phials hover like the light bowgun's (user, 2026-10-02).
+        "by_name": by_name,
+        "floaters": {"Conduit_Halo_A": "MQ_Halo0", "Conduit_Halo_B": "MQ_Halo1", "Muzzle_Halo": "MQ_Halo2",
+                     "Muzzle_Halo_Inner": "MQ_Halo3",
+                     **{f"Barrel_Phial_{i}": f"MQ_Phial{i}" for i in range(3)},
+                     **{f"Barrel_Phial_Halo_{i}": f"MQ_Phial{i}" for i in range(3)}},
     }
 
 

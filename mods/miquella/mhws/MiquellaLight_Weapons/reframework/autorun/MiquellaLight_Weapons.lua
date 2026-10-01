@@ -331,6 +331,16 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/HeavyBowgun/wp_miquella_hbg.mesh",
         mdf2 = "Art/Model/MiquellaLight/HeavyBowgun/wp_miquella_hbg.mdf2",
         glow = { MiquellaGlow = 1.2, MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+        -- The conduit and muzzle rings and the three phials hover like the light bowgun's
+        -- (user, 2026-10-02).
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_Halo0", pos = { 0.0, -0.194, 0.3420 } },
+            { name = "MQ_Halo1", pos = { 0.0, -0.194, 0.6280 } },
+            { name = "MQ_Halo2", pos = { 0.0, -0.194, 1.0440 } },
+            { name = "MQ_Halo3", pos = { 0.0, -0.194, 1.0050 } },
+            { name = "MQ_Phial0", pos = { 0.0, 0.0087, 0.1588 } },
+            { name = "MQ_Phial1", pos = { 0.0, 0.0087, 0.3148 } },
+            { name = "MQ_Phial2", pos = { 0.0, 0.0087, 0.4708 } } } },
     },
 }
 -- Second-model looks (names with "_Shield" or "_Quiver") go on a weapon's shield or quiver

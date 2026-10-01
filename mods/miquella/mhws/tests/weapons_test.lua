@@ -5,7 +5,8 @@ local function newMesh(meshPath)
   local m = { meshPath = meshPath, mdfPath = meshPath:gsub("%.mesh$", ".mdf2"), enabled = true }
   function m:getMesh() return resource(self.meshPath) end
   function m:get_Material() return resource(self.mdfPath) end
-  function m:setMesh(h) self.meshPath = h.path end
+  m.setCount = 0
+  function m:setMesh(h) self.meshPath = h.path; self.setCount = self.setCount + 1 end
   function m:set_Material(h) self.mdfPath = h.path end
   function m:set_Enabled(v) self.enabled = v end
   m.floats = {}
@@ -112,6 +113,7 @@ Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
 Vector4f = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
 Quaternion = { new = function(w, x, y, z) return { w = w, x = x, y = y, z = z } end }
 local comboAnswer = nil
+local comboPick = nil            -- { slot = "SubWeapon", name = "<look>" }: pick a look by name on that row
 local sizeAnswer = nil
 local sliderAnswer = {}
 local texts = {}
@@ -120,6 +122,11 @@ imgui = {
   checkbox = function(l, v) return false, v end, button = function() return false end,
   text = function(t) texts[#texts + 1] = t end, text_colored = function(t) texts[#texts + 1] = "!! " .. t end,
   combo = function(label, idx, list)
+    if comboPick and label:match("##" .. comboPick.slot .. "$") then
+      local want = comboPick.name; comboPick = nil
+      for i, k in ipairs(list) do if k == want then return true, i end end
+      return false, idx
+    end
     if comboAnswer and label:match("##Weapon$") then
       -- Answers count in the first looks' order; find them by name (more looks sort in between).
       local a = comboAnswer; comboAnswer = nil
@@ -166,12 +173,12 @@ frames(20)
 texts = {}; onDraw()
 check(texts[2] and texts[2]:match("it0200_0002_1%.mesh"), "menu shows the original main weapon path")
 comboAnswer = 2; onDraw()
-check(savedCfg and savedCfg.assign["Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"] == "DualBlades", "assignment saved")
+check(savedCfg and savedCfg.assignType["it02"] == "DualBlades", "assignment saved for all dual blades")
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh", "main weapon model swapped (default size 1.4)")
 check(weaponMesh.mdfPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mdf2", "main weapon material swapped")
 check(weaponChain.path == "Art/Model/Item/it00/99/it0099_0000_0.chain2", "physics chain replaced with the empty one")
-check(subMesh.meshPath:match("it0200_0002_0"), "sub weapon untouched (not assigned)")
+check(subMesh.meshPath:match("wp_miquella_db"), "sub weapon (same type) swapped too")
 hookPre({ { } , { ToString = function() return "app.HunterCharacter[MasterPlayer]" end, _IsWeaponOn = false } })
 -- args[2] is the hunter
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
@@ -194,7 +201,7 @@ sizeAnswer = 4; onDraw()            -- "1.6"
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s16.mesh", "size 1.6 model")
 check(weaponMesh.floats["MiquellaBlade.1"] and math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6, "glow kept on the new size")
-check(subMesh.meshPath:match("it0200_0002_0"), "unassigned sub weapon untouched")
+check(subMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s16.mesh", "sub weapon follows the size too")
 sizeAnswer = 3; onDraw()            -- back to "1.4"
 frames(20)
 -- Demon mode: side blades hidden, then split out in stages, then merge back.
@@ -220,12 +227,12 @@ check(not visible("MiquellaDemon1") and not visible("MiquellaDemon2") and not vi
 weaponMesh.meshPath = "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"
 frames(20)
 check(weaponMesh.meshPath:match("wp_miquella_db"), "re-swapped after the game restored its model")
--- The game equips a different (unassigned) weapon on the same object while sheathed.
+-- The game equips a weapon of another type (unassigned: long sword) on the same object while sheathed.
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
 frames(1)
-weaponMesh.meshPath = "Art/Model/Item/it02/00/0005/it0200_0005_1.mesh"
+weaponMesh.meshPath = "Art/Model/Item/it03/00/0005/it0300_0005_1.mesh"
 frames(20)
-check(weaponMesh.meshPath:match("it0200_0005_1") and weaponGO.draw == true, "different weapon left alone and visible")
+check(weaponMesh.meshPath:match("it0300_0005_1") and weaponGO.draw == true, "different weapon left alone and visible")
 -- Back to the assigned weapon: swapped again.
 weaponMesh.meshPath = "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"
 frames(20)
@@ -258,7 +265,10 @@ check(not weaponMesh.meshPath:match("wp_miquella"), "after size changes, un-assi
 comboAnswer = 2; onDraw()
 frames(20)
 check(weaponMesh.meshPath:match("wp_miquella_db"), "assigned again")
-savedCfg.swappedFrom = nil
+-- (older versions chose a look per model and kept no record of the slots' originals)
+savedCfg.swappedFrom, savedCfg.assignType, savedCfg.migratedFrom = nil, nil, nil
+savedCfg.assign = { ["Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"] = "DualBlades",
+                    ["Art/Model/Item/it02/00/0002/it0200_0002_0.mesh"] = "DualBlades" }
 weaponMesh.matEnabled = {}
 dofile(arg[1])
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
@@ -266,6 +276,8 @@ frames(20)
 kijin = 1
 frames(10, 0.05)
 check(visible("MiquellaDemon3"), "older config: the swapped weapon is still picked up after a reload")
+check(savedCfg.assignType and savedCfg.assignType.it02 == "DualBlades" and next(savedCfg.assign) == nil,
+      "older config: per-model choice moved to the weapon type")
 kijin = 0
 frames(10, 0.05)
 comboAnswer = 1; onDraw()
@@ -280,7 +292,7 @@ frames(20)
 texts = {}; onDraw()
 check(texts[2] and texts[2]:match("it0000_0000_0%.mesh"), "great sword: menu shows its model path")
 comboAnswer = 3; onDraw()
-check(savedCfg.assign["Art/Model/Item/it00/00/0000/it0000_0000_0.mesh"] == "GreatSword", "great sword: assignment saved")
+check(savedCfg.assignType["it00"] == "GreatSword", "great sword: assignment saved for all great swords")
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh", "great sword: model swapped (no size variants)")
 check(weaponMesh.mdfPath == "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2", "great sword: material swapped")
@@ -369,4 +381,49 @@ texts = {}; onDraw()
 local sawGauge = false
 for _, t in ipairs(texts) do if t:match("^Gauge: _RapidAmmoGauge") then sawGauge = true end end
 check(sawGauge, "light bowgun: menu shows the gauge field")
+-- One look for every weapon of the type: another light bowgun takes it without the menu.
+weaponMesh.meshPath = "Art/Model/Item/it13/00/0005/it1300_0005_0.mesh"
+frames(40, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/LightBowgun/wp_miquella_lbg.mesh", "another light bowgun takes the look too")
+-- Swapped while sheathed: set again when drawn (the first set can land before the model loaded).
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
+weaponMesh = newMesh("Art/Model/Item/it13/00/0006/it1300_0006_0.mesh")
+weaponGO = newGO("Wp13b", 3002, weaponMesh, newChain("Art/Model/Item/it13/00/0006/it1300_0006_0.chain2"))
+frames(30, 1 / 60)
+local sets = weaponMesh.setCount
+check(weaponMesh.meshPath:match("wp_miquella_lbg") and sets >= 1, "new weapon object swapped while sheathed")
+frames(80, 1 / 60)
+check(weaponMesh.setCount > sets, "model set again a second after the swap")
+sets = weaponMesh.setCount
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
+frames(2, 1 / 60)
+check(weaponMesh.setCount > sets, "and once more when the weapon is drawn")
+-- Sword & shield: the shield (_1) takes the look's shield; a film can be picked on its row.
+weaponMesh = newMesh("Art/Model/Item/it01/00/0003/it0100_0003_0.mesh")
+weaponGO = newGO("Wp01", 4001, weaponMesh, nil)
+local shieldMesh = newMesh("Art/Model/Item/it01/00/0003/it0100_0003_1.mesh")
+subGO = newGO("Wp01_Shield", 4002, shieldMesh, nil)
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "SwordShield" }; onDraw()
+frames(30, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns.mesh", "sword & shield: sword takes the look")
+check(shieldMesh.meshPath == "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield.mesh", "sword & shield: shield takes the look's shield")
+comboPick = { slot = "SubWeapon", name = "SwordShield_ShieldB" }; onDraw()
+frames(30, 1 / 60)
+check(shieldMesh.meshPath == "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_bubble.mesh", "sword & shield: film B picked for every shield")
+check(savedCfg.assignShield.it01 == "SwordShield_ShieldB", "sword & shield: shield choice saved per type")
+-- Long sword: the scabbard (_1) keeps its game look.
+weaponMesh = newMesh("Art/Model/Item/it03/00/0001/it0300_0001_0.mesh")
+weaponGO = newGO("Wp03", 5001, weaponMesh, nil)
+local scabbard = newMesh("Art/Model/Item/it03/00/0001/it0300_0001_1.mesh")
+subGO = newGO("Wp03_Scabbard", 5002, scabbard, nil)
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "LongSword" }; onDraw()
+frames(30, 1 / 60)
+check(weaponMesh.meshPath:match("MiquellaLight/LongSword"), "long sword: blade takes the look")
+check(scabbard.meshPath == "Art/Model/Item/it03/00/0001/it0300_0001_1.mesh", "long sword: scabbard keeps its game look")
+texts = {}; onDraw()
+local sawKeep = false
+for _, t in ipairs(texts) do if t:match("keeps its game look") then sawKeep = true end end
+check(sawKeep, "long sword: menu says the scabbard keeps its look")
 print("ALL PASS")

@@ -202,20 +202,35 @@ local KITS = {
         glow = { MiquellaGlow = 1.2, MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
     },
 }
+-- Shield looks (names with "_Shield") go on a weapon's shield model, the others on the weapon.
+local function is_shield_kit(name) return name:find("_Shield", 1, true) ~= nil end
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
 local KIT_NAMES = { "(original)" }
 for name in pairs(KITS) do KIT_NAMES[#KIT_NAMES + 1] = name end
-table.sort(KIT_NAMES, function(a, b)
+local function by_name(a, b)
     if a == "(original)" then return true end
     if b == "(original)" then return false end
     return a < b
-end)
+end
+table.sort(KIT_NAMES, by_name)
+local MAIN_NAMES = {}
+for _, n in ipairs(KIT_NAMES) do
+    if not is_shield_kit(n) then MAIN_NAMES[#MAIN_NAMES + 1] = n end
+end
 
 local config = {
     enabled = true,
     hideSheathed = true,
-    -- original .mesh path -> kit name
+    -- weapon type (it02 = dual blades, it00 = great sword, it13 = light bowgun ...) -> kit name:
+    -- one look for every weapon of that type (user, 2026-10-02)
+    assignType = {},
+    -- weapon type -> shield look for that type's shields (_1), or "(original)"; unset = the
+    -- weapon look's own `shield`
+    assignShield = {},
+    -- original .mesh path -> kit name (older versions; moved into assignType on load)
     assign = {},
+    -- the per-model choices that were moved, kept only to recognise our model after a reload
+    migratedFrom = {},
     -- In-game tuning: glow multiplies the kit's Emissive_Intensity; size picks the model.
     glow = 1.0,
     size = "1.4",
@@ -232,8 +247,71 @@ if saved then
 end
 -- An empty table is saved as JSON null; don't let that replace the assignment table.
 if type(config.assign) ~= "table" then config.assign = {} end
+if type(config.assignType) ~= "table" then config.assignType = {} end
+if type(config.assignShield) ~= "table" then config.assignShield = {} end
+if type(config.migratedFrom) ~= "table" then config.migratedFrom = {} end
 if type(config.swappedFrom) ~= "table" then config.swappedFrom = {} end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
+
+-- Weapon type of a model path: Art/Model/Item/it13/00/0001/it1300_0001_0.mesh -> "it13".
+local function weapon_type(path)
+    return path and path:match("[Ii]tem/(it%d%d)/") or nil
+end
+local TYPE_LABELS = { it00 = "great swords", it01 = "swords", it02 = "dual blades", it03 = "long swords",
+                      it04 = "hammers", it05 = "hunting horns", it06 = "lances", it07 = "gunlances",
+                      it08 = "switch axes", it09 = "charge blades", it10 = "insect glaives", it11 = "bows",
+                      it12 = "heavy bowguns", it13 = "light bowguns" }
+
+-- Model number of a weapon path: ..._0.mesh is the weapon, ..._1.mesh the second model: the
+-- dual blades' other blade, or a shield (sword & shield, lance, gunlance, charge blade), or the
+-- long sword's scabbard / the bow's quiver (these keep their game look).
+local function model_index(path) return path and path:match("_(%d+)%.mesh$") or nil end
+local BOTH_HANDS = { it02 = true }        -- dual blades: both models take the weapon's look
+
+-- Older configs chose a look per model: make it the look of that model's weapon type.
+do
+    local moved = false
+    for path, kit in pairs(config.assign) do
+        local t = weapon_type(path)
+        if t then
+            if model_index(path) == "1" and not BOTH_HANDS[t] then
+                if is_shield_kit(kit) then config.assignShield[t] = config.assignShield[t] or kit end
+            else
+                config.assignType[t] = config.assignType[t] or kit
+            end
+            config.migratedFrom[path] = kit
+            config.assign[path] = nil
+            moved = true
+        end
+    end
+    if moved then save_config() end
+end
+
+-- The look a game model gets (nil: leave it as the game made it).
+local function assigned_kit(original)
+    if config.assign[original] then return config.assign[original] end
+    local t = weapon_type(original)
+    local main = t and config.assignType[t]
+    if not main then return nil end
+    local idx = model_index(original)
+    if idx == "0" or BOTH_HANDS[t] then return main end
+    if idx ~= "1" then return nil end
+    local pick = config.assignShield[t]
+    if pick == "(original)" then return nil end
+    if pick and KITS[pick] then return pick end
+    return KITS[main] and KITS[main].shield or nil
+end
+
+-- Shield looks offered for a type: the ones named after its weapon look's shield.
+local function shield_names(t)
+    local main = config.assignType[t]
+    local prefix = main and KITS[main] and KITS[main].shield
+    local out = { "(original)" }
+    for _, n in ipairs(KIT_NAMES) do
+        if is_shield_kit(n) and (not prefix or n:sub(1, #prefix) == prefix) then out[#out + 1] = n end
+    end
+    return out
+end
 
 local function try(fn, ...)
     local ok, result = pcall(fn, ...)
@@ -244,15 +322,27 @@ end
 -- ------------------------------------------------------------------ resources
 
 local holders = {}
+local retryAt = {}
 local function holder(typeName, path)
     local key = typeName .. "|" .. path
+    -- A failed load is tried again after a while (the pak may not have been mounted yet).
+    if holders[key] == false and os.clock() >= (retryAt[key] or 0) then holders[key] = nil end
     if holders[key] == nil then
+        retryAt[key] = os.clock() + 5
         holders[key] = try(function()
             local res = sdk.create_resource(typeName, path):add_ref()
             return res:create_holder(typeName .. "Holder"):add_ref()
         end) or false
     end
     return holders[key] or nil
+end
+
+-- Load every kit's model and material now: a resource created in the same frame as the swap
+-- is not loaded yet, and the weapon showed nothing until it was equipped again (user).
+for _, kit in pairs(KITS) do
+    holder("via.render.MeshMaterialResource", kit.mdf2)
+    holder("via.render.MeshResource", kit.mesh)
+    for _, m in pairs(kit.sizes or {}) do holder("via.render.MeshResource", m) end
 end
 
 local function resource_path(res)
@@ -407,7 +497,10 @@ end
 -- assigned original of the same kit, the right-hand model (_1) for the main weapon slot.
 local function guess_original(slotName, current)
     local kit, pick = kit_of_mesh(current), nil
-    for path, kitName in pairs(config.assign) do
+    local known = {}
+    for path, kitName in pairs(config.assign) do known[path] = kitName end
+    for path, kitName in pairs(config.migratedFrom) do known[path] = kitName end
+    for path, kitName in pairs(known) do               -- (only older configs have per-model entries)
         if KITS[kitName] == kit then
             local hand = path:match("_(%d)%.mesh$")
             if not pick or (hand == "1") == (slotName == "Weapon") then pick = path end
@@ -428,7 +521,9 @@ local function swap_in(go, mesh, original, kit, slotName)
     end
     if set_model(go, mesh, kit_mesh(kit), kit.mdf2, NULL_CHAIN) then
         swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
-                                      kit = kit, kitMesh = kit_mesh(kit) }
+                                      kit = kit, kitMesh = kit_mesh(kit),
+                                      -- set the model again a second later, and when next drawn
+                                      refreshAt = os.clock() + 1.0, drawRefresh = not isWeaponDrawn }
         local prev = config.swappedFrom[slotName]
         if not prev or prev.original ~= original or prev.chain ~= originalChain then
             config.swappedFrom[slotName] = { original = original, chain = originalChain }
@@ -474,7 +569,7 @@ local function update_slot(name, weapon)
     local original = entry and entry.original or current
     slots[name] = { go = go, original = original, current = current }
 
-    local kitName = config.enabled and original and config.assign[original]
+    local kitName = config.enabled and original and assigned_kit(original)
     local kit = kitName and KITS[kitName]
     if kit then
         -- Swap when the game shows its own model (first time, or it reloaded the weapon).
@@ -879,10 +974,36 @@ if re.on_pre_application_entry then
     end
 end
 
+-- Set our model again on a weapon (same model and material): the first set can land before
+-- the resource finished loading and then shows nothing.
+local function refresh(entry)
+    local mesh = component(entry.go, MESH)
+    if not mesh then return end
+    set_model(entry.go, mesh, entry.kitMesh, entry.kit.mdf2, nil)
+    entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
+    apply_tuning(entry, mesh)
+end
+
+local wasDrawn = isWeaponDrawn
+local function refresh_pass()
+    local now = os.clock()
+    for _, entry in pairs(swapped) do
+        if entry.refreshAt and now >= entry.refreshAt then
+            entry.refreshAt = nil
+            refresh(entry)
+        elseif entry.drawRefresh and isWeaponDrawn and not wasDrawn then
+            entry.drawRefresh = nil
+            refresh(entry)
+        end
+    end
+    wasDrawn = isWeaponDrawn
+end
+
 re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
     if not chr then return end
+    if config.enabled then refresh_pass() end
     if config.enabled then update_states(chr) end
     if not floatHooked then step_floaters(); apply_floaters("frame") end
     -- Visibility follows draw/sheathe immediately; model checks run less often.
@@ -941,22 +1062,53 @@ re.on_draw_ui(function()
         local s = slots[name]
         if s and s.original then
             imgui.text(name .. ": " .. s.original)
-            local currentKit = config.assign[s.original]
-            local idx = 1
-            for i, k in ipairs(KIT_NAMES) do
-                if k == currentKit then idx = i end
-            end
-            local c2, newIdx = imgui.combo("Look##" .. name, idx, KIT_NAMES)
-            if c2 then
-                config.assign[s.original] = (newIdx > 1) and KIT_NAMES[newIdx] or nil
-                changed = true
+            local wtype = weapon_type(s.original)
+            local typeName = wtype and (TYPE_LABELS[wtype] or wtype) or "this model"
+            local second = model_index(s.original) == "1" and not (wtype and BOTH_HANDS[wtype])
+            local main = wtype and config.assignType[wtype]
+            if second and not (main and KITS[main] and KITS[main].shield) then
+                -- Scabbard, quiver, or a shield whose weapon look has none: left as the game made it.
+                imgui.text("  (keeps its game look" .. (main and "" or "; choose the weapon's look first") .. ")")
+            else
+                local list = second and shield_names(wtype) or MAIN_NAMES
+                local currentKit = assigned_kit(s.original)
+                local idx = 1
+                for i, k in ipairs(list) do
+                    if k == currentKit then idx = i end
+                end
+                local label = second and ("Shield look (all " .. typeName .. ")")
+                    or ("Look (all " .. typeName .. ")")
+                local c2, newIdx = imgui.combo(label .. "##" .. name, idx, list)
+                if c2 then
+                    local kit = (newIdx > 1) and list[newIdx] or nil
+                    if second then
+                        config.assignShield[wtype] = kit or "(original)"
+                    elseif wtype then
+                        config.assignType[wtype] = kit
+                    end
+                    config.assign[s.original] = nil
+                    if not wtype then config.assign[s.original] = kit end
+                    changed = true
+                end
             end
         else
             imgui.text(name .. ": (none)")
         end
     end
 
-    if next(config.assign) and imgui.tree_node("Assigned weapons") then
+    if (next(config.assignType) or next(config.assign)) and imgui.tree_node("Assigned looks") then
+        for wtype, kitName in pairs(config.assignType) do
+            if imgui.button("Remove##" .. wtype) then
+                config.assignType[wtype] = nil
+                config.assignShield[wtype] = nil
+                changed = true
+                break
+            end
+            imgui.same_line()
+            local shield = config.assignShield[wtype]
+            imgui.text(kitName .. "  <-  all " .. (TYPE_LABELS[wtype] or wtype)
+                .. (shield and ("  (shields: " .. shield .. ")") or ""))
+        end
         for path, kitName in pairs(config.assign) do
             if imgui.button("Remove##" .. path) then
                 config.assign[path] = nil

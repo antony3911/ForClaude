@@ -45,8 +45,10 @@ def wyrmstake():
     mats["gold"] = devices.gold_material()
     objs = devices.needle(mats, 0.5, Vector((0, 0, 0)), Vector((0, 0, -1)))
     to_file = Matrix.Translation((0, 0, 1.55)) @ Matrix.Scale(4.7, 4)
+    # The original's groups 0-4 are small parts the effect shows several of at once, in other
+    # places (the user saw many needles): ours only in 5-9, the whole stake's place.
     return {"name": "11_it07_000", "rel": "Art/VFX/Mesh/Weapon/it07", "objects": objs, "to_file": to_file,
-            "groups": 10, "budget": 3500}
+            "groups": [5, 6, 7, 8, 9], "budget": 3500, "glow_material": True}
 
 
 def wyvernblast():
@@ -73,7 +75,7 @@ def shot_arrow(name, groups):
     objs = arsenal.light_arrow("Arrow", Vector((0, 0, ARROW_NOCK - 1.1)), Vector((0, 0, ARROW_TIP - 1.1)),
                                m.materials(), head=0.5)
     return {"name": name, "rel": "Art/VFX/Mesh/common/shell/arrow", "objects": objs, "to_file": Matrix.Identity(4),
-            "groups": groups, "budget": 3000}
+            "groups": groups, "budget": 3000, "glow_material": True}
 
 
 DEVICES = {"wyrmstake": wyrmstake, "wyvernblast": wyvernblast,
@@ -188,8 +190,29 @@ def build_mesh(spec, mesh_col):
     return obj
 
 
-def build_mdf(path, template_mdf):
+# Our weapons' glowing material (dual blades kit): the effect cannot drive its parameters, so
+# it keeps glowing gold (on the effect material the needle came out dark metal, user 2026-10-02).
+GLOW_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "mhws", "MiquellaLight_DualBlades_kit", "natives",
+                             "STM", "Art", "Model", "MiquellaLight", "DualBlades", "wp_miquella_db.mdf2.45")
+
+
+def build_mdf(path, template_mdf, glow=False):
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
+    if glow:
+        mdf = readMDF(GLOW_TEMPLATE)
+        mat = copy.deepcopy(next(m for m in mdf.materialList if m.materialName == "MiquellaGlow"))
+        mat.materialName = "lambert1"
+        for t in mat.textureList:
+            for kind in ("ALBD", "NRRO", "EMI"):
+                if t.texturePath.upper().endswith(f"_{kind}.TEX"):
+                    t.texturePath = f"{TEX_REL}/MiquellaDevice_{kind}.tex"
+        for p in mat.propertyList:
+            if p.propName == "Emissive_Intensity":
+                p.propValue = [2.5]
+        mdf.materialList = [mat]
+        writeMDF(mdf, path)
+        log(f"mdf (glow): {[(m.materialName, m.mmtrPath if hasattr(m, 'mmtrPath') else '') for m in readMDF(path).materialList]}")
+        return
     mdf = readMDF(template_mdf)
     mat = copy.deepcopy(mdf.materialList[0])
     mat.materialName = "lambert1"
@@ -219,12 +242,14 @@ def main():
     for o in list(bpy.data.objects):
         if o is not obj:
             bpy.data.objects.remove(o, do_unlink=True)
-    for g in range(1, spec["groups"]):
+    groups = spec["groups"] if isinstance(spec["groups"], list) else list(range(spec["groups"]))
+    obj.name = f"Group_{groups[0]}_Sub_0__lambert1"
+    for g in groups[1:]:
         copy_obj = obj.copy()
         copy_obj.data = obj.data.copy()
         copy_obj.name = f"Group_{g}_Sub_0__lambert1"
         mesh_col.objects.link(copy_obj)
-    log(f"groups: {spec['groups']} (the whole model in each)")
+    log(f"groups: {groups} (the whole model in each)")
     natives = os.path.join(kit, "natives", "STM")
     out_dir = os.path.join(natives, *spec["rel"].split("/"))
     os.makedirs(out_dir, exist_ok=True)
@@ -235,7 +260,7 @@ def main():
                                  "exportBoundingBoxes": False, "autoSolveRepeatedUVs": True,
                                  "preserveSharpEdges": False})
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
-    build_mdf(os.path.join(out_dir, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf)
+    build_mdf(os.path.join(out_dir, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, spec.get("glow_material", False))
     tex_dir = os.path.join(natives, *TEX_REL.split("/"))
     if not os.path.exists(os.path.join(tex_dir, f"MiquellaDevice_ALBD.tex{TEX_EXT}")):
         src = os.path.join(kit, "texture_sources")

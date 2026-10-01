@@ -126,7 +126,7 @@ check(tl:match("start Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx") and not
       "timeline shows focused effects only")
 check(tl:match("stop  Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx"), "effect stop logged")
 check(tl:match("_IsKijinOn: false %-> true"), "weapon flag change logged")
-check(tl:match("value Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx getExternParameter Color = _Name=Color _Color=#E67A2EFF"),
+check(tl:match("value Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx @A0 getExternParameter Color = _Name=Color _Color=#E67A2EFF"),
       "parameter object's fields read back, colour as #RRGGBBAA")
 check(r.extern and r.extern.type == "via.effect.script.EffectCustomExternParameter" and #r.extern.fields == 2
       and r.extern.methods[1]:match("set_Color"), "parameter object's type described")

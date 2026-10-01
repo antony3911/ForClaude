@@ -26,9 +26,10 @@ local MAX_TIMELINE = 800
 local MAX_PARAMS = 500
 local MAX_EFFECTS = 500
 local FOCUS = { "it02", "player/", "Player" }   -- effect paths shown on the timeline
-local VALUE_FOCUS = "it02"                      -- effects whose parameters are read back
-local WATCH = { "it02", "swordtrail", "pl_skill" }  -- effects whose running state and tint are logged
-local PARAM_NAMES = { "Color", "ColorA", "ColorB", "ColorC", "IsKijin", "IsBuff" }
+local VALUE_FOCUS = { "it02", "pl_heal", "pl_skill" }   -- effects whose parameters are read back
+local WATCH = { "it02", "swordtrail", "pl_skill", "pl_state" }  -- effects whose running state and tint are logged
+local PARAM_NAMES = { "Color", "ColorA", "ColorB", "ColorC", "IsKijin", "IsBuff", "BuffColor", "SkillColor",
+                      "BuffColorA", "BuffColorB" }
 local HANDLING_METHODS = { "get_WeaponHandling", "get_WpHandling", "get_WeaponHandle" }
 
 local rec = nil
@@ -229,7 +230,8 @@ local function read_values(ep, path)
             if v ~= nil then
                 local text = (type(v) == "userdata" or type(v) == "table") and fields_text(v) or value_text(v)
                 if text == "" then text = value_text(v) end
-                local key = path .. " " .. g.name .. " " .. name
+                local key = path .. " @" .. string.format("%X", try(function() return ep:get_address() end) or 0)
+                    .. " " .. g.name .. " " .. name
                 if rec.values[key] ~= text then
                     rec.values[key] = text
                     log("value " .. key .. " = " .. text)
@@ -257,7 +259,7 @@ local function scan_effects()
             if e then
                 e.scans, e.last = e.scans + 1, now
             end
-            if path:find(VALUE_FOCUS, 1, true) and #valueGetters > 0 then read_values(ep, path) end
+            if matches(path, VALUE_FOCUS) and #valueGetters > 0 then read_values(ep, path) end
             if matches(path, WATCH) then
                 local key = path .. " @" .. string.format("%X", try(function() return ep:get_address() end) or 0)
                 local text = "running=" .. tostring(try(function() return ep:call("get_Running") end))

@@ -660,14 +660,14 @@ check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire w
 extract._RyuugekiChargeTimer = 0
 frames(120, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
--- Wyvern's Fire: its wind-up turns the original Heat_Hinge bone (read off our model's
--- skeleton); its gauge drops by one at the blast. A shell fired lowers the shell count.
+-- Wyvern's Fire: its wind-up turns the original Hinge bone away from its drawn pose (read off
+-- our model's skeleton); its gauge drops by one at the blast. A shell fired lowers the count.
 extract._RyuugekiGauge, extract._ChargeShotBulletNum = 2.0, 5
 frames(10, 1 / 60)
-local heat = weaponGO.tf:call("getJointByName", "Heat_Hinge")
+local heat = weaponGO.tf:call("getJointByName", "Hinge")
 heat.lr = { x = math.sin(math.rad(15)), y = 0, z = 0, w = math.cos(math.rad(15)) }
 frames(60, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (Heat_Hinge turning) winds the spring")
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (Hinge turning 30 deg) winds the spring")
 extract._RyuugekiGauge = 1.0
 frames(120, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released at the blast (gauge used), though the bone is still turned")

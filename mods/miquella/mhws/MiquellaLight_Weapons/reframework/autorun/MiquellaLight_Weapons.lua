@@ -1135,12 +1135,15 @@ local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
 local SHELL_PULSE = 0.18             -- a shell fired: a short press
 -- Wyvern's Fire: its gauge drops at the blast (user, 2026-10-02: the spring did not wind, the
 -- drop is too late), so the wind-up is read off the weapon's own skeleton: the game animates the
--- original gunlance bones on our model (Hinge opens the barrel to reload; Heat_Hinge, under it,
--- is taken for Wyvern's Fire). Turned past GL_WIND_DEG or moved past GL_WIND_M from its first
--- seen pose = winding, until the gauge drops (the blast). Guessed: the joints' moves are logged
--- (glEvents, saved with the field recorder's file) to check which one goes with what.
+-- original gunlance bones on our model. First guess Heat_Hinge: it never moved (user test
+-- 2026-10-02); Hinge turned 72 degrees on drawing and stayed. Now: Hinge away from its drawn
+-- pose (a baseline taken a second after drawing, following it while it holds still) by more
+-- than GL_WIND_DEG, not while reloading = winding, until the gauge drops (the blast). Still a
+-- guess: the last seconds of both joints' angles are logged at each blast (glEvents, saved with
+-- the field recorder's file) to see what Wyvern's Fire's wind-up really moves.
 local GL_JOINTS = { "Hinge", "Heat_Hinge" }
-local GL_WIND_JOINT, GL_WIND_DEG, GL_WIND_M = "Heat_Hinge", 6, 0.01
+local GL_WIND_JOINT, GL_WIND_DEG, GL_WIND_M = "Hinge", 15, 0.03
+local GL_SETTLE, GL_TRACE = 1.0, 6.0     -- seconds after drawing before the baseline; trace length
 local glEvents = {}
 
 local function gl_event(text)
@@ -1199,10 +1202,34 @@ local function update_gunlance(entry, mesh, h, dt, now)
     end
     entry.lastShells = shells
     local joints = gl_joints(entry)
+    -- Each joint against its drawn pose: baseline once drawn a while, eased along while steady.
+    entry.drawnAt = isWeaponDrawn and (entry.drawnAt or now) or nil
+    entry.glBase = entry.drawnAt and entry.glBase or {}
     entry.glMoved = entry.glMoved or {}
+    local settled = entry.drawnAt ~= nil and now - entry.drawnAt > GL_SETTLE
     for _, n in ipairs(GL_JOINTS) do
         local jt = joints[n]
-        local moved = jt ~= nil and (jt.deg > GL_WIND_DEG or jt.m > GL_WIND_M)
+        if jt and settled then
+            local b = entry.glBase[n]
+            if not b then
+                entry.glBase[n] = { deg = jt.deg, m = jt.m }
+            elseif math.abs(jt.deg - b.deg) < 3 and math.abs(jt.m - b.m) < 0.005 then
+                b.deg, b.m = b.deg + (jt.deg - b.deg) * 0.05, b.m + (jt.m - b.m) * 0.05
+            end
+        end
+    end
+    -- The last seconds of the joints, logged at a blast.
+    entry.glTrace = entry.glTrace or {}
+    if not entry.glTraceAt or now - entry.glTraceAt >= 0.1 then
+        entry.glTraceAt = now
+        entry.glTrace[#entry.glTrace + 1] = string.format("%.1f:%.0f/%.0f", now, joints.Hinge and joints.Hinge.deg or -1,
+                                                          joints.Heat_Hinge and joints.Heat_Hinge.deg or -1)
+        if #entry.glTrace > GL_TRACE * 10 then table.remove(entry.glTrace, 1) end
+    end
+    if entry.blastAt == now then gl_event("trace (time:Hinge/Heat_Hinge deg) " .. table.concat(entry.glTrace, " ")) end
+    for _, n in ipairs(GL_JOINTS) do
+        local jt, b = joints[n], entry.glBase[n]
+        local moved = jt ~= nil and b ~= nil and (math.abs(jt.deg - b.deg) > GL_WIND_DEG or math.abs(jt.m - b.m) > GL_WIND_M)
         if moved ~= (entry.glMoved[n] or false) then
             gl_event(string.format("%s %s (%.0f deg, %.3f m)", n, moved and "moves" or "back", jt and jt.deg or 0, jt and jt.m or 0))
             entry.glMoved[n] = moved
@@ -1222,7 +1249,7 @@ local function update_gunlance(entry, mesh, h, dt, now)
     -- After the blast the bone may stay turned a while: wait for it to come back first.
     if entry.blastAt == now then entry.blastLatch = true end
     if not entry.glMoved[GL_WIND_JOINT] then entry.blastLatch = nil end
-    local winding = (wyv or 0) > 0 or (entry.glMoved[GL_WIND_JOINT] and not entry.blastLatch)
+    local winding = (wyv or 0) > 0 or (entry.glMoved[GL_WIND_JOINT] and not entry.blastLatch and not reloading)
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
     local level, pack = 0, 0

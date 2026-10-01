@@ -14,6 +14,7 @@ Usage: python build_device_kit.py <device> <kit dir> <original .mesh> <11_sticky
 Requires bpy 4.5 with RE Mesh Editor in the user addons dir. The originals are only read.
 """
 import copy
+import math
 import os
 import sys
 
@@ -38,17 +39,31 @@ EMISSIVE = [3.0, 2.1, 0.8, 1.0]
 def wyrmstake():
     """The needle with its point on +Z like the original stake's (which narrows to a point at
     z 1.6 and has its fins at the back, z -0.8): built 0.5 long point-first and scaled 4.7,
-    2.35 m like the original, the eye at the back."""
+    2.35 m like the original, the eye at the back.
+
+    Which groups (the stake effects' mesh elements, read from the .efx, 2026-10-02): 104 fires
+    (groups 4+5, then 7 in flight, 4+5 on impact), 105 drills (4+5), 105_pile the stake left in
+    (9), 004 the final blast (7, and 0-3: the pieces flying off). Group 5 is the drill: the
+    effect spawns many copies of it turning around the axis, so a whole needle there showed as
+    a bundle of needles (user). The needle goes in 4, 7 and 9 only; 0-3 get small gold shards."""
     import devices
     import motifs as m
     mats = m.materials()
     mats["gold"] = devices.gold_material()
-    objs = devices.needle(mats, 0.5, Vector((0, 0, 0)), Vector((0, 0, -1)))
     to_file = Matrix.Translation((0, 0, 1.55)) @ Matrix.Scale(4.7, 4)
-    # The original's groups 0-4 are small parts the effect shows several of at once, in other
-    # places (the user saw many needles): ours only in 5-9, the whole stake's place.
-    return {"name": "11_it07_000", "rel": "Art/VFX/Mesh/Weapon/it07", "objects": objs, "to_file": to_file,
-            "groups": [5, 6, 7, 8, 9], "budget": 3500, "glow_material": True}
+    parts = {}
+    for g in (4, 7, 9):
+        before = set(bpy.data.objects)
+        devices.needle(mats, 0.5, Vector((0, 0, 0)), Vector((0, 0, -1)))
+        parts[g] = [o for o in bpy.data.objects if o not in before and o.type in ("MESH", "CURVE")]
+    # Shards: slivers of gold, a little under the original pieces' size (0.6-1.2 m in the file).
+    for g, (length, width) in enumerate(((0.12, 0.012), (0.1, 0.01), (0.09, 0.011), (0.05, 0.008))):
+        parts[g] = m.path_blade(f"Shard_{g}", [Vector((0, 0, -0.33 - length / 2)), Vector((0, 0, -0.33 + length / 2))],
+                                (1, 0.3, 0), lambda t, w=width: w * math.sin(math.pi * t) ** 0.6 + 0.0005,
+                                lambda t, w=width: w * 0.5 * math.sin(math.pi * t) ** 0.6 + 0.0004, mats["gold"],
+                                n_sec=6, samples=12, subsurf=0)
+    return {"name": "11_it07_000", "rel": "Art/VFX/Mesh/Weapon/it07", "objects": parts[7], "to_file": to_file,
+            "parts": parts, "budget": 3500, "glow_material": True}
 
 
 def wyvernblast():

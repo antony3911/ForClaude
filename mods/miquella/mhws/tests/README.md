@@ -2,6 +2,8 @@
 
 沒有遊戲也能跑：用假的 REFramework API（`sdk`、`re`、`imgui`、`json`）模擬獵人和武器，實際執行腳本的流程。能抓到邏輯錯誤，但**不能**證明遊戲的方法名稱正確，那個要進遊戲才知道。
 
+本機（Windows）沒有 lua5.4：用 `pip install lupa`（內含 Lua 5.4），把下面的 `lua5.4` 換成 `python run_lua.py`。
+
 ```
 lua5.4 weapons_test.lua ../MiquellaLight_Weapons/reframework/autorun/MiquellaLight_Weapons.lua
 lua5.4 weapons_test.lua ../MiquellaLight_Weapons/reframework/autorun/MiquellaLight_Weapons.lua missing

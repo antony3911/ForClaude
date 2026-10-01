@@ -369,3 +369,26 @@ Weapon Emissive 預設（`Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`
 - 回家要做：安裝 Armor VFX Manager，在選單裡翻遊戲的特效清單，挑出最像癲火、寒氣、腐敗蝶、光柱的幾個（記下名稱或路徑）；Nexus 在這個環境連不上，所以要你下載
 
 **7. 預覽圖**：`mods/miquella/prototypes/action_states/`（`prototypes/scripts/states.py` 產生）。預覽裡的淡入用半透明材質代替 `Dissolve`，銃槍彈簧逐格重建代替骨頭。
+
+## 17. 第一次遊戲實測和解出原版檔案後確認的事（2026-10-01，本機）
+
+**載入**
+- REFramework（nightly-01424，單一 `REFramework.zip`）在 Wilds 正常；紀錄檔 `re2_framework_log.txt` 在遊戲資料夾，會列出 `pak_mods` 讀到的 pak（`Cached custom pak with name: ...`）。一堆 `Scan.cpp ... Failed to find function start` 和 `for DD2` 的錯誤是正常的
+- 遊戲開著時 `pak_mods` 裡的 pak 被鎖住，要關遊戲才能換
+- 換裝腳本的寫法（`setMesh`／`set_Material`、收刀時 `set_DrawSelf`）在遊戲裡有效
+- 遊戲裡的武器路徑長這樣（換裝腳本的設定檔記到的）：`Art/Model/Item/it02/00/0024/it0200_0024_0.mesh`
+
+**從遊戲 pak 解原版檔案**：`prototypes/scripts/extract_game_files.py`（用 RE Asset Library 的讀檔程式，新 patch 優先；模型主檔在 `patch_014`，`.mdf2` 在 `patch_015`）。模型的高精度頂點在 `natives/stm/streaming/...` 同名檔，要一起解出來
+
+**原版雙劍的模型規格**（`it0200_0024`、`it0200_0002`）
+- 檔案座標 Y 上、單位公尺；**刀身朝 +Z、手握在原點**；寬度在 X、厚度在 Y
+- 刀柄約 z = -0.04～+0.13，柄頭到 -0.10～-0.15，護手從 0.14～0.18 開始；全長 1.2～1.6 m
+- 骨架只有 `root` → `Base` → `VFX_Attack`（刀尖位置），全部頂點 100% 綁 `Base`
+- 原版有 group 0、1、3 三組子模型（用途待查，可能是不同狀態顯示的部分）；我們只用 group 0
+
+**材質（`.mdf2.45`）**
+- 原版雙劍用 `MaterialShader/Variation/Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`，23 張貼圖、**180 個參數**，原版的發光：`Emissive_Intensity` 0.5、`Emissive_Power` 0.5、`UseCounterExposureEmit` 1（亮處也看得到）
+- RE Mesh Editor 0.66 的 Wilds 預設（Weapon／Weapon Emissive）只有 176 個參數，少了 `AnimEmit_Blend`、`Use_Basecolor_Mask`、`Basecolor_Mask_Min`、`Basecolor_Mask_Max`。**遊戲照位置讀參數**，排列不對時發光等數值全錯 → 第一版光劍變黑
+- 做法：每個材質都從遊戲現在的原版 `.mdf2` 複製一份，再照**參數名稱**填回我們的值（`fit_dual_blades.py` 的 `rebuild_mdf`）。遊戲更新後如果又變黑，先比對參數數量
+
+**Windows 無介面 Blender 的坑**：RE Mesh Editor 的匯入／匯出運算子會切換系統主控台，無介面時直接 segfault；改成直接呼叫 `importREMeshFile`／`exportREMeshFile`

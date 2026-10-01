@@ -22,11 +22,13 @@ local NULL_CHAIN = "Art/Model/Item/it00/99/it0099_0000_0.chain2"
 local CHECK_EVERY = 20       -- frames between checks
 
 -- Our models. Paths are relative to natives/STM/ without the numeric extension.
+-- glow: materials whose Emissive_Intensity the Glow slider scales, with their mdf2 value.
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
         mesh = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh",
         mdf2 = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2 },
     },
 }
 local KIT_NAMES = { "(original)" }
@@ -42,6 +44,9 @@ local config = {
     hideSheathed = true,
     -- original .mesh path -> kit name
     assign = {},
+    -- In-game tuning: glow multiplies the kit's Emissive_Intensity, scale sizes the weapon.
+    glow = 1.0,
+    scale = 1.0,
 }
 local saved = json.load_file(CONFIG_PATH)
 if saved then
@@ -133,6 +138,38 @@ local function set_model(go, mesh, meshPath, mdfPath, chainPath)
     return true
 end
 
+-- Material slots of the Emissive_Intensity parameter, found by name once per swap.
+local function glow_slots(mesh, kit)
+    local slots = {}
+    local n = try(function() return mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do
+        local base = kit.glow and kit.glow[try(function() return mesh:getMaterialName(i) end) or ""]
+        if base then
+            local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+            for j = 0, vars - 1 do
+                if try(function() return mesh:getMaterialVariableName(i, j) end) == "Emissive_Intensity" then
+                    slots[#slots + 1] = { mat = i, var = j, base = base }
+                end
+            end
+        end
+    end
+    return slots
+end
+
+local function set_scale(go, s)
+    local t = try(function() return go:get_Transform() end)
+    if t then try(function() t:set_LocalScale(Vector3f.new(s, s, s)) end) end
+end
+
+-- Apply the Glow and Size sliders to a swapped weapon.
+local function apply_tuning(entry, mesh)
+    entry.glowSlots = entry.glowSlots or glow_slots(mesh, entry.kit)
+    for _, s in ipairs(entry.glowSlots) do
+        try(function() mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
+    end
+    set_scale(entry.go, config.scale)
+end
+
 local function swap_in(go, mesh, original, kit)
     local chain = component(go, CHAIN2)
     local originalChain = chain and resource_path(try(function() return chain:get_ChainAsset() end))
@@ -144,7 +181,8 @@ local function swap_in(go, mesh, original, kit)
         originalChain = chainOf[original]
     end
     if set_model(go, mesh, kit.mesh, kit.mdf2, NULL_CHAIN) then
-        swapped[go:get_address()] = { go = go, original = original, chain = originalChain, kitMesh = kit.mesh }
+        swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
+                                      kit = kit, kitMesh = kit.mesh }
     end
 end
 
@@ -155,6 +193,7 @@ local function swap_back(entry)
     if mesh then
         set_model(go, mesh, entry.original, entry.original:gsub("%.mesh$", ".mdf2"), entry.chain)
     end
+    set_scale(go, 1.0)
     try(function() go:set_DrawSelf(true) end)
 end
 
@@ -182,6 +221,7 @@ local function update_slot(name, weapon)
     if kit then
         -- Swap when the game shows its own model (first time, or it reloaded the weapon).
         if current ~= kit.mesh then swap_in(go, mesh, current, kit) end
+        if swapped[key] then apply_tuning(swapped[key], mesh) end
         -- Only our light weapons vanish; if the swap failed, leave the original alone.
         if config.hideSheathed and swapped[key] then
             try(function() go:set_DrawSelf(isWeaponDrawn) end)
@@ -222,6 +262,10 @@ re.on_draw_ui(function()
     c, config.enabled = imgui.checkbox("Enabled", config.enabled)
     changed = c
     c, config.hideSheathed = imgui.checkbox("Hide while sheathed", config.hideSheathed)
+    changed = changed or c
+    c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0, "%.2f")
+    changed = changed or c
+    c, config.scale = imgui.slider_float("Size", config.scale, 0.5, 2.0, "%.2f")
     changed = changed or c
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 

@@ -101,7 +101,9 @@
 | 弓追蹤箭 | 插箭處浮出小樹紋光環，其他光箭追過來 | 同上 |
 | 狩獵笛響玉 | 地上光環＋浮空金膜泡泡，攻擊時共鳴 | 同上 |
 
-### 遊戲端（`mods/miquella/mhws/`，全部**還沒在遊戲裡測**）
+### 遊戲端（`mods/miquella/mhws/`）
+
+**第一次遊戲實測（2026-10-01）**：REFramework、兩個腳本、pak 都正常載入；雙劍光劍**有出現**、換裝和收刀隱藏有作用。但①**浮在手背上，沒握在手裡**，②**不發光、黑的**，③鬼人化沒變三刃（狀態效果本來就還沒寫）。①②已修（`fit_dual_blades.py`，見素材包 README「實測後的修正」）：刀身轉 90° 對齊原版的 +Z、刀柄移到原點、骨架從原版匯入；材質改成複製原版的（外掛預設是舊版遊戲的 176 參數，現在是 180）。換裝腳本加了 **Glow**、**Size** 兩個滑桿。新 pak 等使用者關遊戲後自動放進 `pak_mods`（遊戲開著時檔案被鎖住），**還沒驗證修好沒**
 
 **已裝進使用者的遊戲（2026-10-01，Claude 在本機裝的）**：遊戲在 `C:\Program Files (x86)\Steam\steamapps\common\MonsterHunterWilds`（不用系統管理員權限就能寫）
 - `dinput8.dll` = REFramework nightly-01424（2026-09-16）。**現在改成所有 RE 遊戲共用一個 `REFramework.zip`**，不再有 `MHWILDS.zip`；只放 dinput8.dll（不用 VR 就別放其他檔）
@@ -116,7 +118,7 @@
 | `MiquellaLight_Scout` | 偵察腳本（只讀）：列武器／防具／子物件的模型、材質、**材質參數名稱**、骨頭；**「Watch weapon state」記錄做動作時武器處理器裡變動的欄位**；存成 `scout.json`、`watch.json` |
 | `MiquellaLight_HideSheathed` | 舊的收刀隱藏腳本，已被換裝腳本取代，留作備案 |
 | `MiquellaLight_DualBlades_kit` | 雙劍遊戲素材（`.mesh`、`.mdf2`、`.tex`、貼圖原檔） |
-| `tests/` | Lua 離線測試（模擬 REFramework API）：`lua5.4 scout_test.lua ...`、`weapons_test.lua` |
+| `tests/` | Lua 離線測試（模擬 REFramework API）：`lua5.4 scout_test.lua ...`、`weapons_test.lua`；本機沒有 lua 就用 `python run_lua.py`（`pip install lupa`） |
 
 ---
 
@@ -139,6 +141,8 @@
 **環境**（雲端這樣裝；本機一樣做得到）
 - Python 3.11 ＋ `pip install bpy==4.2.0`（無介面的 Blender），另外一個 venv 裝 `bpy==4.5.3` 給 RE Mesh Editor 匯出用
 - 匯出需要把 RE Mesh Editor 裝成 Blender 外掛（雲端是放在 `~/.config/blender/4.5/scripts/addons/re_mesh_editor`）
+- **本機（2026-10-01 裝好）**：全部放在 repo 外的 `C:\Users\anton\MiquellaTools\`：`bpy42\`、`bpy45\`（venv，都有 zstandard；bpy45 另有 lupa）、`addons\re_asset_library\`、`MHWs_STM_Release.list`（REE.PAK.Tool 的檔名清單）、`extracted\`（**從遊戲解出的原版檔案，是卡普空的，絕對不要放進 repo**）、`work\`。RE Mesh Editor 在 `%APPDATA%\Blender Foundation\Blender\4.5\scripts\addons\re_mesh_editor`。執行：`C:\Users\anton\MiquellaTools\bpy45\Scripts\python <腳本>`
+- **Windows 無介面的坑**：RE Mesh Editor 的匯入／匯出「運算子」會切換系統主控台，在無介面 Blender 直接當掉（segfault，沒有錯誤訊息）→ 直接呼叫 `importREMeshFile`／`exportREMeshFile`（`fit_dual_blades.py` 有範例）。程式結束時的 segfault 無害（`os._exit` 前先 flush 輸出）
 - 標籤中文字型：`states.py` 會自動找（Linux 文泉驛、Windows 微軟正黑體）；找不到就設環境變數 `MIQUELLA_FONT`
 - 算圖：Cycles CPU、Filmic「Medium High Contrast」（AgX 會把金光洗成白）、合成器 Glare（Fog Glow）
 
@@ -152,6 +156,10 @@
 | `python build_game_kit.py <kit 資料夾> <工作資料夾>` | 雙劍遊戲素材包（模型、貼圖、材質） |
 | `python make_patch_pak.py <含 natives 的資料夾> <out.pak> <RE Asset Library 所在資料夾>` | 打包 patch pak 並讀回驗證 |
 | `python export_wilds_test.py <.blend> <根物件> <輸出>` | 測試把原型匯出成 Wilds `.mesh`（bpy 4.5） |
+| `python extract_game_files.py <遊戲資料夾> <檔名清單> <輸出> <RE Asset Library 所在資料夾> <正規表示式>...` | 從本機遊戲的 pak 解出原版檔案（新 patch 優先）；例：`"art/model/item/it02/00/0024/[^/]*\.(mesh\|mdf2)\."`，15 秒 |
+| `python inspect_wilds_mesh.py <.mesh>...` | 印出骨架、材質、每個子模型的範圍和權重（不經 Blender 匯入） |
+| `python inspect_wilds_mdf.py [--all-params] <.mdf2>...` | 印出材質的 shader、旗標、貼圖、參數 |
+| `python fit_dual_blades.py <kit> <原版 .mesh> <原版 .mdf2>` | 把雙劍光劍對齊原版（方向、握把、骨架）並用原版材質重建 `.mdf2` |
 
 **共用模組**：`common.py`（場景、材質、算圖）、`motifs.py`（光環、編織管、細枝束、卷草、懸浮光點、光刃…）、`status_fx.py`（腐敗黴球、寫實腐敗蝶、冰塊）、`particle_fx.py`（用旋渦氣流描出的火絲、爆炸光絲、體積冷霧）
 
@@ -166,6 +174,8 @@
 - **還不知道**：遊戲用哪個欄位代表蓄力段數、鬼人化、填彈 → 偵察腳本的 Watch 模式就是為了找這個
 - **不覆蓋原版的掛載法**：腳本生成物件、`setMesh`／`set_Material`、`set_SameJointsConstraint` 掛到獵人骨架（研究筆記 15）
 - **特效**：`.efx` 沒有公開編輯器，只能改顏色。可行的路是 **Armor VFX Manager（Nexus 4908）** 那種做法：執行時生成遊戲現成的特效、掛到任一骨頭、改顏色、依動作觸發；VFX Unleashed（Nexus 4842）可減弱原版蓄力強光、依蓄力段數換特效
+- **武器模型的規格（實測＋解出原版確認）**：刀身朝檔案 **+Z**、**手握在原點**（雙劍刀柄約 -0.04～+0.13，柄頭到 -0.10～-0.15）；骨架 `root` → `Base` → `VFX_Attack`（刀尖，例 z=1.285），全部頂點綁 `Base`；原版雙劍長 1.2～1.6 m（我們的光劍 0.81 m）。遊戲裡的路徑長這樣：`Art/Model/Item/it02/00/0024/it0200_0024_0.mesh`
+- **材質一定要從遊戲現在的原版 `.mdf2` 複製**：RE Mesh Editor 0.66 的 Wilds 預設是舊版（176 參數），現在 180 個；排列不對，發光等數值會全部讀錯（第一版光劍變黑的原因）
 - 武器檔案：雙劍 `it02`（`_0` 左手、`_1` 右手）、太刀 `it03`、片手劍 `it01`（`_1` 是盾）、重弩 `it12`、輕弩 `it13`；其他武器的編號照 MDF-XL 資料庫的 WPType 推測，要用偵察腳本確認
 - 資料片《荒野：Ascendance》預定 2027，會給每種武器加 Boost Bracer 新動作，出了再補
 - 雲端環境連不上 Nexus 和 Fluffy 官網；GitHub 可以
@@ -186,13 +196,13 @@
 
 **使用者在自己電腦上做（需要遊戲）**
 1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
-2. 跑偵察腳本：拿各武器掃一次存 `scout.json`；大劍、雙劍、大錘、長槍、銃槍做蓄力／鬼人化／填彈時用 Watch 存 `watch.json`（存在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**，不用使用者傳）
-3. 看第一把光劍（已裝好）：拿雙劍，Insert → Script Generated UI → MiquellaLight: Light Weapons，Weapon、SubWeapon 的「Look」都選 `DualBlades`，回報方向、大小、位置
+2. **（正在等）雙劍鬼人化的 Watch**：已請使用者拿雙劍按「Watch weapon state」→ 站著 3～5 秒 → 開鬼人化 → 解除 → 集滿進真鬼人化 → 「Save watch」。之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（存在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**，不用使用者傳）
+3. **重開遊戲驗證修正後的光劍**（新 pak 關遊戲後自動放進去）：有沒有握在手裡、有沒有亮金光；用 Glow／Size 滑桿調到滿意，記下數字（之後寫回 `.mdf2` 預設值）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**
 5. 用 `watch.json` 找出狀態欄位 → 寫「武器狀態視覺」REFramework 腳本（改發光參數、開關材質槽、Dissolve），先做大劍蓄力和雙劍鬼人化
-6. 把每把武器整理成遊戲用模型：會變化的零件分材質槽、需要動的綁骨頭；用 RE Asset Library 解出原版武器模型對齊骨頭和大小（**遊戲 pak 就在本機，Claude 可以自己解**；需要 `pip install zstandard`、bpy，和 RE Asset Library 的檔名目錄 `MHWILDS.reassetlib`）
+6. 把每把武器整理成遊戲用模型：會變化的零件分材質槽、需要動的綁骨頭；用 RE Asset Library 解出原版武器模型對齊骨頭和大小（**已可以自己解**：`extract_game_files.py`＋`inspect_wilds_mesh.py`／`inspect_wilds_mdf.py`，見第 6 節；不需要 RE Asset Library 那個 336 MB 的目錄，用 REE.PAK.Tool 的檔名清單就夠）
 7. 學 Armor VFX Manager 生成特效的寫法，做操蟲棍三顆球的特效、裝置的爆炸、重弩「米凱拉的光」光柱
 8. 角色正式版：身體＋長袍（貼身上半身、擺動下擺）、頭髮（擺動鏈）、頭冠綁頭骨
 9. 之後：Ascendance 的新動作

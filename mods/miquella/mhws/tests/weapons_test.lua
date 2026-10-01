@@ -8,7 +8,16 @@ local function newMesh(meshPath)
   function m:setMesh(h) self.meshPath = h.path end
   function m:set_Material(h) self.mdfPath = h.path end
   function m:set_Enabled(v) self.enabled = v end
-  function m:get_MaterialNum() return 2 end
+  m.floats = {}
+  local function mats(self)
+    if self.mdfPath:match("wp_miquella_db") then return { "MiquellaBlade", "MiquellaIvory", "MiquellaGrip", "MiquellaGlow" } end
+    return { "lambert" }
+  end
+  function m:get_MaterialNum() return #mats(self) end
+  function m:getMaterialName(i) return mats(self)[i + 1] end
+  function m:getMaterialVariableNum(i) return 2 end
+  function m:getMaterialVariableName(i, j) return ({ "Emissive_Color", "Emissive_Intensity" })[j + 1] end
+  function m:setMaterialFloat(i, j, v) self.floats[mats(self)[i + 1] .. "." .. j] = v end
   function m:setMaterialsEnable(i, v) end
   return m
 end
@@ -25,6 +34,8 @@ local function newGO(name, addr, mesh, chain)
   function go:get_Valid() return self.valid end
   function go:set_DrawSelf(v) self.draw = v end
   function go:call(sig, t) return self.comps[t.name] end
+  go.scale = 1.0
+  function go:get_Transform() local g = self; return { set_LocalScale = function(_, v) g.scale = v.x end } end
   return go
 end
 local weaponMesh = newMesh("Art/Model/Item/it02/00/0002/it0200_0002_1.mesh")
@@ -55,7 +66,9 @@ sdk = {
 }
 local onFrame, onDraw
 re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
+Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
 local comboAnswer = nil
+local sliderAnswer = {}
 local texts = {}
 imgui = {
   tree_node = function() return true end, tree_pop = function() end, same_line = function() end,
@@ -64,6 +77,10 @@ imgui = {
   combo = function(label, idx, list)
     if comboAnswer and label:match("##Weapon$") then local a = comboAnswer; comboAnswer = nil; return true, a end
     return false, idx
+  end,
+  slider_float = function(label, v)
+    if sliderAnswer[label] then local a = sliderAnswer[label]; sliderAnswer[label] = nil; return true, a end
+    return false, v
   end,
 }
 local savedCfg
@@ -106,6 +123,14 @@ check(weaponGO.draw == false, "hidden while sheathed")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(1)
 check(weaponGO.draw == true, "shown while drawn")
+-- Glow and Size sliders.
+check(math.abs((weaponMesh.floats["MiquellaBlade.1"] or 0) - 1.2) < 1e-6, "glow at default intensity on the blade")
+sliderAnswer.Glow = 2.0; sliderAnswer.Size = 1.3; onDraw()
+frames(20)
+check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6 and math.abs(weaponMesh.floats["MiquellaGlow.1"] - 2.4) < 1e-6, "glow slider scales blade and droplet")
+check(weaponMesh.floats["MiquellaIvory.1"] == nil, "ivory not made to glow")
+check(math.abs(weaponGO.scale - 1.3) < 1e-6, "size slider scales the weapon")
+check(math.abs(subGO.scale - 1.0) < 1e-6, "unassigned sub weapon keeps its size")
 -- Game reloads its own model (e.g. after a loading screen): we swap again.
 weaponMesh.meshPath = "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"
 frames(20)
@@ -129,4 +154,5 @@ check(weaponMesh.meshPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh", "
 check(weaponMesh.mdfPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mdf2", "original material restored")
 check(weaponChain.path == "Art/Model/Item/it02/00/0002/it0200_0002_1.chain2", "original physics restored")
 check(weaponGO.draw == true, "visible again")
+check(math.abs(weaponGO.scale - 1.0) < 1e-6, "size reset on the original")
 print("ALL PASS")

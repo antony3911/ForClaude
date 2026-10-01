@@ -9,7 +9,7 @@
 | 檔案 | 內容 | 驗證 |
 |---|---|---|
 | `natives/.../wp_miquella_db.mesh.241111606` | 低面數雙劍（一把），12,624 三角面，4 個子模型，都有 UV | 重新匯入正常 |
-| `natives/.../wp_miquella_db.mdf2.45` | 4 個材質，用 RE Mesh Editor 的 Wilds 預設建立 | 重新匯入正常 |
+| `natives/.../wp_miquella_db.mdf2.45` | 4 個材質；~~用 RE Mesh Editor 的 Wilds 預設建立~~ → 已改成從原版雙劍的材質複製（見下方「實測後的修正」） | 參數排列跟原版一樣（180 個） |
 | `natives/.../tex/*.tex.241106027` | 10 張 Wilds 格式貼圖（BC7，含完整 mipmap） | 轉回 DDS 正常 |
 | `texture_sources/*.png` | 貼圖原始檔，要改顏色從這裡改 | — |
 | `dual_blade_kit.blend` | Blender 4.5 工作檔 | — |
@@ -47,10 +47,28 @@ MDF-XL 的武器換裝是在遊戲執行中把武器的模型換掉（`setMesh` 
 
 **已經寫好了**：`../MiquellaLight_Weapons/`（含收刀隱藏）。用這條路的話，上面第 1、3 步（選一把犧牲、改名搬路徑）都不用做：模型和貼圖就放在現在的 `Art/Model/MiquellaLight/...` 路徑，打包成 patch pak 就好。
 
+## 第一次遊戲實測後的修正（2026-10-01，`fit_dual_blades.py`）
+
+使用者實測：光劍有出現，但①浮在手背上、沒握在手裡，②不發光、黑的。原因和修法：
+
+| 問題 | 原因 | 修法 |
+|---|---|---|
+| 位置不對 | 原版武器（例：`it0200_0024_0`）刀身朝檔案的 **+Z**、**手握的位置在原點**（刀柄約 -0.04～+0.13，柄頭到 -0.10），骨架 `root`／`Base`／`VFX_Attack`，全部頂點綁 `Base`。我們的刀身朝 +Y、原點在柄頭、沒有骨架 | 刀身轉 90° 朝 +Z、整把往下移 0.05（刀柄 -0.04～+0.10），骨架直接從原版匯入，全部綁 `Base` |
+| 不發光 | RE Mesh Editor 0.66 的 Wilds「Weapon Emissive」預設是**舊版遊戲**的：176 個參數；現在的遊戲有 180 個（多了 `AnimEmit_Blend`、`Use_Basecolor_Mask`、`Basecolor_Mask_Min/Max`）。遊戲照位置讀參數，後面的值全部讀錯 | 每個材質改成**複製原版武器的材質**（現在的排列），再照名稱填回我們的貼圖和數值 |
+
+**之後做任何武器都要這樣**：材質從遊戲現在的原版 `.mdf2` 複製，不要用外掛的預設；骨架和方向照原版。
+
+```
+python mods/miquella/prototypes/scripts/fit_dual_blades.py <kit 資料夾> <原版 it02 *_0.mesh.241111606> <原版 *_0.mdf2.45>
+```
+
+`dual_blade_kit_fitted.blend` 是修正後的工作檔（只有我們的模型和原版的三根骨頭，沒有原版模型）。
+
 ## 怎麼重新產生
 
 ```
 python mods/miquella/prototypes/scripts/build_game_kit.py <kit 輸出資料夾> <工作資料夾>
+python mods/miquella/prototypes/scripts/fit_dual_blades.py <kit 資料夾> <原版 .mesh> <原版 .mdf2>
 ```
 
 需要 Blender 4.5 的 `bpy` 模組，以及裝在使用者外掛資料夾的 RE Mesh Editor（無介面環境要關掉它的自動更新檢查）。

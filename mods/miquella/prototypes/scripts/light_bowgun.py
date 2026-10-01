@@ -91,8 +91,8 @@ def halo_rail(glow_mat):
     return objs
 
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
+def build():
+    """The whole light bowgun; returns the ivory, light and beam materials."""
     rng = random.Random(12)
     c.reset_scene()
     ivory = c.make_material("Ivory", c.PALETTE["ivory"], roughness=0.32, coat=0.3,
@@ -115,6 +115,12 @@ def main():
         if obj.name == "Energy_Core" or obj.name.startswith("Cradle_"):
             obj.scale = (0.75, 0.75, 0.75)
             obj.location = (obj.location.x * 0.75, obj.location.y * 0.75 + 0.01, obj.location.z * 0.75 - 0.012)
+    return ivory, glow, beam
+
+
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    ivory, glow, beam = build()
 
     c.setup_render(samples=32, res=(900, 600), world_hex="#2E2E33", world_strength=0.5)
     c.add_light("key", "AREA", (1.0, -0.6, 1.0), 100, size=1.0, target=(0, 0.1, 0))

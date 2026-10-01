@@ -281,8 +281,8 @@ def barrel_phials(mats, ys, z, size):
     return motifs.floating_phials("Barrel_Phial", pts, (0, -0.15, 1), (1, 0, 0.25), mats, size=size)
 
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
+def build():
+    """The whole heavy bowgun; returns the ivory and light materials."""
     rng = random.Random(5)
     c.reset_scene()
     ivory = c.make_material("Ivory", c.PALETTE["ivory"], roughness=0.32, coat=0.3,
@@ -298,6 +298,12 @@ def main():
     parts += side_wings(ivory, rng)
     parts += conduit_rings(glow)
     parts += barrel_phials({"light": glow}, ys=(0.2, 0.32, 0.44), z=CONDUIT_Z + 0.15, size=0.018)
+    return ivory, glow
+
+
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    ivory, glow = build()
 
     c.setup_render(samples=32, res=(900, 600), world_hex="#2E2E33", world_strength=0.5)
     c.add_light("key", "AREA", (1.0, -0.6, 1.0), 120, size=1.0, target=(0, 0.1, 0))

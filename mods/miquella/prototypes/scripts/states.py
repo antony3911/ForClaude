@@ -529,6 +529,9 @@ def long_sword_spirit():
 
 # ------------------------------------------------------------------ insect glaive extracts
 
+LAYOUTS = ("B",)      # the user went with B (motes around the blade); A kept for reference
+
+
 def insect_glaive_extracts():
     """Red, white and orange extracts as Elden Ring's scarlet rot, frost and frenzied flame
     (user's idea), in two layouts. A: the top blade becomes three blades (rot in the middle,
@@ -603,9 +606,13 @@ def insect_glaive_extracts():
         b_triangle.append(c.curve_tube(f"Triangle_{k}", [a + u * 0.03, b - u * 0.03], [1, 1], mats["light"],
                                        bevel=0.0018, resolution=2))
     p = motes["rot"]
-    b_fx["rot"] = fx.rot("B_Rot", [(p + V(-0.034, 0, 0.012), (0, -1, 0.2)), (p + V(0.034, 0, 0.004), (0, -1, 0.2)),
+    b_fx["rot_v1"] = fx.rot("B_Rot", [(p + V(-0.034, 0, 0.012), (0, -1, 0.2)), (p + V(0.034, 0, 0.004), (0, -1, 0.2)),
                                    (p + V(0.004, 0, 0.038), (0, -1, 0.2))],
                          [p + V(-0.014, 0, -0.032), p + V(0.016, 0, -0.042)], fx_mats["rot"], radius=0.016)
+    # Second try at rot (user's references): the mote turns into a mould ball shedding butterflies.
+    b_fx["rot"] = fx.rot_mote("B_Rot2", motes["rot"], 0.017)
+    show(b_fx.pop("rot_v1"), False)
+    rot_mote_drop = [bpy.data.objects["Mote_rot"]]
     p = motes["flame"]
     b_fx["flame"] = fx.flame("B_Flame", [p + V(-0.012, 0, 0.012), p + V(0.006, 0, 0.016), p + V(0.018, 0, 0.008)],
                              (0.08, 0.1, 0.065), fx_mats["flame"], width=0.016)
@@ -624,7 +631,7 @@ def insect_glaive_extracts():
         core, edge, strength = fx.STATUS[kind][:3] if lit else gold
         set_blade(mat, core, edge, strength)
 
-    for layout in ("A", "B"):
+    for layout in LAYOUTS:
         show(a_objs + sum(a_fx.values(), []), layout == "A")
         show(b_objs + sum(b_fx.values(), []) + b_triangle, layout == "B")
         paths = []
@@ -640,8 +647,17 @@ def insect_glaive_extracts():
                     color, strength = (fx.STATUS[kind][0], 4.0) if kind in lit else (c.PALETTE["glow"], 2.0)
                     set_glow(b_mats[kind], color, strength)
                     show(b_fx[kind], kind in lit)
+                show(rot_mote_drop, "rot" not in lit)      # the droplet becomes the mould ball
                 show(b_triangle, full)
             paths += c.render_views(OUT, f"{layout}_state{i}", target, distance, [("front", 12, 4)], lens=50)
+        if layout == "B":
+            # Close-ups of each lit mote (the last state has all three lit).
+            close = []
+            for kind, label in (("rot", "猩紅腐敗"), ("flame", "癲火"), ("frost", "冰凍")):
+                close += c.render_views(OUT, f"B_close_{kind}", motes[kind] + V(0, 0, 0.03), 0.42,
+                                        [("front", 12, 6)], lens=50)
+            labelled_strip(close, ["猩紅腐敗", "癲火", "冰凍"], os.path.join(OUT, "insect_glaive_extracts_B_close.png"),
+                           "方案 B 特寫：三顆光粒點亮後的樣子")
         title = ("方案 A：光刃變三刃（中猩紅腐敗、左癲火、右冰凍）" if layout == "A"
                  else "方案 B：單刃＋三顆光粒圍成三角形（上猩紅腐敗、左癲火、右冰凍）")
         labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, f"insect_glaive_extracts_{layout}.png"),

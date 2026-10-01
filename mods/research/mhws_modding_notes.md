@@ -392,3 +392,10 @@ Weapon Emissive 預設（`Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`
 - 做法：每個材質都從遊戲現在的原版 `.mdf2` 複製一份，再照**參數名稱**填回我們的值（`fit_dual_blades.py` 的 `rebuild_mdf`）。遊戲更新後如果又變黑，先比對參數數量
 
 **Windows 無介面 Blender 的坑**：RE Mesh Editor 的匯入／匯出運算子會切換系統主控台，無介面時直接 segfault；改成直接呼叫 `importREMeshFile`／`exportREMeshFile`
+
+**武器狀態欄位（Watch 實測）**
+- 雙劍：`hunterCharacter:call("get_WeaponHandling")` → `app.cHunterWp02Handling`（37 個數值／布林欄位）
+  - `_IsKijinOn`、`_IsKijinOnEffect`：鬼人化開關
+  - `_KijinExtern`：開鬼人化時約 0.13 秒內 0 → 1（每幀 +0.11），解除時 1 → 0 → **直接拿來驅動淡入**
+  - `_IsHitAttackToEnemy`：打中魔物時 true
+  - 真鬼人化（量表）：那次沒錄到；可能在下一層物件裡（偵察腳本已改成看下一層）

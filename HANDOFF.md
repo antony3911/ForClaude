@@ -105,7 +105,11 @@
 
 **第一次遊戲實測（2026-10-01）**：REFramework、兩個腳本、pak 都正常載入；雙劍光劍**有出現**、換裝和收刀隱藏有作用。但①**浮在手背上，沒握在手裡**，②**不發光、黑的**，③鬼人化沒變三刃（狀態效果本來就還沒寫）。①②已修（`fit_dual_blades.py`，見素材包 README「實測後的修正」）：刀身轉 90° 對齊原版的 +Z、刀柄移到原點、骨架從原版匯入；材質改成複製原版的（外掛預設是舊版遊戲的 176 參數，現在是 180）。換裝腳本加了 **Glow**、**Size** 兩個滑桿。修正版 pak 已放進遊戲，使用者 20:20 重開遊戲在測，**還沒回報**
 
-**鬼人化三刃（2026-10-01 做好，還沒在遊戲裡看過）**：Watch 找到 `app.cHunterWp02Handling`（`get_WeaponHandling`）的 `_IsKijinOn`（開關）和 **`_KijinExtern`**（開鬼人化時 0.13 秒內 0→1，解除時 1→0）。`add_demon_blades.py` 加了三段側刃（材質 `MiquellaDemon1～3`：45 %／9°、60 %／15°、74 %／22°，平常 `Dissolve` 0 隱藏），換裝腳本每幀讀 `_KijinExtern`，用自己的 0.35 秒進度交叉淡入三段，看起來像側刃滑出；解除時 0.2 秒收回。真鬼人化（藍鬼人 → 亮金）的欄位**還沒找到**（那次 Watch 沒變動），偵察腳本已改成也看下一層物件、並存全部欄位名稱。這版 pak 等使用者關遊戲後自動放進去
+**鬼人化三刃（使用者在遊戲裡看過，說「做得很好」）**：Watch 找到 `app.cHunterWp02Handling`（`get_WeaponHandling`）的 `_IsKijinOn` 和 **`_KijinExtern`**（開鬼人化時 0.13 秒內 0→1）。`add_demon_blades.py` 做三段側刃（材質 `MiquellaDemon1～3`，平常 `Dissolve` 0），換裝腳本每幀讀 `_KijinExtern`，0.35 秒交叉淡入看起來像側刃滑出。使用者意見後改成 **B 版**：分岔點從護手往刀尖 7 公分、側刃 62 %（光環露出來）。真鬼人化（藍鬼人 → 亮金）的欄位還沒找到
+
+**大小**：執行中縮放武器在 Wilds 行不通（`set_LocalScale` 會被遊戲蓋掉：每 20 幀設一次會閃，BeginRendering 前設沒效果）→ 改成預先做好的模型 `wp_miquella_db_s12/s14/s16.mesh`（`make_size_variants.py`：握把不變，握把以上刀身長度 ×k、寬度 ×√k），選單 Size 下拉 1.0～1.6，預設 1.4（使用者想要）。已裝進遊戲，**使用者還沒回報**
+
+**特效改色（已裝，還沒驗證）**：`MiquellaLight_DualBladesFX.pak`（見 `mhws/MiquellaLight_DualBladesFX/README.md`）把雙劍 6 個特效檔的紅 → 金、藍 → 銀：鬼人化全身光、前臂火焰、真鬼人化攻擊軌跡變金；完美閃避後的藍色狀態全身光、軌跡變銀。用 `efx_walk.py`／`recolor_efx.py` 從使用者的遊戲檔產生，**改過的遊戲檔不進 repo**
 
 **已裝進使用者的遊戲（2026-10-01，Claude 在本機裝的）**：遊戲在 `C:\Program Files (x86)\Steam\steamapps\common\MonsterHunterWilds`（不用系統管理員權限就能寫）
 - `dinput8.dll` = REFramework nightly-01424（2026-09-16）。**現在改成所有 RE 遊戲共用一個 `REFramework.zip`**，不再有 `MHWILDS.zip`；只放 dinput8.dll（不用 VR 就別放其他檔）
@@ -199,8 +203,8 @@
 **使用者在自己電腦上做（需要遊戲）**
 1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
-3. **（做到一半，額度用完）大小**：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
-4. **（之前在等）驗證修正後的光劍**：有沒有握在手裡、有沒有亮金光；Glow／Size 調到滿意的數字（之後寫回 `.mdf2` 預設值）。再下一次重開遊戲：看鬼人化三刃。如果 `Dissolve` 沒有淡入效果，側刃會一段一段直接出現（`setMaterialsEnable` 保底）
+3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
+4. **（正在等）使用者實測**：Size 1.4 看起來如何；B 版三刃；特效改色（全身金光、真鬼人化金軌跡、藍色狀態銀光和銀軌跡）。如果顏色沒變，代表遊戲在執行時指定顏色 → 改用腳本在執行時設特效顏色。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

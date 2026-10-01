@@ -399,3 +399,10 @@ Weapon Emissive 預設（`Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`
   - `_KijinExtern`：開鬼人化時約 0.13 秒內 0 → 1（每幀 +0.11），解除時 1 → 0 → **直接拿來驅動淡入**
   - `_IsHitAttackToEnemy`：打中魔物時 true
   - 真鬼人化（量表）：那次沒錄到；可能在下一層物件裡（偵察腳本已改成看下一層）
+
+**特效檔（`.efx.5571972`）可以讀到屬性層級了**（2026-10-01）
+- 格式照 kagenocookie 的 REE-EFX-Unified 010 範本（`EfxVersion_MHWilds = 12`）：表頭 12 個 uint → 名稱區（`entryLength`）→ 外部參數值（每個 24 bytes：兩個雜湊、型別、12 bytes 值；型別 1 = RGBA 顏色）→ 骨頭 → 動作 → 欄位參數 → 特效項目（每個有多個屬性）
+- **Wilds 每個屬性開頭是 `itemType, itemSize`**，所以不認識的屬性可以直接跳過 → `prototypes/scripts/efx_walk.py`
+- 已知的顏色欄位（相對 `itemSize` 之後）：`TypeRibbonParticle`(38) color1 +8、color2 +12、+92/+96/+100；`TypeNoDraw`(78) color +8、colorRange +12；`RgbCommon`(242) greenChColor +8、redChColor +28（貼圖綠／紅通道的染色）
+- **玩家全身發光** = 特效項目 `PLE*`：`TypeNoDraw`（顏色）＋`PtBehavior` 裡的 `app.EffectPlEmissiveControl`（只有邊緣光寬度、強度、部位，沒有顏色）
+- 型別 ID ↔ 名稱：範本的 `getStructNameMHWilds`（282 種）

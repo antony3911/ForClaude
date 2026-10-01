@@ -7,7 +7,8 @@ Weapons: great_sword, light_bowgun. Same result as the dual blades pipeline
   originals, see the kit READMEs): great sword along +Z with the hand just below the guard
   and the edge toward -X; light bowgun along +Z with up = +Y and the bore 0.19 below the origin;
 - takes the skeleton from an original and moves its effect bones (blade tip, muzzle) onto
-  our model, every vertex on Base;
+  our model, every vertex on Base except the floating rings: each has its own bone (MQ_*,
+  pivot at the ring's center) that the weapons script moves every frame;
 - copies the materials from the dual blades kit .mdf2 (current game layout, our textures),
   so the textures are the dual blades' (Art/Model/MiquellaLight/DualBlades/tex).
 
@@ -51,6 +52,8 @@ def great_sword():
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Blade_Core": "MiquellaTemper", "Membrane": "MiquellaGlow"},
         "by_name": {},
+        # The rings floating on the spine swing like loose rings (weapons script).
+        "floaters": {f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)},
     }
 
 
@@ -78,6 +81,8 @@ def light_bowgun():
         "bones": {"VFX_Fire": muzzle, "VFX_FireLong": muzzle, "VFX_FireSuppressor": muzzle},
         "materials": {"Ivory": "MiquellaIvory", "Light": "MiquellaGlow", "Beam": "MiquellaBlade"},
         "by_name": by_name,
+        # The rings along the beam hover as if held by magnetism (weapons script).
+        "floaters": {**{f"Rail_Halo_{i}": f"MQ_Halo{i}" for i in range(4)}, "Muzzle_Halo": "MQ_Halo4"},
     }
 
 
@@ -139,6 +144,16 @@ def build_parts(spec, mesh_col):
         o.parent = None
         o.matrix_world = mw
     lower_resolution(objs)
+    floaters = spec.get("floaters", {})
+    bone_of, pivots = {}, {}
+    for o in objs:
+        name = o.name.split(".")[0]
+        if name in floaters:
+            bone_of[o.name] = floaters[name]
+            pivots[floaters[name]] = spec["to_file"] @ o.matrix_world.translation
+    missing = set(floaters) - {n.split(".")[0] for n in bone_of}
+    if missing:
+        log(f"  floaters not found: {sorted(missing)}")
     groups = {}
     for o in objs:
         groups.setdefault(game_material(o, spec), []).append(o)
@@ -147,6 +162,9 @@ def build_parts(spec, mesh_col):
         select_only(members)
         bpy.ops.object.convert(target="MESH")
         members = [o for o in bpy.context.selected_objects]
+        for m in members:
+            g = m.vertex_groups.new(name=bone_of.get(m.name, "Base"))
+            g.add(range(len(m.data.vertices)), 1.0, "REPLACE")
         select_only(members)
         if len(members) > 1:
             bpy.ops.object.join()
@@ -175,10 +193,10 @@ def build_parts(spec, mesh_col):
         subs.append(o)
         log(f"{o.name}: {len(members)} parts, {before} -> {tris(o)} tris")
     log(f"total: {sum(tris(o) for o in subs)} tris")
-    return subs
+    return subs, pivots
 
 
-def import_skeleton(orig_mesh, mesh_col, bones):
+def import_skeleton(orig_mesh, mesh_col, bones, new_bones):
     from re_mesh_editor.modules.mesh.blender_re_mesh import importREMeshFile
     opts = {"clearScene": False, "createCollections": True, "loadMaterials": False,
             "loadMDFData": False, "loadShellFur": False, "loadUnusedTextures": False,
@@ -208,15 +226,41 @@ def import_skeleton(orig_mesh, mesh_col, bones):
             m[3][0], m[3][1], m[3][2] = (sign * pos.x, sign * pos.y, sign * pos.z)
             b[key] = m
         log(f"  bone {name} -> ({pos.x:+.3f}, {pos.y:+.3f}, {pos.z:+.3f})")
+    add_bones(arm, new_bones)
     log(f"skeleton: {[b.name for b in arm.data.bones]}")
     return arm
 
 
+def add_bones(arm, pivots):
+    """New children of Base at the given file-space points, no rotation. Export uses the
+    stored RE matrices (Base's identity with our translation); the Blender bones are only
+    placeholders."""
+    if not pivots:
+        return
+    bpy.ops.object.select_all(action="DESELECT")
+    arm.select_set(True)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    base = arm.data.edit_bones["Base"]
+    for name in pivots:
+        eb = arm.data.edit_bones.new(name)
+        eb.head = base.head
+        eb.tail = base.head + Vector((0, 0, 0.05))
+        eb.parent = base
+    bpy.ops.object.mode_set(mode="OBJECT")
+    ref = arm.data.bones["Base"]
+    for name, pos in pivots.items():
+        b = arm.data.bones[name]
+        for key, sign in (("reMeshWorldMatrix", 1), ("reMeshLocalMatrix", 1), ("reMeshInverseMatrix", -1)):
+            m = [list(r) for r in ref[key]]
+            m[3][0], m[3][1], m[3][2] = (sign * pos.x, sign * pos.y, sign * pos.z)
+            b[key] = m
+        log(f"  new bone {name} at ({pos.x:+.4f}, {pos.y:+.4f}, {pos.z:+.4f})")
+
+
 def bind(subs, arm):
+    """Vertex groups were set per part in build_parts (Base, or a floating ring's bone)."""
     for o in subs:
-        o.vertex_groups.clear()
-        g = o.vertex_groups.new(name="Base")
-        g.add(range(len(o.data.vertices)), 1.0, "REPLACE")
         o.modifiers.clear()
         o.modifiers.new("Armature", "ARMATURE").object = arm
         o.parent = arm
@@ -268,10 +312,10 @@ def main():
     from re_mesh_editor.modules.mesh.blender_re_mesh import exportREMeshFile
     mesh_col = bpy.data.collections.new(f"{spec['name']}.mesh")
     bpy.context.scene.collection.children.link(mesh_col)
-    subs = build_parts(spec, mesh_col)
+    subs, pivots = build_parts(spec, mesh_col)
     lo, hi = file_bounds(subs)
     log(f"file-space bounds min=({lo.x:+.3f}, {lo.y:+.3f}, {lo.z:+.3f}) max=({hi.x:+.3f}, {hi.y:+.3f}, {hi.z:+.3f})")
-    arm = import_skeleton(orig_mesh, mesh_col, spec["bones"])
+    arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots)
     bind(subs, arm)
     # Drop everything that is not part of the export.
     keep = set(subs) | {arm}

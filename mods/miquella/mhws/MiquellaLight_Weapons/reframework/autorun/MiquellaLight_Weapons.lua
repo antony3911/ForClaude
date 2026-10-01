@@ -46,6 +46,11 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh",
         mdf2 = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        -- Rings on the spine: bone pivots in the model's space (build_weapon_kit.py log).
+        floaters = { mode = "swing", joints = {
+            { name = "MQ_Ring0", pos = { 0.0456, 0.0, 1.2189 } },
+            { name = "MQ_Ring1", pos = { 0.0222, 0.0, 1.4818 } },
+            { name = "MQ_Ring2", pos = { -0.0217, 0.0, 1.7585 } } } },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -53,6 +58,13 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/LightBowgun/wp_miquella_lbg.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2,
                  MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+        -- Rings along the beam, muzzle ring last.
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_Halo0", pos = { 0.0, -0.19, 0.380 } },
+            { name = "MQ_Halo1", pos = { 0.0, -0.19, 0.476 } },
+            { name = "MQ_Halo2", pos = { 0.0, -0.19, 0.572 } },
+            { name = "MQ_Halo3", pos = { 0.0, -0.19, 0.668 } },
+            { name = "MQ_Halo4", pos = { 0.0, -0.19, 0.748 } } } },
     },
 }
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
@@ -72,6 +84,9 @@ local config = {
     -- In-game tuning: glow multiplies the kit's Emissive_Intensity; size picks the model.
     glow = 1.0,
     size = "1.4",
+    -- Floating rings (great sword spine, light bowgun beam): on/off and how lively.
+    float = true,
+    floatStrength = 1.0,
     -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
     -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
     swappedFrom = {},
@@ -363,11 +378,199 @@ local function update_states(chr)
     end
 end
 
+-- ------------------------------------------------------------------ floating rings
+
+-- Rings with their own bone (MQ_*, a child of Base with no rotation, see build_weapon_kit.py)
+-- are moved every frame: a damped spring in the weapon's space, pushed by the weapon's
+-- acceleration at the ring (so it lags and swings back), plus a slow drift and, for
+-- "hover", a faint fast tremor. Offsets are soft-clamped to max metres; the ring tilts with
+-- its offset. Units: metres, seconds, degrees.
+local FLOAT_MODES = {
+    swing = { hz = 3.2, damping = 0.22, gain = 0.12, max = 0.035, tilt = 28,
+              drift = 0.0015, driftTilt = 2.5, driftHz = { 0.31, 0.43, 0.37 }, tremor = 0 },
+    hover = { hz = 2.2, damping = 0.35, gain = 0.05, max = 0.012, tilt = 6,
+              drift = 0.004, driftTilt = 3.0, driftHz = { 0.47, 0.71, 0.59 }, tremor = 0.0004 },
+}
+local MAX_ACCEL = 150.0
+
+local function vadd(a, b) return { a[1] + b[1], a[2] + b[2], a[3] + b[3] } end
+local function vsub(a, b) return { a[1] - b[1], a[2] - b[2], a[3] - b[3] } end
+local function vscale(a, s) return { a[1] * s, a[2] * s, a[3] * s } end
+local function vlen(a) return math.sqrt(a[1] * a[1] + a[2] * a[2] + a[3] * a[3]) end
+-- Lua 5.4 (REFramework) dropped the hyperbolic functions.
+local function tanh(x)
+    if x > 20 then return 1 end
+    local e = math.exp(2 * x)
+    return (e - 1) / (e + 1)
+end
+local function cross(a, b)
+    return { a[2] * b[3] - a[3] * b[2], a[3] * b[1] - a[1] * b[3], a[1] * b[2] - a[2] * b[1] }
+end
+-- Quaternions as { x, y, z, w }.
+local function qrot(q, v)
+    local u = { q[1], q[2], q[3] }
+    local t = vscale(cross(u, v), 2)
+    return vadd(vadd(v, vscale(t, q[4])), cross(u, t))
+end
+local function qconj(q) return { -q[1], -q[2], -q[3], q[4] } end
+local function qaxis(axis, deg)
+    local l = vlen(axis)
+    if l < 1e-9 or deg == 0 then return { 0, 0, 0, 1 } end
+    local h = math.rad(deg) / 2
+    local s = math.sin(h) / l
+    return { axis[1] * s, axis[2] * s, axis[3] * s, math.cos(h) }
+end
+local function qmul(a, b)
+    return { a[4] * b[1] + a[1] * b[4] + a[2] * b[3] - a[3] * b[2],
+             a[4] * b[2] - a[1] * b[3] + a[2] * b[4] + a[3] * b[1],
+             a[4] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[4],
+             a[4] * b[4] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3] }
+end
+
+-- REFramework's Quaternion.new takes (w, x, y, z) (glm); check once in case it changes.
+local quatOrder = nil
+local function to_quat(q)
+    if quatOrder == nil then
+        local probe = try(function() return Quaternion.new(0.5, 0.1, 0.2, 0.3) end)
+        quatOrder = (probe and math.abs(probe.w - 0.5) < 1e-6) and "wxyz" or "xyzw"
+    end
+    if quatOrder == "wxyz" then return Quaternion.new(q[4], q[1], q[2], q[3]) end
+    return Quaternion.new(q[1], q[2], q[3], q[4])
+end
+
+local floatInfo = { found = 0, total = 0, phases = {} }
+local lastFloatClock = nil
+
+local function float_joints(entry)
+    local spec = entry.kit.floaters
+    if not spec then return nil end
+    local f = entry.float
+    if f and f.found == #spec.joints then return f end
+    local tf = try(function() return entry.go:call("get_Transform") end)
+    if not tf then return f end
+    f = f or { joints = {} }
+    f.tf, f.found = tf, 0
+    for i, j in ipairs(spec.joints) do
+        local s = f.joints[i] or { name = j.name, pivot = j.pos, off = { 0, 0, 0 }, vel = { 0, 0, 0 },
+                                   phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
+        s.joint = try(function() return tf:call("getJointByName", j.name) end)
+        if s.joint then f.found = f.found + 1 end
+        f.joints[i] = s
+    end
+    entry.float = f
+    return f
+end
+
+local function step_ring(s, mode, R, P, dt, t, strength)
+    local anchor = vadd(P, qrot(R, s.pivot))
+    local accel = { 0, 0, 0 }
+    if s.prevAnchor and dt > 0 then
+        local v = vscale(vsub(anchor, s.prevAnchor), 1 / dt)
+        if s.prevVel then
+            accel = vscale(vsub(v, s.prevVel), 1 / dt)
+            local a = vlen(accel)
+            if a > MAX_ACCEL then accel = vscale(accel, MAX_ACCEL / a) end
+        end
+        s.prevVel = v
+    end
+    s.prevAnchor = anchor
+    local accLocal = qrot(qconj(R), accel)
+    local w = 2 * math.pi * mode.hz
+    local k, c = w * w, 2 * mode.damping * w
+    local steps = math.max(1, math.ceil(dt / (1 / 240)))
+    local h = dt / steps
+    for _ = 1, steps do
+        local force = vsub(vscale(s.off, -k), vadd(vscale(s.vel, c), vscale(accLocal, mode.gain * strength)))
+        s.vel = vadd(s.vel, vscale(force, h))
+        s.off = vadd(s.off, vscale(s.vel, h))
+    end
+    -- Soft clamp, then drift and tremor on top.
+    local len = vlen(s.off)
+    local disp = len > 1e-9 and vscale(s.off, mode.max * tanh(len / mode.max) / len) or { 0, 0, 0 }
+    local p, hz = s.phase, mode.driftHz
+    local drift = { math.sin(2 * math.pi * hz[1] * t + p), math.sin(2 * math.pi * hz[2] * t + 2.1 * p),
+                    0.5 * math.sin(2 * math.pi * hz[3] * t + 0.7 * p) }
+    disp = vadd(disp, vscale(drift, mode.drift * strength))
+    if mode.tremor > 0 then
+        disp = vadd(disp, vscale({ math.sin(2 * math.pi * 7.3 * t + 3 * p), math.sin(2 * math.pi * 8.9 * t + p), 0 },
+                                 mode.tremor * strength))
+    end
+    -- Tilt away from the offset (about the axis across it and the weapon's length), plus a
+    -- slow wobble about the two cross axes.
+    local tilt = qaxis(cross({ 0, 0, 1 }, disp), mode.tilt * math.min(1, vlen(disp) / mode.max))
+    local wob = mode.driftTilt * strength
+    local wobble = qmul(qaxis({ 1, 0, 0 }, wob * math.sin(2 * math.pi * hz[2] * 0.8 * t + p)),
+                        qaxis({ 0, 1, 0 }, wob * math.sin(2 * math.pi * hz[1] * 0.9 * t + 2 * p)))
+    s.pos = vadd(s.pivot, disp)
+    s.rot = qmul(tilt, wobble)
+end
+
+-- Run the springs once per frame (the first hook that fires), using the weapon's transform.
+local function step_floaters()
+    local now = os.clock()
+    local dt = lastFloatClock and (now - lastFloatClock) or 0
+    if lastFloatClock and dt < 0.002 then return end
+    lastFloatClock = now
+    local reset = dt > 0.1 or not isWeaponDrawn
+    dt = math.min(dt, 0.1)
+    floatInfo.found, floatInfo.total = 0, 0
+    for _, entry in pairs(swapped) do
+        local f = config.enabled and config.float and float_joints(entry)
+        if f then
+            floatInfo.found = floatInfo.found + f.found
+            floatInfo.total = floatInfo.total + #f.joints
+            local mode = FLOAT_MODES[entry.kit.floaters.mode]
+            local pos = try(function() return f.tf:call("get_Position") end)
+            local rot = try(function() return f.tf:call("get_Rotation") end)
+            if pos and rot then
+                local P, R = { pos.x, pos.y, pos.z }, { rot.x, rot.y, rot.z, rot.w }
+                for _, s in ipairs(f.joints) do
+                    -- Drawing/sheathing teleports the weapon: start the springs over.
+                    if reset then s.prevAnchor, s.prevVel = nil, nil end
+                    step_ring(s, mode, R, P, reset and 0 or dt, now, config.floatStrength)
+                end
+            end
+        end
+    end
+end
+
+local function apply_floaters(phase)
+    floatInfo.phases[phase] = true
+    for _, entry in pairs(swapped) do
+        local f = entry.float
+        if f and config.enabled and config.float then
+            for _, s in ipairs(f.joints) do
+                if s.joint then
+                    try(function() s.joint:call("set_LocalPosition", Vector3f.new(s.pos[1], s.pos[2], s.pos[3])) end)
+                    try(function() s.joint:call("set_LocalRotation", to_quat(s.rot)) end)
+                end
+            end
+        end
+    end
+end
+
+-- Joint poses may be rewritten by the game's motion update, so set them after behaviour
+-- updates and again just before rendering; whichever lands last wins.
+local floatHooked = false
+if re.on_application_entry then
+    floatHooked = pcall(re.on_application_entry, "LateUpdateBehavior", function()
+        step_floaters(); apply_floaters("LateUpdateBehavior")
+    end) or floatHooked
+end
+if re.on_pre_application_entry then
+    for _, phase in ipairs({ "PrepareRendering", "BeginRendering" }) do
+        floatHooked = pcall(re.on_pre_application_entry, phase, function()
+            step_floaters(); apply_floaters(phase)
+        end) or floatHooked
+    end
+end
+
 re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
     if not chr then return end
     if config.enabled then update_states(chr) end
+    if not floatHooked then step_floaters(); apply_floaters("frame") end
     -- Visibility follows draw/sheathe immediately; model checks run less often.
     if frame % CHECK_EVERY ~= 0 then
         if config.enabled and config.hideSheathed then
@@ -399,6 +602,17 @@ re.on_draw_ui(function()
     for i, n in ipairs(SIZE_NAMES) do if n == config.size then sizeIdx = i end end
     local c3, newSize = imgui.combo("Size (dual blades)", sizeIdx, SIZE_NAMES)
     if c3 then config.size = SIZE_NAMES[newSize]; changed = true end
+    c, config.float = imgui.checkbox("Floating rings", config.float)
+    changed = changed or c
+    c, config.floatStrength = imgui.slider_float("Ring motion", config.floatStrength, 0.0, 3.0, "%.2f")
+    changed = changed or c
+    if floatInfo.total > 0 then
+        local phases = {}
+        for p in pairs(floatInfo.phases) do phases[#phases + 1] = p end
+        table.sort(phases)
+        imgui.text(string.format("Rings found: %d/%d (set at %s)", floatInfo.found, floatInfo.total,
+                                 #phases > 0 and table.concat(phases, ", ") or "-"))
+    end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 
     if not (slots.Weapon and slots.Weapon.original) then

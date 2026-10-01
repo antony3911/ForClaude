@@ -39,7 +39,24 @@ local function newGO(name, addr, mesh, chain)
   function go:get_address() return self.addr end
   function go:get_Valid() return self.valid end
   function go:set_DrawSelf(v) self.draw = v end
-  function go:call(sig, t) return self.comps[t.name] end
+  -- Weapon transform with named joints that record what the script sets.
+  go.tf = { pos = { x = 0, y = 0, z = 0 }, rot = { x = 0, y = 0, z = 0, w = 1 }, joints = {} }
+  function go.tf:call(m, a)
+    if m == "get_Position" then return self.pos end
+    if m == "get_Rotation" then return self.rot end
+    if m == "getJointByName" then
+      if not self.joints[a] then
+        local j = { name = a }
+        function j:call(jm, v) if jm == "set_LocalPosition" then self.lp = v elseif jm == "set_LocalRotation" then self.lr = v end end
+        self.joints[a] = j
+      end
+      return self.joints[a]
+    end
+  end
+  function go:call(sig, t)
+    if sig == "get_Transform" then return self.tf end
+    return self.comps[t.name]
+  end
   return go
 end
 local weaponMesh = newMesh("Art/Model/Item/it02/00/0002/it0200_0002_1.mesh")
@@ -79,6 +96,7 @@ sdk = {
 local onFrame, onDraw
 re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
+Quaternion = { new = function(w, x, y, z) return { w = w, x = x, y = y, z = z } end }
 local comboAnswer = nil
 local sizeAnswer = nil
 local sliderAnswer = {}
@@ -253,6 +271,36 @@ check(weaponGO.draw == false, "great sword: hidden while sheathed")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(1)
 check(weaponGO.draw == true, "great sword: shown when drawn")
+-- Floating rings: joints found, quiet at rest, flung by a swing, settle afterwards.
+frames(5, 1 / 60)
+texts = {}; onDraw()
+local sawRings = false
+for _, t in ipairs(texts) do if t:match("^Rings found: 3/3") then sawRings = true end end
+check(sawRings, "great sword: menu reports the 3 ring joints")
+local ring = weaponGO.tf.joints["MQ_Ring1"]
+local pivot = { 0.0222, 0.0, 1.4818 }
+local function ringOff()
+  local p = ring.lp
+  return math.sqrt((p.x - pivot[1]) ^ 2 + (p.y - pivot[2]) ^ 2 + (p.z - pivot[3]) ^ 2)
+end
+frames(60, 1 / 60)
+check(ring.lp and ringOff() < 0.004, string.format("great sword: ring drifts only slightly at rest (%.4f m)", ringOff()))
+local q = ring.lr
+check(math.abs(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z - 1) < 1e-6, "great sword: ring rotation is a unit quaternion")
+local peak = 0
+for i = 1, 12 do          -- a fast swing: speeds up along X for 0.2 s
+  weaponGO.tf.pos.x = weaponGO.tf.pos.x + 0.02 * i
+  frames(1, 1 / 60)
+  peak = math.max(peak, ringOff())
+end
+frames(6, 1 / 60)
+check(peak > 0.01, string.format("great sword: a swing flings the ring (%.4f m)", peak))
+check(peak < 0.035 + 0.004, "great sword: the fling stays within its range")
+frames(120, 1 / 60)
+check(ringOff() < 0.004, string.format("great sword: the ring settles back (%.4f m)", ringOff()))
+sliderAnswer["Ring motion"] = 0.0; onDraw()
+frames(30, 1 / 60)
+check(ringOff() < 1e-3, "great sword: Ring motion 0 keeps the ring still")
 comboAnswer = 1; onDraw()
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/Item/it00/00/0000/it0000_0000_0.mesh", "great sword: original restored")

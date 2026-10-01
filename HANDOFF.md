@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-01 深夜（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
+最後更新：2026-10-02 凌晨（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -66,8 +66,8 @@
 | 雙劍 | v4：葉形光刃、編織柄、護手兩側三叉；**已做成遊戲素材包＋可安裝的測試版** | `prototypes/dual_blades/`、`mhws/` |
 | 片手劍 | 光劍＋樹狀紋章能量盾 | `prototypes/sword_shield/` |
 | 太刀 | 彎刃＋刃紋、懸浮光環當刀鐔、編織刀柄 | `prototypes/long_sword/` |
-| 重弩、輕弩 | 光環隧道、懸浮光環；**槍管上方、靠前的三顆懸浮光點**（使用者很喜歡輕弩）；**輕弩已做成遊戲素材包、裝進遊戲，等實測** | `prototypes/heavy_bowgun/`、`light_bowgun/`、`mhws/MiquellaLight_LightBowgun_kit/` |
-| 大劍 | **不對稱單刃、光刃懸浮**不碰柄、S 形刃口、卷草托架；**已做成遊戲素材包、裝進遊戲，等實測** | `prototypes/great_sword/`、`mhws/MiquellaLight_GreatSword_kit/` |
+| 重弩、輕弩 | 光環隧道、懸浮光環；**槍管上方、靠前的三顆懸浮光點**（使用者很喜歡輕弩）；**輕弩遊戲裡看過，位置正確**；光束上五個環改成磁浮環（等實測） | `prototypes/heavy_bowgun/`、`light_bowgun/`、`mhws/MiquellaLight_LightBowgun_kit/` |
+| 大劍 | **不對稱單刃、光刃懸浮**不碰柄、S 形刃口、卷草托架；**遊戲裡看過，位置正確**；刀背三個環改成浮動環（等實測） | `prototypes/great_sword/`、`mhws/MiquellaLight_GreatSword_kit/` |
 | 大錘 | 細枝燈籠包光球，比純鏤空多一點遮擋，金色花絲卷草 | `prototypes/hammer/` |
 | 狩獵笛 | 光的豎琴，手臂末端是卷草 | `prototypes/hunting_horn/` |
 | 長槍、銃槍 | 鏤空雙螺旋槍身、花瓣護手、輕量能量盾；銃槍有象牙彈簧 | `prototypes/lance/`、`gunlance/` |
@@ -219,10 +219,10 @@
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
 3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
 4. ~~特效顏色~~ → **完成**：`MiquellaLight_Effects` 軌跡、身上特效都是金色，攻擊／防禦上升閃光已藏（見 `mhws/MiquellaLight_Effects/README.md` 版本紀錄）。競技場實測：**1.72 ms/幀**（拿雙劍時每幀搜尋全部特效）、173 when found、**0 later**（找到時換一次就夠，遊戲不會再改回紅）、0 at spawn（產生時的掛鉤沒作用）。**使用者決定先維持現狀**（沒感覺卡頓）。之後要優化：掛鉤 `EffectPlayer.set_Resource` 抓新軌跡，抓得到就把全場搜尋降回每秒 4 次；或收刀時不每幀搜尋；拿掉對舊軌跡的每幀檢查。只有拿雙劍才每幀搜尋，其他武器每秒 4 次（約 0.1 ms/幀）。還沒驗證：藍鬼人（完美閃避）的銀色、Size 1.4、B 版三刃。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
-5. **大劍和輕弩：換模型做完、已裝進遊戲，等使用者實測**（2026-10-01 深夜）。`build_weapon_kit.py` 做素材包（量測和理由見兩個 kit 的 README），換裝腳本加了 `GreatSword`、`LightBowgun`（Size 選單改名「Size (dual blades)」，只管雙劍），`weapons_test.lua` 加了大劍案例，全過。
-   **使用者的測試步驟**（他不熟這兩把，在訓練場做，不用打魔物）：①重開遊戲，到訓練場（風原之地基地營地北邊、掛紅布的木架；地圖可快速移動）；②裝大劍、拔刀，按 Insert → `MiquellaLight: Light Weapons` → `Look` 選 `GreatSword`；③看：右手在護手正下方、左手在握柄上（不是浮著）；揮砍時 S 形刃口（有光痕那邊）朝前；收刀消失；④換輕弩，`Look` 選 `LightBowgun`；瞄準、開槍：握把在手裡、槍口朝前、火光從最前面的光環出來。畫面右下有按鍵提示
-   **刃口反了**：`build_weapon_kit.py` 的 `great_sword()` 拿掉 `Matrix.Rotation(math.pi, ...)` 重做；**握的位置不對**：調 `hand`（大劍）或 `bore_y`／`back`（輕弩），重打 pak（遊戲關著才能覆蓋 pak）。
-   之後照雙劍流程：④狀態效果（大劍三段蓄力 → `MiquellaTemper` 光流、輕弩速射 → `MiquellaGauge1～3`）用 Watch 一次錄一個動作；⑤特效顏色 FxProbe → Effects 規則，**新的特效規則只在拿那把武器時才每幀搜尋**（使用者擔心其他武器也一起卡）
+5. **大劍和輕弩**：換模型**使用者在遊戲裡看過，位置都對**（2026-10-01）。使用者當時還以為特效也做了：**只做了模型**，大劍蓄力、輕弩速射、特效改色都還沒做。
+   **浮動環（2026-10-02，使用者要求，等實測）**：大劍刀背三個環「太固定、不像環」→ 加物理感；輕弩光束上的環要「在極小範圍內晃動、有磁性的味道」。做法：每個環一根新骨頭（`build_weapon_kit.py` 的 `floaters`），換裝腳本 `FLOAT_MODES` 每幀用彈簧＋阻尼推骨頭（大劍 `swing`、輕弩 `hover`），選單 `Floating rings`／`Ring motion`。新 pak 和腳本設了**背景等待：遊戲關掉就自動裝**。
+   **測試**：重開遊戲 → 拿大劍、輕弩 → 選單看 `Rings found: 3/3`（輕弩 5/5）→ 揮刀／走動看環有沒有晃。**若 `Rings found: 0/N` 或環跑到怪地方**：遊戲換模型時沒有替新骨頭建關節 → 改用原版骨架裡沒在用的骨頭（重設它們的位置），或改用材質的頂點動畫。幅度不對就調 `FLOAT_MODES`（`max`、`drift`、`tremor`、`hz`）
+   之後：④狀態效果（大劍三段蓄力 → `MiquellaTemper` 光流、輕弩速射 → `MiquellaGauge1～3`）用 Watch 一次錄一個動作；⑤特效顏色 FxProbe → Effects 規則，**新的特效規則只在拿那把武器時才每幀搜尋**（使用者擔心其他武器也一起卡）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

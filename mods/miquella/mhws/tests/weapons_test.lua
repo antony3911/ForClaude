@@ -17,6 +17,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_lbg") then
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory" }
     end
+    if self.mdfPath:match("wp_miquella_bow%.") then
+      return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     if self.mdfPath:match("wp_miquella_gs") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
@@ -75,6 +78,7 @@ local chr = {}
 local kijin = 0
 local chargeLv = nil
 local rapidGauge, rapidMode = nil, nil
+local bowDraw = nil
 function chr:call(m)
   if m == "get_WeaponHandling" then
     return { get_field = function(_, n)
@@ -82,6 +86,7 @@ function chr:call(m)
       if n == "_ChargeLv" then return chargeLv end
       if n == "_RapidAmmoGauge" then return rapidGauge end
       if n == "_IsRapidMode" then return rapidMode end
+      if n == "_IsCharge" then return bowDraw end
     end }
   end
 end
@@ -117,11 +122,13 @@ local comboPick = nil            -- { slot = "SubWeapon", name = "<look>" }: pic
 local sizeAnswer = nil
 local sliderAnswer = {}
 local texts = {}
+local combos = {}                -- labels of the combo boxes drawn
 imgui = {
   tree_node = function() return true end, tree_pop = function() end, same_line = function() end,
   checkbox = function(l, v) return false, v end, button = function() return false end,
   text = function(t) texts[#texts + 1] = t end, text_colored = function(t) texts[#texts + 1] = "!! " .. t end,
   combo = function(label, idx, list)
+    combos[#combos + 1] = label
     if comboPick and label:match("##" .. comboPick.slot .. "$") then
       local want = comboPick.name; comboPick = nil
       for i, k in ipairs(list) do if k == want then return true, i end end
@@ -426,4 +433,52 @@ texts = {}; onDraw()
 local sawKeep = false
 for _, t in ipairs(texts) do if t:match("keeps its game look") then sawKeep = true end end
 check(sawKeep, "long sword: menu says the scabbard keeps its look")
+-- Bow: the quiver (_1) takes the look's quiver (B can be picked); drawing packs the rings ahead
+-- of the arrow toward the bow, tighter per level, lights them a pair per level, gold -> white
+-- gold; loosing the arrow springs them back past their places once.
+weaponMesh = newMesh("Art/Model/Item/it11/00/0002/it1100_0002_0.mesh")
+weaponGO = newGO("Wp11", 6001, weaponMesh, nil)
+local quiverMesh = newMesh("Art/Model/Item/it11/00/0002/it1100_0002_1.mesh")
+subGO = newGO("Wp11_Quiver", 6002, quiverMesh, nil)
+chargeLv, bowDraw = 0, false
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "Bow" }; onDraw()
+frames(30, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mesh", "bow: model swapped")
+check(quiverMesh.meshPath == "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_a.mesh", "bow: quiver takes quiver A")
+combos = {}; onDraw()
+local sawQuiver = false
+for _, t in ipairs(combos) do if t:match("^Quiver look") then sawQuiver = true end end
+check(sawQuiver, "bow: menu offers a quiver look")
+comboPick = { slot = "SubWeapon", name = "Bow_QuiverB" }; onDraw()
+frames(30, 1 / 60)
+check(quiverMesh.meshPath == "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_b.mesh", "bow: quiver B picked")
+frames(200, 1 / 60)                  -- the draw field is looked for again after 3 s
+local front = weaponGO.tf.joints["MQ_Ring5"]
+local REST, PACKED = 1.0080, 1.0080 - 0.5490
+check(front.lp and math.abs(front.lp.z - REST) < 0.01, string.format("bow: rings spread at rest (front ring z %.3f)", front.lp.z))
+local function gauge(i) return weaponMesh.floats["MiquellaGauge" .. i .. ".1"] / (1.2 * glow) end
+check(math.abs(gauge(3) - 1) < 1e-3, "bow: rings at normal glow when not drawn")
+bowDraw, chargeLv = true, 1
+frames(60, 1 / 60)
+local z1 = front.lp.z
+check(z1 < REST - 0.2 and z1 > PACKED + 0.05, string.format("bow: drawing packs the rings part way (%.3f)", z1))
+check(math.abs(gauge(1) - 1.8) < 0.05 and gauge(3) < 0.4, string.format("bow: level 1 lights the first pair (%.2f %.2f %.2f)", gauge(1), gauge(2), gauge(3)))
+chargeLv = 3
+frames(60, 1 / 60)
+check(math.abs(front.lp.z - PACKED) < 0.01, string.format("bow: level 3 packs them tight (%.3f)", front.lp.z))
+check(gauge(3) > 3.3, "bow: level 3 lights every ring")
+local col = weaponMesh.colors["MiquellaGauge3"]
+check(col and col.z > 0.5 and col.y > 0.8, "bow: level 3 turns them white gold")
+texts = {}; onDraw()
+local sawDraw = false
+for _, t in ipairs(texts) do if t:match("^Draw: _IsCharge") then sawDraw = true end end
+check(sawDraw, "bow: menu shows the draw field")
+bowDraw, chargeLv = false, 0
+local far = 0
+for _ = 1, 90 do frames(1, 1 / 60); far = math.max(far, front.lp.z) end
+check(far > REST + 0.03, string.format("bow: loosing springs the rings past their places (%.3f)", far))
+frames(120, 1 / 60)
+check(math.abs(front.lp.z - REST) < 0.01, "bow: and they settle back")
+check(math.abs(gauge(3) - 1) < 1e-3, "bow: glow back to normal")
 print("ALL PASS")

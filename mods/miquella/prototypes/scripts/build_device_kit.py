@@ -63,7 +63,22 @@ def wyvernblast():
             "groups": 3, "budget": 6000}
 
 
-DEVICES = {"wyrmstake": wyrmstake, "wyvernblast": wyvernblast}
+def shot_arrow(name, groups):
+    """The bow's arrows in flight (Art/VFX/Mesh/common/shell/arrow/11_arrow_0x): the same
+    arrow as the one on the string (it1199_0000_0) moved back 1.1 (nock -1.14, point on +Z
+    at 1.588 like the originals). 02 has two groups (the head part separately): whole arrow in both."""
+    import arsenal
+    import motifs as m
+    from build_weapon_kit import ARROW_NOCK, ARROW_TIP
+    objs = arsenal.light_arrow("Arrow", Vector((0, 0, ARROW_NOCK - 1.1)), Vector((0, 0, ARROW_TIP - 1.1)),
+                               m.materials(), head=0.5)
+    return {"name": name, "rel": "Art/VFX/Mesh/common/shell/arrow", "objects": objs, "to_file": Matrix.Identity(4),
+            "groups": groups, "budget": 3000}
+
+
+DEVICES = {"wyrmstake": wyrmstake, "wyvernblast": wyvernblast,
+           "arrow_00": lambda: shot_arrow("11_arrow_00", 1), "arrow_01": lambda: shot_arrow("11_arrow_01", 1),
+           "arrow_02": lambda: shot_arrow("11_arrow_02", 2)}
 
 
 # ------------------------------------------------------------------ textures

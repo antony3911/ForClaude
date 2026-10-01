@@ -193,7 +193,44 @@ local KITS = {
         label = "Miquella light bow",
         mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mesh",
         mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
+                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+        -- The rings ahead of the arrow hover; while drawing they pack toward the bow like a
+        -- spring being wound (pack: metres along +Z when fully packed, build_weapon_kit.py log).
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_RestHalo", pos = { 0.0, 0.036, 0.0540 } },
+            { name = "MQ_Ring0", pos = { 0.0, 0.036, 0.2700 }, pack = -0.0630 },
+            { name = "MQ_Ring1", pos = { 0.0, 0.036, 0.4176 }, pack = -0.1602 },
+            { name = "MQ_Ring2", pos = { 0.0, 0.036, 0.5652 }, pack = -0.2574 },
+            { name = "MQ_Ring3", pos = { 0.0, 0.036, 0.7128 }, pack = -0.3546 },
+            { name = "MQ_Ring4", pos = { 0.0, 0.036, 0.8604 }, pack = -0.4518 },
+            { name = "MQ_Ring5", pos = { 0.0, 0.036, 1.0080 }, pack = -0.5490 } } },
+        -- Charge level (bright gold -> white gold) and drawing; the ring pairs Gauge1-3 light
+        -- one pair per level. Field names guessed from the game's type names, as for the great sword.
+        bow = { levels = 3, rings = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3" },
+                fields = { "_ChargeLv", "_ChargeLevel", "_ArrowLv", "_CurrentChargeLevel" },
+                draw = { "_IsCharge", "_IsChargeStart", "_IsAim", "_IsCharged" } },
+        shield = "Bow_Quiver",
+    },
+    -- The bow's quiver (_1), two designs to pick from in the game (2026-10-02).
+    Bow_Quiver = {
+        label = "Miquella quiver A: woven ivory cage",
+        mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_a.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_a.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_QuiverHalo", pos = { -0.6120, 0.0, -0.0100 } },
+            { name = "MQ_QuiverDrop", pos = { 0.5400, 0.0, -0.0100 } } } },
+    },
+    Bow_QuiverB = {
+        label = "Miquella quiver B: floating bundle of arrows",
+        mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_b.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow_quiver_b.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_QuiverHalo0", pos = { 0.1670, 0.0, -0.0100 } },
+            { name = "MQ_QuiverHalo1", pos = { -0.2700, 0.0, -0.0100 } },
+            { name = "MQ_QuiverDrop", pos = { 0.5115, 0.0, -0.0100 } } } },
     },
     HeavyBowgun = {
         label = "Miquella heavy bowgun",
@@ -202,8 +239,11 @@ local KITS = {
         glow = { MiquellaGlow = 1.2, MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
     },
 }
--- Shield looks (names with "_Shield") go on a weapon's shield model, the others on the weapon.
-local function is_shield_kit(name) return name:find("_Shield", 1, true) ~= nil end
+-- Second-model looks (names with "_Shield" or "_Quiver") go on a weapon's shield or quiver
+-- model, the others on the weapon.
+local function is_shield_kit(name)
+    return name:find("_Shield", 1, true) ~= nil or name:find("_Quiver", 1, true) ~= nil
+end
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
 local KIT_NAMES = { "(original)" }
 for name in pairs(KITS) do KIT_NAMES[#KIT_NAMES + 1] = name end
@@ -237,6 +277,8 @@ local config = {
     -- Floating rings (great sword spine, light bowgun beam): on/off and how lively.
     float = true,
     floatStrength = 1.0,
+    -- The bow's charge field counts from 0 (level 1 = 0): set in the menu if the rings light late.
+    bowFrom0 = false,
     -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
     -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
     swappedFrom = {},
@@ -264,7 +306,7 @@ local TYPE_LABELS = { it00 = "great swords", it01 = "swords", it02 = "dual blade
 
 -- Model number of a weapon path: ..._0.mesh is the weapon, ..._1.mesh the second model: the
 -- dual blades' other blade, or a shield (sword & shield, lance, gunlance, charge blade), or the
--- long sword's scabbard / the bow's quiver (these keep their game look).
+-- bow's quiver, or the long sword's scabbard (which keeps its game look).
 local function model_index(path) return path and path:match("_(%d+)%.mesh$") or nil end
 local BOTH_HANDS = { it02 = true }        -- dual blades: both models take the weapon's look
 
@@ -752,6 +794,49 @@ local function update_gauge(entry, mesh, h, dt)
     end
 end
 
+-- Bow (user, 2026-10-02): the charge level runs the light from bright gold to white gold,
+-- and lights the rings ahead of the arrow a pair per level (the unlit ones dim while drawing).
+-- Drawing packs those rings toward the bow like a spring being wound, tighter each level
+-- (entry.packTarget, 0..1; the floating-ring step springs them there and back).
+local BOW_LOOK = {
+    [0] = { mul = 1.0, color = GOLD },
+    [1] = { mul = 1.8, color = { 1.0, 0.56, 0.06 } },     -- bright gold
+    [2] = { mul = 2.6, color = { 1.0, 0.68, 0.20 } },     -- brighter gold
+    [3] = { mul = 3.4, color = { 1.0, 0.86, 0.58 } },     -- white gold
+    [4] = { mul = 4.0, color = { 1.0, 0.92, 0.74 } },     -- (a fourth level, if the game has one)
+}
+local PACK_DRAWN = 0.45          -- how packed the rings are as soon as the bow is drawn
+
+local function update_bow(entry, mesh, h, dt)
+    local spec = entry.kit.bow
+    local name = h and resolve(h, "charge", spec.fields)
+    local drawName = h and resolve(h, "draw", spec.draw)
+    local raw = name and read_number(h, name) or 0
+    local drawRaw = drawName and read_number(h, drawName) or 0
+    local level = math.floor(raw + 0.5) + (config.bowFrom0 and 1 or 0)
+    -- With a drawing field, only it says whether the bow is drawn (the level may stay set).
+    local drawing = isWeaponDrawn and ((drawName and drawRaw > 0) or (not drawName and raw > 0))
+    level = drawing and math.max(0, math.min(4, level)) or 0
+    stateInfo.charge = name and string.format("%s = %s (level %d)", name, tostring(raw), level)
+        or ("not found; fields with 'Charge': " .. table.concat(h and similar_fields(h, "Charge") or {}, ", "))
+    stateInfo.draw = drawName and string.format("%s = %s (drawing: %s)", drawName, tostring(drawRaw), tostring(drawing))
+        or ("not found (using the level); fields with 'Aim': " .. table.concat(h and similar_fields(h, "Aim") or {}, ", "))
+    entry.drawSmooth = approach(entry.drawSmooth or 0, drawing and 1 or 0, dt, 0.12, 0.25)
+    entry.chargeSmooth = approach(entry.chargeSmooth or 0, level, dt, 0.12, 0.25)
+    local s = entry.chargeSmooth
+    local lo = math.min(4, math.floor(s))
+    local hi, t = math.min(4, lo + 1), s - lo
+    local mul, color = lerp(BOW_LOOK[lo].mul, BOW_LOOK[hi].mul, t), lerp3(BOW_LOOK[lo].color, BOW_LOOK[hi].color, t)
+    entry.mul = { MiquellaBlade = mul, MiquellaTemper = mul, MiquellaGlow = 1 + (mul - 1) * 0.5 }
+    for _, mat in ipairs({ "MiquellaBlade", "MiquellaTemper", "MiquellaGlow" }) do set_color(entry, mesh, mat, color) end
+    for i, mat in ipairs(spec.rings) do
+        local lit = math.max(0, math.min(1, s - (i - 1)))
+        entry.mul[mat] = lerp(lerp(1, DOT_DIM, entry.drawSmooth), mul, lit)
+        set_color(entry, mesh, mat, lerp3(GOLD, color, lit))
+    end
+    entry.packTarget = drawing and (PACK_DRAWN + (1 - PACK_DRAWN) * math.min(level, spec.levels) / spec.levels) or 0
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -761,12 +846,13 @@ local function update_states(chr)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
     for _, entry in pairs(swapped) do
-        if entry.kit.charge or entry.kit.gauge then
+        if entry.kit.charge or entry.kit.gauge or entry.kit.bow then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
                 if entry.kit.charge then update_charge(entry, mesh, h, dt, now) end
                 if entry.kit.gauge then update_gauge(entry, mesh, h, dt) end
+                if entry.kit.bow then update_bow(entry, mesh, h, dt) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -860,8 +946,8 @@ local function float_joints(entry)
     f = f or { joints = {} }
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
-        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, off = { 0, 0, 0 }, vel = { 0, 0, 0 },
-                                   phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
+        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, off = { 0, 0, 0 },
+                                   vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
         f.joints[i] = s
@@ -870,7 +956,7 @@ local function float_joints(entry)
     return f
 end
 
-local function step_ring(s, mode, R, P, dt, t, strength)
+local function step_ring(s, mode, R, P, dt, t, strength, pack)
     local anchor = vadd(P, qrot(R, s.pivot))
     local accel = { 0, 0, 0 }
     if s.prevAnchor and dt > 0 then
@@ -911,7 +997,30 @@ local function step_ring(s, mode, R, P, dt, t, strength)
     local wobble = qmul(qaxis({ 1, 0, 0 }, wob * math.sin(2 * math.pi * hz[2] * 0.8 * t + p)),
                         qaxis({ 0, 1, 0 }, wob * math.sin(2 * math.pi * hz[1] * 0.9 * t + 2 * p)))
     s.pos = vadd(s.pivot, disp)
+    if s.pack then s.pos[3] = s.pos[3] + s.pack * pack end
     s.rot = qmul(tilt, wobble)
+end
+
+-- The bow's rings packing toward entry.packTarget (0..1): smooth while winding up, one
+-- springy bounce past their rest places when the arrow is loosed.
+local PACK_HZ, PACK_BOUNCE = 2.6, 0.4
+
+local function step_pack(entry, dt)
+    local target, x, v = entry.packTarget or 0, entry.pack or 0, entry.packVel or 0
+    local w = 2 * math.pi * PACK_HZ
+    local zeta = target > x and 1.0 or PACK_BOUNCE
+    local steps = math.max(1, math.ceil(dt / (1 / 240)))
+    local h = dt / steps
+    for _ = 1, steps do
+        v = v + (w * w * (target - x) - 2 * zeta * w * v) * h
+        x = x + v * h
+    end
+    entry.pack, entry.packVel = x, v
+end
+
+-- Rings move when floating is on, or when they pack (the bow), which works without it.
+local function rings_active(entry)
+    return config.enabled and (config.float or entry.kit.bow ~= nil)
 end
 
 -- Run the springs once per frame (the first hook that fires), using the weapon's transform.
@@ -924,8 +1033,10 @@ local function step_floaters()
     dt = math.min(dt, 0.1)
     floatInfo.found, floatInfo.total = 0, 0
     for _, entry in pairs(swapped) do
-        local f = config.enabled and config.float and float_joints(entry)
+        local f = rings_active(entry) and float_joints(entry)
         if f then
+            if entry.kit.bow then step_pack(entry, dt) end
+            local strength = config.float and config.floatStrength or 0
             floatInfo.found = floatInfo.found + f.found
             floatInfo.total = floatInfo.total + #f.joints
             local default = entry.kit.floaters.mode
@@ -936,7 +1047,7 @@ local function step_floaters()
                 for _, s in ipairs(f.joints) do
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
-                    step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, config.floatStrength)
+                    step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, strength, entry.pack or 0)
                 end
             end
         end
@@ -947,7 +1058,7 @@ local function apply_floaters(phase)
     floatInfo.phases[phase] = true
     for _, entry in pairs(swapped) do
         local f = entry.float
-        if f and config.enabled and config.float then
+        if f and rings_active(entry) then
             for _, s in ipairs(f.joints) do
                 if s.joint then
                     try(function() s.joint:call("set_LocalPosition", Vector3f.new(s.pos[1], s.pos[2], s.pos[3])) end)
@@ -1049,7 +1160,12 @@ re.on_draw_ui(function()
                                  #phases > 0 and table.concat(phases, ", ") or "-"))
     end
     for _, entry in pairs(swapped) do
-        if entry.kit.charge and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
+        if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
+        if entry.kit.bow and stateInfo.draw then
+            imgui.text("Draw: " .. stateInfo.draw)
+            c, config.bowFrom0 = imgui.checkbox("Bow charge counts from 0", config.bowFrom0)
+            changed = changed or c
+        end
         if entry.kit.gauge and stateInfo.gauge then imgui.text("Gauge: " .. stateInfo.gauge) end
     end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
@@ -1076,7 +1192,7 @@ re.on_draw_ui(function()
                 for i, k in ipairs(list) do
                     if k == currentKit then idx = i end
                 end
-                local label = second and ("Shield look (all " .. typeName .. ")")
+                local label = second and ((wtype == "it11" and "Quiver look (all " or "Shield look (all ") .. typeName .. ")")
                     or ("Look (all " .. typeName .. ")")
                 local c2, newIdx = imgui.combo(label .. "##" .. name, idx, list)
                 if c2 then

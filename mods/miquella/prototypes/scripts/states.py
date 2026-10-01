@@ -902,27 +902,44 @@ def charge_blade_states():
 # ------------------------------------------------------------------ bow
 
 def bow_charge():
-    """Each charge level lights one more ring ahead of the arrow in bright gold; at the
-    third the whole rail and the arrowhead blaze."""
+    """Drawing the bow packs the rings ahead of the arrow toward the bow like a spring being
+    wound (tighter with each charge level); each level lights two more rings, and the light
+    goes from bright gold to white gold (user, 2026-10-02)."""
     import arsenal
     c.reset_scene()
-    mats = capture_build(arsenal.bow)
+    mats = m.materials()
+    arsenal.build_bow(mats)
     m.glow_mode(mats)
-    rail = [own_material([o], f"Rail_{k}") for k, o in enumerate(objs_named("Arrow_Rail_"))]
-    head = own_material(objs_named("Arrow_Head"), "Arrow_Head_Mat")
-    shaft = own_material(objs_named("Arrow_Shaft"), "Arrow_Shaft_Mat")
+    rings = objs_named("Arrow_Rail_")
+    rail = [own_material([o], f"Rail_{k}") for k, o in enumerate(rings)]
+    blade = mats["blade"]
     target, distance = (-0.3, 0, 0.0), 2.4
     stage_lights(target, distance, res=(900, 640))
-    levels = [("拉弓（未蓄力）", 0), ("蓄力 1", 1), ("蓄力 2", 2), ("蓄力 3", 4)]
+    # (label, pack, lit rings, colour, strength); None = resting, not drawn
+    levels = [("平時（沒拉弓）", 0.0, None, None, None),
+              ("拉弓・蓄力 1：亮金", 0.55, 2, "#FF9A10", 12.0),
+              ("蓄力 2：更亮的金", 0.8, 4, "#FFB43A", 14.0),
+              ("蓄力 3：白金", 1.0, 6, "#FFE2AC", 16.0)]
     paths = []
-    for i, (label, n) in enumerate(levels):
+    for i, (label, pack, lit, color, strength) in enumerate(levels):
+        for o, x in zip(rings, arsenal.bow_rail_x(pack)):
+            o.location.x = x
         for k, mat in enumerate(rail):
-            set_glow(mat, *(BRIGHT_LIGHT if k < n else ("#B8862E", 0.5)))     # unlit rings stay dim
-        set_blade(head, *(BRIGHT_BLADE if n == 4 else (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)))
-        set_glow(shaft, *(BRIGHT_CORE if n == 4 else (c.PALETTE["blade_core"], 3.0)))
+            if lit is None:
+                set_glow(mat, c.PALETTE["glow"], 2.5)
+            else:
+                set_glow(mat, *((color, strength) if k < lit else ("#B8862E", 0.5)))   # unlit rings dim
+        if lit is None:
+            set_glow(mats["light"], c.PALETTE["glow"], 2.5)
+            set_glow(mats["core"], c.PALETTE["blade_core"], 3.0)
+            set_blade(blade, c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
+        else:
+            set_glow(mats["light"], color, strength * 0.6)
+            set_glow(mats["core"], color, strength)
+            set_blade(blade, color, color, strength * 0.8)
         paths += c.render_views(OUT, f"level{i}", target, distance, [("front", 0, 4)], lens=50)
     labelled_strip(paths, [lv[0] for lv in levels], os.path.join(OUT, "bow_charge.png"),
-                   "弓蓄力：箭前方的光環一段段亮起，三段時整條光環和箭頭全亮", cols=2)
+                   "弓：拉弓時前方光環往弓身壓緊（像上緊的彈簧），每段亮兩圈，亮金 → 白金", cols=2)
 
 
 # ------------------------------------------------------------------ bowguns

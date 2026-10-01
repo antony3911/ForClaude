@@ -381,21 +381,64 @@ def bow():
     """Our bow stands in XZ with the arrow toward -X and the archer on +X; the originals' limbs
     run along Y and the string is behind the grip on -Z (arrow toward +Z). Grip at the origin,
     scaled 1.8: limb tips at +-1.24 (originals up to +-1.4). The drawn arrow is left out (the
-    game draws its own); the string's middle follows the original String bone."""
+    game draws its own, see `arrow`); the string's middle follows the original String bone.
+    The six rings ahead of the arrow each have a bone (they hover, and pack toward the bow
+    while drawing, weapons script) and light up in pairs per charge level (Gauge1-3)."""
     import arsenal
-    objs = capture(arsenal.bow)
-    objs = [o for o in objs if not o.name.startswith(("Arrow_Shaft", "Arrow_Head", "Fletch_"))]
-    axes = Matrix(((0, -1, 0, 0), (0, 0, 1, 0), (-1, 0, 0, 0), (0, 0, 0, 1)))  # x->-z, y->-x, z->y
-    to_file = Matrix.Scale(1.8, 4) @ axes @ Matrix.Translation((0.14, 0, 0))
-    half = 1.8 * 0.69
+    import motifs
+    objs = capture(lambda: arsenal.build_bow(motifs.materials(), with_arrow=False))
+    to_file = Matrix.Scale(BOW_SCALE, 4) @ BOW_AXES @ Matrix.Translation((0.14, 0, 0))
+    half = BOW_SCALE * 0.69
 
     def string_weights(o, co):
         if o.name.split(".")[0] != "String":
             return None
         w = max(0.0, 1.0 - abs(co.y) / half)
         return [("String", w), ("Base", 1.0 - w)]
+    floaters = {f"Arrow_Rail_{i}": f"MQ_Ring{i}" for i in range(arsenal.BOW_RAIL_N)}
+    floaters["Rest_Halo"] = "MQ_RestHalo"
+    by_name = {f"Arrow_Rail_{i}": f"MiquellaGauge{i // 2 + 1}" for i in range(arsenal.BOW_RAIL_N)}
+    for x in arsenal.bow_rail_x(1.0)[:2]:
+        log(f"  packed ring at file z {(to_file @ Vector((x, 0, 0))).z:+.4f}")
     return placed("wp_miquella_bow", "Art/Model/MiquellaLight/Bow", objs, to_file, {},
-                  weight_fn=string_weights)
+                  weight_fn=string_weights, floaters=floaters, by_name=by_name)
+
+
+BOW_SCALE = 1.8
+BOW_AXES = Matrix(((0, -1, 0, 0), (0, 0, 1, 0), (-1, 0, 0, 0), (0, 0, 0, 1)))  # x->-z, y->-x, z->y
+
+
+def bow_quiver(variant):
+    """The bow's second model (_1): the originals lie along X, the bottom at x +0.55 and the
+    arrows' vanes out to -0.77 at the mouth end. Ours (built along +Z, bottom at 0) turned so
+    +Z -> -X, scaled 1.9: the drop under the bottom at +0.55, the vanes at -0.76."""
+    import arsenal
+    import motifs
+    objs = capture(lambda: arsenal.QUIVERS[variant](motifs.materials()))
+    axes = Matrix(((0, 0, -1, 0), (1, 0, 0, 0), (0, -1, 0, 0), (0, 0, 0, 1)))       # z->-x, x->y, y->-z
+    to_file = Matrix.Translation((0.49, 0.0, -0.01)) @ Matrix.Scale(1.9, 4) @ axes
+    floaters = {"Quiver_Drop_0": "MQ_QuiverDrop", "Quiver_Drop_Halo_0": "MQ_QuiverDrop"}
+    if variant == "a":
+        floaters["Quiver_Halo"] = "MQ_QuiverHalo"
+    else:
+        floaters.update({"Quiver_Halo_0": "MQ_QuiverHalo0", "Quiver_Halo_1": "MQ_QuiverHalo1"})
+    return placed(f"wp_miquella_bow_quiver_{variant}", "Art/Model/MiquellaLight/Bow", objs, to_file, {},
+                  floaters=floaters, budget={"MiquellaIvory": 12000, "MiquellaGlow": 8000, "MiquellaBlade": 3000})
+
+
+# The game's arrows (it1199_0000_0, the one on the string): nock near the origin, point on +Z
+# at 2.69, a long head (about half); ours goes over that file (patch pak), for every bow.
+ARROW_NOCK, ARROW_TIP = -0.04, 2.688
+
+
+def arrow():
+    import arsenal
+    import motifs
+    objs = capture(lambda: arsenal.light_arrow("Arrow", Vector((0, 0, ARROW_NOCK)), Vector((0, 0, ARROW_TIP)),
+                                               motifs.materials(), head=0.5))
+    # Many fly at once: about the original's size (1.6k vertices).
+    return placed("it1199_0000_0", "Art/Model/Item/it11/99/0000", objs, Matrix.Identity(4), {},
+                  budget={"MiquellaBlade": 1200, "MiquellaGlow": 1200, "MiquellaIvory": 200, "MiquellaTemper": 600})
 
 
 def heavy_bowgun():
@@ -428,7 +471,8 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "sns_shield_volume": lambda: sns_shield_membrane("volume"), "hammer": hammer, "hunting_horn": hunting_horn,
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
-           "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow, "heavy_bowgun": heavy_bowgun}
+           "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
+           "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun}
 
 
 # Triangle budget per game material (the originals run 5k-60k triangles in all).
@@ -596,11 +640,17 @@ def build_parts(spec, mesh_col):
         if mat == "MiquellaTemper":
             length_uv(o)
         before = tris(o)
-        ratio = min(1.0, BUDGET.get(mat, GAUGE_BUDGET) / max(before, 1))
+        budget = {**BUDGET, **spec.get("budget", {})}
+        ratio = min(1.0, budget.get(mat, GAUGE_BUDGET) / max(before, 1))
         if ratio < 1.0:
             dec = o.modifiers.new("decimate", "DECIMATE")
             dec.ratio = ratio
             bpy.ops.object.modifier_apply(modifier="decimate")
+            # Decimation can leave loose vertices, which the exporter refuses.
+            bpy.ops.object.mode_set(mode="EDIT")
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.mesh.delete_loose()
+            bpy.ops.object.mode_set(mode="OBJECT")
         o.data.transform(FILE_TO_BLENDER @ spec["to_file"])
         for col in list(o.users_collection):
             col.objects.unlink(o)

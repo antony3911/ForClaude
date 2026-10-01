@@ -810,11 +810,27 @@ def insect_glaive():
 
 # ------------------------------------------------------------------ bow
 
-def bow():
+# The rail of rings ahead of the arrow: at rest spread over the arrow, packed toward the bow
+# like a spring being wound while the bow is drawn (weapons script: packed = 1).
+BOW_ARROW_Z = 0.02
+BOW_RAIL_N = 6
+BOW_RAIL_REST = (-0.29, -0.70)            # first and last ring (x)
+BOW_RAIL_PACKED = (-0.255, -0.028)        # first ring, then this step
+
+
+def bow_rail_x(pack=0.0):
+    out = []
+    for i in range(BOW_RAIL_N):
+        rest = BOW_RAIL_REST[0] + (BOW_RAIL_REST[1] - BOW_RAIL_REST[0]) * i / (BOW_RAIL_N - 1)
+        packed = BOW_RAIL_PACKED[0] + BOW_RAIL_PACKED[1] * i
+        out.append(rest + (packed - rest) * pack)
+    return out
+
+
+def build_bow(mats, rail_pack=0.0, with_arrow=True):
     """Recurve limbs of twisting strands ending in scrollwork tips, a string of light, and a
     light arrow drawn through a rail of shrinking rings (the light bowgun's signature).
     The bow stands in the XZ plane; the arrow points to -X, the archer is on +X."""
-    mats = m.materials()
     rng = random.Random(111)
     grip_x = -0.14
     objs = m.woven_tube("Riser", [V(grip_x + 0.01, 0, -0.13), V(grip_x - 0.005, 0, 0), V(grip_x + 0.01, 0, 0.13)],
@@ -846,24 +862,158 @@ def bow():
     objs.append(c.curve_tube("String", [V(string_x, 0, 0.69), V(string_x, 0, -0.69)], [1, 1], mats["core"],
                              bevel=0.0022, resolution=2))
     # Arrow of light from the string, over the arrow rest, through the rings.
-    az = 0.02
-    nock, point = string_x, -0.78
-    objs.append(c.curve_tube("Arrow_Shaft", [V(nock, 0, az), V(point + 0.05, 0, az)], [1, 1], mats["core"],
-                             bevel=0.0035, resolution=3))
-    objs += m.path_blade("Arrow_Head", [V(point + 0.06, 0, az), V(point - 0.05, 0, az)], (0, 1, 0),
-                         lambda t: 0.03 * (1 - t) ** 0.9, lambda t: 0.006 * (1 - t), mats["blade"])
-    for k in range(3):
-        a = math.radians(90 + 120 * k)
-        normal = V(0, math.cos(a), math.sin(a))
-        objs += m.path_blade(f"Fletch_{k}", [V(nock - 0.02, 0, az), V(nock - 0.1, 0, az)], normal.cross(V(1, 0, 0)),
-                             lambda t: 0.03 * math.sin(math.pi * (0.2 + 0.8 * t)) ** 0.8,
-                             lambda t: 0.002, mats["light"], offset_fn=lambda t: 0.012)
-    objs += m.halo_rail("Arrow_Rail", (grip_x - 0.18, 0, az), (point + 0.08, 0, az), 4, 0.075, 0.035,
-                        mats["light"], minor0=0.0045)
-    objs += m.halo("Rest_Halo", (grip_x - 0.03, 0, az), 0.04, 0.003, (1, 0, 0), mats["light"])
+    if with_arrow:
+        objs += light_arrow("Drawn_Arrow", V(string_x, 0, BOW_ARROW_Z), V(-0.78, 0, BOW_ARROW_Z), mats)
+    for i, x in enumerate(bow_rail_x(rail_pack)):
+        t = i / (BOW_RAIL_N - 1)
+        objs += m.halo(f"Arrow_Rail_{i}", (x, 0, BOW_ARROW_Z), 0.075 + (0.035 - 0.075) * t, 0.0045 - 0.0011 * t,
+                       (1, 0, 0), mats["light"], tilt_deg=4.0 if i % 2 == 0 else -4.0)
+    objs += m.halo("Rest_Halo", (grip_x - 0.03, 0, BOW_ARROW_Z), 0.04, 0.003, (1, 0, 0), mats["light"])
+    return objs
+
+
+def bow():
+    mats = m.materials()
+    build_bow(mats)
     views = [("profile", 0, 4), ("three_quarter", 35, 12), ("archer_view", 75, 6)]
     m.render_sheets(OUT, "bow", mats, (-0.18, 0, 0.0), 2.8, views, res=(1000, 900),
                     extra=[("rail", (-0.4, 0, 0.02), 1.1, [("rail", 60, 10)])])
+
+
+def light_arrow(prefix, nock, tip, mats, head=0.45, width=0.062):
+    """An arrow of light: three gold vanes of light at the nock, a thin shaft of light, a ring
+    collar and a long leaf-shaped head like the dual blades' (the game's arrows have long
+    heads too: about half the arrow). Proportions scale with the length."""
+    nock, tip = Vector(nock), Vector(tip)
+    d = (tip - nock).normalized()
+    L = (tip - nock).length
+    up = V(0, 0, 1) if abs(d.z) < 0.9 else V(1, 0, 0)
+    side = d.cross(up).normalized()
+    up = side.cross(d).normalized()
+    base = nock + d * (L * (1 - head))
+    objs = [c.curve_tube(f"{prefix}_Shaft", [nock + d * (L * 0.01), base + d * (L * 0.04)], [1, 1], mats["core"],
+                         bevel=0.0036 * L, resolution=2)]
+    # Head: a leaf blade, widest a third of the way, with a brighter vein.
+    objs += m.path_blade(f"{prefix}_Head", [base, tip], up,
+                         lambda t: width * L * math.sin(math.pi * min(1.0, (t + 0.06) / 0.98)) ** 0.7 * (1 - t) ** 0.35,
+                         lambda t: 0.011 * L * (1 - t) ** 0.8, mats["blade"])
+    objs += m.path_blade(f"{prefix}_Vein", [base + d * (L * 0.01), base + d * (L * head * 0.8)], up,
+                         lambda t: 0.006 * L * (1 - t), lambda t: 0.013 * L * (1 - t) ** 0.8, mats["core"])
+    objs += m.halo(f"{prefix}_Collar", base, 0.013 * L, 0.0022 * L, d, mats["light"])
+    # Vanes: slim swept feathers of light, tallest near the back, a long slope to the front.
+    shaft_r = 0.0036 * L
+    vane_h = 0.026 * L
+
+    def vane_w(t):           # t: back (0) -> front (1)
+        return vane_h * min(1.0, (t + 0.3) / 0.42) * (1 - t) ** 0.9
+
+    for k in range(3):
+        a = math.radians(90 + 120 * k)
+        radial = up * math.cos(a) + side * math.sin(a)
+        objs += m.path_blade(f"{prefix}_Fletch_{k}", [nock + d * (L * 0.015), nock + d * (L * 0.19)],
+                             d.cross(radial), vane_w, lambda t: 0.0012 * L, mats["light"],
+                             offset_fn=lambda t: shaft_r + vane_w(t) / 2, n_sec=8, samples=40)
+    # Nock: an ivory bead with a drop of light.
+    objs += m.halo(f"{prefix}_Nock", nock + d * (L * 0.006), 0.0045 * L, 0.0028 * L, d, mats["ivory"])
+    return objs
+
+
+# Quivers (the bow's second model). Built along +Z: the bottom at z 0, the mouth at QUIVER_LEN,
+# the arrows' vanes standing out above it.
+QUIVER_LEN = 0.55
+
+
+def quiver_arrows(prefix, mats, n, spread_top, spread_bottom, nock_z, tip_z, rng):
+    objs = []
+    for k in range(n):
+        a = 2 * math.pi * k / n + 0.35
+        top = V(spread_top * math.cos(a), spread_top * math.sin(a), nock_z + rng.uniform(-0.012, 0.012))
+        bot = V(spread_bottom * math.cos(a + 0.4), spread_bottom * math.sin(a + 0.4), tip_z)
+        objs += light_arrow(f"{prefix}_{k}", top, bot, mats, width=0.045)
+    return objs
+
+
+def quiver_cage(mats):
+    """A: a slender lantern of woven ivory strands (like the hammer's), narrow at the bottom,
+    gold filigree laid over it, a gold-threaded hoop at the mouth and a halo floating above it;
+    the arrows' heads glow through the openwork; a lit drop floats under the bottom."""
+    rng = random.Random(113)
+    L, R = QUIVER_LEN, 0.042
+
+    def radius(u):
+        return R * (0.5 + 0.5 * smoothstep(min(1.0, u * 1.25)) ** 0.7)
+
+    objs = m.strand_bundle("Quiver_Cage", [V(0, 0, 0.02), V(0, 0, L)], R, mats["ivory"], rng, n=22, twist=4.5,
+                           radius_fn=lambda u: radius(u) / R, spread=(1, 1), bevel=0.0028, tip_taper=0.02)
+    # Bottom: the strands gather into an ivory cap; a drop of light floats below it.
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=R * 0.62, location=(0, 0, 0.022))
+    cap = bpy.context.active_object
+    cap.name = "Quiver_Cap"
+    cap.scale = (1, 1, 0.6)
+    cap.data.materials.append(mats["ivory"])
+    bpy.ops.object.shade_smooth()
+    objs.append(cap)
+    objs += m.floating_phials("Quiver_Drop", [V(0, 0, -0.03)], (0, 0, 1), (0, 0, 1), mats, size=0.011)
+    for z, name in ((L, "Quiver_Mouth"), (0.13, "Quiver_Band")):
+        r = radius(z / L) + 0.005
+        ring = [V(r * math.cos(a), r * math.sin(a), z) for a in [2 * math.pi * i / 96 for i in range(97)]]
+        objs += m.rope(name, ring, 0.0065 if z == L else 0.005, mats, strands=3, gold=True, taper=0.0, merge=0.999)
+
+    def cage_map(x, v):                       # x along the quiver, v arc length at the cage's radius
+        r = radius(x / L) + 0.006
+        a = v / R
+        return V(r * math.cos(a), r * math.sin(a), x)
+
+    for k in range(3):
+        sgn = 1 if k % 2 == 0 else -1
+        objs += m.tendril(f"Quiver_Scroll_{k}", cage_map, (0.17 + 0.03 * k, 2 * math.pi * k / 3 * R), 70 - 25 * k,
+                          0.24 - 0.03 * k, 1.3 * sgn, 0.0062, mats, strands=2, gold=False, strand_mat="light",
+                          offshoots=[(0.45, -sgn, 0.38, -1.1 * sgn)])
+    objs += m.halo("Quiver_Halo", (0, 0, L + 0.03), R + 0.016, 0.0032, (0, 0, 1), mats["light"], tilt_deg=9,
+                   tilt_axis=(1, 0, 0))
+    objs += quiver_arrows("Quiver_Arrow", mats, 4, 0.02, 0.012, L + 0.11, 0.06, rng)
+    return objs
+
+
+def quiver_bundle(mats):
+    """B: no quiver at all: a fan of light arrows held by two floating halos, cradled by one
+    slender ivory stem with a gold vine, which curls over the vanes at the top and into a scroll
+    at the bottom, where a lit drop floats."""
+    rng = random.Random(117)
+    L = QUIVER_LEN
+    objs = quiver_arrows("Quiver_Arrow", mats, 5, 0.034, 0.008, L + 0.11, 0.03, rng)
+    for i, (z, r) in enumerate(((0.17, 0.026), (0.40, 0.04))):
+        objs += m.halo(f"Quiver_Halo_{i}", (0, 0, z), r, 0.0034, (0, 0, 1), mats["light"],
+                       tilt_deg=8 if i == 0 else -10, tilt_axis=(1, 0, 0))
+    stem = m.catmull([V(0, 0.048, 0.03), V(0, 0.040, 0.2), V(0, 0.052, 0.38), V(0, 0.058, L)], 30)
+    objs += m.strand_bundle("Quiver_Stem", stem, 0.007, mats["ivory"], rng, n=8, twist=9, bevel=0.0024, tip_taper=0.1)
+    objs += m.wound_cord("Quiver_Vine", stem, 0.009, 5.0, 0.0024, mats, phase=0.8, strand_mat="light")
+    yz = m.plane_mapper((0, 0, 0), (0, 1, 0), (0, 0, 1))
+    top = (stem[-1].y, stem[-1].z)
+    objs += m.tendril("Quiver_Crown_Long", yz, top, 125, 0.16, 1.35, 0.0065, mats,
+                      offshoots=[(0.4, -1, 0.4, -1.1)])
+    objs += m.tendril("Quiver_Crown_Short", yz, top, 70, 0.09, -1.2, 0.005, mats)
+    objs += m.tendril("Quiver_Foot", yz, (stem[0].y, stem[0].z), -110, 0.11, -1.3, 0.0055, mats,
+                      offshoots=[(0.45, 1, 0.4, 1.0)])
+    objs += m.floating_phials("Quiver_Drop", [V(0, 0, -0.015)], (0, 0, 1), (0, 0, 1), mats, size=0.011)
+    return objs
+
+
+QUIVERS = {"a": quiver_cage, "b": quiver_bundle}
+
+
+def quiver(variant):
+    mats = m.materials()
+    QUIVERS[variant](mats)
+    views = [("side", 0, 6), ("three_quarter", 40, 12), ("mouth", 70, 35)]
+    m.render_sheets(OUT, f"quiver_{variant}", mats, (0, 0, 0.3), 1.5, views, res=(800, 1000))
+
+
+def arrow():
+    mats = m.materials()
+    light_arrow("Arrow", V(0, 0, -0.5), V(0, 0, 0.5), mats)
+    views = [("side", 0, 4), ("three_quarter", 40, 18)]
+    m.render_sheets(OUT, "arrow", mats, (0, 0, 0), 1.4, views, res=(700, 1000))
 
 
 WEAPONS = {
@@ -879,6 +1029,9 @@ WEAPONS = {
     "charge_blade_axe": charge_blade_axe,
     "insect_glaive": insect_glaive,
     "bow": bow,
+    "quiver_a": lambda: quiver("a"),
+    "quiver_b": lambda: quiver("b"),
+    "arrow": arrow,
 }
 
 if __name__ == "__main__":

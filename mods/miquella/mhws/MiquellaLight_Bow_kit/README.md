@@ -4,7 +4,9 @@
 
 | 名稱 | 模型 | 原版（骨架、對齊用） | 擺放 |
 |---|---|---|---|
-| `bow` | `wp_miquella_bow.mesh` | `it1100_0000_0` | 原型的弓在 XZ 平面、箭朝 -X → 原版的弓臂沿 ±Y、弦在 -Z（箭朝 +Z）；握把在原點，×1.8：弓梢 ±1.24（原版到 ±1.4）。拉弓的箭不放（遊戲自己畫），箭道光環留著。**弦的中段綁原版的 `String` 骨頭**（越往中間權重越高），拉弓時應該會拉成 V 形 |
+| `bow` | `wp_miquella_bow.mesh` | `it1100_0000_0` | 原型的弓在 XZ 平面、箭朝 -X → 原版的弓臂沿 ±Y、弦在 -Z（箭朝 +Z）；握把在原點，×1.8：弓梢 ±1.24（原版到 ±1.4）。拉弓的箭不放（遊戲的箭換成 `MiquellaLight_Arrows_kit` 的光箭）。**弦的中段綁原版的 `String` 骨頭**（越往中間權重越高），拉弓時應該會拉成 V 形。**箭道 6 圈光環**（2026-10-02 從 4 圈改的）各有骨頭 `MQ_Ring0～5`、箭台光環 `MQ_RestHalo`：腳本讓它們磁浮，拉弓時往弓身壓緊；兩圈一組放在 `MiquellaGauge1～3`，每段蓄力亮一組 |
+| `bow_quiver_a` | `wp_miquella_bow_quiver_a.mesh` | `it1100_0000_1`（箭筒） | **箭筒 A：象牙細枝鏤空籠**（像大錘的燈籠），底部窄、金色花絲、筒口金線繩圈＋浮空光環 `MQ_QuiverHalo`，光箭頭從鏤空透光，底下浮一顆光點 `MQ_QuiverDrop`。原型沿 +Z → 原版沿 X：底在 +0.55、羽毛到 -0.77，×1.9 |
+| `bow_quiver_b` | `wp_miquella_bow_quiver_b.mesh` | 同上 | **箭筒 B：沒有筒**：五支光箭扇形散開、兩圈浮空光環 `MQ_QuiverHalo0／1` 束著，一根象牙細莖＋金藤在旁邊托著，頂端卷草捲過羽毛、底部卷草＋浮空光點 |
 
 貼圖沿用雙劍的（`Art/Model/MiquellaLight/DualBlades/tex/`），pak 裡自帶一份。材質抄雙劍 kit 的 `.mdf2`（現在遊戲的 180 參數排列）。`.blend`（匯出前的場景）不進 repo，用下面的指令重建。
 
@@ -22,4 +24,4 @@ C:\Users\anton\MiquellaTools\bpy45\Scripts\python build_weapon_kit.py <名稱> <
 C:\Users\anton\MiquellaTools\bpy45\Scripts\python preview_kit.py <本資料夾>\<模型>_kit.blend <原版 .mesh> C:\Users\anton\MiquellaTools\work\previews\<模型>_front.png front <間距>
 ```
 
-打包：本資料夾的 `natives` ＋雙劍的 `MiquellaBlade/Glow/Ivory` 貼圖放進同一個暫存資料夾 → `make_patch_pak.py` → `MiquellaLight_Bow.pak`（2026-10-02 已裝進遊戲的 `pak_mods`）。
+打包：本資料夾的 `natives` ＋雙劍的 `MiquellaBlade/Glow/Ivory` 貼圖放進同一個暫存資料夾 → `make_patch_pak.py` → `MiquellaLight_Bow.pak`（弓＋兩種箭筒；2026-10-02 第二版排在遊戲關掉後自動安裝）。箭筒的原版骨架用 `it1100_0000_1.mesh`。

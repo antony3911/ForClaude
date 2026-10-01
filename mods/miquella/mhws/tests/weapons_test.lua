@@ -191,6 +191,20 @@ frames(20)
 check(weaponMesh.meshPath:match("wp_miquella_db") and weaponChain.path:match("it0099"), "assigned weapon swapped again")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(1)
+-- REFramework "Reset scripts": the script restarts while our model is already on the weapon.
+check(savedCfg.swappedFrom and savedCfg.swappedFrom.Weapon.original == "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh",
+      "slot's original model remembered in the config")
+json.load_file = function() return savedCfg end
+weaponMesh.matEnabled = {}
+dofile(arg[1])
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
+frames(20)          -- model checks run every 20 frames
+check(weaponMesh.meshPath:match("wp_miquella_db_s14"), "after a script reload the swapped weapon is kept")
+kijin = 1
+frames(10, 0.05)
+check(visible("MiquellaDemon3") and dissolve("MiquellaDemon3") == 1, "after a script reload demon mode still splits the blade")
+kijin = 0
+frames(10, 0.05)
 -- Un-assign: back to the original.
 comboAnswer = 1; onDraw()
 frames(20)
@@ -199,4 +213,21 @@ check(weaponMesh.mdfPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mdf2", "o
 check(weaponChain.path == "Art/Model/Item/it02/00/0002/it0200_0002_1.chain2", "original physics restored")
 check(weaponGO.draw == true, "visible again")
 check(not weaponMesh.meshPath:match("wp_miquella"), "after size changes, un-assigning still restores the game's model")
+-- A config from the older version (no record of the slots' original models), then a reload.
+comboAnswer = 2; onDraw()
+frames(20)
+check(weaponMesh.meshPath:match("wp_miquella_db"), "assigned again")
+savedCfg.swappedFrom = nil
+weaponMesh.matEnabled = {}
+dofile(arg[1])
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
+frames(20)
+kijin = 1
+frames(10, 0.05)
+check(visible("MiquellaDemon3"), "older config: the swapped weapon is still picked up after a reload")
+kijin = 0
+frames(10, 0.05)
+comboAnswer = 1; onDraw()
+frames(20)
+check(weaponMesh.meshPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh", "older config: the right-hand model guessed and restored")
 print("ALL PASS")

@@ -58,6 +58,9 @@ local config = {
     -- In-game tuning: glow multiplies the kit's Emissive_Intensity; size picks the model.
     glow = 1.0,
     size = "1.4",
+    -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
+    -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
+    swappedFrom = {},
 }
 local saved = json.load_file(CONFIG_PATH)
 if saved then
@@ -65,6 +68,7 @@ if saved then
 end
 -- An empty table is saved as JSON null; don't let that replace the assignment table.
 if type(config.assign) ~= "table" then config.assign = {} end
+if type(config.swappedFrom) ~= "table" then config.swappedFrom = {} end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 
 local function try(fn, ...)
@@ -179,7 +183,31 @@ local function apply_tuning(entry, mesh)
     end
 end
 
-local function swap_in(go, mesh, original, kit)
+-- The kit a model path belongs to (any size), or nil if it is not one of ours.
+local function kit_of_mesh(path)
+    for _, kit in pairs(KITS) do
+        if kit.mesh == path then return kit end
+        for _, m in pairs(kit.sizes or {}) do
+            if m == path then return kit end
+        end
+    end
+    return nil
+end
+
+-- No record of what a slot held before our model (config from an older version): take an
+-- assigned original of the same kit, the right-hand model (_1) for the main weapon slot.
+local function guess_original(slotName, current)
+    local kit, pick = kit_of_mesh(current), nil
+    for path, kitName in pairs(config.assign) do
+        if KITS[kitName] == kit then
+            local hand = path:match("_(%d)%.mesh$")
+            if not pick or (hand == "1") == (slotName == "Weapon") then pick = path end
+        end
+    end
+    return pick and { original = pick } or nil
+end
+
+local function swap_in(go, mesh, original, kit, slotName)
     local chain = component(go, CHAIN2)
     local originalChain = chain and resource_path(try(function() return chain:get_ChainAsset() end))
     -- Remember each original model's physics chain. If the game restored only its model,
@@ -192,6 +220,11 @@ local function swap_in(go, mesh, original, kit)
     if set_model(go, mesh, kit_mesh(kit), kit.mdf2, NULL_CHAIN) then
         swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
                                       kit = kit, kitMesh = kit_mesh(kit) }
+        local prev = config.swappedFrom[slotName]
+        if not prev or prev.original ~= original or prev.chain ~= originalChain then
+            config.swappedFrom[slotName] = { original = original, chain = originalChain }
+            save_config()
+        end
     end
 end
 
@@ -215,6 +248,14 @@ local function update_slot(name, weapon)
     local key = go:get_address()
     local current = resource_path(try(function() return mesh:getMesh() end))
     local entry = swapped[key]
+    local remembered = config.swappedFrom[name] or (not entry and kit_of_mesh(current) and guess_original(name, current))
+    if not entry and remembered and kit_of_mesh(current) then
+        -- Our model is already on the weapon (the scripts were reloaded): take it over again.
+        entry = { go = go, original = remembered.original, chain = remembered.chain,
+                  kit = kit_of_mesh(current), kitMesh = current }
+        swapped[key] = entry
+        chainOf[remembered.original] = chainOf[remembered.original] or remembered.chain
+    end
     if entry and current ~= entry.original and current ~= entry.kitMesh then
         -- The game put a different weapon on this object: forget the old one.
         try(function() go:set_DrawSelf(true) end)
@@ -229,7 +270,7 @@ local function update_slot(name, weapon)
     if kit then
         -- Swap when the game shows its own model (first time, or it reloaded the weapon).
         -- (or the size changed: then `current` is our other size and `original` stays the game's).
-        if current ~= kit_mesh(kit) then swap_in(go, mesh, original, kit) end
+        if current ~= kit_mesh(kit) then swap_in(go, mesh, original, kit, name) end
         if swapped[key] then apply_tuning(swapped[key], mesh) end
         -- Only our light weapons vanish; if the swap failed, leave the original alone.
         if config.hideSheathed and swapped[key] then

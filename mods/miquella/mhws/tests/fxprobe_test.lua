@@ -17,26 +17,43 @@ local epTd = {
         method("get_Resource", {}, "via.effect.EffectResourceHolder"),
         method("setExternParameterColor", { "System.String", "via.Color" }),
         method("setExternParameterFloat", { "System.String", "System.Single" }),
-        method("getExternParameterColor", { "System.String" }, "via.Color"),
+        method("getExternParameter", { "System.String" }, "via.effect.ExternParameter"),
+        method("set_Color", { "via.Color" }),
         method("play", {}),
     } end,
 }
 
 -- Effect players in the scene.
-local function effect(path, goName, values)
-    return {
-        path = path,
-        call = function(self, m, arg)
-            if m == "get_Resource" then return { ToString = function() return "Resource[" .. path .. "]" end } end
-            if m == "get_GameObject" then return { call = function() return goName end } end
-            if m == "getExternParameterColor(System.String)" then return values and values[arg] end
-        end,
+-- An extern parameter object: name and colour fields (via.Color has a packed rgba field).
+local function externParam(name, rgba)
+    local fields = {
+        { get_name = function() return "_Name" end, is_static = function() return false end, get_data = function() return name end,
+          get_type = function() return tname("System.String") end },
+        { get_name = function() return "_Color" end, is_static = function() return false end,
+          get_data = function() return { get_field = function(_, f) if f == "rgba" then return rgba end end } end,
+          get_type = function() return tname("via.Color") end },
     }
+    local td = { get_full_name = function() return "via.effect.script.EffectCustomExternParameter" end,
+                 get_fields = function() return fields end, get_methods = function() return { method("set_Color", { "via.Color" }) } end }
+    return { get_type_definition = function() return td end }
 end
-local trail = effect("Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx", "Wp02Effect", { Color = 0xFF2E7AE6 })
+local function effect(path, goName, values, addr)
+    local e = { path = path, running = true, tint = 0xFFFFFFFF }
+    e.get_address = function() return addr or 0 end
+    e.call = function(self, m, arg)
+        if m == "get_Resource" then return { ToString = function() return "Resource[" .. path .. "]" end } end
+        if m == "get_GameObject" then return { call = function() return goName end } end
+        if m == "get_Running" then return e.running end
+        if m == "get_Color" then return { get_field = function(_, f) if f == "rgba" then return e.tint end end } end
+        if m == "getExternParameter(System.String)" and values and values[arg] then return externParam(arg, values[arg]) end
+    end
+    return e
+end
+local trail = effect("Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx", "Wp02Effect", { Color = 0xFF2E7AE6 }, 0xA0)
+local swordtrail = effect("Art/VFX/EffectEditor/Player/pl_cm/pl_etc/11_pl_swordtrail_000.efx", "trail", nil, 0xB0)
 local flames = effect("Art/VFX/EffectEditor/Weapon/it02/11_it02_002.efx", "Wp02Effect", {})
 local grass = effect("Art/VFX/EffectEditor/Stage/st101/grass.efx", "Env")
-local playing = { trail, grass }
+local playing = { trail, grass, swordtrail }
 
 local hooks = {}
 local pointers, nextPtr = {}, 0x1000
@@ -82,8 +99,8 @@ local function check(c, m) print((c and "PASS " or "FAIL ") .. m); if not c then
 local function click(label) press[label] = true; out = {}; onDraw(); press[label] = nil; return table.concat(out, "\n") end
 
 local s = click("Start recording")
-check(s:match("5 methods, 2 setters hooked, 1 weapon flags"), "methods listed, extern setters hooked, flag found")
-check(hooks.setExternParameterColor and hooks.setExternParameterFloat and not hooks.getExternParameterColor, "only setters hooked")
+check(s:match("6 methods, 3 setters hooked, 1 weapon flags"), "methods listed, extern setters and set_Color hooked, flag found")
+check(hooks.setExternParameterColor and hooks.setExternParameterFloat and hooks.set_Color and not hooks.getExternParameter, "only setters hooked")
 
 onFrame()                                         -- first scan: trail + grass playing
 clock = 1.0
@@ -91,11 +108,13 @@ local str = { obj = { call = function(self, m) return "ColorA" end } }
 hooks.setExternParameterColor({ 0, ptr(flames), str, 0xFF2244FF })      -- red, game sets ColorA
 hooks.setExternParameterColor({ 0, ptr(flames), str, 0xFF2244FF })
 hooks.setExternParameterFloat({ 0, ptr(flames), { obj = { call = function() return "IsKijin" end } }, 1.0 })
-playing = { flames }; flag.value = true
+hooks.set_Color({ 0, ptr(swordtrail), 0xFF1020E0 })
+swordtrail.tint = 0xFF1020E0
+playing = { flames, swordtrail }; flag.value = true
 clock = 1.5; onFrame()
 clock = 2.0
 s = click("Stop and save")
-check(s:match("Saved 3 effect files"), "saved")
+check(s:match("Saved 4 effect files"), "saved")
 local r = dumped[2]
 check(dumped[1] == "MiquellaLight/fx.json", "report path")
 local params = table.concat(r.params, "\n")
@@ -107,11 +126,16 @@ check(tl:match("start Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx") and not
       "timeline shows focused effects only")
 check(tl:match("stop  Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx"), "effect stop logged")
 check(tl:match("_IsKijinOn: false %-> true"), "weapon flag change logged")
-check(tl:match("value Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx getExternParameterColor Color = " .. tostring(0xFF2E7AE6)),
-      "parameter value read back from the it02 effect")
+check(tl:match("value Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx getExternParameter Color = _Name=Color _Color=#E67A2EFF"),
+      "parameter object's fields read back, colour as #RRGGBBAA")
+check(r.extern and r.extern.type == "via.effect.script.EffectCustomExternParameter" and #r.extern.fields == 2
+      and r.extern.methods[1]:match("set_Color"), "parameter object's type described")
+check(tl:match("state Art/VFX/EffectEditor/Player/pl_cm/pl_etc/11_pl_swordtrail_000.efx @B0 running=true tint=#FFFFFFFF")
+      and tl:match("11_pl_swordtrail_000.efx @B0 running=true tint=#E02010FF"), "watched effect's tint change logged")
+check(params:match("set_Color%(#E02010FF%)  on  Art/VFX/EffectEditor/Player/pl_cm/pl_etc/11_pl_swordtrail_000.efx"), "set_Color call recorded")
 local effects = table.concat(r.effects, "\n")
 check(effects:match("grass.efx") and effects:match("(Wp02Effect)"), "all effects listed with their object")
-check(#r.methods == 5 and r.hooked[1]:match("setExternParameterColor%(System.String, via.Color%)"), "method signatures saved")
+check(#r.methods == 6 and r.hooked[1]:match("setExternParameterColor%(System.String, via.Color%)"), "method signatures saved")
 -- Stopped: hooks no longer record.
 hooks.setExternParameterColor({ 0, ptr(flames), str, 0xFF0000FF })
 s = click("Start recording")

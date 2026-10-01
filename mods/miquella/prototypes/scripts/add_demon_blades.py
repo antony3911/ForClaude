@@ -4,7 +4,10 @@ slide outward, short first, then long).
 
 The weapon has no bones we can animate, so the slide is three fixed stages, each its own
 material (MiquellaDemon1..3) holding a left and a right side blade:
-  stage 1: 45 % length,  9 deg   stage 2: 60 %, 15 deg   stage 3: 74 %, 22 deg (final pose)
+  stage 1: 40 % length,  9 deg   stage 2: 53.5 %, 15 deg   stage 3: 66 %, 22 deg (final pose)
+They branch 4 cm up the main blade from the guard. (First in-game version: at the guard,
+45 / 60 / 74 %; the user found it crowded near the grip and the side blades a bit long.
+Picked as option A of states.py dual_blades_split_point.)
 They are hidden by default (Dissolve 0). MiquellaLight_Weapons.lua cross-fades them with the
 game's demon-mode value (app.cHunterWp02Handling._KijinExtern, 0 -> 1).
 
@@ -25,7 +28,8 @@ import blades
 from fit_dual_blades import MDF_EXT, MESH_EXT, NAME, REL_DIR, TO_WEAPON_AXIS
 
 # (length scale, splay angle, sideways offset) per stage, from states.py's preview.
-STAGES = ((0.45, 9.0, 0.004), (0.60, 15.0, 0.007), (0.74, 22.0, 0.010))
+STAGES = ((0.40, 9.0, 0.004), (0.535, 15.0, 0.007), (0.66, 22.0, 0.010))
+BRANCH_FORWARD = 0.04     # metres from the guard toward the tip where the side blades branch
 SIDE_SCALE_X, SIDE_SCALE_Y = 0.72, 0.8
 
 
@@ -40,7 +44,7 @@ def side_pair(stage, length, angle, spread, armature, collection):
     for s in (-1, 1):
         o = blades.build_blade(mat)
         o.modifiers.clear()                                    # no subdivision in game
-        pose = (Matrix.Translation((s * spread, 0, blades.GUARD_Z))
+        pose = (Matrix.Translation((s * spread, 0, blades.GUARD_Z + BRANCH_FORWARD))
                 @ Matrix.Rotation(math.radians(s * angle), 4, "Y")
                 @ Matrix.Diagonal((SIDE_SCALE_X, SIDE_SCALE_Y, length, 1))
                 @ Matrix.Translation((0, 0, -blades.GUARD_Z)))  # pivot at the guard

@@ -29,11 +29,19 @@ local KITS = {
         label = "Miquella light blade (dual blades)",
         mesh = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh",
         mdf2 = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mdf2",
+        -- Sizes are separate models (scaling the weapon's transform does not hold in Wilds).
+        sizes = {
+            ["1.0"] = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh",
+            ["1.2"] = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s12.mesh",
+            ["1.4"] = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh",
+            ["1.6"] = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s16.mesh",
+        },
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2,
                  MiquellaDemon1 = 1.2, MiquellaDemon2 = 1.2, MiquellaDemon3 = 1.2 },
         demon = { MiquellaDemon1 = 1, MiquellaDemon2 = 2, MiquellaDemon3 = 3 },
     },
 }
+local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
 local KIT_NAMES = { "(original)" }
 for name in pairs(KITS) do KIT_NAMES[#KIT_NAMES + 1] = name end
 table.sort(KIT_NAMES, function(a, b)
@@ -47,9 +55,9 @@ local config = {
     hideSheathed = true,
     -- original .mesh path -> kit name
     assign = {},
-    -- In-game tuning: glow multiplies the kit's Emissive_Intensity, scale sizes the weapon.
+    -- In-game tuning: glow multiplies the kit's Emissive_Intensity; size picks the model.
     glow = 1.0,
-    scale = 1.0,
+    size = "1.4",
 }
 local saved = json.load_file(CONFIG_PATH)
 if saved then
@@ -159,9 +167,8 @@ local function glow_slots(mesh, kit)
     return slots
 end
 
-local function set_scale(go, s)
-    local t = try(function() return go:get_Transform() end)
-    if t then try(function() t:set_LocalScale(Vector3f.new(s, s, s)) end) end
+local function kit_mesh(kit)
+    return kit.sizes and kit.sizes[config.size] or kit.mesh
 end
 
 -- Apply the Glow slider to a swapped weapon.
@@ -182,9 +189,9 @@ local function swap_in(go, mesh, original, kit)
     else
         originalChain = chainOf[original]
     end
-    if set_model(go, mesh, kit.mesh, kit.mdf2, NULL_CHAIN) then
+    if set_model(go, mesh, kit_mesh(kit), kit.mdf2, NULL_CHAIN) then
         swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
-                                      kit = kit, kitMesh = kit.mesh }
+                                      kit = kit, kitMesh = kit_mesh(kit) }
     end
 end
 
@@ -195,7 +202,6 @@ local function swap_back(entry)
     if mesh then
         set_model(go, mesh, entry.original, entry.original:gsub("%.mesh$", ".mdf2"), entry.chain)
     end
-    set_scale(go, 1.0)
     try(function() go:set_DrawSelf(true) end)
 end
 
@@ -222,7 +228,8 @@ local function update_slot(name, weapon)
     local kit = kitName and KITS[kitName]
     if kit then
         -- Swap when the game shows its own model (first time, or it reloaded the weapon).
-        if current ~= kit.mesh then swap_in(go, mesh, current, kit) end
+        -- (or the size changed: then `current` is our other size and `original` stays the game's).
+        if current ~= kit_mesh(kit) then swap_in(go, mesh, original, kit) end
         if swapped[key] then apply_tuning(swapped[key], mesh) end
         -- Only our light weapons vanish; if the swap failed, leave the original alone.
         if config.hideSheathed and swapped[key] then
@@ -301,21 +308,6 @@ local function update_states(chr)
     end
 end
 
--- Size: the game resets the weapon's transform every frame, so a scale set now and then
--- flickers between our size and the original (first test: the blade "kept stretching").
--- Re-apply it every frame just before rendering, after the game's own update; leave the
--- transform alone while the slider is at 1.
-local scaleApplied = 1.0
-local function apply_scale()
-    local s = config.enabled and config.scale or 1.0
-    if s == 1.0 and scaleApplied == 1.0 then return end
-    for _, entry in pairs(swapped) do set_scale(entry.go, s) end
-    scaleApplied = s
-end
-if not pcall(function() re.on_pre_application_entry("BeginRendering", apply_scale) end) then
-    re.on_frame(apply_scale)
-end
-
 re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
@@ -348,8 +340,10 @@ re.on_draw_ui(function()
     changed = changed or c
     c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 10.0, "%.2f")
     changed = changed or c
-    c, config.scale = imgui.slider_float("Size", config.scale, 0.5, 2.0, "%.2f")
-    changed = changed or c
+    local sizeIdx = 1
+    for i, n in ipairs(SIZE_NAMES) do if n == config.size then sizeIdx = i end end
+    local c3, newSize = imgui.combo("Size", sizeIdx, SIZE_NAMES)
+    if c3 then config.size = SIZE_NAMES[newSize]; changed = true end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 
     for _, name in ipairs({ "Weapon", "SubWeapon" }) do

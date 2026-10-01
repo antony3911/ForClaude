@@ -37,8 +37,6 @@ local function newGO(name, addr, mesh, chain)
   function go:get_Valid() return self.valid end
   function go:set_DrawSelf(v) self.draw = v end
   function go:call(sig, t) return self.comps[t.name] end
-  go.scale = 1.0
-  function go:get_Transform() local g = self; return { set_LocalScale = function(_, v) g.scale = v.x end } end
   return go
 end
 local weaponMesh = newMesh("Art/Model/Item/it02/00/0002/it0200_0002_1.mesh")
@@ -76,11 +74,10 @@ sdk = {
   end,
 }
 local onFrame, onDraw
-local preRender
-re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end,
-       on_pre_application_entry = function(name, f) if name == "BeginRendering" then preRender = f end end }
+re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
 local comboAnswer = nil
+local sizeAnswer = nil
 local sliderAnswer = {}
 local texts = {}
 imgui = {
@@ -89,6 +86,7 @@ imgui = {
   text = function(t) texts[#texts + 1] = t end, text_colored = function(t) texts[#texts + 1] = "!! " .. t end,
   combo = function(label, idx, list)
     if comboAnswer and label:match("##Weapon$") then local a = comboAnswer; comboAnswer = nil; return true, a end
+    if sizeAnswer and label == "Size" then local a = sizeAnswer; sizeAnswer = nil; return true, a end
     return false, idx
   end,
   slider_float = function(label, v)
@@ -100,15 +98,13 @@ local savedCfg
 json = { load_file = function() return nil end, dump_file = function(p, t) savedCfg = t end }
 
 if arg[2] == "missing" then
-  failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh"] = true
+  failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh"] = true
 end
 dofile(arg[1])
 local function frames(n, dt)
   for _ = 1, n do
     fakeTime = fakeTime + (dt or 0)
     onFrame()
-    weaponGO.scale = 1.0          -- the game resets the weapon transform every frame
-    if preRender then preRender() end
   end
 end
 local function check(cond, msg) print((cond and "PASS " or "FAIL ") .. msg); if not cond then os.exit(1) end end
@@ -131,7 +127,7 @@ check(texts[2] and texts[2]:match("it0200_0002_1%.mesh"), "menu shows the origin
 comboAnswer = 2; onDraw()
 check(savedCfg and savedCfg.assign["Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"] == "DualBlades", "assignment saved")
 frames(20)
-check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh", "main weapon model swapped")
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh", "main weapon model swapped (default size 1.4)")
 check(weaponMesh.mdfPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mdf2", "main weapon material swapped")
 check(weaponChain.path == "Art/Model/Item/it00/99/it0099_0000_0.chain2", "physics chain replaced with the empty one")
 check(subMesh.meshPath:match("it0200_0002_0"), "sub weapon untouched (not assigned)")
@@ -143,14 +139,23 @@ check(weaponGO.draw == false, "hidden while sheathed")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(1)
 check(weaponGO.draw == true, "shown while drawn")
--- Glow and Size sliders.
+-- Glow slider and Size choice.
 check(math.abs((weaponMesh.floats["MiquellaBlade.1"] or 0) - 1.2) < 1e-6, "glow at default intensity on the blade")
-sliderAnswer.Glow = 2.0; sliderAnswer.Size = 1.3; onDraw()
+sliderAnswer.Glow = 2.0; onDraw()
 frames(20)
 check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6 and math.abs(weaponMesh.floats["MiquellaGlow.1"] - 2.4) < 1e-6, "glow slider scales blade and droplet")
 check(weaponMesh.floats["MiquellaIvory.1"] == nil, "ivory not made to glow")
-check(math.abs(weaponGO.scale - 1.3) < 1e-6, "size slider scales the weapon, every frame before rendering")
-check(math.abs(subGO.scale - 1.0) < 1e-6, "unassigned sub weapon keeps its size")
+sizeAnswer = 1; onDraw()            -- "1.0"
+frames(20)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh", "size 1.0 picks the base model")
+check(savedCfg.size == "1.0", "size choice saved")
+sizeAnswer = 4; onDraw()            -- "1.6"
+frames(20)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s16.mesh", "size 1.6 model")
+check(weaponMesh.floats["MiquellaBlade.1"] and math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6, "glow kept on the new size")
+check(subMesh.meshPath:match("it0200_0002_0"), "unassigned sub weapon untouched")
+sizeAnswer = 3; onDraw()            -- back to "1.4"
+frames(20)
 -- Demon mode: side blades hidden, then split out in stages, then merge back.
 local function visible(name) return weaponMesh.matEnabled[name] == true end
 local function dissolve(name) return weaponMesh.floats[name .. ".2"] or 0 end
@@ -193,5 +198,5 @@ check(weaponMesh.meshPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh", "
 check(weaponMesh.mdfPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mdf2", "original material restored")
 check(weaponChain.path == "Art/Model/Item/it02/00/0002/it0200_0002_1.chain2", "original physics restored")
 check(weaponGO.draw == true, "visible again")
-check(math.abs(weaponGO.scale - 1.0) < 1e-6, "size reset on the original")
+check(not weaponMesh.meshPath:match("wp_miquella"), "after size changes, un-assigning still restores the game's model")
 print("ALL PASS")

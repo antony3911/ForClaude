@@ -7,6 +7,7 @@ faded with Dissolve, parts moved by bones; see mods/research/mhws_modding_notes.
 Sets:
   great_sword_charge  normal (gold) / charge 1 (bright gold) / 2 (brighter gold) / 3 (white light)
   dual_blades_demon   normal / splitting / demon mode (three blades) / archdemon (bright gold)
+  dual_blades_split_point  demon pose: side blades branching further up the blade, a bit shorter
   hammer_charge       levels 0-3: more rings around the head, the caged sun brightens
   lance_charge        levels 0-3: a cone of large rings grows root to tip, brighter each level
   lance_full_variants full charge with the cone of light at different strengths
@@ -273,6 +274,34 @@ def dual_blades_demon():
         paths += c.render_views(OUT, f"state{i}", target, distance, [("front", 0, 4)], lens=50)
     labelled_strip(paths, [s[0] for s in states], os.path.join(OUT, "dual_blades_demon.png"),
                    "雙劍：一片光刃分裂成三刃苦無")
+
+
+# Side blades of the in-game build (add_demon_blades.py): (forward offset of the branch point
+# along the main blade, length scale of the side blade). The first is the first in-game version.
+SPLIT_OPTIONS = (("目前（遊戲裡這版）", 0.0, 0.74), ("A：往前 4 公分、短一點", 0.04, 0.66),
+                 ("B：往前 7 公分、再短一點", 0.07, 0.62))
+
+
+def dual_blades_split_point():
+    """User feedback on the first in-game demon mode: the side blades branch too close to
+    the grip and look crowded; move the branch point a little toward the tip and make the
+    side blades slightly shorter than now."""
+    import blades
+    c.reset_scene()
+    mats = m.materials()
+    blades.build_sword("DualBlade", mats["ivory"], mats["light"], mats["blade"], mats["core"], seed=3)
+    sides = [side_blade(blades, mats["blade"], s, f"Side_Blade_{s}") for s in (-1, 1)]
+    m.glow_mode(mats)
+    target, distance = (0, 0, 0.44), 1.75
+    stage_lights(target, distance)
+    paths = []
+    for i, (label, forward, length) in enumerate(SPLIT_OPTIONS):
+        for obj in sides:
+            pose_side(obj, length, 22, 0.01)
+            obj.location.z = blades.GUARD_Z + forward
+        paths += c.render_views(OUT, f"split{i}", target, distance, [("front", 0, 4)], lens=50)
+    labelled_strip(paths, [o[0] for o in SPLIT_OPTIONS], os.path.join(OUT, "dual_blades_split_point.png"),
+                   "雙劍鬼人化：側刃分岔點往刀尖移、側刃短一點")
 
 
 # ------------------------------------------------------------------ hammer charge
@@ -1017,6 +1046,7 @@ def shield_guard():
 SETS = {
     "great_sword_charge": great_sword_charge,
     "dual_blades_demon": dual_blades_demon,
+    "dual_blades_split_point": dual_blades_split_point,
     "hammer_charge": hammer_charge,
     "lance_charge": lance_charge,
     "lance_full_variants": lance_full_variants,

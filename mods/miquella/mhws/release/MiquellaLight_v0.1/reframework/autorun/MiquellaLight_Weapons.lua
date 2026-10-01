@@ -47,6 +47,8 @@ local saved = json.load_file(CONFIG_PATH)
 if saved then
     for k, v in pairs(saved) do config[k] = v end
 end
+-- An empty table is saved as JSON null; don't let that replace the assignment table.
+if type(config.assign) ~= "table" then config.assign = {} end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 
 local function try(fn, ...)

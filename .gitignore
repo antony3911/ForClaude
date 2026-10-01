@@ -3,3 +3,4 @@ __pycache__/
 *.blend1
 # Game kit scenes (rebuilt by build_weapon_kit.py); the first kits keep theirs in the repo
 mods/miquella/mhws/*_kit/*_kit.blend
+mods/miquella/mhws/*_kit/dds/

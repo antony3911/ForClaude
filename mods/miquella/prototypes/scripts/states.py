@@ -14,6 +14,11 @@ Sets:
   long_sword_spirit   spirit levels: pale gold / gold / bright gold / white, light flowing on the hamon
   insect_glaive_extracts  extracts as scarlet rot / frost / frenzied flame, two layouts
   switch_axe_states   switch gauge on the phials, power axe, sword mode, amped
+  charge_blade_states phials, shield charge, sword boost, axe boost
+  bow_charge          charge levels light the rings ahead of the arrow
+  bowgun_gauges       ignition / rapid fire gauge on the floating phials
+  hunting_horn_notes  notes light the strings, playing spreads the sound rings
+  shield_guard        guard and perfect guard flash on the energy shield
 
 Usage: python states.py <set> <out_dir>
 """
@@ -98,24 +103,27 @@ def stage_lights(target, distance, res=(600, 1000)):
     c.add_light("rim", "AREA", tgt + Vector((0.0, 1.4, 0.9)) * k, 65 * k * k, size=0.8 * k, target=tgt)
 
 
-def labelled_strip(paths, labels, out_path, title):
-    """Panels side by side, a label above each, a title on top."""
+def labelled_strip(paths, labels, out_path, title, cols=None):
+    """Panels in a row (or a grid of `cols` columns), a label above each, a title on top."""
     from PIL import Image, ImageDraw, ImageFont
     imgs = [Image.open(p).convert("RGB") for p in paths]
     w, h = imgs[0].size
+    cols = cols or len(imgs)
+    rows = (len(imgs) + cols - 1) // cols
     band, head = 70, 80
-    sheet = Image.new("RGB", (w * len(imgs), h + band + head), (14, 14, 18))
+    sheet = Image.new("RGB", (w * cols, head + rows * (h + band)), (14, 14, 18))
     draw = ImageDraw.Draw(sheet)
     f_title = ImageFont.truetype(FONT, 40)
     f_label = ImageFont.truetype(FONT, 32)
     tw = draw.textlength(title, font=f_title)
     draw.text(((sheet.width - tw) / 2, 18), title, font=f_title, fill=(240, 220, 170))
     for i, (img, text) in enumerate(zip(imgs, labels)):
-        sheet.paste(img, (i * w, head + band))
+        x, y = (i % cols) * w, head + (i // cols) * (h + band)
+        sheet.paste(img, (x, y + band))
         lw = draw.textlength(text, font=f_label)
-        draw.text((i * w + (w - lw) / 2, head + 16), text, font=f_label, fill=(235, 235, 235))
-        if i:
-            draw.line([(i * w, head), (i * w, sheet.height)], fill=(60, 60, 66), width=2)
+        draw.text((x + (w - lw) / 2, y + 16), text, font=f_label, fill=(235, 235, 235))
+        if i % cols:
+            draw.line([(x, y), (x, y + h + band)], fill=(60, 60, 66), width=2)
     sheet.save(out_path)
     return out_path
 
@@ -588,39 +596,26 @@ def insect_glaive_extracts():
     a_fx["frost"] += fx.frost("A_Frost_Inner", [root + d * 0.12 - out * 0.012, root + d * 0.26 - out * 0.01],
                               [-out + d * 0.8, -out + d * 1.3], (0.025, 0.02), fx_mats["frost"], width=0.006)
 
-    # ---- layout B: three motes in a triangle around the single blade
+    # ---- layout B (the user's): balls that appear only when their extract is lit and circle
+    # the blade; no halos. Rot: a mould cluster shedding rot butterflies; frenzied flame: a
+    # ball of curling fire; frost: a ball of ice (placeholder until the user's reference).
     b_objs, b_fx, b_mats = [], {}, {}
-    motes = {"rot": V(0, -0.025, top + 0.5), "flame": V(-0.095, -0.025, top + 0.12),
-             "frost": V(0.095, -0.025, top + 0.12)}
-    for kind, p in motes.items():
-        mat = c.make_material(f"Mote_{kind}", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"],
-                              strength=2.0)
-        b_mats[kind] = mat
-        b_objs += m.droplet(f"Mote_{kind}", p, 0.014, (0, 0, 1), mat, stretch=1.4)
-        b_objs += m.halo(f"Mote_Halo_{kind}", p + V(0, 0, 0.004), 0.026, 0.0022, (0, 1, 0), mats["light"])
-    tri = [motes["rot"], motes["flame"], motes["frost"], motes["rot"]]
+    orbit_c, orbit_r, orbit_z = V(0, 0, 0), 0.085, top + 0.2
+    angles = {"rot": -100, "flame": 140, "frost": 20}           # degrees around the blade
+    pos = {k: V(orbit_r * math.cos(math.radians(a)), orbit_r * math.sin(math.radians(a)), orbit_z)
+           for k, a in angles.items()}
+    motes = pos
+    b_fx["rot"] = fx.rot_mote("B_Rot2", pos["rot"], 0.017)
+    import particle_fx as pfx
+
+    def trailing(kind):                     # behind the ball as it circles counter-clockwise
+        a = math.radians(angles[kind])
+        return (math.sin(a), -math.cos(a), -0.3)
+
+    b_fx["flame"] = pfx.fire_strands("B_Frenzy", pos["flame"], 0.02)
+    b_fx["frost"] = fx.frost_ball("B_Frost2", pos["frost"], 0.016, drift=trailing("frost"))
     b_triangle = []
-    for k in range(3):
-        a, b = tri[k], tri[k + 1]
-        u = (b - a).normalized()
-        b_triangle.append(c.curve_tube(f"Triangle_{k}", [a + u * 0.03, b - u * 0.03], [1, 1], mats["light"],
-                                       bevel=0.0018, resolution=2))
-    p = motes["rot"]
-    b_fx["rot_v1"] = fx.rot("B_Rot", [(p + V(-0.034, 0, 0.012), (0, -1, 0.2)), (p + V(0.034, 0, 0.004), (0, -1, 0.2)),
-                                   (p + V(0.004, 0, 0.038), (0, -1, 0.2))],
-                         [p + V(-0.014, 0, -0.032), p + V(0.016, 0, -0.042)], fx_mats["rot"], radius=0.016)
-    # Second try at rot (user's references): the mote turns into a mould ball shedding butterflies.
-    b_fx["rot"] = fx.rot_mote("B_Rot2", motes["rot"], 0.017)
-    show(b_fx.pop("rot_v1"), False)
-    rot_mote_drop = [bpy.data.objects["Mote_rot"]]
-    p = motes["flame"]
-    b_fx["flame"] = fx.flame("B_Flame", [p + V(-0.012, 0, 0.012), p + V(0.006, 0, 0.016), p + V(0.018, 0, 0.008)],
-                             (0.08, 0.1, 0.065), fx_mats["flame"], width=0.016)
-    p = motes["frost"]
-    angles = (20, 70, 120, 165, -30, -80)
-    b_fx["frost"] = fx.frost("B_Frost", [p] * len(angles),
-                             [V(math.cos(math.radians(a)), 0, math.sin(math.radians(a))) for a in angles],
-                             (0.05, 0.06, 0.045, 0.05, 0.04, 0.035), fx_mats["frost"], width=0.007)
+    rot_mote_drop = []
 
     target, distance = (0, 0, top + 0.24), 1.05
     stage_lights(target, distance, res=(480, 800))
@@ -644,22 +639,26 @@ def insect_glaive_extracts():
                 full = len(lit) == 3
                 set_blade(center_mat, *(BRIGHT_BLADE if full else gold))
                 for kind in fx.STATUS:
-                    color, strength = (fx.STATUS[kind][0], 4.0) if kind in lit else (c.PALETTE["glow"], 2.0)
-                    set_glow(b_mats[kind], color, strength)
                     show(b_fx[kind], kind in lit)
-                show(rot_mote_drop, "rot" not in lit)      # the droplet becomes the mould ball
-                show(b_triangle, full)
             paths += c.render_views(OUT, f"{layout}_state{i}", target, distance, [("front", 12, 4)], lens=50)
         if layout == "B":
             # Close-ups of each lit mote (the last state has all three lit).
+            # Close-ups of each ball alone, seen from outside its orbit (the blade off to one side).
             close = []
-            for kind, dist in (("rot", 0.3), ("flame", 0.42), ("frost", 0.42)):
-                close += c.render_views(OUT, f"B_close_{kind}", motes[kind] + V(0, 0, 0.025), dist,
-                                        [("front", 12, 6)], lens=50)
-            labelled_strip(close, ["猩紅腐敗", "癲火", "冰凍"], os.path.join(OUT, "insect_glaive_extracts_B_close.png"),
-                           "方案 B 特寫：三顆光粒點亮後的樣子")
+            for kind in ("rot", "flame", "frost"):
+                for other in fx.STATUS:
+                    show(b_fx[other], other == kind)
+                close += c.render_views(OUT, f"B_close_{kind}", motes[kind] + V(0, 0, 0.012),
+                                        0.38 if kind == "frost" else 0.3,
+                                        [("out", angles[kind] + 90 + 28, 8)], lens=50)
+            for other in fx.STATUS:
+                show(b_fx[other], True)
+            # From above: the three balls around the blade (they circle it in game).
+            close += c.render_views(OUT, "B_top", V(0, 0, orbit_z), 0.55, [("top", 0, 80)], lens=50)
+            labelled_strip(close, ["猩紅腐敗", "癲火", "冰凍", "俯視：三顆球繞著光刃轉"],
+                           os.path.join(OUT, "insect_glaive_extracts_B_close.png"), "特寫：三顆球")
         title = ("方案 A：光刃變三刃（中猩紅腐敗、左癲火、右冰凍）" if layout == "A"
-                 else "方案 B：單刃＋三顆光粒圍成三角形（上猩紅腐敗、左癲火、右冰凍）")
+                 else "操蟲棍精華：點燈後出現的球繞著光刃轉（腐敗、癲火、冰凍）")
         labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, f"insect_glaive_extracts_{layout}.png"),
                        title)
 
@@ -727,6 +726,227 @@ def switch_axe_states():
                    "斬擊斧：光點＝變形量表，強化斧讓三片光刃變亮，劍模式覺醒變亮金")
 
 
+# ------------------------------------------------------------------ helpers for the rest
+
+def objs_named(prefix, exclude=()):
+    return sorted([o for o in bpy.data.objects if o.name.startswith(prefix)
+                   and not any(x in o.name for x in exclude)], key=lambda o: o.name)
+
+
+def own_material(objs, name):
+    """Give these objects one shared copy of their (first) material so it can change alone."""
+    objs = [o for o in objs if getattr(o.data, "materials", None)]
+    mat = objs[0].data.materials[0].copy()
+    mat.name = name
+    for o in objs:
+        o.data.materials[0] = mat
+    return mat
+
+
+def descendants(root):
+    out = []
+    for ch in root.children:
+        out.append(ch)
+        out += descendants(ch)
+    return out
+
+
+DIM = ("#4A3E2A", 0.05)       # an unlit phial / note
+
+
+# ------------------------------------------------------------------ charge blade
+
+def charge_blade_states():
+    """Sword hits fill the sword's phial ring (gold, then bright gold when full); loading
+    lights the shield's phials; shield charge turns the shield's halo and sigil bright gold;
+    sword boost brightens the sword; axe boost the axe edge."""
+    import arsenal
+    c.reset_scene()
+    mats = capture_build(arsenal.charge_blade)
+    m.glow_mode(mats)
+    show(objs_named("Backdrop"), False)
+    sword_ph = own_material(objs_named("Sword_Phial_", exclude=("Ring",)), "Sword_Phials")
+    shield_ph = [own_material([o], f"Shield_Phial_{k}") for k, o in enumerate(objs_named("Shield_Phial_"))]
+    shield_parts = [o for o in descendants(bpy.data.objects["EnergyShield"])
+                    if getattr(o.data, "materials", None) and o.data.materials[0] == mats["light"]]
+    shield_light = own_material(shield_parts, "Shield_Light")
+    sword_blade = own_material([o for o in descendants(bpy.data.objects["CB_Sword"])
+                                if getattr(o.data, "materials", None) and o.data.materials[0] == mats["blade"]],
+                               "CB_Sword_Blade")
+    axe_edge = own_material(objs_named("Axe_Edge", exclude=("Temper", "Afterimage")), "CB_Axe_Edge")
+    membrane = mats["shield_membrane"].node_tree.nodes["Membrane_Emission"]
+    base_membrane = membrane.inputs["Strength"].default_value
+    gold_blade = (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
+    target, distance = (-0.05, 0, 0.5), 2.3
+    stage_lights(target, distance, res=(700, 630))
+    states = [
+        # label, sword phials, shield phials lit, shield, sword boost, axe boost
+        ("一般", "dim", 0, False, False, False),
+        ("劍攻擊累積（劍上光點亮）", "gold", 0, False, False, False),
+        ("累積滿（亮金）", "bright", 0, False, False, False),
+        ("裝填瓶子（盾上光點亮）", "dim", 5, False, False, False),
+        ("盾強化（紅盾）", "dim", 5, True, False, False),
+        ("劍強化", "dim", 3, True, True, False),
+        ("斧強化（斧刃變亮）", "dim", 2, True, False, True),
+    ]
+    paths = []
+    for i, (label, sp, lit, shield, sword_boost, axe_boost) in enumerate(states):
+        set_glow(sword_ph, *{"dim": DIM, "gold": (c.PALETTE["glow"], 3.0), "bright": BRIGHT_LIGHT}[sp])
+        for k, mat in enumerate(shield_ph):
+            set_glow(mat, *((c.PALETTE["glow"], 3.0) if k < lit else DIM))
+        set_glow(shield_light, *(BRIGHT_LIGHT if shield else (c.PALETTE["glow"], 2.5)))
+        membrane.inputs["Strength"].default_value = base_membrane * (2.5 if shield else 1.0)
+        set_blade(sword_blade, *(BRIGHT_BLADE if sword_boost else gold_blade))
+        set_blade(axe_edge, *(BRIGHT_BLADE if axe_boost else gold_blade))
+        paths += c.render_views(OUT, f"state{i}", target, distance, [("front", 0, 4)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "charge_blade_states.png"),
+                   "充能斧：光點＝瓶子，盾、劍、斧強化各自變亮金", cols=4)
+
+
+# ------------------------------------------------------------------ bow
+
+def bow_charge():
+    """Each charge level lights one more ring ahead of the arrow in bright gold; at the
+    third the whole rail and the arrowhead blaze."""
+    import arsenal
+    c.reset_scene()
+    mats = capture_build(arsenal.bow)
+    m.glow_mode(mats)
+    rail = [own_material([o], f"Rail_{k}") for k, o in enumerate(objs_named("Arrow_Rail_"))]
+    head = own_material(objs_named("Arrow_Head"), "Arrow_Head_Mat")
+    shaft = own_material(objs_named("Arrow_Shaft"), "Arrow_Shaft_Mat")
+    target, distance = (-0.3, 0, 0.0), 2.4
+    stage_lights(target, distance, res=(900, 640))
+    levels = [("拉弓（未蓄力）", 0), ("蓄力 1", 1), ("蓄力 2", 2), ("蓄力 3", 4)]
+    paths = []
+    for i, (label, n) in enumerate(levels):
+        for k, mat in enumerate(rail):
+            set_glow(mat, *(BRIGHT_LIGHT if k < n else ("#B8862E", 0.5)))     # unlit rings stay dim
+        set_blade(head, *(BRIGHT_BLADE if n == 4 else (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)))
+        set_glow(shaft, *(BRIGHT_CORE if n == 4 else (c.PALETTE["blade_core"], 3.0)))
+        paths += c.render_views(OUT, f"level{i}", target, distance, [("front", 0, 4)], lens=50)
+    labelled_strip(paths, [lv[0] for lv in levels], os.path.join(OUT, "bow_charge.png"),
+                   "弓蓄力：箭前方的光環一段段亮起，三段時整條光環和箭頭全亮", cols=2)
+
+
+# ------------------------------------------------------------------ bowguns
+
+def bowgun_gauges():
+    """The three floating phials are the gauge (heavy: ignition, light: rapid fire); while
+    the special fire runs the barrel's rings blaze and the phials drain."""
+    import bowgun as hb
+    c.reset_scene()
+    ivory, glow = hb.build()
+    set_glow(glow, c.PALETTE["blade_core"], 2.5)
+    phials = [own_material([o], f"HB_Phial_{k}") for k, o in enumerate(objs_named("Barrel_Phial_", ("Halo",)))]
+    halos = [own_material([o], f"HB_Phial_Halo_{k}") for k, o in enumerate(objs_named("Barrel_Phial_Halo_"))]
+    fire = own_material(objs_named("Muzzle_Halo") + objs_named("Conduit_Halo_"), "HB_Fire_Rings")
+    target, distance = (0, 0.2, 0.02), 2.4
+    stage_lights(target, distance, res=(800, 540))
+
+    def gauge(n, mats, hmats):
+        for k, (mat, hmat) in enumerate(zip(mats, hmats)):
+            set_glow(mat, *((c.PALETTE["glow"], 3.0) if k < n else DIM))
+            set_glow(hmat, *((c.PALETTE["glow"], 2.5) if k < n else ("#8A7450", 0.15)))
+
+    states = [("點火量表 0", 0, False), ("1", 1, False), ("2", 2, False), ("滿（可點火）", 3, False),
+              ("龍熱點火連射中（量表消耗）", 1, True)]
+    paths = []
+    for i, (label, n, firing) in enumerate(states):
+        gauge(n, phials, halos)
+        set_glow(fire, *(BRIGHT_LIGHT if firing else (c.PALETTE["blade_core"], 2.5)))
+        paths += c.render_views(OUT, f"heavy{i}", target, distance, [("side", 90, 4)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "heavy_bowgun_ignition.png"),
+                   "重弩：三顆光點＝點火量表，點火連射時槍管光環全亮", cols=3)
+
+    import light_bowgun as lb
+    ivory, glow, beam = lb.build()
+    set_glow(glow, c.PALETTE["glow"], 2.5)
+    set_glow(beam, c.PALETTE["blade_core"], 3.0)
+    phials = [own_material([o], f"LB_Phial_{k}") for k, o in enumerate(objs_named("Barrel_Phial_", ("Halo",)))]
+    halos = [own_material([o], f"LB_Phial_Halo_{k}") for k, o in enumerate(objs_named("Barrel_Phial_Halo_"))]
+    rails = [own_material([o], f"LB_Rail_{k}") for k, o in enumerate(objs_named("Rail_Halo_"))]
+    target, distance = (0, 0.12, 0.01), 1.6
+    stage_lights(target, distance, res=(800, 540))
+    states = [("速射量表 0", 0, None), ("1", 1, None), ("2", 2, None), ("滿", 3, None),
+              ("速射中：光環一圈圈往前閃", 2, 1)]
+    paths = []
+    for i, (label, n, flash) in enumerate(states):
+        gauge(n, phials, halos)
+        for k, mat in enumerate(rails):
+            set_glow(mat, *(BRIGHT_LIGHT if flash is not None and k in (flash, flash + 2) else (c.PALETTE["glow"], 2.5)))
+        paths += c.render_views(OUT, f"light{i}", target, distance, [("side", 90, 4)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "light_bowgun_rapid.png"),
+                   "輕弩：三顆光點＝速射量表，速射時光環隧道一圈圈往前閃", cols=3)
+
+
+# ------------------------------------------------------------------ hunting horn
+
+def hunting_horn_notes():
+    """Each note lights one more string bright gold; with a full song the crown flares and,
+    when played, the sound rings blaze and spread wider."""
+    import arsenal
+    c.reset_scene()
+    mats = capture_build(arsenal.hunting_horn)
+    m.glow_mode(mats)
+    strings = [own_material([o], f"String_Mat_{k}") for k, o in enumerate(objs_named("String_"))]
+    rings = objs_named("Sound_Ring_")
+    ring_mat = own_material(rings, "Sound_Rings")
+    crown = own_material(objs_named("Crown_Halo"), "Crown_Mat")
+    base_scale = [tuple(o.scale) for o in rings]
+    target, distance = (0, -0.06, 0.82), 1.3
+    stage_lights(target, distance, res=(600, 760))
+    order = [2, 1, 3, 0, 4]                       # middle string first, then outward
+    states = [("一般", 0, False), ("音符 1", 1, False), ("音符 3", 3, False), ("音符滿", 5, False),
+              ("演奏", 5, True)]
+    paths = []
+    for i, (label, n, play) in enumerate(states):
+        for rank, k in enumerate(order):
+            set_glow(strings[k], *(BRIGHT_CORE if rank < n else (c.PALETTE["blade_core"], 3.0)))
+        set_glow(crown, *(BRIGHT_LIGHT if n == 5 else (c.PALETTE["glow"], 2.5)))
+        set_glow(ring_mat, *(BRIGHT_LIGHT if play else (c.PALETTE["glow"], 2.5)))
+        for o, sc in zip(rings, base_scale):
+            f = 1.25 if play else 1.0
+            o.scale = (sc[0] * f, sc[1] * f, sc[2] * f)
+        paths += c.render_views(OUT, f"state{i}", target, distance, [("three_quarter", 30, 8)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "hunting_horn_notes.png"),
+                   "狩獵笛：每個音符點亮一條光弦，演奏時聲波環變亮擴大")
+
+
+# ------------------------------------------------------------------ guard flash
+
+def shield_guard():
+    """Every energy shield (sword & shield, lance, gunlance, charge blade): blocking lights
+    the membrane and the sigil; a perfect guard flashes bright gold with rings of light
+    rippling out from the rim."""
+    import arsenal
+    c.reset_scene()
+    mats = m.materials()
+    root = arsenal.energy_shield(mats, (0, 0, 0.5), 1.0)
+    m.glow_mode(mats)
+    membrane = mats["shield_membrane"].node_tree.nodes["Membrane_Emission"]
+    base = membrane.inputs["Strength"].default_value
+    import sword_shield as ss
+    R = ss.R
+    ripple = []
+    for k, (f, minor) in enumerate(((1.12, 0.004), (1.28, 0.0028), (1.46, 0.0018))):
+        ripple += m.halo(f"Guard_Ripple_{k}", (0, -0.01, 0.5), R * f, minor, (0, 1, 0), mats["light"])
+    for o in ripple:
+        o.scale = (1.0, 1.0, 1.18)               # the shield is drawn taller
+    target, distance = (0, 0, 0.5), 1.25
+    stage_lights(target, distance, res=(600, 700))
+    states = [("一般", 1.0, None, False), ("防禦（擋下攻擊）", 3.0, (c.PALETTE["glow"], 4.0), False),
+              ("完美防禦（閃光＋光環擴散）", 5.0, BRIGHT_LIGHT, True)]
+    paths = []
+    for i, (label, f, light, rip) in enumerate(states):
+        membrane.inputs["Strength"].default_value = base * f
+        set_glow(mats["light"], *(light or (c.PALETTE["glow"], 2.5)))
+        show(ripple, rip)
+        paths += c.render_views(OUT, f"state{i}", target, distance, [("front", 0, 2)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "shield_guard.png"),
+                   "能量盾（片手劍、長槍、銃槍、充能斧共用）：擋下攻擊時光膜和樹紋亮起")
+
+
 SETS = {
     "great_sword_charge": great_sword_charge,
     "dual_blades_demon": dual_blades_demon,
@@ -737,6 +957,11 @@ SETS = {
     "long_sword_spirit": long_sword_spirit,
     "insect_glaive_extracts": insect_glaive_extracts,
     "switch_axe_states": switch_axe_states,
+    "charge_blade_states": charge_blade_states,
+    "bow_charge": bow_charge,
+    "bowgun_gauges": bowgun_gauges,
+    "hunting_horn_notes": hunting_horn_notes,
+    "shield_guard": shield_guard,
 }
 
 if __name__ == "__main__":

@@ -400,3 +400,328 @@ def rot_mote(prefix, center, radius, count=9, spread=0.075):
         objs += butterfly(f"{prefix}_Fly_{i}", pos, 0.019 * (1.0 - 0.35 * t), 25 * i - 40, 10 + 30 * (i % 3),
                           -55 + 25 * (i % 2), fly_mats[colours[i % len(colours)]], seed=i)
     return objs
+
+
+# ------------------------------------------------------------------ frenzied flame
+# From the user's references: curling, swirling flame (yellow-white heart, orange, deep red
+# and a little violet smoke at the edges), in the round shape of the Frenzied Flame seal's
+# fireball, darker at its very centre.
+
+def _empty(name, center):
+    e = c.link(bpy.data.objects.new(name, None))
+    e.location = Vector(center)
+    return e
+
+
+def fire_volume_material(name, centre_obj, radius):
+    """Swirling volumetric fire inside a sphere: noise twisted around the centre, bright in a
+    shell and dimmer in the very middle, fading out at the rim."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for nd in list(nodes):
+        nodes.remove(nd)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    vol = nodes.new("ShaderNodeVolumePrincipled")
+    vol.inputs["Density"].default_value = 0.0
+    coords = nodes.new("ShaderNodeTexCoord")
+    coords.object = centre_obj
+    scale = nodes.new("ShaderNodeVectorMath")
+    scale.operation = "SCALE"
+    scale.inputs["Scale"].default_value = 1.0 / radius
+    links.new(coords.outputs["Object"], scale.inputs[0])
+    r = nodes.new("ShaderNodeVectorMath")
+    r.operation = "LENGTH"
+    links.new(scale.outputs["Vector"], r.inputs[0])
+    swirl_angle = nodes.new("ShaderNodeMath")
+    swirl_angle.operation = "MULTIPLY"
+    swirl_angle.inputs[1].default_value = 4.0
+    links.new(r.outputs["Value"], swirl_angle.inputs[0])
+    twist = nodes.new("ShaderNodeVectorRotate")
+    twist.rotation_type = "AXIS_ANGLE"
+    twist.inputs["Axis"].default_value = (0.3, 0.2, 1.0)
+    links.new(scale.outputs["Vector"], twist.inputs["Vector"])
+    links.new(swirl_angle.outputs["Value"], twist.inputs["Angle"])
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 2.6
+    noise.inputs["Detail"].default_value = 9.0
+    noise.inputs["Roughness"].default_value = 0.62
+    noise.inputs["Distortion"].default_value = 1.6
+    links.new(twist.outputs["Vector"], noise.inputs["Vector"])
+    # Radial profile: dim heart, bright shell, gone at the rim.
+    shell = nodes.new("ShaderNodeFloatCurve")
+    cm = shell.mapping
+    pts = cm.curves[0].points
+    pts[0].location = (0.0, 0.35)
+    pts[1].location = (1.0, 0.0)
+    pts.new(0.45, 1.0)
+    pts.new(0.75, 0.55)
+    cm.update()
+    links.new(r.outputs["Value"], shell.inputs["Value"])
+    heat = nodes.new("ShaderNodeMath")
+    heat.operation = "MULTIPLY"
+    links.new(noise.outputs["Fac"], heat.inputs[0])
+    links.new(shell.outputs["Value"], heat.inputs[1])
+    sharpen = nodes.new("ShaderNodeMapRange")
+    sharpen.inputs["From Min"].default_value = 0.18
+    sharpen.inputs["From Max"].default_value = 0.6
+    links.new(heat.outputs["Value"], sharpen.inputs["Value"])
+    colour = nodes.new("ShaderNodeValToRGB")
+    els = colour.color_ramp.elements
+    els[0].position, els[0].color = 0.0, c.hex_to_linear("#2A0A1E")
+    els[1].position, els[1].color = 1.0, c.hex_to_linear("#FFF4C0")
+    e = els.new(0.3)
+    e.color = c.hex_to_linear("#B0180C")
+    e = els.new(0.6)
+    e.color = c.hex_to_linear("#FF7A0A")
+    e = els.new(0.82)
+    e.color = c.hex_to_linear("#FFC21E")
+    links.new(sharpen.outputs["Result"], colour.inputs["Fac"])
+    links.new(colour.outputs["Color"], vol.inputs["Emission Color"])
+    strength = nodes.new("ShaderNodeMath")
+    strength.operation = "MULTIPLY"
+    strength.inputs[1].default_value = 2200.0
+    links.new(sharpen.outputs["Result"], strength.inputs[0])
+    links.new(strength.outputs["Value"], vol.inputs["Emission Strength"])
+    smoke = nodes.new("ShaderNodeMath")                     # a little smoke in the wisps
+    smoke.operation = "MULTIPLY"
+    smoke.inputs[1].default_value = 90.0
+    links.new(heat.outputs["Value"], smoke.inputs[0])
+    links.new(smoke.outputs["Value"], vol.inputs["Density"])
+    vol.inputs["Color"].default_value = c.hex_to_linear("#3A1030")
+    links.new(vol.outputs["Volume"], out.inputs["Volume"])
+    return mat
+
+
+def tongue_material(name, centre_obj, reach):
+    """Flame tongues: white-yellow near the ball, orange, then deep red and see-through at
+    the tips (coloured by distance from the ball's centre)."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for nd in list(nodes):
+        nodes.remove(nd)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    mix = nodes.new("ShaderNodeMixShader")
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    emission = nodes.new("ShaderNodeEmission")
+    coords = nodes.new("ShaderNodeTexCoord")
+    coords.object = centre_obj
+    d = nodes.new("ShaderNodeVectorMath")
+    d.operation = "LENGTH"
+    links.new(coords.outputs["Object"], d.inputs[0])
+    t = nodes.new("ShaderNodeMath")
+    t.operation = "DIVIDE"
+    t.inputs[1].default_value = reach
+    links.new(d.outputs["Value"], t.inputs[0])
+    colour = nodes.new("ShaderNodeValToRGB")
+    els = colour.color_ramp.elements
+    els[0].position, els[0].color = 0.3, c.hex_to_linear("#FFF0B0")
+    els[1].position, els[1].color = 1.0, c.hex_to_linear("#7A0A14")
+    e = els.new(0.55)
+    e.color = c.hex_to_linear("#FFB21A")
+    e = els.new(0.78)
+    e.color = c.hex_to_linear("#F04A0C")
+    links.new(t.outputs["Value"], colour.inputs["Fac"])
+    links.new(colour.outputs["Color"], emission.inputs["Color"])
+    fade = nodes.new("ShaderNodeMapRange")
+    fade.inputs["From Min"].default_value = 0.5
+    fade.inputs["From Max"].default_value = 1.05
+    fade.inputs["To Min"].default_value = 0.55
+    fade.inputs["To Max"].default_value = 0.0
+    links.new(t.outputs["Value"], fade.inputs["Value"])
+    links.new(fade.outputs["Result"], mix.inputs["Fac"])
+    emission.inputs["Strength"].default_value = 2.2
+    links.new(transparent.outputs["BSDF"], mix.inputs[1])
+    links.new(emission.outputs["Emission"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return mat
+
+
+def frenzy_ball(prefix, center, radius, seed=3):
+    """A ball of curling flame: swirling volumetric fire, with tongues that leave its surface
+    and roll back into small scrolls (the Frenzied Flame seal's fireball)."""
+    import random
+    rng = random.Random(seed)
+    center = Vector(center)
+    hub = _empty(f"{prefix}_Centre", center)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius * 1.25, segments=32, ring_count=16, location=center)
+    ball = bpy.context.active_object
+    ball.name = f"{prefix}_Fire"
+    ball.data.materials.append(fire_volume_material(f"{prefix}_Fire_Mat", hub, radius))
+    objs = [hub, ball]
+    tongue_mat = tongue_material(f"{prefix}_Tongue_Mat", hub, radius * 2.6)
+    for k in range(16):
+        # A random direction out of the ball, and a plane to curl in.
+        z = rng.uniform(-0.5, 1.0)
+        a = rng.uniform(0, 2 * math.pi)
+        out = Vector((math.sqrt(1 - z * z) * math.cos(a), math.sqrt(1 - z * z) * math.sin(a), z))
+        out = (out + Vector((0, 0, 0.6))).normalized()            # flames lean upward
+        side = out.orthogonal().normalized()
+        side = side * math.cos(rng.uniform(0, math.pi)) + out.cross(side) * math.sin(rng.uniform(0, math.pi))
+        length = radius * rng.uniform(1.0, 2.0)
+        pts2, _ = m.volute(length, rng.choice((-1, 1)) * rng.uniform(0.9, 1.6), curl_start=0.35, n=60)
+        start = center + out * radius * 0.7
+        path = [start + out * x + side * y for x, y in pts2]
+        objs += m.path_blade(f"{prefix}_Tongue_{k}", path, out.cross(side),
+                             lambda t, w=radius * rng.uniform(0.18, 0.32): w * (1 - t) ** 1.3 + 0.0002,
+                             lambda t, w=radius * 0.08: w * (1 - t) + 0.0003, tongue_mat, samples=50, subsurf=0)
+    return objs
+
+
+# ------------------------------------------------------------------ frost
+# From the user's reference (Elden Ring's Glintstone Icecrag): a chunk of frosted ice with
+# cold breath seeping out of it in long wisps, and a few glints of frost in the air.
+
+def ice_material(name):
+    """Frosted ice: cloudy blue-white, clearer in places, frost patches rougher and whiter."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Transmission Weight"].default_value = 0.55
+    bsdf.inputs["Subsurface Weight"].default_value = 0.5
+    bsdf.inputs["Subsurface Radius"].default_value = (0.4, 0.7, 1.0)
+    bsdf.inputs["Coat Weight"].default_value = 0.4
+    bsdf.inputs["IOR"].default_value = 1.31
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 60.0
+    noise.inputs["Detail"].default_value = 10.0
+    frost = nodes.new("ShaderNodeValToRGB")
+    frost.color_ramp.elements[0].position = 0.4
+    frost.color_ramp.elements[0].color = c.hex_to_linear("#9FCBF0")
+    frost.color_ramp.elements[1].position = 0.65
+    frost.color_ramp.elements[1].color = c.hex_to_linear("#F4FAFF")
+    links.new(noise.outputs["Fac"], frost.inputs["Fac"])
+    links.new(frost.outputs["Color"], bsdf.inputs["Base Color"])
+    rough = nodes.new("ShaderNodeMapRange")
+    rough.inputs["To Min"].default_value = 0.08
+    rough.inputs["To Max"].default_value = 0.65
+    links.new(noise.outputs["Fac"], rough.inputs["Value"])
+    links.new(rough.outputs["Result"], bsdf.inputs["Roughness"])
+    bump = nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.4
+    links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    return mat
+
+
+def mist_material(name, centre_obj, radius):
+    """Cold breath: thin, pale blue-white haze in streaks, densest near the ice."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for nd in list(nodes):
+        nodes.remove(nd)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    vol = nodes.new("ShaderNodeVolumePrincipled")
+    vol.inputs["Color"].default_value = c.hex_to_linear("#E6F2FF")
+    vol.inputs["Emission Color"].default_value = c.hex_to_linear("#BFE0FF")
+    coords = nodes.new("ShaderNodeTexCoord")
+    coords.object = centre_obj
+    scale = nodes.new("ShaderNodeVectorMath")
+    scale.operation = "SCALE"
+    scale.inputs["Scale"].default_value = 1.0 / radius
+    links.new(coords.outputs["Object"], scale.inputs[0])
+    stretch = nodes.new("ShaderNodeVectorMath")             # streaks, drawn out sideways and up
+    stretch.operation = "MULTIPLY"
+    stretch.inputs[1].default_value = (0.35, 2.4, 0.45)
+    links.new(scale.outputs["Vector"], stretch.inputs[0])
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 1.4
+    noise.inputs["Detail"].default_value = 8.0
+    noise.inputs["Distortion"].default_value = 2.0
+    links.new(stretch.outputs["Vector"], noise.inputs["Vector"])
+    r = nodes.new("ShaderNodeVectorMath")
+    r.operation = "LENGTH"
+    links.new(scale.outputs["Vector"], r.inputs[0])
+    falloff = nodes.new("ShaderNodeMapRange")
+    falloff.inputs["From Min"].default_value = 0.9
+    falloff.inputs["From Max"].default_value = 2.8
+    falloff.inputs["To Min"].default_value = 1.0
+    falloff.inputs["To Max"].default_value = 0.0
+    links.new(r.outputs["Value"], falloff.inputs["Value"])
+    wisp = nodes.new("ShaderNodeMapRange")
+    wisp.inputs["From Min"].default_value = 0.6
+    wisp.inputs["From Max"].default_value = 0.82
+    links.new(noise.outputs["Fac"], wisp.inputs["Value"])
+    dens = nodes.new("ShaderNodeMath")
+    dens.operation = "MULTIPLY"
+    links.new(wisp.outputs["Result"], dens.inputs[0])
+    links.new(falloff.outputs["Result"], dens.inputs[1])
+    amount = nodes.new("ShaderNodeMath")
+    amount.operation = "MULTIPLY"
+    amount.inputs[1].default_value = 45.0
+    links.new(dens.outputs["Value"], amount.inputs[0])
+    links.new(amount.outputs["Value"], vol.inputs["Density"])
+    glow = nodes.new("ShaderNodeMath")
+    glow.operation = "MULTIPLY"
+    glow.inputs[1].default_value = 3.0
+    links.new(dens.outputs["Value"], glow.inputs[0])
+    links.new(glow.outputs["Value"], vol.inputs["Emission Strength"])
+    links.new(vol.outputs["Volume"], out.inputs["Volume"])
+    return mat
+
+
+def frost_ball(prefix, center, radius, seed=5, drift=(1.0, 0.0, -0.3)):
+    """A chunk of frosted ice with cold breath seeping out of it and glints of frost."""
+    import random
+    rng = random.Random(seed)
+    center = Vector(center)
+    hub = _empty(f"{prefix}_Centre", center)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=radius, subdivisions=4, location=center)
+    core = bpy.context.active_object
+    core.name = f"{prefix}_Ice"
+    core.scale = (1.0, 0.85, 1.2)
+    tex = bpy.data.textures.new(f"{prefix}_Crag", "VORONOI")
+    tex.noise_scale = 0.012
+    disp = core.modifiers.new("crag", "DISPLACE")
+    disp.texture = tex
+    disp.texture_coords = "OBJECT"
+    disp.strength = radius * 0.5
+    core.data.materials.append(ice_material(f"{prefix}_Ice_Mat"))
+    bpy.ops.object.shade_flat()
+    objs = [hub, core]
+    # A few chunky crystals breaking out of the chunk.
+    clear = ice_material(f"{prefix}_Crystal_Mat")
+    clear.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.85
+    for k in range(5):
+        z = rng.uniform(-0.4, 1.0)
+        a = rng.uniform(0, 2 * math.pi)
+        d = Vector((math.sqrt(1 - z * z) * math.cos(a), math.sqrt(1 - z * z) * math.sin(a), z))
+        root = center + d * radius * 0.7
+        length = radius * rng.uniform(0.5, 0.9)
+        w = radius * rng.uniform(0.3, 0.45)
+        objs += m.path_blade(f"{prefix}_Crystal_{k}", [root, root + d * length], d.orthogonal(),
+                             lambda t, w=w: w * (1 - t ** 4) + 0.0003, lambda t, w=w: w * 0.86 * (1 - t ** 4) + 0.0003,
+                             clear, n_sec=6, samples=10, subsurf=0)
+    # Cold breath leaking off the ice and trailing away (particle_fx.cold_plume).
+    import particle_fx
+    objs += particle_fx.cold_plume(f"{prefix}_Breath", center, radius, drift=drift)
+    return objs
+
+
+def orbit_trail(name, center, radius, z, theta_deg, sweep_deg, colour, width):
+    """A fading arc behind a ball on its orbit around the blade, to show it is circling."""
+    mat = bpy.data.materials.new(name + "_Mat")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for nd in list(nodes):
+        nodes.remove(nd)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    mix = nodes.new("ShaderNodeMixShader")
+    mix.inputs["Fac"].default_value = 0.35
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    emission = nodes.new("ShaderNodeEmission")
+    emission.inputs["Color"].default_value = c.hex_to_linear(colour)
+    emission.inputs["Strength"].default_value = 2.0
+    links.new(transparent.outputs["BSDF"], mix.inputs[1])
+    links.new(emission.outputs["Emission"], mix.inputs[2])
+    links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    pts, radii = [], []
+    for i in range(40):
+        t = i / 39
+        a = math.radians(theta_deg - sweep_deg * t)
+        pts.append(Vector(center) + Vector((radius * math.cos(a), radius * math.sin(a), z)))
+        radii.append((1 - t) ** 1.5)
+    return [c.curve_tube(name, pts, radii, mat, bevel=width, resolution=2)]

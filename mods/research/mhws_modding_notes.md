@@ -348,4 +348,10 @@ Weapon Emissive 預設（`Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`
 - 大劍蓄力段數、雙劍鬼人化／藍鬼人（鬼人量表）、大錘蓄力段數、長槍蓄力、銃槍填彈動作 → 都要找到對應的類別和欄位（例如獵人的武器處理器 `app.cHunterWp??Handling` 之類，名稱待確認）
 - 做法：偵察腳本加一個「監看」模式，做動作時把武器處理器裡變動的欄位記下來
 
-**5. 預覽圖**：`mods/miquella/prototypes/action_states/`（`prototypes/scripts/states.py` 產生）。預覽裡的淡入用半透明材質代替 `Dissolve`，銃槍彈簧逐格重建代替骨頭。
+**5. 粒子特效（火、寒氣、腐敗蝶）**
+- 《荒野》的特效檔是 `.efx`（例如 `natives/STM/Art/VFX/EffectEditor/...`），用 `ree-pak` 加檔名清單解出來
+- **目前沒有公開的 EFX 編輯器**（只有開發團隊有）；社群做得到的是**改顏色**（十六進位修改或專用腳本，例如會心特效改色的 CritColorTool）
+- 所以操蟲棍的癲火、寒氣這類效果：**找遊戲裡現成、形狀接近的特效（火屬性、冰屬性、怪物的火焰／寒氣），改成需要的顏色，再掛在繞刃的球上**；從零做一個新特效目前做不到
+- 掛特效的方法（腳本生成、綁到骨頭）還要研究；預覽圖裡的火和寒氣是用「沿著漩渦氣流描出很多細光絲／體積霧」模擬特效的樣子，不是遊戲做法
+
+**6. 預覽圖**：`mods/miquella/prototypes/action_states/`（`prototypes/scripts/states.py` 產生）。預覽裡的淡入用半透明材質代替 `Dissolve`，銃槍彈簧逐格重建代替骨頭。

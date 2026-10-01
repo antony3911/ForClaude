@@ -79,6 +79,16 @@ local function value_text(v)
     return tostring(v)
 end
 
+-- An extern parameter object through its accessors: name, colour, number, flag.
+local function param_text(p)
+    local name = try(function() return p:call("get_Name") end)
+    if not name then return nil end
+    return string.format("%s color=%s value=%s bool=%s", tostring(name),
+        value_text(try(function() return p:call("get_Color") end)),
+        value_text(try(function() return p:call("get_Value") end)),
+        tostring(try(function() return p:call("get_BoolValue") end)))
+end
+
 -- Every instance field of an object as "name=value ...", the type's methods noted once.
 local function fields_text(obj)
     local parts = {}
@@ -158,6 +168,15 @@ local function effect_path(ep)
     return nil
 end
 
+-- The effect file, or (before its resource is set) the object's name, which is the file name.
+local function effect_label(ep)
+    local p = effect_path(ep)
+    if p then return p end
+    local go = try(function() return ep:call("get_GameObject") end)
+    local name = go and try(function() return go:call("get_Name") end)
+    return name and ("object " .. name) or nil
+end
+
 -- ------------------------------------------------------------------ hooks on parameter setters
 
 local function arg_text(ptype, raw)
@@ -174,7 +193,7 @@ local function arg_text(ptype, raw)
         return color_hex(v)
     elseif ptype:match("ExternParameter$") then
         local obj = sdk.to_managed_object(raw)
-        return obj and ("{" .. fields_text(obj) .. "}") or string.format("0x%X", sdk.to_int64(raw))
+        return obj and ("{" .. (param_text(obj) or fields_text(obj)) .. "}") or string.format("0x%X", sdk.to_int64(raw))
     end
     return string.format("0x%X", sdk.to_int64(raw))
 end
@@ -183,8 +202,8 @@ local function record_call(m, args)
     local key = sdk.to_int64(args[2])
     local path = pathCache[key]
     if path == nil then
-        path = effect_path(sdk.to_managed_object(args[2])) or "?"
-        pathCache[key] = path
+        path = effect_label(sdk.to_managed_object(args[2])) or "?"
+        if not path:match("^object ") then pathCache[key] = path end
     end
     local parts = {}
     for i, p in ipairs(m.params) do
@@ -228,7 +247,7 @@ local function read_values(ep, path)
         for _, name in ipairs(PARAM_NAMES) do
             local v = try(function() return ep:call(g.sig, name) end)
             if v ~= nil then
-                local text = (type(v) == "userdata" or type(v) == "table") and fields_text(v) or value_text(v)
+                local text = (type(v) == "userdata" or type(v) == "table") and (param_text(v) or fields_text(v)) or value_text(v)
                 if text == "" then text = value_text(v) end
                 local key = path .. " @" .. string.format("%X", try(function() return ep:get_address() end) or 0)
                     .. " " .. g.name .. " " .. name

@@ -126,6 +126,8 @@
 |---|---|
 | `release/MiquellaLight_v0.1.zip` | **可安裝的測試版**：雙劍光劍 patch pak（已讀回驗證）＋換裝腳本，Fluffy 拖進去就能裝，不覆蓋原版 |
 | `MiquellaLight_Weapons` | 換裝腳本：選哪把武器換成光劍，收刀隱藏；模擬測試通過 |
+| `MiquellaLight_Effects` | 執行時改特效顏色（雙劍紅 → 金、藍 → 銀）、藏攻擊／防禦上升閃光 |
+| `MiquellaLight_FxProbe` | 特效偵測腳本（只讀）：錄下播了哪些特效檔、遊戲設了哪些參數和染色，存 `fx.json` |
 | `MiquellaLight_Scout` | 偵察腳本（只讀）：列武器／防具／子物件的模型、材質、**材質參數名稱**、骨頭；**「Watch weapon state」記錄做動作時武器處理器裡變動的欄位**；存成 `scout.json`、`watch.json` |
 | `MiquellaLight_HideSheathed` | 舊的收刀隱藏腳本，已被換裝腳本取代，留作備案 |
 | `MiquellaLight_DualBlades_kit` | 雙劍遊戲素材（`.mesh`、`.mdf2`、`.tex`、貼圖原檔） |
@@ -209,7 +211,7 @@
 1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
 3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
-4. **（正在等）使用者用偵測腳本第二版再錄一次**。第一次錄的結果：`_IsKijinEnhancement`＝真鬼人旗標；`11_it02_002`（身體光＋前臂火焰）整個真鬼人期間都在播；每次攻擊另外播通用的 `11_pl_swordtrail_000.efx`（**鬼人化中的紅軌跡很可能是它**，可能是遊戲用 `EffectPlayer.set_Color` 染色）；`11_pl_skill_000/004/020` 一直在場（技能特效，身體金紅閃爍的嫌疑）。外部參數是物件（`via.effect.script.EffectCustomExternParameter`），第一版只讀到型別名 → 第二版讀出欄位值、記錄 `set_Color` 和特效的染色。讀到 `fx.json` 後決定：改 `11_pl_swordtrail_000`／技能特效檔，或在換裝腳本裡每幀把紅色參數／染色換成金色。換裝腳本已修好 Reset scripts 後失去追蹤的 bug（三刃、Glow 停掉）。Size 1.4、B 版三刃使用者還沒回報。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
+4. **（正在等）使用者測 `MiquellaLight_Effects`**（新腳本，已放進遊戲，見 `mhws/MiquellaLight_Effects/README.md`）：執行時把雙劍特效的紅色參數換金（產生時掛鉤 `addExternParameter`＋每幀檢查），並藏起攻擊／防禦上升閃光。第二次錄影確認：身體金紅閃爍＝**攻擊上升、防禦上升**的閃光（使用者說的），是 `pl_state/11_pl_heal` 兩份，遊戲用 `EffectPlayer` 的染色（`get_Color`）染成 `#FF3333`／`#FF8040`、每 2 秒重播；使用者要拿掉。`11_pl_swordtrail_000` 只是草地互動，不是紅軌跡。外部參數物件的值要用方法讀（`get_Name`／`get_Color`／`get_Value`／`get_BoolValue`／`set_Color`），偵測腳本第三版已改。沒效的話：再用偵測腳本錄一次看 `params` 裡 `addExternParameter` 的參數名稱和顏色。Size 1.4、B 版三刃使用者還沒回報。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

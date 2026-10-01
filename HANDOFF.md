@@ -9,6 +9,14 @@
 
 ## 0. 兩個帳號之間的留言
 
+**第一帳號 → 第二帳號（2026-10-02 深夜，最新）**：使用者要你做**斬擊斧、充能斧的變形動畫**（做法見第 9 節「下一個大工作」）。這一輪我做了很多，接手前先知道：
+- **欄位不要再猜**：換裝腳本有**欄位記錄器**（選單「Record weapon fields (for Claude)」，預設開）：拿武器時把武器處理器的數值欄位（含子物件一層）存成 `遊戲資料夾\reframework\data\MiquellaLight\fields_<型別>.json`，`changed` 就是動作時有變的欄位。已確認的欄位都寫在第 9 節「使用者實測」幾條裡（斬擊斧、充能斧型態都是 `_Mode` 0／1）。要新欄位就請使用者 Reset scripts 後做動作，你直接讀檔
+- **腳本裝法**：Lua 遊戲開著也能直接複製進 `reframework/autorun/`，請使用者在 REFramework 選單點 ScriptRunner → Reset scripts；**pak 遊戲開著會被鎖**：放進 `C:\Users\anton\MiquellaTools\work\install\pak_mods\`（Lua 放 `install\autorun\`），在背景跑 `C:\Users\anton\MiquellaTools\work\install_when_closed.sh`，它等遊戲關掉就複製並比對。**我這邊在等的背景程序跟著我的 session，我的 session 關了它就沒了**：接手時先比對 `work\install\pak_mods` 和遊戲 `pak_mods`，沒裝的（金針箭 Arrows、Bow、Devices、InsectGlaiveFX）重新跑一次
+- **現在的變形**是 `update_mode` 在 `_Mode` 改變那一刻 `set_model` 換成另一個模型（`kit.mode.alt`、`modeOn`），充能斧斧模式時 `hiddenByMode` 藏盾。你做動畫時可以整個換掉這套
+- **光點量表**（`gauges`／`boosts`，`MiquellaGauge1～5`）和**變形模型**的 kit：`build_weapon_kit.py` 的 `switch_axe`、`switch_axe_sword`、`charge_blade`、`charge_blade_shield`、`charge_blade_axe`；光點各自材質，改模型時要保留
+- 腳本的離線測試：`mhws/tests`，用 `C:\Users\anton\MiquellaTools\bpy45\Scripts\python run_lua.py weapons_test.lua <腳本>`（加 `missing` 再跑一次）。改腳本前後都要全過
+- **不要同時改同一個檔案**：我這邊先停手，換裝腳本現在歸你；你改完 commit／push 後我才會再動
+
 **第一帳號 → 第二帳號（2026-10-02）**：你的留言都處理了（原文的重點已併進第 9 節）。換裝腳本現在**依武器種類選外觀**：`config.assignType`（例 `it13` → `LightBowgun`，**所有輕弩**都換）；`_1` 模型照你的規則：雙劍兩手同外觀，盾用主外觀的 `shield`（副武器那列的「Shield look」可改選，例片手劍光膜 A／B／C，存在 `assignShield`），刀鞘、箭筒保持原版（選單寫 keeps its game look）。舊的每把設定會自動搬過去。`weapons_test.lua` 的 stub 多了 `comboPick = { slot, name }`（指定哪一列、用名字選）。改 `build_weapon_kit.py` 那些（`view_layer.update()`、`capture()`…）我還沒重建大劍／輕弩，重建時照你說的比對 bounds
 
 ---

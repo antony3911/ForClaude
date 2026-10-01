@@ -32,6 +32,23 @@
 6. **可以不覆蓋任何原版檔案**：MDF-XL 用腳本在遊戲中生成新物件、掛到獵人骨架上（`set_SameJointsConstraint`），武器也能在執行中換模型。米凱拉的身體、長袍、頭髮、光劍都可以走這條路 → 不用犧牲任何一件內衣、髮型或武器外觀，也能用選單開關。見研究筆記第 15 節。
 7. **弩可能比較麻煩**：MDF-XL 的換裝資料庫裡沒有重弩和輕弩，弩可能是組裝式的模型。
 
+## 要下載的東西（照順序；網址和安裝細節在 `notes/two-account-handoff-plan.md`）
+
+| 順序 | 東西 | 用途 | 一定要？ |
+|---|---|---|---|
+| 1 | **REFramework**（GitHub praydog/REFramework，選 MHWILDS 版） | 所有腳本 mod 的基礎；偵察腳本、換裝腳本都靠它。Wilds 要在設定打開 loose file loader | 必要 |
+| 2 | **Fluffy Mod Manager**（Nexus） | 安裝我做好的光劍測試版（`mhws/release/MiquellaLight_v0.1.zip`） | 必要 |
+| 3 | **Armor VFX Manager**（Nexus 4908） | 在遊戲裡翻特效、掛到骨頭、改顏色 → 幫我挑癲火、寒氣、腐敗蝶、爆炸、光柱用的特效；它的 Lua 腳本給我研究 | 特效要用 |
+| 4 | VFX Unleashed（Nexus 4842） | 減弱原版蓄力時的強光；看它怎麼依蓄力段數換特效 | 選用 |
+| 5 | MDF-XL＋_ScriptCore（GitHub SilverEzredes） | 遊戲裡即時調發光顏色、強度 | 選用（調光很方便） |
+| 6 | Blender 4.3.2～5.0、RE Mesh Editor、RE Asset Library（GitHub NSACloud） | 解出遊戲的武器模型和骨架給我、把我的模型轉成遊戲格式 | 做正式模型時才要 |
+
+**做完要給我的檔案**（丟到 repo 或直接傳給我都可以）
+- `reframework/data/MiquellaLight/scout.json`（偵察腳本「Save report」）
+- `reframework/data/MiquellaLight/watch.json`（各武器做蓄力、鬼人化、填彈時錄的「Save watch」）
+- Armor VFX Manager 的 Lua 腳本檔，和你挑中的特效名稱
+- （之後）用 RE Asset Library 解出的武器模型，例如銃槍、斬擊斧，讓我對齊骨頭
+
 ## 回家要做的事（照順序）
 
 1. 裝 REFramework、Fluffy Mod Manager（只想先看光劍的話，這兩個就夠了）；之後要改模型再裝 Blender 4.3.2–5.0、RE Mesh Editor、RE Asset Library（清單在 `notes/two-account-handoff-plan.md`）

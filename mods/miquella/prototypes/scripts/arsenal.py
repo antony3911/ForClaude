@@ -1058,6 +1058,71 @@ def lance_charge_parts(mats):
                               lambda t: 0.02 * (1 - t), mats["blade"])
     return rings, flare
 
+
+# ------------------------------------------------------------------ insect glaive extracts (game version)
+
+# Elden Ring's scarlet rot, frost and frenzied flame for red, white and orange (DESIGN). The
+# prototype ones (status_fx.py) use hair, volumes and glass that a game model cannot carry:
+# these are plain meshes with a colour band each (the fire and cold breath come later as effects).
+EXTRACT_COLOURS = {"Red": ("#D88AA0", 0.0), "White": ("#CFE6FA", 0.3), "Orange": ("#FF8A1A", 3.0)}
+
+
+def extract_materials():
+    return {k: c.make_material(f"Extract_{k}", col, roughness=0.6 if k == "Red" else 0.3,
+                               emission=col, strength=st)
+            for k, (col, st) in EXTRACT_COLOURS.items()}
+
+
+def extract_orb(kind, center, radius, mat, seed=7):
+    """Red: a cluster of lumpy mould balls (like the rot-cure moss balls); White: a craggy chunk
+    of ice with crystals breaking out; Orange: a lumpy glowing ember (its flames are an effect).
+    Object names Orb_<kind>_<n>."""
+    rng = random.Random(seed)
+    center = Vector(center)
+    objs = []
+
+    def lump(name, at, r, noise, strength, subdiv=3, flat=False):
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=subdiv, location=at)
+        o = bpy.context.active_object
+        o.name = name
+        tex = bpy.data.textures.new(f"{name}_Noise", noise)
+        tex.noise_scale = r * (0.5 if noise == "CLOUDS" else 0.9)
+        d = o.modifiers.new("lumps", "DISPLACE")
+        d.texture, d.texture_coords, d.strength = tex, "OBJECT", r * strength
+        o.data.materials.append(mat)
+        (bpy.ops.object.shade_flat if flat else bpy.ops.object.shade_smooth)()
+        return o
+
+    if kind == "Red":
+        for k, (off, sc) in enumerate([((0, 0, 0), 0.68), ((0.78, -0.1, 0.12), 0.58), ((-0.72, -0.05, 0.22), 0.56),
+                                       ((0.08, -0.3, 0.72), 0.52), ((0.05, 0.35, -0.45), 0.5)]):
+            objs.append(lump(f"Orb_Red_{k}", center + Vector(off) * radius, radius * sc, "CLOUDS", 0.35))
+    elif kind == "White":
+        core = lump("Orb_White_0", center, radius * 0.75, "VORONOI", 0.45, subdiv=2, flat=True)
+        core.scale = (1.0, 0.85, 1.2)
+        objs.append(core)
+        for k in range(6):
+            z = rng.uniform(-0.6, 1.0)
+            a = rng.uniform(0, 2 * math.pi)
+            d = Vector((math.sqrt(1 - z * z) * math.cos(a), math.sqrt(1 - z * z) * math.sin(a), z))
+            root = center + d * radius * 0.4
+            length, w = radius * rng.uniform(0.9, 1.35), radius * rng.uniform(0.28, 0.4)
+            objs += m.path_blade(f"Orb_White_{k + 1}", [root, root + d * length], d.orthogonal(),
+                                 lambda t, w=w: w * (1 - t ** 4) + 0.0003, lambda t, w=w: w * 0.86 * (1 - t ** 4) + 0.0003,
+                                 mat, n_sec=6, samples=10, subsurf=0)
+    else:
+        objs.append(lump("Orb_Orange_0", center, radius * 0.95, "CLOUDS", 0.3))
+    return objs
+
+
+def extracts_preview():
+    mats = extract_materials()
+    lm = m.materials()
+    for i, kind in enumerate(("Red", "White", "Orange")):
+        extract_orb(kind, (0.12 * (i - 1), 0, 0), 0.03, mats[kind])
+    m.render_sheets(OUT, "extract_orbs", lm, (0, 0, 0), 0.6, [("front", 0, 8), ("three_quarter", 40, 20)],
+                    res=(900, 500))
+
 WEAPONS = {
     "great_sword": great_sword,
     "hammer": hammer,
@@ -1074,6 +1139,7 @@ WEAPONS = {
     "quiver_a": lambda: quiver("a"),
     "quiver_b": lambda: quiver("b"),
     "arrow": arrow,
+    "extract_orbs": extracts_preview,
 }
 
 if __name__ == "__main__":

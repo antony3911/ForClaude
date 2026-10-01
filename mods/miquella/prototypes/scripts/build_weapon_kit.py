@@ -352,9 +352,54 @@ def insect_glaive():
     finally:
         arsenal.kinsect = real
     to_file = upright(1.6, (0, 0, (0.52 + 0.95) / 2))
+    # The three extract orbs (hidden until their extract is lit; the weapons script moves their
+    # bones around the top blade), one material each on a three-band texture.
+    floaters = {"Top_Halo": "MQ_TopHalo", "Bottom_Halo": "MQ_BottomHalo"}
+    by_name, pivots = {}, {}
+    mats = arsenal.extract_materials()
+    for i, kind in enumerate(("Red", "White", "Orange")):
+        a = math.radians(90 + 120 * i)
+        center = Vector((IG_ORBIT[1] * math.cos(a), IG_ORBIT[1] * math.sin(a), IG_ORBIT[0]))
+        pivots[f"MQ_Orb{kind}"] = center
+        for o in arsenal.extract_orb(kind, center, IG_ORB_RADIUS, mats[kind]):
+            floaters[o.name] = f"MQ_Orb{kind}"
+            by_name[o.name] = f"MiquellaExtract{kind}"
+            objs.append(o)
     return placed("wp_miquella_ig", "Art/Model/MiquellaLight/InsectGlaive", objs, to_file,
                   {"VFX_Attack": to_file @ Vector((0, 0, 1.45 + 0.42))},
-                  floaters={"Top_Halo": "MQ_TopHalo", "Bottom_Halo": "MQ_BottomHalo"})
+                  floaters=floaters, by_name=by_name, pivots=pivots, uv_band=EXTRACT_BANDS,
+                  textures=extract_textures)
+
+
+# Orbit of the extract orbs in the prototype's space (centre height, radius): around the middle
+# of the top blade; ~0.035 m orbs (user: small balls).
+IG_ORBIT = (1.62, 0.088)
+IG_ORB_RADIUS = 0.022
+EXTRACT_TEX_REL = "Art/Model/MiquellaLight/InsectGlaive/tex"
+EXTRACT_BANDS = {"MiquellaExtractRed": 0, "MiquellaExtractWhite": 1, "MiquellaExtractOrange": 2}
+# albedo, roughness, emissive colour (RGB 0-255): rot pink mould, frosted ice, glowing ember.
+EXTRACT_TEXTURE = [("#D88AA0", 0.85, (40, 10, 18)), ("#CFE6FA", 0.25, (24, 34, 46)), ("#FF8A1A", 0.5, (255, 140, 30))]
+
+
+def extract_textures(kit):
+    """The orbs' 64 x 64 three-band textures (ALBD, NRRO, EMI), unless already made."""
+    from build_device_kit import convert_textures, save_rgba
+    import numpy as np
+    tex_dir = os.path.join(kit, "natives", "STM", *EXTRACT_TEX_REL.split("/"))
+    if os.path.exists(os.path.join(tex_dir, f"MiquellaExtract_ALBD.tex.241106027")):
+        return
+    src = os.path.join(kit, "texture_sources")
+    os.makedirs(src, exist_ok=True)
+    n = 64
+    albd, nrro, emi = (np.zeros((n, n, 4), np.uint8) for _ in range(3))
+    for i, (color, rough, glow) in enumerate(EXTRACT_TEXTURE):
+        cols = slice(i * n // 3, (i + 1) * n // 3 if i < 2 else n)
+        albd[:, cols] = [int(color[k:k + 2], 16) for k in (1, 3, 5)] + [255]
+        nrro[:, cols] = [int(rough * 255), 128, 255, 128]
+        emi[:, cols] = list(glow) + [255]
+    for name, arr in (("ALBD", albd), ("NRRO", nrro), ("EMI", emi)):
+        save_rgba(os.path.join(src, f"MiquellaExtract_{name}.png"), arr)
+    convert_textures(src, os.path.join(kit, "dds"), tex_dir)
 
 
 def kinsect():
@@ -496,9 +541,11 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaGauge1": "MiquellaGlow", "MiquellaGauge2": "MiquellaGlow",
               "MiquellaGauge3": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
-              "MiquellaChargeTip": "MiquellaBlade"}
+              "MiquellaChargeTip": "MiquellaBlade",
+              "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
+              "MiquellaExtractOrange": "MiquellaGlow"}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
-HIDDEN_AT_START = ("MiquellaCharge",)
+HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some
@@ -610,6 +657,9 @@ def build_parts(spec, mesh_col):
         if name in floaters:
             bone_of[o.name] = floaters[name]
             pivots[floaters[name]] = spec["to_file"] @ o.matrix_world.translation
+    # Bones whose pivot is not a part's origin (a cluster of parts), in the prototype's space.
+    for bone, point in spec.get("pivots", {}).items():
+        pivots[bone] = spec["to_file"] @ Vector(point)
     missing = set(floaters) - {n.split(".")[0] for n in bone_of}
     if missing:
         log(f"  floaters not found: {sorted(missing)}")
@@ -653,6 +703,10 @@ def build_parts(spec, mesh_col):
         bpy.ops.object.mode_set(mode="OBJECT")
         if mat == "MiquellaTemper":
             length_uv(o)
+        if mat in spec.get("uv_band", {}):
+            u = (spec["uv_band"][mat] + 0.5) / 3
+            for d in o.data.uv_layers.active.data:
+                d.uv = (u, 0.5)
         before = tris(o)
         budget = {**BUDGET, **spec.get("budget", {})}
         ratio = min(1.0, budget.get(mat, GAUGE_BUDGET) / max(before, 1))
@@ -780,6 +834,15 @@ def build_mdf(path, template_mdf, names, membrane=None):
                 for p in new.propertyList:
                     if p.propName == "Dissolve":
                         p.propValue = [0.0]
+            if name.startswith("MiquellaExtract"):
+                # Their own colours from the band texture: white emissive colour, our textures.
+                for p in new.propertyList:
+                    if p.propName == "Emissive_Color":
+                        p.propValue = [1.0, 1.0, 1.0, 1.0]
+                for t in new.textureList:
+                    for kind in ("ALBD", "NRRO", "EMI"):
+                        if t.texturePath.upper().endswith(f"_{kind}.TEX"):
+                            t.texturePath = f"{EXTRACT_TEX_REL}/MiquellaExtract_{kind}.tex"
         new.materialName = name
         materials.append(new)
     template.materialList = materials
@@ -831,6 +894,8 @@ def main():
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
     names = [o.name.split("__", 1)[1] for o in subs]
     build_mdf(os.path.join(natives, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, names, spec.get("membrane"))
+    if spec.get("textures"):
+        spec["textures"](kit)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit, f"{spec['name']}_kit.blend"))
 
 

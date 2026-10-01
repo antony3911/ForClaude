@@ -20,6 +20,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_bow%.") then
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_ig%.") then
+      return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     if self.mdfPath:match("wp_miquella_hm%.") then
       return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory" }
     end
@@ -82,6 +85,8 @@ local kijin = 0
 local chargeLv = nil
 local rapidGauge, rapidMode = nil, nil
 local bowDraw = nil
+local extract = {}               -- field -> value (insect glaive timers)
+local insectGO = nil             -- the kinsect GameObject behind _Insect
 function chr:call(m)
   if m == "get_WeaponHandling" then
     return { get_field = function(_, n)
@@ -90,6 +95,8 @@ function chr:call(m)
       if n == "_RapidAmmoGauge" then return rapidGauge end
       if n == "_IsRapidMode" then return rapidMode end
       if n == "_IsCharge" then return bowDraw end
+      if extract[n] ~= nil then return extract[n] end
+      if n == "_Insect" and insectGO then return { call = function(_, m) if m == "get_GameObject" then return insectGO end end } end
     end }
   end
 end
@@ -509,4 +516,47 @@ check(hc and hc.z > 0.8 and weaponMesh.colors["MiquellaGlow"].z > 0.8, "hammer: 
 chargeLv = 0
 frames(90, 1 / 60)
 check(not part("MiquellaCharge1") and not part("MiquellaCharge3"), "hammer: rings fade out after the swing")
+-- Insect glaive: charge gold -> bright gold -> white gold; the extract orbs show while lit and
+-- circle the blade; all three brighten the blade; the kinsect takes the swallowtail and stays
+-- when sheathed.
+weaponMesh = newMesh("Art/Model/Item/it10/00/0003/it1000_0003_0.mesh")
+weaponGO = newGO("Wp10", 8001, weaponMesh, nil)
+local kinsectMesh = newMesh("Art/Model/Item/it10/03/0002/it1003_0002_0.mesh")
+insectGO = newGO("Wp10Insect", 8002, kinsectMesh, nil)
+extract = { _ExtractTimerRed = 0, _ExtractTimerWhite = 0, _ExtractTimerOrange = 0, _ExtractTimerTripple = 0 }
+chargeLv = 0
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "InsectGlaive" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh", "insect glaive: model swapped")
+check(kinsectMesh.meshPath == "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mesh", "insect glaive: kinsect takes the swallowtail")
+local function orb(n) return weaponMesh.matEnabled["MiquellaExtract" .. n] == true end
+check(not orb("Red") and not orb("White") and not orb("Orange"), "insect glaive: no orbs without extracts")
+extract._ExtractTimerRed = 30
+frames(30, 1 / 60)
+check(orb("Red") and not orb("White"), "insect glaive: red extract shows the rot orb")
+local o = weaponGO.tf.joints["MQ_OrbRed"]
+local p1 = { o.lp.x, o.lp.y }
+frames(30, 1 / 60)
+local moved = math.sqrt((o.lp.x - p1[1]) ^ 2 + (o.lp.y - p1[2]) ^ 2)
+local r = math.sqrt(o.lp.x ^ 2 + o.lp.y ^ 2)
+check(moved > 0.05 and math.abs(r - 0.1408) < 1e-3, string.format("insect glaive: the orb circles the blade (moved %.3f, r %.4f)", moved, r))
+extract._ExtractTimerWhite, extract._ExtractTimerOrange, extract._ExtractTimerTripple = 30, 30, 30
+frames(40, 1 / 60)
+check(orb("White") and orb("Orange"), "insect glaive: all three orbs")
+check(weaponMesh.floats["MiquellaBlade.1"] / (1.2 * glow) > 1.7, "insect glaive: three extracts brighten the blade")
+extract._ExtractTimerTripple = 0
+chargeLv = 3
+frames(60, 1 / 60)
+local ic = weaponMesh.colors["MiquellaBlade"]
+check(ic and ic.y > 0.8 and ic.z > 0.5 and ic.z < 0.7, "insect glaive: level 3 charge is white gold")
+chargeLv = 0
+extract._ExtractTimerRed = 0
+frames(60, 1 / 60)
+check(not orb("Red") and orb("White"), "insect glaive: an extract running out hides its orb")
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
+frames(2, 1 / 60)
+check(weaponGO.draw == false and insectGO.draw == true, "insect glaive: sheathed glaive hidden, kinsect stays")
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
+frames(2, 1 / 60)
 print("ALL PASS")

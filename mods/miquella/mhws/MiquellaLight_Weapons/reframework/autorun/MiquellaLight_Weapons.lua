@@ -200,9 +200,30 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh",
         mdf2 = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
-        floaters = { mode = "hover", joints = {
+        -- The extract orbs (rot, frost, frenzied flame) circle the top blade (orbit: their slot).
+        floaters = { mode = "hover", orbit = { center = { 0.0, 0.0, 1.4160 }, radius = 0.1408, hz = 0.4 },
+                     joints = {
             { name = "MQ_TopHalo", pos = { 0.0, 0.0, 1.2560 } },
-            { name = "MQ_BottomHalo", pos = { 0.0, 0.0, -1.2880 } } } },
+            { name = "MQ_BottomHalo", pos = { 0.0, 0.0, -1.2880 } },
+            { name = "MQ_OrbRed", pos = { 0.0, 0.1408, 1.4160 }, orbit = 0 },
+            { name = "MQ_OrbWhite", pos = { -0.1219, -0.0704, 1.4160 }, orbit = 1 },
+            { name = "MQ_OrbOrange", pos = { 0.1219, -0.0704, 1.4160 }, orbit = 2 } } },
+        -- Charge (user, 2026-10-02): gold -> bright gold -> white gold.
+        charge = { levels = 3, fields = CHARGE_FIELDS, look = "whiteGold" },
+        -- An orb shows while its extract is lit (the game's timers); all three: the blade bright gold.
+        extracts = { orbs = { MiquellaExtractRed = "_ExtractTimerRed", MiquellaExtractWhite = "_ExtractTimerWhite",
+                              MiquellaExtractOrange = "_ExtractTimerOrange" },
+                     triple = "_ExtractTimerTripple" },
+        kinsect = "Kinsect",
+    },
+    -- The kinsect: a golden swallowtail of light (A, solid gold wings). Not a weapon look: it goes
+    -- on the insect glaive's kinsect (found through the weapon handling's _Insect).
+    Kinsect = {
+        label = "Miquella golden swallowtail (kinsect)",
+        part = true,
+        mesh = "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2 },
     },
     Bow = {
         label = "Miquella light bow",
@@ -270,7 +291,7 @@ end
 table.sort(KIT_NAMES, by_name)
 local MAIN_NAMES = {}
 for _, n in ipairs(KIT_NAMES) do
-    if not is_shield_kit(n) then MAIN_NAMES[#MAIN_NAMES + 1] = n end
+    if not is_shield_kit(n) and not (KITS[n] and KITS[n].part) then MAIN_NAMES[#MAIN_NAMES + 1] = n end
 end
 
 local config = {
@@ -351,6 +372,8 @@ local function assigned_kit(original)
     local main = t and config.assignType[t]
     if not main then return nil end
     local idx = model_index(original)
+    -- The insect glaive's kinsect (Item/it10/03/...): the look's kinsect.
+    if original:match("[Ii]tem/it10/03/") then return KITS[main] and KITS[main].kinsect or nil end
     if idx == "0" or BOTH_HANDS[t] then return main end
     if idx ~= "1" then return nil end
     local pick = config.assignShield[t]
@@ -580,7 +603,9 @@ local function swap_in(go, mesh, original, kit, slotName)
         swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
                                       kit = kit, kitMesh = kit_mesh(kit),
                                       -- set the model again a second later, and when next drawn
-                                      refreshAt = os.clock() + 1.0, drawRefresh = not isWeaponDrawn }
+                                      refreshAt = os.clock() + 1.0, drawRefresh = not isWeaponDrawn,
+                                      -- the kinsect is a creature, not a weapon: it stays when sheathed
+                                      keep = slotName == "Kinsect" }
         local prev = config.swappedFrom[slotName]
         if not prev or prev.original ~= original or prev.chain ~= originalChain then
             config.swappedFrom[slotName] = { original = original, chain = originalChain }
@@ -634,7 +659,7 @@ local function update_slot(name, weapon)
         if current ~= kit_mesh(kit) then swap_in(go, mesh, original, kit, name) end
         if swapped[key] then apply_tuning(swapped[key], mesh) end
         -- Only our light weapons vanish; if the swap failed, leave the original alone.
-        if config.hideSheathed and swapped[key] then
+        if config.hideSheathed and swapped[key] and not swapped[key].keep then
             try(function() go:set_DrawSelf(isWeaponDrawn) end)
         else
             try(function() go:set_DrawSelf(true) end)
@@ -756,6 +781,15 @@ local CHARGE_LOOK = {
     [2] = { mul = 2.8, color = { 1.0, 0.60, 0.09 } },
     [3] = { mul = 3.6, color = { 1.0, 0.94, 0.82 } },     -- white light
 }
+-- Insect glaive (user, 2026-10-02): gold -> bright gold -> white gold.
+local CHARGE_LOOKS = {
+    whiteGold = {
+        [0] = { mul = 1.0, color = GOLD },
+        [1] = { mul = 1.4, color = GOLD },
+        [2] = { mul = 2.2, color = { 1.0, 0.56, 0.06 } },
+        [3] = { mul = 3.2, color = { 1.0, 0.86, 0.58 } },
+    },
+}
 local BAND_PERIOD, BAND_WIDTH = 0.9, 0.14
 local CHARGE_WEIGHTS = { MiquellaBlade = 1.0, MiquellaGlow = 0.4, MiquellaTemper = 1.0 }
 
@@ -770,7 +804,8 @@ local function update_charge(entry, mesh, h, dt, now)
     local s = entry.chargeSmooth
     local lo = math.floor(s)
     local hi, t = math.min(spec.levels, lo + 1), s - lo
-    local a, b = CHARGE_LOOK[lo], CHARGE_LOOK[hi]
+    local look = CHARGE_LOOKS[spec.look] or CHARGE_LOOK
+    local a, b = look[lo], look[hi]
     local mul, color = lerp(a.mul, b.mul, t), lerp3(a.color, b.color, t)
     entry.mul = {}
     for mat, w in pairs(spec.weights or CHARGE_WEIGHTS) do entry.mul[mat] = 1 + (mul - 1) * w end
@@ -870,6 +905,41 @@ local function update_bow(entry, mesh, h, dt)
     entry.packTarget = drawing and (PACK_DRAWN + (1 - PACK_DRAWN) * math.min(level, spec.levels) / spec.levels) or 0
 end
 
+-- Insect glaive extracts: an orb fades in while its extract is lit and circles the top blade
+-- (step_floaters); with all three the blade burns bright gold.
+local EXTRACT_FADE, TRIPLE_MUL, TRIPLE_COLOR = 0.3, 1.8, { 1.0, 0.56, 0.06 }
+
+local function update_extracts(entry, mesh, h, dt)
+    local spec = entry.kit.extracts
+    entry.vars = entry.vars or material_vars(mesh)
+    entry.partsOn = entry.partsOn or {}
+    entry.orbAlpha = entry.orbAlpha or {}
+    local info = {}
+    for mat, field in pairs(spec.orbs) do
+        local v = h and read_number(h, field)
+        info[#info + 1] = string.format("%s=%s", (field:gsub("_ExtractTimer", "")), v and string.format("%.0f", v) or "?")
+        local a = approach(entry.orbAlpha[mat] or 0, (v or 0) > 0 and 1 or 0, dt, EXTRACT_FADE, EXTRACT_FADE)
+        entry.orbAlpha[mat] = a
+        local m = entry.vars[mat]
+        if m and entry.partsOn[mat] ~= (a > 0.001) then
+            entry.partsOn[mat] = a > 0.001
+            try(function() mesh:setMaterialsEnable(m.index, a > 0.001) end)
+        end
+        set_float(entry, mesh, mat, "Dissolve", a)
+    end
+    table.sort(info)
+    local t = h and read_number(h, spec.triple)
+    entry.tripleSmooth = approach(entry.tripleSmooth or 0, (t or 0) > 0 and 1 or 0, dt, 0.2, 0.4)
+    stateInfo.extract = table.concat(info, " ") .. string.format(" Tripple=%s", t and string.format("%.0f", t) or "?")
+    -- On top of the charge light (only while not charging, so the charge stays readable).
+    local k = entry.tripleSmooth * (1 - math.min(1, entry.chargeSmooth or 0))
+    if k > 0.001 then
+        entry.mul = entry.mul or {}
+        entry.mul.MiquellaBlade = (entry.mul.MiquellaBlade or 1) * lerp(1, TRIPLE_MUL, k)
+        set_color(entry, mesh, "MiquellaBlade", lerp3(GOLD, TRIPLE_COLOR, k))
+    end
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -879,13 +949,14 @@ local function update_states(chr)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
     for _, entry in pairs(swapped) do
-        if entry.kit.charge or entry.kit.gauge or entry.kit.bow then
+        if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
                 if entry.kit.charge then update_charge(entry, mesh, h, dt, now) end
                 if entry.kit.gauge then update_gauge(entry, mesh, h, dt) end
                 if entry.kit.bow then update_bow(entry, mesh, h, dt) end
+                if entry.kit.extracts then update_extracts(entry, mesh, h, dt) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -979,7 +1050,7 @@ local function float_joints(entry)
     f = f or { joints = {} }
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
-        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, off = { 0, 0, 0 },
+        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, off = { 0, 0, 0 },
                                    vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -1051,9 +1122,21 @@ local function step_pack(entry, dt)
     entry.pack, entry.packVel = x, v
 end
 
--- Rings move when floating is on, or when they pack (the bow), which works without it.
+-- Rings move when floating is on, or when they pack (the bow) or orbit (the extract orbs),
+-- which work without it.
 local function rings_active(entry)
-    return config.enabled and (config.float or entry.kit.bow ~= nil)
+    return config.enabled and (config.float or entry.kit.bow ~= nil
+                               or (entry.kit.floaters and entry.kit.floaters.orbit) ~= nil)
+end
+
+-- An orb circling the blade: its place on the circle (slot 0-2, a third apart), a slow bob,
+-- and a tumble about its own centre.
+local function orbit_ring(s, spec, t)
+    local a = 2 * math.pi * (spec.hz * t + s.orbit / 3) + math.pi / 2
+    local c = spec.center
+    s.pos = { c[1] + spec.radius * math.cos(a), c[2] + spec.radius * math.sin(a),
+              c[3] + 0.03 * math.sin(2 * math.pi * 0.7 * t + s.orbit * 2.1) }
+    s.rot = qaxis({ 0.3, 1.0, 0.2 }, (t * 70 + s.orbit * 120) % 360)
 end
 
 -- Run the springs once per frame (the first hook that fires), using the weapon's transform.
@@ -1080,7 +1163,11 @@ local function step_floaters()
                 for _, s in ipairs(f.joints) do
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
-                    step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, strength, entry.pack or 0)
+                    if s.orbit then
+                        orbit_ring(s, entry.kit.floaters.orbit, now)
+                    else
+                        step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, strength, entry.pack or 0)
+                    end
                 end
             end
         end
@@ -1129,6 +1216,18 @@ local function refresh(entry)
     apply_tuning(entry, mesh)
 end
 
+-- The insect glaive's kinsect: the weapon handling's _Insect (a component or its GameObject).
+local function kinsect_of(chr)
+    local t = slots.Weapon and weapon_type(slots.Weapon.original)
+    if t ~= "it10" then return nil end
+    local h = try(function() return chr:call("get_WeaponHandling") end)
+    local ins = h and try(function() return h:get_field("_Insect") end)
+    if not ins then return nil end
+    local go = try(function() return ins:call("get_GameObject") end)
+    if not go and try(function() return ins:get_type_definition():get_full_name() end) == "via.GameObject" then go = ins end
+    return go and { get_GameObject = function() return go end } or nil
+end
+
 local wasDrawn = isWeaponDrawn
 local function refresh_pass()
     local now = os.clock()
@@ -1155,7 +1254,7 @@ re.on_frame(function()
     if frame % CHECK_EVERY ~= 0 then
         if config.enabled and config.hideSheathed then
             for _, entry in pairs(swapped) do
-                try(function() entry.go:set_DrawSelf(isWeaponDrawn) end)
+                if not entry.keep then try(function() entry.go:set_DrawSelf(isWeaponDrawn) end) end
             end
         end
         return
@@ -1165,9 +1264,11 @@ re.on_frame(function()
     end
     update_slot("Weapon", try(function() return chr:get_Weapon() end))
     update_slot("SubWeapon", try(function() return chr:get_SubWeapon() end))
+    update_slot("Kinsect", kinsect_of(chr))
 end)
 
 -- ------------------------------------------------------------------ menu
+-- (kinsect_of is above the frame loop)
 
 re.on_draw_ui(function()
     if not imgui.tree_node("MiquellaLight: Light Weapons") then return end
@@ -1195,6 +1296,7 @@ re.on_draw_ui(function()
     end
     for _, entry in pairs(swapped) do
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
+        if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
         if entry.kit.bow and stateInfo.draw then
             imgui.text("Draw: " .. stateInfo.draw)
             c, config.bowFrom0 = imgui.checkbox("Bow charge counts from 0", config.bowFrom0)
@@ -1207,6 +1309,12 @@ re.on_draw_ui(function()
     if not (slots.Weapon and slots.Weapon.original) then
         imgui.text("Load your hunter and equip a weapon: a 'Look' list appears below")
         imgui.text("  Looks: " .. table.concat(KIT_NAMES, ", ", 2))
+    end
+    if slots.Kinsect and slots.Kinsect.original then
+        local k = assigned_kit(slots.Kinsect.original)
+        imgui.text("Kinsect: " .. slots.Kinsect.original .. (k and ("  ->  " .. k) or ""))
+    elseif slots.Weapon and weapon_type(slots.Weapon.original) == "it10" then
+        imgui.text("Kinsect: not found (weapon handling has no _Insect?)")
     end
     for _, name in ipairs({ "Weapon", "SubWeapon" }) do
         local s = slots[name]

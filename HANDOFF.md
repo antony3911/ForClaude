@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-01（雲端 session，分支 `claude/two-account-handoff-plan`）
+最後更新：2026-10-01（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -102,6 +102,13 @@
 | 狩獵笛響玉 | 地上光環＋浮空金膜泡泡，攻擊時共鳴 | 同上 |
 
 ### 遊戲端（`mods/miquella/mhws/`，全部**還沒在遊戲裡測**）
+
+**已裝進使用者的遊戲（2026-10-01，Claude 在本機裝的）**：遊戲在 `C:\Program Files (x86)\Steam\steamapps\common\MonsterHunterWilds`（不用系統管理員權限就能寫）
+- `dinput8.dll` = REFramework nightly-01424（2026-09-16）。**現在改成所有 RE 遊戲共用一個 `REFramework.zip`**，不再有 `MHWILDS.zip`；只放 dinput8.dll（不用 VR 就別放其他檔）
+- `reframework/autorun/`：`MiquellaLight_Scout.lua`、`MiquellaLight_Weapons.lua`
+- `pak_mods/MiquellaLight_DualBlades.pak`：REFramework 的「PAK Directory Loading」預設就開著，不用 Fluffy
+- 全部移除：刪掉 `dinput8.dll`、`reframework/`、`pak_mods/`
+
 | 東西 | 內容 |
 |---|---|
 | `release/MiquellaLight_v0.1.zip` | **可安裝的測試版**：雙劍光劍 patch pak（已讀回驗證）＋換裝腳本，Fluffy 拖進去就能裝，不覆蓋原版 |
@@ -178,14 +185,14 @@
 ## 9. 下一步（照順序；第一項就是接手後要做的）
 
 **使用者在自己電腦上做（需要遊戲）**
-1. 安裝 REFramework（GitHub `praydog/REFramework-nightly` 最新版的 `MHWILDS.zip`，打開 loose file loader）和 Fluffy Mod Manager
-2. 跑偵察腳本：拿各武器掃一次存 `scout.json`；大劍、雙劍、大錘、長槍、銃槍做蓄力／鬼人化／填彈時用 Watch 存 `watch.json`
-3. 裝 `release/MiquellaLight_v0.1.zip` 看第一把光劍，回報方向、大小、位置
+1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
+2. 跑偵察腳本：拿各武器掃一次存 `scout.json`；大劍、雙劍、大錘、長槍、銃槍做蓄力／鬼人化／填彈時用 Watch 存 `watch.json`（存在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**，不用使用者傳）
+3. 看第一把光劍（已裝好）：拿雙劍，Insert → Script Generated UI → MiquellaLight: Light Weapons，Weapon、SubWeapon 的「Look」都選 `DualBlades`，回報方向、大小、位置
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**
 5. 用 `watch.json` 找出狀態欄位 → 寫「武器狀態視覺」REFramework 腳本（改發光參數、開關材質槽、Dissolve），先做大劍蓄力和雙劍鬼人化
-6. 把每把武器整理成遊戲用模型：會變化的零件分材質槽、需要動的綁骨頭；用 RE Asset Library 解出原版武器模型對齊骨頭和大小
+6. 把每把武器整理成遊戲用模型：會變化的零件分材質槽、需要動的綁骨頭；用 RE Asset Library 解出原版武器模型對齊骨頭和大小（**遊戲 pak 就在本機，Claude 可以自己解**；需要 `pip install zstandard`、bpy，和 RE Asset Library 的檔名目錄 `MHWILDS.reassetlib`）
 7. 學 Armor VFX Manager 生成特效的寫法，做操蟲棍三顆球的特效、裝置的爆炸、重弩「米凱拉的光」光柱
 8. 角色正式版：身體＋長袍（貼身上半身、擺動下擺）、頭髮（擺動鏈）、頭冠綁頭骨
 9. 之後：Ascendance 的新動作
@@ -195,6 +202,8 @@
 ---
 
 ## 10. 怎麼把工作搬到本機
+
+**2026-10-01 已搬到本機**：使用者用 Claude 桌面版開了 `C:\Users\anton\ForClaude`。本機有 Python 3.11.9（還沒裝 bpy）、沒有 Blender；C 槽剩約 46 GB。以下是當初的搬家說明，留著備查。
 
 雲端 session 碰不到使用者的電腦。要讓 Claude 直接操作遊戲資料夾、安裝工具、讀遊戲檔案，要在**使用者電腦上**開 Claude Code：
 - Claude 桌面版（Claude Code），開這個 repo 的資料夾；或

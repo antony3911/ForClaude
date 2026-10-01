@@ -47,7 +47,8 @@
 - **Wilds 的貼圖不能用散檔載入，一定要打包成 patch pak**
   - 用 RE Mesh Editor 的「Create Pak Patch」按鈕（需要裝 RE Asset Library 才會出現）
   - 產生的 pak 放在遊戲資料夾的 `pak_mods` 裡
-  - 需要 REFramework 才會載入
+  - 需要 REFramework 才會載入（REFramework 的 IntegrityCheckBypass → 「PAK Directory Loading」，設定名 `IntegrityCheckBypass_LoadPakDirectory`，**預設開啟**；檔名隨意，副檔名要小寫 `.pak`；改了要重開遊戲）
+  - 2026-09 起 REFramework nightly 改成單一 `REFramework.zip`（所有 RE 遊戲共用的 dinput8.dll，執行時自己判斷遊戲），不再有 `MHWILDS.zip`
   - 其他 mod 檔案也可以一起放進這個 pak
 - RE Mesh Editor 的「Create Mod Workspace」會自動設好匯出、貼圖轉換、打包的路徑；「Copy Mod Files to Game」可以一鍵複製到遊戲資料夾測試
 

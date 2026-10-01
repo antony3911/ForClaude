@@ -89,6 +89,10 @@ local KITS = {
         floaters = { mode = "hover", joints = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
             { name = "MQ_Tsuba1", pos = { 0.0152, 0.0, 0.2052 } } } },
+        -- Spirit gauge levels (none / white / yellow / red): pale gold -> gold -> bright gold ->
+        -- white light, the temper line's band of light running from yellow on (DESIGN; user
+        -- 2026-10-02: not in the game yet). Fields guessed (menu "Charge:").
+        charge = { levels = 3, fields = { "_AuraLevel", "_NowAuraLevel" }, look = "spirit", band = true, bandFrom = 2 },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -810,6 +814,7 @@ end
 local function resolve(h, key, candidates)
     local td = handling_type(h)
     if resolved.type ~= td then resolved = { type = td, fields = {} } end
+    key = key .. "|" .. (candidates[1] or "")      -- kits may look for the same thing under other names
     local r = resolved.fields[key]
     if r and (r.name or os.clock() < r.at) then return r.name end
     for _, name in ipairs(candidates) do
@@ -857,6 +862,13 @@ local CHARGE_LOOK = {
 }
 -- Insect glaive (user, 2026-10-02): gold -> bright gold -> white gold.
 local CHARGE_LOOKS = {
+    -- Long sword spirit levels.
+    spirit = {
+        [0] = { mul = 0.8, color = { 1.0, 0.78, 0.45 } },     -- pale gold
+        [1] = { mul = 1.0, color = GOLD },
+        [2] = { mul = 1.8, color = { 1.0, 0.56, 0.06 } },     -- bright gold
+        [3] = { mul = 3.4, color = { 1.0, 0.94, 0.82 } },     -- white light
+    },
     whiteGold = {
         [0] = { mul = 1.0, color = GOLD },
         [1] = { mul = 1.4, color = GOLD },
@@ -902,7 +914,7 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     end
     if not spec.band then return end
     -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).
-    local band = math.max(0, s - (spec.levels - 1))
+    local band = math.max(0, math.min(1, s - ((spec.bandFrom or spec.levels) - 1)))
     set_float(entry, mesh, "MiquellaTemper", "Use_MoveEmit", band > 0.05 and 1.0 or 0.0)
     if band > 0.05 then
         set_float(entry, mesh, "MiquellaTemper", "MoveEmit", ((now / BAND_PERIOD) % 1) * 1.3 - 0.15)

@@ -256,7 +256,9 @@
 - **銃槍（做完，等實測）**：象牙彈簧頂端一根骨頭 `MQ_SpringTop`，彈簧頂點依高度綁在它和 `Base` 之間 → 骨頭往槍根移就均勻壓縮（最多到 45 %）。**填彈**（`_IsReload`）壓一下再彈回；**蓄力砲擊**（`_IsChargeShot`／`_ChargeShotTimer`）每 0.45 秒一段、越壓越緊、金 → 亮金 → 白金，發射才彈回（會衝過頭一次）；**龍擊砲**（`_RyuugekiChargeTimer`）壓到底直到發射。能量核心獨立材質 `MiquellaCore`。欄位都是從執行檔字串猜的（選單 `Gunlance:` 顯示數值）。**填彈飛出去的機械零件**＝彈殼特效模型 `11_shellcase_02`（銃槍只有 `_0`、`_1` 兩個模型）→ 換成一滴小金光（`build_device_kit.py shellcase`，在 Devices pak）
 - **龍杭砲金針（修了，等實測）**：使用者看到了但①一次好幾根 ②黑金屬色不發光 → 只放在顯示群組 5～9、改用我們的發光材質（見 Devices kit README「實測後的修正」）；射出去的光箭也改用發光材質
 - **斬擊斧劍模式、充能斧斧模式＋光點量表（做完，等實測）**：劍模式 A（`wp_miquella_sa_sword`）、充能斧斧（`wp_miquella_cb_axe`，刃口轉向 -X）各是一個模型，腳本讀型態欄位（`_TransformMode` 等，猜的；選單 `Mode:`，讀反了就勾「Swap modes」）換模型，充能斧斧模式時把盾藏起來。光點各自一個材質 `MiquellaGauge1～5`：**斬擊斧**＝變形量表 `_SlashGauge`、覺醒 `_IsAwake`／強化斧 `_IsAxeEnhanced` 刃亮金；**充能斧**盾緣五顆＝瓶數 `_BottleNum`、劍上光點環＝劍能量 `_SwordEnergyPoint`（滿了亮金，上限讀 `_SwordEnergyPoint_Max`）、斧模式斧背五顆＝瓶數、盾強化 `_IsShieldEnhanced` 盾亮金、劍強化／斧強化刃亮金（選單 `Gauges:` 顯示用了哪些欄位）
-- **待做（照順序）**：①**響玉**模型沒進遊戲（要找遊戲檔）③盾的**半透明光膜**看不到：目前只有片手劍的盾有 A／B／C 三種測試外觀（副武器那列選），長槍、銃槍、充能斧的盾還沒有 → 先問使用者看的是哪面盾、A／B／C 有沒有試過 ④**攻擊軌跡改金**（像雙劍那樣）：使用者說之後全部武器一起做，先記著
+- **太刀練氣（做完，等實測）**：`_AuraLevel`（猜的，0 無／1 白／2 黃／3 紅）→ 淡金 → 金 → 亮金 → 白光，黃以上刃紋流光（`CHARGE_LOOKS.spirit`、`bandFrom`）
+- **響玉（做了一半）**：遊戲裡**沒有響玉模型**，狩獵笛的響玉／聲波都是特效，泡泡本體是共用模型 `Art/VFX/Mesh/Common/Other/bubble/11_bubble_00`（特效 `11_it05_000～042` 的 `MESH`）。先把它的材質改成**金色光膜**（`gold_bubble.py`：抄原版 mdf、金色、拿掉彩虹，`MiquellaLight_HornFX.pak`，改過的遊戲檔不進 repo）。可能也影響其他用這顆泡泡的特效。設計的「地上光環」要用特效做（研究筆記 16）
+- **待做（照順序）**：①盾的**半透明光膜**看不到：只有片手劍的盾有 A／B／C 三種測試外觀（副武器那列選），長槍、銃槍、充能斧的盾還沒有 → **問使用者看的是哪面盾、A／B／C 有沒有試過**（B 用的就是響玉泡泡的材質）②**攻擊軌跡改金**（像雙劍那樣）：使用者說之後全部武器一起做 ③起爆龍彈花苞如果也黑 → 照金針改發光材質、只放對的顯示群組
 
 **其他武器（第二帳號，2026-10-02）— 已裝進遊戲，等實測**
 - 換裝腳本選單：拿武器時 Weapon 槽選主武器外觀（`LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun`），**有盾的武器 SubWeapon 槽再選 `*_Shield`**。每把看：握的位置、刃口方向（揮砍的光痕那邊）、長度、盾有沒有穿過手臂、浮動光環

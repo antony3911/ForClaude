@@ -20,6 +20,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_bow%.") then
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_ls%.") then
+      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     if self.mdfPath:match("wp_miquella_sa") or self.mdfPath:match("wp_miquella_cb") then
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5",
                "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
@@ -96,7 +99,11 @@ local extract = {}               -- field -> value (insect glaive timers)
 local insectGO = nil             -- the kinsect GameObject behind _Insect
 function chr:call(m)
   if m == "get_WeaponHandling" then
-    return { get_field = function(_, n)
+    -- One handling type per weapon object, like the game's (field lookups are cached per type).
+    return { get_type_definition = function() return { get_full_name = function() return "Handling_" .. weaponGO.name end,
+                                                       get_fields = function() return {} end,
+                                                       get_parent_type = function() return nil end } end,
+             get_field = function(_, n)
       if n == "_KijinExtern" then return kijin end
       if n == "_ChargeLv" then return chargeLv end
       if n == "_RapidAmmoGauge" then return rapidGauge end
@@ -682,4 +689,25 @@ texts = {}; onDraw()
 local sawG = false
 for _, t in ipairs(texts) do if t:match("^Gauges: _SlashGauge") then sawG = true end end
 check(sawG, "switch axe: menu shows the gauge fields")
+-- Long sword: spirit levels pale gold -> gold -> bright gold -> white, the band from yellow on.
+weaponMesh = newMesh("Art/Model/Item/it03/00/0002/it0300_0002_0.mesh")
+weaponGO = newGO("Wp03b", 13001, weaponMesh, nil)
+subGO = nil
+extract = { _AuraLevel = 0 }
+frames(200, 1 / 60)
+comboPick = { slot = "Weapon", name = "LongSword" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath:match("MiquellaLight/LongSword"), "long sword: model swapped")
+local function ls(mat) return (weaponMesh.floats[mat .. ".1"] or 0) / (1.2 * glow) end
+check(math.abs(ls("MiquellaBlade") - 0.8) < 0.01, string.format("long sword: no spirit = pale gold (%.2f)", ls("MiquellaBlade")))
+extract._AuraLevel = 2
+frames(60, 1 / 60)
+check(math.abs(ls("MiquellaBlade") - 1.8) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 1.0, "long sword: yellow = bright gold, the band runs")
+extract._AuraLevel = 3
+frames(60, 1 / 60)
+local lc = weaponMesh.colors["MiquellaBlade"]
+check(lc and lc.z > 0.8, "long sword: red = white light")
+extract._AuraLevel = 1
+frames(90, 1 / 60)
+check(math.abs(ls("MiquellaBlade") - 1.0) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 0.0, "long sword: white = gold, no band")
 print("ALL PASS")

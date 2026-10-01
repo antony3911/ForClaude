@@ -11,6 +11,7 @@ Sets:
   lance_charge        levels 0-3: a cone of large rings grows root to tip, brighter each level
   lance_full_variants full charge with the cone of light at different strengths
   gunlance_reload     rest / spring compressed (core charging) / spring rebounds
+  long_sword_spirit   spirit levels: pale gold / gold / bright gold / white, light flowing on the hamon
 
 Usage: python states.py <set> <out_dir>
 """
@@ -363,6 +364,167 @@ def gunlance_reload():
                    "銃槍填彈：彈簧往槍根壓縮一次再彈回")
 
 
+# ------------------------------------------------------------------ long sword spirit levels
+
+def band_sum(nodes, links, centers, width, label):
+    """Sum of soft bands along the object's length (generated z: 0 at one end, 1 at the
+    other), centred on `centers`; returns the output socket (0 outside the bands)."""
+    def node(kind, op=None, value=None):
+        nd = nodes.new(kind)
+        nd.label = label
+        if op:
+            nd.operation = op
+        if value is not None:
+            nd.inputs[1].default_value = value
+        return nd
+
+    coords = node("ShaderNodeTexCoord")
+    split = node("ShaderNodeSeparateXYZ")
+    links.new(coords.outputs["Generated"], split.inputs["Vector"])
+    total = None
+    for ctr in centers:
+        d = node("ShaderNodeMath", "SUBTRACT", ctr)
+        links.new(split.outputs["Z"], d.inputs[0])
+        q = node("ShaderNodeMath", "DIVIDE", width)
+        links.new(d.outputs[0], q.inputs[0])
+        sq = node("ShaderNodeMath", "POWER", 2.0)
+        links.new(q.outputs[0], sq.inputs[0])
+        bump = node("ShaderNodeMath", "SUBTRACT")
+        bump.inputs[0].default_value = 1.0
+        links.new(sq.outputs[0], bump.inputs[1])
+        pos = node("ShaderNodeMath", "MAXIMUM", 0.0)
+        links.new(bump.outputs[0], pos.inputs[0])
+        if total is None:
+            total = pos
+        else:
+            add = node("ShaderNodeMath", "ADD")
+            links.new(total.outputs[0], add.inputs[0])
+            links.new(pos.outputs[0], add.inputs[1])
+            total = add
+    clamp = node("ShaderNodeMath", "MINIMUM", 1.0)
+    links.new(total.outputs[0], clamp.inputs[0])
+    return clamp.outputs[0]
+
+
+def flow_material(name):
+    """See-through except inside the bands: the travelling light on the hamon. In game this
+    is the emissive band that moves along the mesh (Use_MoveEmit / MoveEmit)."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    for nd in list(nodes):
+        nodes.remove(nd)
+    out = nodes.new("ShaderNodeOutputMaterial")
+    mix = nodes.new("ShaderNodeMixShader")
+    transparent = nodes.new("ShaderNodeBsdfTransparent")
+    emission = nodes.new("ShaderNodeEmission")
+    mat.node_tree.links.new(transparent.outputs["BSDF"], mix.inputs[1])
+    mat.node_tree.links.new(emission.outputs["Emission"], mix.inputs[2])
+    mat.node_tree.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return mat
+
+
+def set_flow(mat, centers, width, hex_color, strength):
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    for nd in [nd for nd in nodes if nd.label == "band"]:
+        nodes.remove(nd)
+    mix = next(nd for nd in nodes if nd.type == "MIX_SHADER")
+    emission = next(nd for nd in nodes if nd.type == "EMISSION")
+    emission.inputs["Color"].default_value = c.hex_to_linear(hex_color)
+    emission.inputs["Strength"].default_value = strength
+    for link in list(mix.inputs["Fac"].links):
+        links.remove(link)
+    if centers:
+        links.new(band_sum(nodes, links, centers, width, "band"), mix.inputs["Fac"])
+    else:
+        mix.inputs["Fac"].default_value = 0.0
+
+
+def flow_ribbon(material):
+    """A slightly wider tube over the hamon line on both faces, carrying the moving light."""
+    import long_sword as ls
+    objs = []
+    for face in (-1, 1):
+        pts, radii = [], []
+        for i in range(120):
+            s = 0.02 + 0.9 * i / 119
+            ctr = ls.blade_center(s)
+            w, t = ls.blade_profile(s)
+            inset = 0.2 * w + 0.05 * w * math.sin(s * 40)
+            pts.append(Vector((ctr.x + w - inset, face * t * 0.32, ctr.z)))
+            radii.append(1.0 - 0.5 * s)
+        objs.append(c.curve_tube(f"Hamon_Flow_{face}", pts, radii, material, bevel=0.0034, resolution=2))
+    return objs
+
+
+def build_long_sword():
+    import blades
+    import long_sword as ls
+    import random
+    c.reset_scene()
+    rng = random.Random(8)
+    ivory = c.make_material("Ivory", c.PALETTE["ivory"], roughness=0.32, coat=0.3,
+                            emission=c.PALETTE["glow"], strength=0.05, subsurface=0.15)
+    glow = c.make_material("Light", c.PALETTE["glow"], roughness=0.1, coat=0.5,
+                           emission=c.PALETTE["glow"], strength=2.5)
+    blade = blades.blade_material("Blade_Light", 2.2)
+    hamon = c.make_material("Hamon", c.PALETTE["blade_core"], roughness=0.1,
+                            emission=c.PALETTE["blade_core"], strength=3.0)
+    parts = [ls.build_blade(blade)] + ls.hamon_line(hamon) + ls.handle(ivory, glow, rng)
+    parts += ls.tsuba_halo(glow, ivory, rng) + ls.blade_wrap(ivory, rng)
+    flow = flow_material("Hamon_Flow")
+    parts += flow_ribbon(flow)
+    root = c.link(bpy.data.objects.new("LongSword", None))
+    for part in parts:
+        part.parent = root
+    root.rotation_euler = (0, math.radians(-8), 0)
+    return {"blade": blade, "hamon": hamon, "light": glow, "flow": flow}
+
+
+# Spirit levels: the game's none / white / yellow / red, here pale gold / gold / bright gold / white.
+# From the yellow level a band of light travels along the hamon, in the next level's colour.
+SPIRIT_LEVELS = [
+    # label, blade (core, edge, strength), light (colour, strength), flow (centres, width, colour, strength)
+    ("一般（淡金）", ("#FFDDA0", "#EDB868", 1.4), ("#F2C47E", 1.8), None),
+    ("白刃 → 金", (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2), (c.PALETTE["glow"], 2.5), None),
+    ("黃刃 → 亮金", BRIGHT_BLADE, BRIGHT_LIGHT, ([0.5], 0.14, "#FFF4DC", 30.0)),
+    ("紅刃 → 白光", ("#FFFBF0", "#FFE7B0", 5.0), ("#FFF2D6", 5.5), ([0.25, 0.7], 0.11, "#FF9A10", 45.0)),
+]
+
+
+def apply_spirit(mats, level, centers=None):
+    label, blade, light, flow = level
+    set_blade(mats["blade"], *blade)
+    set_glow(mats["light"], *light)
+    set_glow(mats["hamon"], blade[0], 3.0 * blade[2] / 2.2)
+    if flow:
+        set_flow(mats["flow"], centers if centers is not None else flow[0], flow[1], flow[2], flow[3])
+    else:
+        set_flow(mats["flow"], [], 0.1, "#FFFFFF", 0.0)
+
+
+def long_sword_spirit():
+    """Spirit levels light the blade up in four steps; from the third, light flows along the
+    hamon line (the game's moving emissive band), faster and in two bands at the top."""
+    mats = build_long_sword()
+    target, distance = (0.0, 0, 0.5), 1.9
+    stage_lights(target, distance, res=(560, 1000))
+    paths = []
+    for i, level in enumerate(SPIRIT_LEVELS):
+        apply_spirit(mats, level)
+        paths += c.render_views(OUT, f"level{i}", target, distance, [("flat", 0, 4)], lens=50)
+    labelled_strip(paths, [lv[0] for lv in SPIRIT_LEVELS], os.path.join(OUT, "long_sword_spirit.png"),
+                   "太刀練氣：淡金 → 金 → 亮金 → 白光，高段時刃紋上有光流過")
+    # The flowing light, three moments of the top level.
+    paths = []
+    top = SPIRIT_LEVELS[3]
+    for i, shift in enumerate((0.0, 0.17, 0.34)):
+        apply_spirit(mats, top, [b + shift for b in top[3][0]])
+        paths += c.render_views(OUT, f"flow{i}", target, distance, [("flat", 0, 4)], lens=50)
+    labelled_strip(paths, ["流光 1", "流光 2", "流光 3"], os.path.join(OUT, "long_sword_flow.png"),
+                   "太刀紅刃（白光）：刃紋上的光從刀根往刀尖流")
+
+
 SETS = {
     "great_sword_charge": great_sword_charge,
     "dual_blades_demon": dual_blades_demon,
@@ -370,6 +532,7 @@ SETS = {
     "lance_charge": lance_charge,
     "lance_full_variants": lance_full_variants,
     "gunlance_reload": gunlance_reload,
+    "long_sword_spirit": long_sword_spirit,
 }
 
 if __name__ == "__main__":

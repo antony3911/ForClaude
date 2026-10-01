@@ -9,6 +9,7 @@ Sets:
   dual_blades_demon   normal / splitting / demon mode (three blades) / archdemon (bright gold)
   hammer_charge       levels 0-3: more rings around the head, the caged sun brightens
   lance_charge        levels 0-3: a cone of large rings grows root to tip, brighter each level
+  lance_full_variants full charge with the cone of light at different strengths
   gunlance_reload     rest / spring compressed (core charging) / spring rebounds
 
 Usage: python states.py <set> <out_dir>
@@ -230,16 +231,14 @@ def hammer_charge():
 
 # ------------------------------------------------------------------ lance charge
 
-def lance_charge():
-    """Charging grows a cone of large rings from the vamplate toward the point, a few more
-    each level and brighter each level; at full charge a faint cone of light fills them and
-    the point flares out longer, so the whole lance reads as a jousting lance of light."""
+def build_lance_charge():
+    """The lance plus its charge parts: a cone of large rings from the vamplate toward the
+    point, a faint cone of light inside them, and a longer flare around the point."""
     import arsenal
     c.reset_scene()
     mats = capture_build(arsenal.lance)
     m.glow_mode(mats)
     show([bpy.data.objects["EnergyShield"]], False)
-
     z0, z1, r0, r1, n = 0.56, 1.64, 0.125, 0.032, 8          # cone of rings, root -> point
     rings = []
     for k in range(n):
@@ -260,12 +259,39 @@ def lance_charge():
         flare += m.path_blade(name, [V(0, 0, tip - 0.38), V(0, 0, tip + 0.22)], normal,
                               lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
                               lambda t: 0.02 * (1 - t), flare_mat)
-    target, distance = (0, 0, 1.3), 2.75
+    return mats, rings, cone, cone_mat, flare
+
+
+def set_cone(mat, opacity, fade_to_tip=False):
+    """Cone opacity; with fade_to_tip it is strongest at the root and gone at the point."""
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    mix = next(nd for nd in nodes if nd.type == "MIX_SHADER")
+    for link in list(mix.inputs["Fac"].links):
+        links.remove(link)
+    mix.inputs["Fac"].default_value = opacity
+    if fade_to_tip:
+        coords = nodes.new("ShaderNodeTexCoord")
+        split = nodes.new("ShaderNodeSeparateXYZ")
+        fade = nodes.new("ShaderNodeMapRange")       # generated z: 0 at the root, 1 at the point
+        fade.inputs["To Min"].default_value = opacity
+        fade.inputs["To Max"].default_value = 0.0
+        links.new(coords.outputs["Generated"], split.inputs["Vector"])
+        links.new(split.outputs["Z"], fade.inputs["Value"])
+        links.new(fade.outputs["Result"], mix.inputs["Fac"])
+
+
+LANCE_VIEW = ((0, 0, 1.3), 2.75, [("three_quarter", 20, 6)])
+
+
+def lance_charge():
+    """Charging grows the cone of rings a few at a time, brighter each level; at full charge
+    the faint cone and the point flare appear: the whole lance reads as a lance of light."""
+    mats, rings, cone, cone_mat, flare = build_lance_charge()
+    target, distance, views = LANCE_VIEW
     stage_lights(target, distance)
-    # label, rings shown, light strength (None = bright gold), cone and flare
+    # label, rings shown, light strength ("bright" = bright gold), cone and flare
     levels = [("一般", 0, None, False), ("蓄力 1", 3, 4.0, False), ("蓄力 2", 6, 6.0, False),
               ("蓄力 3（滿）", 8, "bright", True)]
-    base_blade = (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
     paths = []
     for i, (label, count, strength, full) in enumerate(levels):
         for k, objs in enumerate(rings):
@@ -275,10 +301,27 @@ def lance_charge():
             brighten(mats)
         elif strength:
             set_glow(mats["light"], c.PALETTE["glow"], strength)
-            set_blade(mats["blade"], base_blade[0], base_blade[1], 2.2 + 0.5 * i)
-        paths += c.render_views(OUT, f"level{i}", target, distance, [("three_quarter", 20, 6)], lens=50)
+            set_blade(mats["blade"], c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2 + 0.5 * i)
+        paths += c.render_views(OUT, f"level{i}", target, distance, views, lens=50)
     labelled_strip(paths, [lv[0] for lv in levels], os.path.join(OUT, "lance_charge.png"),
                    "長槍蓄力：光環從槍根往槍尖一段段長出，滿蓄力時圍成一支光的騎槍")
+
+
+def lance_full_variants():
+    """Full charge only, with the cone of light at different strengths, to pick one."""
+    mats, rings, cone, cone_mat, flare = build_lance_charge()
+    brighten(mats)
+    target, distance, views = LANCE_VIEW
+    stage_lights(target, distance)
+    variants = [("目前（光膜 10%）", 0.1, False, True), ("光膜調淡（4%）", 0.04, False, True),
+                ("調淡＋往槍尖淡出", 0.08, True, True), ("拿掉光膜", 0.0, False, False)]
+    paths = []
+    for i, (label, opacity, fade, visible) in enumerate(variants):
+        set_cone(cone_mat, opacity, fade)
+        show([cone], visible)
+        paths += c.render_views(OUT, f"variant{i}", target, distance, views, lens=50)
+    labelled_strip(paths, [v[0] for v in variants], os.path.join(OUT, "lance_full_variants.png"),
+                   "長槍滿蓄力：光膜的濃淡比較")
 
 
 # ------------------------------------------------------------------ gunlance reload
@@ -324,6 +367,7 @@ SETS = {
     "dual_blades_demon": dual_blades_demon,
     "hammer_charge": hammer_charge,
     "lance_charge": lance_charge,
+    "lance_full_variants": lance_full_variants,
     "gunlance_reload": gunlance_reload,
 }
 

@@ -311,7 +311,43 @@ def switch_axe():
     objs = capture(arsenal.switch_axe)
     to_file = upright(1.9, (0, 0, 0.38), turn=180)
     return placed("wp_miquella_sa", "Art/Model/MiquellaLight/SwitchAxe", objs, to_file,
-                  {"VFX_Attack_A": to_file @ Vector((0, 0, top_z(objs)))})
+                  {"VFX_Attack_A": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
+
+
+def phial_gauges(prefix, n=5, halos=True):
+    """Each floating phial (and its halo) on a material of its own, MiquellaGauge1-n, so the
+    weapons script can light them one by one as a gauge (user, 2026-10-02)."""
+    out = {}
+    for k in range(n):
+        out[f"{prefix}_{k}"] = f"MiquellaGauge{k + 1}"
+        if halos:
+            out[f"{prefix}_Halo_{k}"] = f"MiquellaGauge{k + 1}"
+    return out
+
+
+def switch_axe_sword():
+    """Sword mode A (the user's pick): the long blade risen from the shaft, the three axe blades
+    folded up along its back like feathers. Placed like the axe (same shaft, same hand); the
+    weapons script swaps it in while the game is in sword mode."""
+    import arsenal
+    objs = capture(lambda: arsenal.switch_axe_sword("a"))
+    to_file = upright(1.9, (0, 0, 0.38), turn=180)
+    return placed("wp_miquella_sa_sword", "Art/Model/MiquellaLight/SwitchAxe", objs, to_file,
+                  {"VFX_Attack_A": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
+
+
+def charge_blade_axe():
+    """Axe mode: the sword is the haft and the spine of the head, the shield's light reshaped
+    into a bardiche (DESIGN), placed and scaled like the sword (1.4, hand mid-grip). The
+    weapons script swaps it in while the game is in axe mode and hides the shield model."""
+    import arsenal
+    import blades
+    objs = capture(arsenal.charge_blade_axe)
+    mw = bpy.data.objects["CB_Sword"].matrix_world
+    # Turned 180 about Z: the edge toward -X like the originals' single edges (great sword, switch axe).
+    to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)), turn=180)
+    return placed("wp_miquella_cb_axe", "Art/Model/MiquellaLight/ChargeBlade", objs, to_file,
+                  {"VFX_Attack": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
 
 
 def charge_blade_scene(blade_len):
@@ -341,7 +377,7 @@ def charge_blade():
     to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)))
     tip = mw @ Vector((0, 0, blades.GUARD_Z + 1.3))
     return placed("wp_miquella_cb", "Art/Model/MiquellaLight/ChargeBlade", [o for o in objs if o in sword],
-                  to_file, {"VFX_Attack": to_file @ tip})
+                  to_file, {"VFX_Attack": to_file @ tip}, by_name=phial_gauges("Sword_Phial", halos=False))
 
 
 def charge_blade_shield():
@@ -352,7 +388,8 @@ def charge_blade_shield():
     to_file = shield_place("EnergyShield", 1.4, (0, 0.12, 0.0))
     # The originals' shields hang on Emblem (and its blades), none on Base: follow Emblem.
     return placed("wp_miquella_cb_shield", "Art/Model/MiquellaLight/ChargeBlade",
-                  [o for o in objs if o in shield], to_file, {}, bone_fn=lambda o, center: "Emblem")
+                  [o for o in objs if o in shield], to_file, {}, bone_fn=lambda o, center: "Emblem",
+                  by_name=phial_gauges("Shield_Phial", halos=False))
 
 
 def insect_glaive():
@@ -540,6 +577,7 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
+           "switch_axe_sword": switch_axe_sword, "charge_blade_axe": charge_blade_axe,
            "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun}
 
 
@@ -553,7 +591,7 @@ GAUGE_BUDGET = 1500
 MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaIvory": "MiquellaIvory", "MiquellaTemper": "MiquellaGlow",
               "MiquellaGauge1": "MiquellaGlow", "MiquellaGauge2": "MiquellaGlow",
-              "MiquellaGauge3": "MiquellaGlow",
+              "MiquellaGauge3": "MiquellaGlow", "MiquellaGauge4": "MiquellaGlow", "MiquellaGauge5": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",

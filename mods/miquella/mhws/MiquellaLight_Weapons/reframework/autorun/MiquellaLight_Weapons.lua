@@ -24,6 +24,9 @@ local CHECK_EVERY = 20       -- frames between checks
 -- Our models. Paths are relative to natives/STM/ without the numeric extension.
 -- glow: materials whose Emissive_Intensity the Glow slider scales, with their mdf2 value.
 -- demon: demon-mode side-blade materials and their stage (hidden outside demon mode).
+-- Phial gauges (switch axe, charge blade): one material per floating phial.
+local PHIALS = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5" }
+local BOTTLE_FIELDS = { "_BottleNum", "_LoadBottleNum", "_BottleCount" }
 -- Charge level fields (candidates from the game's type names; the first found is used).
 local CHARGE_FIELDS = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
 
@@ -187,23 +190,64 @@ local KITS = {
         glow = { MiquellaGlow = 1.2 },
     },
     SwitchAxe = {
-        label = "Miquella trident axe (switch axe, axe mode)",
+        label = "Miquella trident axe (switch axe)",
         mesh = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh",
         mdf2 = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
+                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
+        -- The five floating phials are the switch gauge; amped (awakened) and power axe light the
+        -- blades bright gold (DESIGN; user 2026-10-02: they did nothing). Fields guessed.
+        gauges = { { key = "slash", dots = PHIALS, fields = { "_SlashGauge", "_SwitchGauge", "_Gauge" } } },
+        boosts = { { key = "awake", fields = { "_IsAwake", "_Awaked", "_IsSwordAwaken" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
+                   { key = "axeEnh", fields = { "_IsAxeEnhanced", "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" } } },
+        -- Sword mode: its own model (user, 2026-10-02: both modes showed the axe). The game's
+        -- mode field is guessed (menu "Mode:"; "Swap modes" if it reads the wrong way round).
+        mode = { fields = { "_TransformMode", "_IsSwordMode", "_SwordMode", "_WeaponMode" }, alt = "SwitchAxe_Sword",
+                 names = { "axe", "sword" } },
+    },
+    SwitchAxe_Sword = {
+        label = "Miquella trident axe, sword mode",
+        part = true,
+        mesh = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },  -- (the axe kit's glow is used)
     },
     ChargeBlade = {
         label = "Miquella light blade (charge blade)",
         mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mesh",
         mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
+                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
         shield = "ChargeBlade_Shield",
+        -- Sword: the phial ring is the sword's energy (bright gold when full); axe: the phials on
+        -- its back are the loaded phials. Sword / axe enhanced light the blade (DESIGN).
+        gauges = { { key = "energy", dots = PHIALS, fields = { "_SwordEnergyPoint" }, maxFields = { "_SwordEnergyPoint_Max" },
+                     fullBright = true, when = "base" },
+                   { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true, when = "alt" } },
+        boosts = { { key = "swordEnh", fields = { "_SwordEnhancedTimer", "_SwordEnhanced" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
+                   { key = "axeEnhCB", fields = { "_AxeEnhancedTimer", "_IsAxeEnhanced" }, mats = { "MiquellaBlade" }, when = "alt" } },
+        -- Axe mode: the designed axe (the shield's light reshaped into a bardiche on the sword)
+        -- in place of the sword, the shield model hidden (user, 2026-10-02).
+        mode = { fields = { "_TransformMode", "_IsAxeMode", "_AxeMode", "_WeaponMode" }, alt = "ChargeBlade_Axe",
+                 hideSecond = true, names = { "sword & shield", "axe" } },
+    },
+    ChargeBlade_Axe = {
+        label = "Miquella light axe (charge blade, axe mode)",
+        part = true,
+        mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mesh",
+        mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
     },
     ChargeBlade_Shield = {
         label = "Miquella energy shield (charge blade)",
         mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_shield.mesh",
         mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_shield.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
+                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
+        -- The five phials on the rim are the loaded phials; shield enhanced (red shield): the halo
+        -- and the tree sigil bright gold.
+        gauges = { { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true } },
+        boosts = { { key = "shieldEnh", fields = { "_IsShieldEnhanced", "_ShieldEnhancedTimer" }, mats = { "MiquellaGlow" } } },
     },
     InsectGlaive = {
         label = "Miquella light glaive (insect glaive)",
@@ -325,6 +369,8 @@ local config = {
     floatStrength = 1.0,
     -- The bow's charge field counts from 0 (level 1 = 0): set in the menu if the rings light late.
     bowFrom0 = false,
+    -- weapon type -> true: the mode field reads the other way round (switch axe, charge blade)
+    modeInvert = {},
     -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
     -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
     swappedFrom = {},
@@ -338,6 +384,7 @@ if type(config.assign) ~= "table" then config.assign = {} end
 if type(config.assignType) ~= "table" then config.assignType = {} end
 if type(config.assignShield) ~= "table" then config.assignShield = {} end
 if type(config.migratedFrom) ~= "table" then config.migratedFrom = {} end
+if type(config.modeInvert) ~= "table" then config.modeInvert = {} end
 if type(config.swappedFrom) ~= "table" then config.swappedFrom = {} end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 
@@ -516,8 +563,17 @@ local function glow_slots(mesh, kit)
     return slots
 end
 
+-- Kits whose other mode is showing (switch axe sword mode, charge blade axe mode).
+local modeOn = {}
+
 local function kit_mesh(kit)
+    if kit.mode and modeOn[kit] then return KITS[kit.mode.alt].mesh end
     return kit.sizes and kit.sizes[config.size] or kit.mesh
+end
+
+local function kit_mdf(kit)
+    if kit.mode and modeOn[kit] then return KITS[kit.mode.alt].mdf2 end
+    return kit.mdf2
 end
 
 -- Material variable index by material and variable name, found once per swap.
@@ -609,9 +665,9 @@ local function swap_in(go, mesh, original, kit, slotName)
     else
         originalChain = chainOf[original]
     end
-    if set_model(go, mesh, kit_mesh(kit), kit.mdf2, NULL_CHAIN) then
+    if set_model(go, mesh, kit_mesh(kit), kit_mdf(kit), NULL_CHAIN) then
         swapped[go:get_address()] = { go = go, original = original, chain = originalChain,
-                                      kit = kit, kitMesh = kit_mesh(kit),
+                                      kit = kit, kitMesh = kit_mesh(kit), kitMdf = kit_mdf(kit), slot = slotName,
                                       -- set the model again a second later, and when next drawn
                                       refreshAt = os.clock() + 1.0, drawRefresh = not isWeaponDrawn,
                                       -- the kinsect is a creature, not a weapon: it stays when sheathed
@@ -635,6 +691,14 @@ local function swap_back(entry)
 end
 
 -- ------------------------------------------------------------------ per frame
+
+-- Our weapons vanish when sheathed (not the kinsect); a shield also while its weapon's other
+-- mode shows it merged into the weapon (charge blade axe).
+local function entry_visible(entry)
+    if entry.hiddenByMode then return false end
+    if entry.keep or not config.hideSheathed then return true end
+    return isWeaponDrawn
+end
 
 local function update_slot(name, weapon)
     local go = weapon and try(function() return weapon:get_GameObject() end)
@@ -669,8 +733,8 @@ local function update_slot(name, weapon)
         if current ~= kit_mesh(kit) then swap_in(go, mesh, original, kit, name) end
         if swapped[key] then apply_tuning(swapped[key], mesh) end
         -- Only our light weapons vanish; if the swap failed, leave the original alone.
-        if config.hideSheathed and swapped[key] and not swapped[key].keep then
-            try(function() go:set_DrawSelf(isWeaponDrawn) end)
+        if swapped[key] then
+            try(function() go:set_DrawSelf(entry_visible(swapped[key])) end)
         else
             try(function() go:set_DrawSelf(true) end)
         end
@@ -995,6 +1059,92 @@ local function update_gunlance(entry, mesh, h, dt, now)
     update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
 
+-- Weapon modes: read the game's mode, put on the other mode's model when it changes.
+local function update_mode(entry, mesh, h)
+    -- Only the weapon in the hand (an older weapon object may still be listed).
+    if not (slots.Weapon and slots.Weapon.go == entry.go) then return end
+    local spec = entry.kit.mode
+    local name = h and resolve(h, "mode", spec.fields)
+    local v = name and read_number(h, name) or 0
+    local wtype = slots.Weapon and weapon_type(slots.Weapon.original)
+    local on = (v > 0) ~= (config.modeInvert[wtype or ""] == true)
+    stateInfo.mode = name and string.format("%s = %s (%s look)", name, tostring(v), spec.names[on and 2 or 1])
+        or ("not found; fields with 'Mode': " .. table.concat(h and similar_fields(h, "Mode") or {}, ", "))
+    if (modeOn[entry.kit] or false) ~= on then
+        modeOn[entry.kit] = on
+        set_model(entry.go, mesh, kit_mesh(entry.kit), kit_mdf(entry.kit), nil)
+        entry.kitMesh, entry.kitMdf = kit_mesh(entry.kit), kit_mdf(entry.kit)
+        entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float, entry.partsOn = nil, nil, nil, nil, nil, nil
+        apply_tuning(entry, mesh)
+    end
+    for _, other in pairs(swapped) do
+        if other.slot == "SubWeapon" then other.hiddenByMode = spec.hideSecond and on or nil end
+    end
+end
+
+-- Phial gauges and boosts (switch axe, charge blade): a gauge lights its phials one by one
+-- (count: the value is a number of phials; otherwise a fraction of the largest value seen),
+-- unlit ones dim; a boost (enhanced, amped) burns its materials bright gold. `when`: only in
+-- the base or the other ("alt") mode of the weapon.
+local GAUGE_DIM, BOOST_MUL, BOOST_COLOR = 0.25, 1.8, { 1.0, 0.56, 0.06 }
+
+local function in_mode(entry, when)
+    if not when then return true end
+    return (when == "alt") == (modeOn[entry.kit] == true)
+end
+
+local function update_gauges(entry, mesh, h, dt)
+    if not (entry.kit.charge or entry.kit.bow or entry.kit.gunlance) then entry.mul = {} end
+    entry.mul = entry.mul or {}
+    entry.gaugeState = entry.gaugeState or {}
+    local info = {}
+    for _, g in ipairs(entry.kit.gauges or {}) do
+        if in_mode(entry, g.when) then
+            local name = h and resolve(h, g.key, g.fields)
+            local v = name and read_number(h, name)
+            local st = entry.gaugeState[g.key] or {}
+            entry.gaugeState[g.key] = st
+            local f = 0
+            if v then
+                if g.count then
+                    f = v / #g.dots
+                else
+                    -- The game's maximum when it has one, else the largest value seen.
+                    local maxV = g.maxFields and first_number(h, g.maxFields)
+                    st.max = (maxV and maxV > 0) and maxV or math.max(st.max or 0, v, 1e-6)
+                    f = v / st.max
+                end
+            end
+            f = math.max(0, math.min(1, f))
+            st.smooth = approach(st.smooth or f, f, dt, 0.15, 0.15)
+            local full = g.fullBright and st.smooth > 0.995
+            for i, mat in ipairs(g.dots) do
+                local lit = math.max(0, math.min(1, st.smooth * #g.dots - (i - 1)))
+                entry.mul[mat] = lerp(GAUGE_DIM, full and BOOST_MUL or 1, lit)
+                set_color(entry, mesh, mat, full and BOOST_COLOR or GOLD)
+            end
+            info[#info + 1] = name and string.format("%s=%s", name, v and string.format("%.1f", v) or "?")
+                or (g.key .. " not found")
+        end
+    end
+    for _, b in ipairs(entry.kit.boosts or {}) do
+        if in_mode(entry, b.when) then
+            local name = h and resolve(h, b.key, b.fields)
+            local v = name and read_number(h, name) or 0
+            local st = entry.gaugeState[b.key] or {}
+            entry.gaugeState[b.key] = st
+            st.smooth = approach(st.smooth or 0, v > 0 and 1 or 0, dt, 0.15, 0.4)
+            for _, mat in ipairs(b.mats) do
+                entry.mul[mat] = (entry.mul[mat] or 1) * lerp(1, BOOST_MUL, st.smooth)
+                set_color(entry, mesh, mat, lerp3(GOLD, BOOST_COLOR, st.smooth))
+            end
+            info[#info + 1] = name and string.format("%s=%s", name, tostring(v)) or (b.key .. " not found")
+        end
+    end
+    stateInfo.gauges = stateInfo.gauges or {}
+    stateInfo.gauges[entry.kit] = table.concat(info, "  ")
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -1004,7 +1154,8 @@ local function update_states(chr)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
     for _, entry in pairs(swapped) do
-        if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance then
+        if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
+            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
@@ -1013,6 +1164,8 @@ local function update_states(chr)
                 if entry.kit.bow then update_bow(entry, mesh, h, dt) end
                 if entry.kit.extracts then update_extracts(entry, mesh, h, dt) end
                 if entry.kit.gunlance then update_gunlance(entry, mesh, h, dt, now) end
+                if entry.kit.mode then update_mode(entry, mesh, h) end
+                if entry.kit.gauges or entry.kit.boosts then update_gauges(entry, mesh, h, dt) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -1269,7 +1422,7 @@ end
 local function refresh(entry)
     local mesh = component(entry.go, MESH)
     if not mesh then return end
-    set_model(entry.go, mesh, entry.kitMesh, entry.kit.mdf2, nil)
+    set_model(entry.go, mesh, entry.kitMesh, entry.kitMdf or entry.kit.mdf2, nil)
     entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
     entry.partsOn = nil
     apply_tuning(entry, mesh)
@@ -1311,9 +1464,9 @@ re.on_frame(function()
     if not floatHooked then step_floaters(); apply_floaters("frame") end
     -- Visibility follows draw/sheathe immediately; model checks run less often.
     if frame % CHECK_EVERY ~= 0 then
-        if config.enabled and config.hideSheathed then
+        if config.enabled then
             for _, entry in pairs(swapped) do
-                if not entry.keep then try(function() entry.go:set_DrawSelf(isWeaponDrawn) end) end
+                try(function() entry.go:set_DrawSelf(entry_visible(entry)) end)
             end
         end
         return
@@ -1357,6 +1510,16 @@ re.on_draw_ui(function()
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
         if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
+        if stateInfo.gauges and stateInfo.gauges[entry.kit] then imgui.text("Gauges: " .. stateInfo.gauges[entry.kit]) end
+        if entry.kit.mode and stateInfo.mode then
+            imgui.text("Mode: " .. stateInfo.mode)
+            local wtype = slots.Weapon and weapon_type(slots.Weapon.original)
+            if wtype then
+                local inv
+                c, inv = imgui.checkbox("Swap modes##" .. wtype, config.modeInvert[wtype] == true)
+                if c then config.modeInvert[wtype] = inv or nil; changed = true end
+            end
+        end
         if entry.kit.bow and stateInfo.draw then
             imgui.text("Draw: " .. stateInfo.draw)
             c, config.bowFrom0 = imgui.checkbox("Bow charge counts from 0", config.bowFrom0)

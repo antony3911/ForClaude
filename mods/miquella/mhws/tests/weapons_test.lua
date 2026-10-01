@@ -20,6 +20,10 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_bow%.") then
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_sa") or self.mdfPath:match("wp_miquella_cb") then
+      return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5",
+               "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     if self.mdfPath:match("wp_miquella_gl%.") then
       return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory" }
     end
@@ -605,4 +609,77 @@ texts = {}; onDraw()
 local sawGl = false
 for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") then sawGl = true end end
 check(sawGl, "gunlance: menu shows the fields")
+-- Switch axe: sword mode puts on the sword model; charge blade: axe mode puts on the axe and
+-- hides the shield; "Swap modes" flips the reading.
+weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
+weaponGO = newGO("Wp08", 10001, weaponMesh, nil)
+subGO = nil
+extract = { _TransformMode = 0 }
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "SwitchAxe" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: axe model in axe mode")
+extract._TransformMode = 1
+frames(25, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mesh"
+      and weaponMesh.mdfPath:match("wp_miquella_sa_sword%.mdf2"), "switch axe: sword model in sword mode")
+frames(60, 1 / 60)
+check(weaponMesh.meshPath:match("wp_miquella_sa_sword"), "switch axe: the sword model stays (not swapped back)")
+extract._TransformMode = 0
+frames(25, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: back to the axe")
+weaponMesh = newMesh("Art/Model/Item/it09/00/0002/it0900_0002_0.mesh")
+weaponGO = newGO("Wp09", 11001, weaponMesh, nil)
+local cbShield = newMesh("Art/Model/Item/it09/00/0002/it0900_0002_1.mesh")
+subGO = newGO("Wp09_Shield", 11002, cbShield, nil)
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "ChargeBlade" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and cbShield.meshPath:match("wp_miquella_cb_shield"), "charge blade: sword and shield")
+check(subGO.draw == true, "charge blade: shield shown in sword mode")
+extract._TransformMode = 1
+frames(25, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mesh", "charge blade: axe model in axe mode")
+check(subGO.draw == false, "charge blade: shield hidden in axe mode (it is part of the axe)")
+extract._TransformMode = 0
+frames(25, 1 / 60)
+check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and subGO.draw == true, "charge blade: back to sword and shield")
+-- Charge blade phials: the shield's rim phials count the loaded phials; the sword's ring is its
+-- energy (bright gold when full); in axe mode the axe's phials count them; shield enhanced
+-- lights the shield. Switch axe: the phials are the switch gauge, amped lights the blade.
+local function dotOf(m, i) return (m.floats["MiquellaGauge" .. i .. ".1"] or 0) / (1.2 * glow) end
+extract = { _TransformMode = 0, _BottleNum = 3, _SwordEnergyPoint = 100, _SwordEnergyPoint_Max = 100, _IsShieldEnhanced = false }
+frames(200, 1 / 60)                  -- fields missing earlier are looked for again after 3 s
+extract._SwordEnergyPoint = 40
+frames(60, 1 / 60)
+check(dotOf(cbShield, 3) > 0.99 and dotOf(cbShield, 4) < 0.3, string.format("charge blade: shield phials show 3 loaded (%.2f %.2f)", dotOf(cbShield, 3), dotOf(cbShield, 4)))
+check(dotOf(weaponMesh, 2) > 0.99 and dotOf(weaponMesh, 3) < 0.3, string.format("charge blade: sword ring shows its energy (%.2f %.2f)", dotOf(weaponMesh, 2), dotOf(weaponMesh, 3)))
+extract._SwordEnergyPoint = 100
+frames(60, 1 / 60)
+check(dotOf(weaponMesh, 5) > 1.7, "charge blade: full energy burns bright gold")
+extract._IsShieldEnhanced = true
+frames(40, 1 / 60)
+check((cbShield.floats["MiquellaGlow.1"] or 0) / (1.2 * glow) > 1.7, "charge blade: shield enhanced lights the shield")
+extract._TransformMode, extract._BottleNum = 1, 5
+frames(60, 1 / 60)
+check(weaponMesh.meshPath:match("wp_miquella_cb_axe") and dotOf(weaponMesh, 5) > 0.99, "charge blade: axe phials show the loaded phials")
+extract._BottleNum = 1
+frames(60, 1 / 60)
+check(dotOf(weaponMesh, 1) > 0.99 and dotOf(weaponMesh, 2) < 0.3, "charge blade: using phials dims them")
+extract._TransformMode = 0
+weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
+weaponGO = newGO("Wp08b", 12001, weaponMesh, nil)
+subGO = nil
+extract = { _TransformMode = 0, _SlashGauge = 100, _IsAwake = false }
+frames(200, 1 / 60)
+extract._SlashGauge = 60
+frames(60, 1 / 60)
+check(dotOf(weaponMesh, 3) > 0.99 and dotOf(weaponMesh, 4) < 0.3, string.format("switch axe: phials show the switch gauge (%.2f %.2f)", dotOf(weaponMesh, 3), dotOf(weaponMesh, 4)))
+extract._IsAwake = true
+frames(40, 1 / 60)
+check((weaponMesh.floats["MiquellaBlade.1"] or 0) / (1.2 * glow) > 1.7, "switch axe: amped lights the blade bright gold")
+texts = {}; onDraw()
+local sawG = false
+for _, t in ipairs(texts) do if t:match("^Gauges: _SlashGauge") then sawG = true end end
+check(sawG, "switch axe: menu shows the gauge fields")
 print("ALL PASS")

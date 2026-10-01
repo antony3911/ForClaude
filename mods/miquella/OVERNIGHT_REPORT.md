@@ -37,6 +37,7 @@
 1. 裝 REFramework、Fluffy Mod Manager（只想先看光劍的話，這兩個就夠了）；之後要改模型再裝 Blender 4.3.2–5.0、RE Mesh Editor、RE Asset Library（清單在 `notes/two-account-handoff-plan.md`）
 2. **跑偵察腳本**（`mhws/MiquellaLight_Scout/`，只讀取不改東西）：在 REFramework 選單按「Scan hunter」再按「Save report」，把 `reframework/data/MiquellaLight/scout.json` 給我 → 武器、內衣、髮型的路徑和骨頭名稱一次確認
    - 分別拿雙劍、太刀、片手劍、重弩、輕弩各掃一次（穿內衣、不戴頭盔更好）
+   - **武器動作效果用**：拿大劍、雙劍、大錘、長槍、銃槍各按一次「Watch weapon state」，做蓄力／鬼人化／藍鬼人／填彈，再按「Save watch」，把 `watch.json` 給我（找蓄力段數、鬼人化這些數值在哪）
 3. **看到第一把光劍**：把 `mhws/release/MiquellaLight_v0.1.zip` 拖進 Fluffy，拿雙劍在選單裡選 `DualBlades`（步驟在 `mhws/release/README.md`）→ pak 已經幫你做好了，不用自己打包，也不用犧牲任何原版武器
    - 如果換裝腳本行不通，再退回素材包 README 的「覆蓋原版檔案」做法
 4. 回報光劍的方向、大小、位置對不對（第一次幾乎一定要調）

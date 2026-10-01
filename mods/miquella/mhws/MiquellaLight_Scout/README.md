@@ -13,6 +13,10 @@
    - 勾選「Show hunter skeleton joints」看獵人骨架的全部骨頭名稱
 4. 按「Save report」→ 存到 `reframework/data/MiquellaLight/scout.json`，把這個檔案給我
 
+5. **武器動作效果用（找蓄力段數、鬼人化、填彈的數值）**：拿著那把武器，按「Watch weapon state」→ 做動作（例如大劍蓄力到二段、雙劍開鬼人化再開藍鬼人、銃槍填彈）→ 選單會列出**有變動的欄位**和它的範圍 → 按「Save watch」存到 `reframework/data/MiquellaLight/watch.json` 給我
+   - 每把武器各錄一次，做動作前先站著不動幾秒（站著也會變的欄位比較好排除）
+   - 掃描時武器的每個材質也會列出**參數名稱**（之後改發光、溶解要用的編號）
+
 建議掃這幾次：雙劍、太刀、片手劍、重弩、輕弩各一次；再穿內衣、不戴頭盔掃一次（看內衣和髮型）。
 
 ## 注意

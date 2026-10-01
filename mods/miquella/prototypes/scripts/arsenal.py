@@ -358,24 +358,62 @@ def lance():
                     extra=[("spear", (0, 0, 1.1), 1.4, [("spear", 25, 20)])])
 
 
+GUNLANCE_BASE, GUNLANCE_TIP = 0.46, 1.74
+SPRING_TOP = 1.45        # top of the ivory spring at rest
+
+
+def gunlance_rib_path(k):
+    a = math.radians(90 + 120 * k)
+    radial = V(math.cos(a), math.sin(a), 0)
+    base, tip = GUNLANCE_BASE, GUNLANCE_TIP
+    return radial, [V(0, 0, base + 0.06) + radial * 0.045, V(0, 0, 1.05) + radial * 0.095,
+                    V(0, 0, tip + 0.16) + radial * 0.016]
+
+
+def gunlance_spring(mats, top=SPRING_TOP, name="Binding"):
+    """The ivory spring bound around the ribs (two strands, three turns). On reload it
+    compresses toward the root and springs back (states.py), so `top` is its upper end;
+    the bottom stays put and it always clears the ribs."""
+    _, rib = gunlance_rib_path(0)
+    prof = m.catmull(rib, 80)                           # rib centre line, height -> radius
+
+    def rib_radius(z):
+        for p, q in zip(prof, prof[1:]):
+            if p.z <= z <= q.z:
+                u = (z - p.z) / max(q.z - p.z, 1e-6)
+                return math.hypot(p.x, p.y) * (1 - u) + math.hypot(q.x, q.y) * u
+        return 0.0
+
+    z0, n, turns = GUNLANCE_BASE + 0.1, 160, 3.0
+    objs = []
+    for k in range(2):
+        pts, radii = [], []
+        for i in range(n):
+            t = i / (n - 1)
+            z = z0 + (top - z0) * t
+            r = max(0.098 - 0.028 * t, rib_radius(z) + 0.0075)
+            a = 0.3 + k * math.pi + 2 * math.pi * turns * t
+            pts.append(V(r * math.cos(a), r * math.sin(a), z))
+            radii.append(1 - 0.5 * t)
+        objs.append(c.curve_tube(f"{name}_{k}", pts, radii, mats["ivory"], bevel=0.0026, resolution=2))
+    return objs
+
+
 def gunlance():
     """Openwork gunlance: three slim ribs of light around a thin glowing conduit (the
-    trident as a gun barrel), bound by an ivory spiral; a small energy core at the root
+    trident as a gun barrel), bound by an ivory spring; a small energy core at the root
     and light muzzle halos at the tip for shelling."""
     mats = m.materials()
     rng = random.Random(71)
     objs = lance_grip(mats, rng)
-    base, tip = 0.46, 1.74
+    base, tip = GUNLANCE_BASE, GUNLANCE_TIP
     objs.append(c.curve_tube("Conduit", [V(0, 0, base), V(0, 0, tip)], [1, 0.8], mats["light"],
                              bevel=0.004, resolution=4))
     for k in range(3):
-        a = math.radians(90 + 120 * k)
-        radial = V(math.cos(a), math.sin(a), 0)
-        path = [V(0, 0, base + 0.06) + radial * 0.045, V(0, 0, 1.05) + radial * 0.095,
-                V(0, 0, tip + 0.16) + radial * 0.016]
+        radial, path = gunlance_rib_path(k)
         objs += m.path_blade(f"Rib_{k}", path, radial, lambda t: 0.016 * (1 - t) ** 0.6 + 0.002,
                              lambda t: 0.007 * (1 - t) ** 0.6, mats["blade"])
-    objs += double_helix("Binding", base + 0.1, 1.45, 0.098, 0.07, 3.0, mats["ivory"], 0.0026, phase=0.3)
+    objs += gunlance_spring(mats)
     objs += m.droplet("Energy_Core", (0, 0, base + 0.03), 0.028, (0, 0, 1), mats["light"], stretch=1.4)
     for k, z in enumerate((0.95, 1.32)):
         objs += m.halo(f"Barrel_Halo_{k}", (0, 0, z), 0.12, 0.0035, (0, 0, 1), mats["light"], tilt_deg=5 - 10 * k)

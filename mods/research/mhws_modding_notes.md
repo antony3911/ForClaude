@@ -310,3 +310,42 @@ chain2:set_ChainAsset(chain2Resource)     -- 換擺動（沒有的話用一個�
 **`create_resource` / `spawn_gameobj`**：MDF-XL 用的是 `_SharedCore/Functions.lua`（另一個 mod 的共用函式庫），這次沒有抓到原始碼。REFramework 的常見寫法是 `sdk.create_resource(型別, 路徑):add_ref()`，再 `:create_holder(型別 .. "Holder"):add_ref()` 取得可以傳給 `setMesh` 的 holder → 回家時直接看 `_SharedCore` 的實作最保險。
 
 **偵察腳本**：`mods/miquella/mhws/MiquellaLight_Scout/`（只讀取、不改任何東西）會列出獵人目前的武器、防具、所有帶模型的子物件的 `.mesh` / `.mdf2` 路徑、材質名稱和骨頭名稱，還能存成 `reframework/data/MiquellaLight/scout.json`。回家第一件事跑它，就能確認上面所有推測。
+
+## 16. 武器動作效果：遊戲裡怎麼做（設計見 `mods/miquella/DESIGN.md`「武器專屬動作效果」）
+
+目標：武器零件跟著動作反應（大劍蓄力變色、雙劍鬼人化分裂成三刃、大錘／長槍蓄力多出光環、銃槍填彈彈簧伸縮），不是單純換膚。
+
+**1. 材質參數可以在遊戲中即時改**（MDF-XL 就是這樣調顏色的）
+
+```lua
+renderMesh:setMaterialFloat(材質編號, 參數編號, 數值)
+renderMesh:setMaterialFloat4(材質編號, 參數編號, Vector4f)   -- 顏色
+renderMesh:setMaterialsEnable(材質編號, true / false)       -- 整個材質槽顯示／隱藏
+```
+
+Weapon Emissive 預設（`Base_ATOS_FX_SecEmit_VEmit_Detail_ColLayer_VFXwe.mmtr`）裡跟動作效果有關的參數（從 RE Mesh Editor 的 `MHWILDS/Weapon Emissive.json` 列出）：
+
+| 參數 | 用途 |
+|---|---|
+| `Emissive_Color`、`Emissive_Intensity`、`Emissive_Power` | 發光顏色與強度 → 大劍金／亮金／白光、藍鬼人亮金 |
+| `Dissolve` | 溶解（淡入淡出）→ 側刃、新光環出現時用 |
+| `AnimEmit_Min`、`AnimEmit_Speed`、`AnimEmitWave`、`UseWaveEmit` | 發光自己一閃一閃（呼吸燈），不用腳本 |
+| `Use_MoveEmit`、`MoveEmit`、`MoveEmit_Width` | 一條光帶沿著模型移動 → 長槍蓄力時光從槍根跑到槍尖、銃槍填彈時光往核心收 |
+| `SecondaryEmitColor`、`SecEmit_Anim_*` | 第二層發光顏色與動畫 |
+| `VFX_Param1`～`10`、`VFX_ColorParam1/2`、`Enable_VFXMaterialBlend` | 特效混合用，用途要實測 |
+
+→ 參數**編號**要在遊戲裡從材質讀出來（偵察腳本加列參數名稱）。
+
+**2. 會出現／消失的零件 = 獨立材質槽**
+- 雙劍側刃、大錘每一段的環、長槍每一個新環，各自放在**自己的材質槽**
+- 平常 `setMaterialsEnable(槽, false)`；到那一段就打開，`Dissolve` 從 1 降到 0 做淡入
+
+**3. 會移動的零件**
+- 首選：零件綁在**武器模型自己的骨頭**上，腳本改骨頭位置（銃槍彈簧每一圈一根骨頭，壓縮時往根部移，不會把彈簧壓扁；雙劍側刃繞刀根轉）
+- 退路：做幾個不同姿勢的零件（逐格），依時間輪流打開材質槽
+
+**4. 還不知道的：遊戲狀態從哪裡讀**
+- 大劍蓄力段數、雙劍鬼人化／藍鬼人（鬼人量表）、大錘蓄力段數、長槍蓄力、銃槍填彈動作 → 都要找到對應的類別和欄位（例如獵人的武器處理器 `app.cHunterWp??Handling` 之類，名稱待確認）
+- 做法：偵察腳本加一個「監看」模式，做動作時把武器處理器裡變動的欄位記下來
+
+**5. 預覽圖**：`mods/miquella/prototypes/action_states/`（`prototypes/scripts/states.py` 產生）。預覽裡的淡入用半透明材質代替 `Dissolve`，銃槍彈簧逐格重建代替骨頭。

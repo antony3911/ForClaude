@@ -401,6 +401,10 @@ re.on_draw_ui(function()
     if c3 then config.size = SIZE_NAMES[newSize]; changed = true end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 
+    if not (slots.Weapon and slots.Weapon.original) then
+        imgui.text("Load your hunter and equip a weapon: a 'Look' list appears below")
+        imgui.text("  Looks: " .. table.concat(KIT_NAMES, ", ", 2))
+    end
     for _, name in ipairs({ "Weapon", "SubWeapon" }) do
         local s = slots[name]
         if s and s.original then

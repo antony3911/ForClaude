@@ -21,8 +21,9 @@ local function newMesh(meshPath)
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_ls%.") then
-      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaBand1", "MiquellaBand2", "MiquellaBand3",
-               "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }
+      return { "MiquellaGlow", "MiquellaIvory", "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4",
+               "MiquellaBlade5", "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8", "MiquellaBand1", "MiquellaBand2",
+               "MiquellaBand3", "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }
     end
     if self.mdfPath:match("wp_miquella_sa%.") then
       return { "MiquellaAxeBlade", "MiquellaAxeGlow", "MiquellaFinBlade", "MiquellaFinGlow", "MiquellaGauge1",
@@ -113,7 +114,15 @@ local bowDraw = nil
 local glStart, glKeep = nil, 0   -- gunlance charged shelling: its timer counts while charging, then keeps its value
 local extract = {}               -- field -> value (insect glaive timers)
 local insectGO = nil             -- the kinsect GameObject behind _Insect
+local hunterAction = nil         -- type name of the hunter's current (base) action
 function chr:call(m)
+  if m == "get_BaseActionController" then
+    return { call = function(_, cm)
+      if cm == "get_CurrentAction" and hunterAction then
+        return { get_type_definition = function() return { get_full_name = function() return hunterAction end } end }
+      end
+    end }
+  end
   if m == "get_WeaponHandling" then
     -- One handling type per weapon object, like the game's (field lookups are cached per type).
     return { get_type_definition = function() return { get_full_name = function() return "Handling_" .. weaponGO.name end,
@@ -660,18 +669,22 @@ check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire w
 extract._RyuugekiChargeTimer = 0
 frames(120, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
--- Wyvern's Fire: its wind-up turns the original Hinge bone away from its drawn pose (read off
--- our model's skeleton); its gauge drops by one at the blast. A shell fired lowers the count.
+-- Wyvern's Fire: the hunter runs the game's cRyuugeki* actions through its wind-up; its gauge
+-- drops by one at the blast. A shell fired lowers the count.
 extract._RyuugekiGauge, extract._ChargeShotBulletNum = 2.0, 5
+hunterAction = "app.Wp07Action.cIdle"
 frames(10, 1 / 60)
-local heat = weaponGO.tf:call("getJointByName", "Hinge")
-heat.lr = { x = math.sin(math.rad(15)), y = 0, z = 0, w = math.cos(math.rad(15)) }
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: other actions leave the spring alone")
+hunterAction = "app.Wp07Action.cRyuugekiStart"
 frames(60, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (Hinge turning 30 deg) winds the spring")
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (cRyuugekiStart) winds the spring")
+hunterAction = "app.Wp07Action.cRyuugekiShoot"
+frames(20, 1 / 60)
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: still wound into the shot until the blast")
 extract._RyuugekiGauge = 1.0
 frames(120, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released at the blast (gauge used), though the bone is still turned")
-heat.lr = nil
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released at the blast (gauge used), though the action still runs")
+hunterAction = "app.Wp07Action.cIdle"
 frames(30, 1 / 60)
 extract._ChargeShotBulletNum = 4
 frames(6, 1 / 60)
@@ -680,8 +693,9 @@ frames(90, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the shell")
 texts = {}; onDraw()
 local sawGl = false
-for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") then sawGl = true end end
-check(sawGl, "gunlance: menu shows the fields")
+for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") and t:match("action: app%.Wp07Action%.cIdle") then sawGl = true end end
+check(sawGl, "gunlance: menu shows the fields and the hunter's action")
+hunterAction = nil
 -- Switch axe and charge blade: both modes are one model; the game's mode drives a morph (joints
 -- move, parts of one mode fade by Dissolve), never a model swap. Charge blade: the shield fades
 -- out toward axe mode and is hidden once gone.
@@ -793,17 +807,24 @@ comboPick = { slot = "Weapon", name = "LongSword" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath:match("MiquellaLight/LongSword"), "long sword: model swapped")
 local function ls(mat) return (weaponMesh.floats[mat .. ".1"] or 0) / (1.2 * glow) end
-check(math.abs(ls("MiquellaBlade") - 0.8) < 0.01, string.format("long sword: no spirit = pale gold (%.2f)", ls("MiquellaBlade")))
+check(math.abs(ls("MiquellaBlade1") - 0.8) < 0.01 and math.abs(ls("MiquellaBlade8") - 0.8) < 0.01,
+      string.format("long sword: no spirit = pale gold (%.2f)", ls("MiquellaBlade1")))
 extract["<AuraLevel>k__BackingField"] = 3
 frames(60, 1 / 60)
-local function bandRange()
+local function bandRange(prefix)
   local lo, hi = math.huge, 0
-  for k = 1, 8 do local v = ls("MiquellaBand" .. k); lo, hi = math.min(lo, v), math.max(hi, v) end
+  for k = 1, 8 do local v = ls((prefix or "MiquellaBand") .. k); lo, hi = math.min(lo, v), math.max(hi, v) end
   return lo, hi
 end
 local blo, bhi = bandRange()
-check(math.abs(ls("MiquellaBlade") - 1.8) < 0.01 and bhi > 1.8 * 2.5 and blo < 1.8 * 1.3,
+check(bhi > 1.8 * 2.5 and blo < 1.8,
       string.format("long sword: yellow = bright gold, the band runs along the pieces (%.2f .. %.2f)", blo, bhi))
+local dlo, dhi = bandRange("MiquellaBlade")
+check(math.abs(dlo - blo) < 1e-6 and math.abs(dhi - bhi) < 1e-6 and dlo < 1.8 * 0.8,
+      string.format("long sword: the band runs through the blade's pieces too, the rest dimmed (%.2f .. %.2f)", dlo, dhi))
+local hiColor = nil
+for k = 1, 8 do if ls("MiquellaBlade" .. k) == dhi then hiColor = weaponMesh.colors["MiquellaBlade" .. k] end end
+check(hiColor and hiColor.z > 0.5, "long sword: the pulse is white")
 local firstHi = nil
 for k = 1, 8 do if ls("MiquellaBand" .. k) == bhi then firstHi = k end end
 frames(12, 1 / 60)
@@ -813,10 +834,11 @@ for k = 1, 8 do if ls("MiquellaBand" .. k) == bhi then nowHi = k end end
 check(firstHi and nowHi and nowHi ~= firstHi, string.format("long sword: the band moves (piece %s -> %s)", tostring(firstHi), tostring(nowHi)))
 extract["<AuraLevel>k__BackingField"] = 4
 frames(60, 1 / 60)
-local lc = weaponMesh.colors["MiquellaBlade"]
+local lc = weaponMesh.colors["MiquellaBlade1"]
 check(lc and lc.z > 0.8, "long sword: red = white light")
 extract["<AuraLevel>k__BackingField"] = 2
 frames(90, 1 / 60)
 blo, bhi = bandRange()
-check(math.abs(ls("MiquellaBlade") - 1.0) < 0.01 and bhi - blo < 0.01, "long sword: white = gold, no band")
+dlo, dhi = bandRange("MiquellaBlade")
+check(math.abs(dlo - 1.0) < 0.01 and dhi - dlo < 0.01 and bhi - blo < 0.01, "long sword: white = gold, no band")
 print("ALL PASS")

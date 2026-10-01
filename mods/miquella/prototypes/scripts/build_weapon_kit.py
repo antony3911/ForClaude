@@ -63,17 +63,27 @@ def great_sword():
 LS_BANDS = 8
 
 
-def split_bands(subs, mat, prefix, n):
+def band_span(subs, mat):
+    """File +Z range of the sub-mesh on `mat` (None if there is none)."""
+    src = next((o for o in subs if o.name.split("__", 1)[1] == mat), None)
+    if src is None:
+        return None
+    inv = FILE_TO_BLENDER.inverted()
+    zs = [(inv @ v.co).z for v in src.data.vertices]
+    return min(zs), max(zs)
+
+
+def split_bands(subs, mat, prefix, n, span=None):
     """The sub-mesh on `mat` cut into n pieces along file +Z (by face centre), materials
-    prefix1..n; the subs renumbered."""
+    prefix1..n; the subs renumbered. `span`: the Z range to cut (default: the sub-mesh's own),
+    so two materials can be cut into matching pieces."""
     import bmesh
     src = next((o for o in subs if o.name.split("__", 1)[1] == mat), None)
     if src is None:
         log(f"  bands: no {mat}")
         return subs
     inv = FILE_TO_BLENDER.inverted()
-    zs = [(inv @ v.co).z for v in src.data.vertices]
-    z0, z1 = min(zs), max(zs)
+    z0, z1 = span or band_span(subs, mat)
     out = [o for o in subs if o is not src]
     for k in range(n):
         o = src.copy()
@@ -89,9 +99,14 @@ def split_bands(subs, mat, prefix, n):
             if not (lo <= u < hi or (k == n - 1 and u >= hi)):
                 kill.append(f)
         bmesh.ops.delete(bm, geom=kill, context="FACES")
+        empty = len(bm.faces) == 0
         bm.to_mesh(o.data)
         bm.free()
         name = f"{prefix}{k + 1}"
+        if empty:
+            log(f"  band {name}: empty, left out")
+            bpy.data.objects.remove(o, do_unlink=True)
+            continue
         o.data.materials.clear()
         o.data.materials.append(bpy.data.materials.get(name) or bpy.data.materials.new(name))
         o.name = f"Band_tmp_{k}__{name}"
@@ -156,8 +171,10 @@ def long_sword():
         "floaters": {"Tsuba_Halo": "MQ_Tsuba0", "Tsuba_Halo_Inner": "MQ_Tsuba1"},
         # The temper line in 8 pieces root -> tip, a material each (MiquellaBand1-8): the weapons
         # script runs the band of light along them (the material's own moving glow, MoveEmit,
-        # showed nothing in the game, user 2026-10-02).
-        "bands": ("MiquellaTemper", "MiquellaBand", LS_BANDS),
+        # showed nothing in the game, user 2026-10-02). The thin line alone did not show either
+        # (user, 2026-10-02): the blade is cut into matching pieces too (MiquellaBlade1-8, the
+        # blade's length for both), so the band runs through the whole blade.
+        "bands": [("MiquellaBlade", "MiquellaBlade", LS_BANDS), ("MiquellaTemper", "MiquellaBand", LS_BANDS)],
     }
 
 
@@ -877,6 +894,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               **{f"MiquellaBand{k + 1}": "MiquellaGlow" for k in range(LS_BANDS)},
+              **{f"MiquellaBlade{k + 1}": "MiquellaBlade" for k in range(LS_BANDS)},
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
 # Gold metal with a faint warmth (the needle arrows): the devices' three-band texture, its gold band.
 DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
@@ -1288,7 +1306,11 @@ def main():
     bpy.context.scene.collection.children.link(mesh_col)
     subs, pivots = build_parts(spec, mesh_col)
     if spec.get("bands"):
-        subs = split_bands(subs, *spec["bands"])
+        bands = spec["bands"]
+        bands = [bands] if isinstance(bands[0], str) else bands
+        span = band_span(subs, bands[0][0])
+        for b in bands:
+            subs = split_bands(subs, *b, span=span)
     lo, hi = file_bounds(subs)
     log(f"file-space bounds min=({lo.x:+.3f}, {lo.y:+.3f}, {lo.z:+.3f}) max=({hi.x:+.3f}, {hi.y:+.3f}, {hi.z:+.3f})")
     arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots, spec.get("bone_parents"))

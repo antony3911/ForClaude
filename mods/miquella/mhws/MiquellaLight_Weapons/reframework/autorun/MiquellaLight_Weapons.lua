@@ -153,7 +153,9 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaBand1 = 1.2, MiquellaBand2 = 1.2,
                  MiquellaBand3 = 1.2, MiquellaBand4 = 1.2, MiquellaBand5 = 1.2, MiquellaBand6 = 1.2, MiquellaBand7 = 1.2,
-                 MiquellaBand8 = 1.2 },
+                 MiquellaBand8 = 1.2, MiquellaBlade1 = 1.2, MiquellaBlade2 = 1.2, MiquellaBlade3 = 1.2,
+                 MiquellaBlade4 = 1.2, MiquellaBlade5 = 1.2, MiquellaBlade6 = 1.2, MiquellaBlade7 = 1.2,
+                 MiquellaBlade8 = 1.2 },
         -- The two rings in place of a tsuba hover.
         floaters = { mode = "hover", joints = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
@@ -162,11 +164,18 @@ local KITS = {
         -- white light, the temper line's band of light running from yellow on (DESIGN). The game
         -- counts 1 none .. 4 red (recorded 2026-10-02: <AuraLevel>k__BackingField; the guess
         -- _AuraLevel did not exist). The band runs along the temper line's 8 pieces (MiquellaBand1-8,
-        -- root -> tip; the material's own MoveEmit showed nothing in the game, user 2026-10-02).
+        -- root -> tip; the material's own MoveEmit showed nothing in the game, user 2026-10-02) and,
+        -- since the thin line alone did not show either (the blade already burns white at Glow 5),
+        -- through the blade's matching pieces (MiquellaBlade1-8): a white pulse, the rest of the
+        -- blade dimmed a little while it runs so the pulse stands out. MiquellaBlade: the older
+        -- model (one blade), until the new pak is in.
         charge = { levels = 3, fields = { "<AuraLevel>k__BackingField", "_AuraLevel" }, offset = -1, look = "spirit",
-                   band = true, bandFrom = 2, bandWidth = 0.16, bandBoost = 3.0, bandPeriod = 0.8,
+                   band = true, bandFrom = 2, bandWidth = 0.16, bandBoost = 4.0, bandPeriod = 0.8, bandDim = 0.6,
                    bands = { "MiquellaBand1", "MiquellaBand2", "MiquellaBand3", "MiquellaBand4", "MiquellaBand5",
-                             "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" } },
+                             "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" },
+                   blades = { "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4", "MiquellaBlade5",
+                              "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8" },
+                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.4 } },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -613,6 +622,32 @@ local function player_character()
     return try(function() return master:get_Character() end)
 end
 
+-- The hunter's current actions: the type names of what its base and sub action controllers run
+-- (e.g. app.Wp07Action.cRyuugekiStart; method and class names found in the game's type names,
+-- 2026-10-02). Logged when they change (actionLog, saved with the field recorder's file).
+local ACTION_CONTROLLERS = { "get_BaseActionController", "get_SubActionController" }
+local actionNow, actionLog = "", {}
+
+local function current_actions(chr)
+    local names = {}
+    for _, getter in ipairs(ACTION_CONTROLLERS) do
+        local ctl = try(function() return chr:call(getter) end)
+        local act = ctl and try(function() return ctl:call("get_CurrentAction") end)
+        local n = act and try(function() return act:get_type_definition():get_full_name() end)
+        if n then names[#names + 1] = n end
+    end
+    return table.concat(names, " + ")
+end
+
+local function update_actions(chr)
+    local a = current_actions(chr)
+    if a ~= actionNow then
+        actionNow = a
+        actionLog[#actionLog + 1] = string.format("%8.2f  %s", os.clock(), a ~= "" and a or "(none)")
+        if #actionLog > 150 then table.remove(actionLog, 1) end
+    end
+end
+
 local function set_model(go, mesh, meshPath, mdfPath, chainPath)
     local m = holder("via.render.MeshResource", meshPath)
     local d = holder("via.render.MeshMaterialResource", mdfPath)
@@ -965,6 +1000,7 @@ local CHARGE_LOOKS = {
     },
 }
 local BAND_PERIOD, BAND_WIDTH = 0.9, 0.14
+local BAND_WHITE = { 1.0, 0.97, 0.90 }     -- the pulse's colour at its peak
 local CHARGE_WEIGHTS = { MiquellaBlade = 1.0, MiquellaGlow = 0.4, MiquellaTemper = 1.0 }
 
 -- spec: the kit's charge table; level: given by the caller (the gunlance) or read from spec.fields.
@@ -1004,13 +1040,22 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).
     local band = math.max(0, math.min(1, s - ((spec.bandFrom or spec.levels) - 1)))
     if spec.bands then
-        -- Pieces of the temper line lit in turn: a pulse travelling root -> tip, then again.
+        -- Pieces of the temper line (and the blade's, `blades`) lit in turn: a pulse travelling
+        -- root -> tip, then again, whiter where it is; the rest dims to bandDim while it runs.
         local n, w = #spec.bands, spec.bandWidth or BAND_WIDTH
         local front = ((now / (spec.bandPeriod or BAND_PERIOD)) % 1) * (1 + 2 * w) - w
+        local base = mul * lerp(1, spec.bandDim or 1, band)
         for k, mat in ipairs(spec.bands) do
             local x = ((k - 0.5) / n - front) / w
-            entry.mul[mat] = mul * (1 + band * (spec.bandBoost or 1) * math.exp(-x * x))
-            set_color(entry, mesh, mat, color)
+            local g = band * math.exp(-x * x)
+            local c = lerp3(color, BAND_WHITE, g)
+            entry.mul[mat] = base * (1 + (spec.bandBoost or 1) * g)
+            set_color(entry, mesh, mat, c)
+            local blade = spec.blades and spec.blades[k]
+            if blade then
+                entry.mul[blade] = entry.mul[mat]
+                set_color(entry, mesh, blade, c)
+            end
         end
         return
     end
@@ -1133,46 +1178,17 @@ end
 -- Wyvern's Fire winds it all the way until it fires. The light follows the level.
 local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
 local SHELL_PULSE = 0.18             -- a shell fired: a short press
--- Wyvern's Fire: its gauge drops at the blast (user, 2026-10-02: the spring did not wind, the
--- drop is too late), so the wind-up is read off the weapon's own skeleton: the game animates the
--- original gunlance bones on our model. First guess Heat_Hinge: it never moved (user test
--- 2026-10-02); Hinge turned 72 degrees on drawing and stayed. Now: Hinge away from its drawn
--- pose (a baseline taken a second after drawing, following it while it holds still) by more
--- than GL_WIND_DEG, not while reloading = winding, until the gauge drops (the blast). Still a
--- guess: the last seconds of both joints' angles are logged at each blast (glEvents, saved with
--- the field recorder's file) to see what Wyvern's Fire's wind-up really moves.
-local GL_JOINTS = { "Hinge", "Heat_Hinge" }
-local GL_WIND_JOINT, GL_WIND_DEG, GL_WIND_M = "Hinge", 15, 0.03
-local GL_SETTLE, GL_TRACE = 1.0, 6.0     -- seconds after drawing before the baseline; trace length
+-- Wyvern's Fire: its gauge drops at the blast, too late for the wind-up (user, 2026-10-02), and
+-- the original gunlance bones on our model do not move during it (traces of 2026-10-02: Hinge
+-- 18 deg, Heat_Hinge 0 through the whole wind-up). Now the hunter's own action: the game's
+-- Wyvern's Fire actions are cRyuugeki* (Start, Idle, AimIdle, ToAim, Shoot, Shot) -> wound
+-- while one runs until the gauge drops (the blast), then it springs back and waits for them to end.
+local GL_WYVERN_ACTION = "Ryuugeki"
 local glEvents = {}
 
 local function gl_event(text)
     glEvents[#glEvents + 1] = string.format("%8.2f  %s", os.clock(), text)
     if #glEvents > 100 then table.remove(glEvents, 1) end
-end
-
--- Each watched joint: its turn (degrees, from its first seen rotation) and move (metres).
-local function gl_joints(entry)
-    local tf = entry.glTf or try(function() return entry.go:call("get_Transform") end)
-    entry.glTf, entry.glJoints, entry.glRest = tf, entry.glJoints or {}, entry.glRest or {}
-    local out = {}
-    for _, n in ipairs(GL_JOINTS) do
-        local j = entry.glJoints[n]
-        if j == nil then
-            j = tf and try(function() return tf:call("getJointByName", n) end) or false
-            entry.glJoints[n] = j
-        end
-        local q = j and try(function() return j:call("get_LocalRotation") end)
-        local p = j and try(function() return j:call("get_LocalPosition") end)
-        if q and p then
-            local r = entry.glRest[n] or { q = { q.x, q.y, q.z, q.w }, p = { p.x, p.y, p.z } }
-            entry.glRest[n] = r
-            local d = math.abs(q.x * r.q[1] + q.y * r.q[2] + q.z * r.q[3] + q.w * r.q[4])
-            local m = math.sqrt((p.x - r.p[1]) ^ 2 + (p.y - r.p[2]) ^ 2 + (p.z - r.p[3]) ^ 2)
-            out[n] = { deg = math.deg(2 * math.acos(math.min(1, d))), m = m }
-        end
-    end
-    return out
 end
 local GL_CHARGE_STEP = 0.6           -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
 
@@ -1201,40 +1217,11 @@ local function update_gunlance(entry, mesh, h, dt, now)
         gl_event(string.format("shells %s -> %s", tostring(entry.lastShells), tostring(shells)))
     end
     entry.lastShells = shells
-    local joints = gl_joints(entry)
-    -- Each joint against its drawn pose: baseline once drawn a while, eased along while steady.
-    entry.drawnAt = isWeaponDrawn and (entry.drawnAt or now) or nil
-    entry.glBase = entry.drawnAt and entry.glBase or {}
-    entry.glMoved = entry.glMoved or {}
-    local settled = entry.drawnAt ~= nil and now - entry.drawnAt > GL_SETTLE
-    for _, n in ipairs(GL_JOINTS) do
-        local jt = joints[n]
-        if jt and settled then
-            local b = entry.glBase[n]
-            if not b then
-                entry.glBase[n] = { deg = jt.deg, m = jt.m }
-            elseif math.abs(jt.deg - b.deg) < 3 and math.abs(jt.m - b.m) < 0.005 then
-                b.deg, b.m = b.deg + (jt.deg - b.deg) * 0.05, b.m + (jt.m - b.m) * 0.05
-            end
-        end
+    local wyvAction = actionNow:find(GL_WYVERN_ACTION, 1, true) ~= nil
+    if wyvAction ~= (entry.wasWyvAction or false) then
+        gl_event(string.format("Wyvern's Fire action %s (%s)", wyvAction and "starts" or "ends", actionNow))
     end
-    -- The last seconds of the joints, logged at a blast.
-    entry.glTrace = entry.glTrace or {}
-    if not entry.glTraceAt or now - entry.glTraceAt >= 0.1 then
-        entry.glTraceAt = now
-        entry.glTrace[#entry.glTrace + 1] = string.format("%.1f:%.0f/%.0f", now, joints.Hinge and joints.Hinge.deg or -1,
-                                                          joints.Heat_Hinge and joints.Heat_Hinge.deg or -1)
-        if #entry.glTrace > GL_TRACE * 10 then table.remove(entry.glTrace, 1) end
-    end
-    if entry.blastAt == now then gl_event("trace (time:Hinge/Heat_Hinge deg) " .. table.concat(entry.glTrace, " ")) end
-    for _, n in ipairs(GL_JOINTS) do
-        local jt, b = joints[n], entry.glBase[n]
-        local moved = jt ~= nil and b ~= nil and (math.abs(jt.deg - b.deg) > GL_WIND_DEG or math.abs(jt.m - b.m) > GL_WIND_M)
-        if moved ~= (entry.glMoved[n] or false) then
-            gl_event(string.format("%s %s (%.0f deg, %.3f m)", n, moved and "moves" or "back", jt and jt.deg or 0, jt and jt.m or 0))
-            entry.glMoved[n] = moved
-        end
-    end
+    entry.wasWyvAction = wyvAction
     local reloading = (reload or 0) > 0
     if reloading and not entry.wasReloading then
         entry.reloadUntil = now + RELOAD_PULSE
@@ -1246,10 +1233,10 @@ local function update_gunlance(entry, mesh, h, dt, now)
     entry.lastShot = shot
     entry.countingAt = counting and now or entry.countingAt
     local charging = entry.countingAt ~= nil and now - entry.countingAt < 0.15
-    -- After the blast the bone may stay turned a while: wait for it to come back first.
+    -- After the blast the action may run on a while (the recoil): wait for it to end first.
     if entry.blastAt == now then entry.blastLatch = true end
-    if not entry.glMoved[GL_WIND_JOINT] then entry.blastLatch = nil end
-    local winding = (wyv or 0) > 0 or (entry.glMoved[GL_WIND_JOINT] and not entry.blastLatch and not reloading)
+    if not wyvAction then entry.blastLatch = nil end
+    local winding = (wyv or 0) > 0 or (wyvAction and not entry.blastLatch and not reloading)
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
     local level, pack = 0, 0
@@ -1269,9 +1256,7 @@ local function update_gunlance(entry, mesh, h, dt, now)
     stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
                                        show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
                                        level, entry.pack or 0)
-        .. string.format("  joints: Hinge %.0f deg, Heat_Hinge %.0f deg %.3f m",
-                         joints.Hinge and joints.Hinge.deg or -1, joints.Heat_Hinge and joints.Heat_Hinge.deg or -1,
-                         joints.Heat_Hinge and joints.Heat_Hinge.m or -1)
+        .. "  action: " .. (actionNow ~= "" and actionNow or "not readable")
     update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
 
@@ -1470,7 +1455,7 @@ local function record_fields(h, now)
         local safe = rec.type:gsub("[^%w_]", "_")
         try(function() json.dump_file("MiquellaLight/fields_" .. safe .. ".json",
             { type = rec.type, samples = rec.samples, changed = changed, all = rec.data, objects = rec.objects,
-              events = #glEvents > 0 and glEvents or nil }) end)
+              events = #glEvents > 0 and glEvents or nil, actions = #actionLog > 0 and actionLog or nil }) end)
     end
 end
 
@@ -1482,6 +1467,7 @@ local function update_states(chr)
     local rate = dt / (target > demonProgress and DEMON_IN or DEMON_OUT)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
+    update_actions(chr)
     if config.recordFields then
         h = try(function() return chr:call("get_WeaponHandling") end)
         record_fields(h, now)

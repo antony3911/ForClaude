@@ -26,7 +26,7 @@ local CHECK_EVERY = 20       -- frames between checks
 -- demon: demon-mode side-blade materials and their stage (hidden outside demon mode).
 -- Phial gauges (switch axe, charge blade): one material per floating phial.
 local PHIALS = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5" }
-local BOTTLE_FIELDS = { "_BottleNum", "_LoadBottleNum", "_BottleCount" }
+local BOTTLE_FIELDS = { "_ActionEnterBinNum", "_BottleNum" }
 -- Charge level fields (candidates from the game's type names; the first found is used).
 local CHARGE_FIELDS = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
 
@@ -132,7 +132,8 @@ local KITS = {
         floaters = { mode = "hover", joints = { { name = "MQ_BeltHalo", pos = { 0.0, 0.0, 1.3160 } } } },
         -- Charge (user, 2026-10-02): a cone of rings beyond each face grows a level at a time, the
         -- light goes bright gold -> white; the game's glow on the hunter is gone (HammerFX pak).
-        charge = { levels = 3, fields = CHARGE_FIELDS, weights = { MiquellaGlow = 1.0 }, colored = { "MiquellaGlow" },
+        charge = { levels = 3, fields = { "<ChargeLv>k__BackingField", "<ChargeLvEffect>k__BackingField" },
+                   weights = { MiquellaGlow = 1.0 }, colored = { "MiquellaGlow" },
                    parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 } },
     },
     HuntingHorn = {
@@ -150,7 +151,7 @@ local KITS = {
         -- Charge (DESIGN, user 2026-10-02): the cone of rings grows from the vamplate toward the
         -- point a level at a time, brighter each level; at full charge the point's longer blade.
         -- Only on the lance: the game's glow on the hunter is gone (LanceFX pak).
-        charge = { levels = 3, fields = CHARGE_FIELDS,
+        charge = { levels = 3, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
                    weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaTemper = 1.0 },
                    colored = { "MiquellaBlade", "MiquellaGlow" },
                    parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3, MiquellaChargeTip = 3 } },
@@ -176,7 +177,7 @@ local KITS = {
         -- Reload, charged shelling and Wyvern's Fire wind the spring (user, 2026-10-02); charged
         -- shelling's levels light it gold -> bright gold -> white gold. Fields guessed from the
         -- game's type names (menu: "Gunlance:").
-        gunlance = { reload = { "_IsReload", "_IsContinueReload" }, chargeShot = { "_IsChargeShot", "_ChargeShotTimer" },
+        gunlance = { reload = { "_IsReload", "_IsContinueReload" }, chargeShot = { "_ChargeShotElapsedTimer" },
                      wyvern = { "_RyuugekiChargeTimer" },
                      charge = { levels = 3, look = "whiteGold", colored = { "MiquellaBlade", "MiquellaGlow", "MiquellaCore" },
                                 weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 } } },
@@ -197,11 +198,11 @@ local KITS = {
         -- The five floating phials are the switch gauge; amped (awakened) and power axe light the
         -- blades bright gold (DESIGN; user 2026-10-02: they did nothing). Fields guessed.
         gauges = { { key = "slash", dots = PHIALS, fields = { "_SlashGauge", "_SwitchGauge", "_Gauge" } } },
-        boosts = { { key = "awake", fields = { "_IsAwake", "_Awaked", "_IsSwordAwaken" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
-                   { key = "axeEnh", fields = { "_IsAxeEnhanced", "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" } } },
+        boosts = { { key = "awake", fields = { "_SwordAwakeTimer" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
+                   { key = "axeEnh", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" } } },
         -- Sword mode: its own model (user, 2026-10-02: both modes showed the axe). The game's
         -- mode field is guessed (menu "Mode:"; "Swap modes" if it reads the wrong way round).
-        mode = { fields = { "_TransformMode", "_IsSwordMode", "_SwordMode", "_WeaponMode" }, alt = "SwitchAxe_Sword",
+        mode = { fields = { "_Mode" }, alt = "SwitchAxe_Sword",
                  names = { "axe", "sword" } },
     },
     SwitchAxe_Sword = {
@@ -220,14 +221,14 @@ local KITS = {
         shield = "ChargeBlade_Shield",
         -- Sword: the phial ring is the sword's energy (bright gold when full); axe: the phials on
         -- its back are the loaded phials. Sword / axe enhanced light the blade (DESIGN).
-        gauges = { { key = "energy", dots = PHIALS, fields = { "_SwordEnergyPoint" }, maxFields = { "_SwordEnergyPoint_Max" },
+        gauges = { { key = "energy", dots = PHIALS, fields = { "_SwordEnergyState" }, max = 2,
                      fullBright = true, when = "base" },
                    { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true, when = "alt" } },
-        boosts = { { key = "swordEnh", fields = { "_SwordEnhancedTimer", "_SwordEnhanced" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
-                   { key = "axeEnhCB", fields = { "_AxeEnhancedTimer", "_IsAxeEnhanced" }, mats = { "MiquellaBlade" }, when = "alt" } },
+        boosts = { { key = "swordEnh", fields = { "_SwordEnhancedTimer" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
+                   { key = "axeEnhCB", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" }, when = "alt" } },
         -- Axe mode: the designed axe (the shield's light reshaped into a bardiche on the sword)
         -- in place of the sword, the shield model hidden (user, 2026-10-02).
-        mode = { fields = { "_TransformMode", "_IsAxeMode", "_AxeMode", "_WeaponMode" }, alt = "ChargeBlade_Axe",
+        mode = { fields = { "_Mode" }, alt = "ChargeBlade_Axe",
                  hideSecond = true, names = { "sword & shield", "axe" } },
     },
     ChargeBlade_Axe = {
@@ -246,7 +247,7 @@ local KITS = {
         -- The five phials on the rim are the loaded phials; shield enhanced (red shield): the halo
         -- and the tree sigil bright gold.
         gauges = { { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true } },
-        boosts = { { key = "shieldEnh", fields = { "_IsShieldEnhanced", "_ShieldEnhancedTimer" }, mats = { "MiquellaGlow" } } },
+        boosts = { { key = "shieldEnh", fields = { "_ShieldEnhancedTimer" }, mats = { "MiquellaGlow" } } },
     },
     InsectGlaive = {
         label = "Miquella light glaive (insect glaive)",
@@ -1041,6 +1042,7 @@ end
 -- spring back; charged shelling winds it tighter each level and holds it until the shot;
 -- Wyvern's Fire winds it all the way until it fires. The light follows the level.
 local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
+local GL_CHARGE_STEP = 0.6           -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
 
 local function first_number(h, names)
     for _, n in ipairs(names) do
@@ -1058,13 +1060,18 @@ local function update_gunlance(entry, mesh, h, dt, now)
     local reloading = (reload or 0) > 0
     if reloading and not entry.wasReloading then entry.reloadUntil = now + RELOAD_PULSE end
     entry.wasReloading = reloading
-    local charging, winding = (shot or 0) > 0, (wyv or 0) > 0
+    -- Charging while the timer counts up (it keeps its value after the shot).
+    local counting = shot ~= nil and entry.lastShot ~= nil and shot > entry.lastShot + 1e-5 and shot > 0
+    entry.lastShot = shot
+    entry.countingAt = counting and now or entry.countingAt
+    local charging = entry.countingAt ~= nil and now - entry.countingAt < 0.15
+    local winding = (wyv or 0) > 0
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
     local level, pack = 0, 0
     if entry.reloadUntil and now < entry.reloadUntil then level, pack = 1, 0.8 end
     if charging then
-        local lv = math.min(3, 1 + math.floor((now - entry.chargeSince) / GL_LEVEL_TIME))
+        local lv = math.min(3, 1 + math.floor((shot or (now - entry.chargeSince)) / GL_CHARGE_STEP))
         level, pack = math.max(level, lv), math.max(pack, 0.4 + 0.2 * lv)
     end
     if winding then
@@ -1130,7 +1137,7 @@ local function update_gauges(entry, mesh, h, dt)
                     f = v / #g.dots
                 else
                     -- The game's maximum when it has one, else the largest value seen.
-                    local maxV = g.maxFields and first_number(h, g.maxFields)
+                    local maxV = g.max or (g.maxFields and first_number(h, g.maxFields))
                     st.max = (maxV and maxV > 0) and maxV or math.max(st.max or 0, v, 1e-6)
                     f = v / st.max
                 end
@@ -1194,8 +1201,29 @@ local function record_fields(h, now)
         rec = { type = tn, names = field_names(h), data = {}, nextRead = now + 0.25, nextSave = now + 5, samples = 0 }
     end
     rec.samples = rec.samples + 1
+    local function note(n, v)
+        if type(v) == "boolean" then v = v and 1 or 0 end
+        if type(v) ~= "number" then return end
+        local d = rec.data[n]
+        if not d then
+            rec.data[n] = { min = v, max = v, last = v, changes = 0 }
+        else
+            if v ~= d.last then d.changes = d.changes + 1 end
+            d.min, d.max, d.last = math.min(d.min, v), math.max(d.max, v), v
+        end
+    end
     for _, n in ipairs(rec.names) do
         local v = try(function() return h:get_field(n) end)
+        if type(v) == "userdata" then
+            -- Objects held by the handling (gauges, timers): their own fields, once found.
+            rec.sub = rec.sub or {}
+            if rec.sub[n] == nil then rec.sub[n] = field_names(v) end
+            for i, sn in ipairs(rec.sub[n]) do
+                if i > 40 then break end
+                note(n .. "." .. sn, try(function() return v:get_field(sn) end))
+            end
+            v = nil
+        end
         if type(v) == "boolean" then v = v and 1 or 0 end
         if type(v) == "number" then
             local d = rec.data[n]

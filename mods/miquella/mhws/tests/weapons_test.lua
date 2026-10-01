@@ -95,6 +95,7 @@ local kijin = 0
 local chargeLv = nil
 local rapidGauge, rapidMode = nil, nil
 local bowDraw = nil
+local glStart, glKeep = nil, 0   -- gunlance charged shelling: its timer counts while charging, then keeps its value
 local extract = {}               -- field -> value (insect glaive timers)
 local insectGO = nil             -- the kinsect GameObject behind _Insect
 function chr:call(m)
@@ -105,7 +106,11 @@ function chr:call(m)
                                                        get_parent_type = function() return nil end } end,
              get_field = function(_, n)
       if n == "_KijinExtern" then return kijin end
-      if n == "_ChargeLv" then return chargeLv end
+      if n == "_ChargeLv" or n == "<ChargeLv>k__BackingField" then return chargeLv end
+      if n == "_ChargeShotElapsedTimer" then
+        if glStart then glKeep = os.clock() - glStart end
+        return glKeep
+      end
       if n == "_RapidAmmoGauge" then return rapidGauge end
       if n == "_IsRapidMode" then return rapidMode end
       if n == "_IsCharge" then return bowDraw end
@@ -583,7 +588,7 @@ weaponMesh = newMesh("Art/Model/Item/it07/00/0004/it0700_0004_0.mesh")
 weaponGO = newGO("Wp07", 9001, weaponMesh, nil)
 subGO = newGO("Wp07_Shield", 9002, newMesh("Art/Model/Item/it07/00/0004/it0700_0004_1.mesh"), nil)
 insectGO = nil
-extract = { _IsReload = false, _IsChargeShot = false, _RyuugekiChargeTimer = 0 }
+extract = { _IsReload = false, _RyuugekiChargeTimer = 0 }
 frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "Gunlance" }; onDraw()
 frames(40, 1 / 60)
@@ -598,7 +603,7 @@ check(low < REST_TOP - 0.35, string.format("gunlance: a reload winds the spring 
 extract._IsReload = false
 frames(90, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: and lets it spring back")
-extract._IsChargeShot = true
+glStart = fakeTime
 frames(20, 1 / 60)
 local z1 = top.lp.z
 frames(70, 1 / 60)
@@ -606,7 +611,7 @@ local z3 = top.lp.z
 check(z3 < z1 - 0.05, string.format("gunlance: charged shelling winds tighter per level (%.3f -> %.3f)", z1, z3))
 local gc = weaponMesh.colors["MiquellaCore"]
 check(gc and gc.y > 0.8 and gc.z > 0.5, "gunlance: full charge is white gold")
-extract._IsChargeShot = false
+glStart = nil
 local far = 0
 for _ = 1, 60 do frames(1, 1 / 60); far = math.max(far, top.lp.z) end
 check(far > REST_TOP + 0.02, string.format("gunlance: the shot lets the spring fly back past its place (%.3f)", far))
@@ -625,18 +630,18 @@ check(sawGl, "gunlance: menu shows the fields")
 weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
 weaponGO = newGO("Wp08", 10001, weaponMesh, nil)
 subGO = nil
-extract = { _TransformMode = 0 }
+extract = { _Mode = 0 }
 frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "SwitchAxe" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: axe model in axe mode")
-extract._TransformMode = 1
+extract._Mode = 1
 frames(25, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mesh"
       and weaponMesh.mdfPath:match("wp_miquella_sa_sword%.mdf2"), "switch axe: sword model in sword mode")
 frames(60, 1 / 60)
 check(weaponMesh.meshPath:match("wp_miquella_sa_sword"), "switch axe: the sword model stays (not swapped back)")
-extract._TransformMode = 0
+extract._Mode = 0
 frames(25, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: back to the axe")
 weaponMesh = newMesh("Art/Model/Item/it09/00/0002/it0900_0002_0.mesh")
@@ -648,45 +653,45 @@ comboPick = { slot = "Weapon", name = "ChargeBlade" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and cbShield.meshPath:match("wp_miquella_cb_shield"), "charge blade: sword and shield")
 check(subGO.draw == true, "charge blade: shield shown in sword mode")
-extract._TransformMode = 1
+extract._Mode = 1
 frames(25, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mesh", "charge blade: axe model in axe mode")
 check(subGO.draw == false, "charge blade: shield hidden in axe mode (it is part of the axe)")
-extract._TransformMode = 0
+extract._Mode = 0
 frames(25, 1 / 60)
 check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and subGO.draw == true, "charge blade: back to sword and shield")
 -- Charge blade phials: the shield's rim phials count the loaded phials; the sword's ring is its
 -- energy (bright gold when full); in axe mode the axe's phials count them; shield enhanced
 -- lights the shield. Switch axe: the phials are the switch gauge, amped lights the blade.
 local function dotOf(m, i) return (m.floats["MiquellaGauge" .. i .. ".1"] or 0) / (1.2 * glow) end
-extract = { _TransformMode = 0, _BottleNum = 3, _SwordEnergyPoint = 100, _SwordEnergyPoint_Max = 100, _IsShieldEnhanced = false }
+extract = { _Mode = 0, _ActionEnterBinNum = 3, _SwordEnergyState = 2, _ShieldEnhancedTimer = 0 }
 frames(200, 1 / 60)                  -- fields missing earlier are looked for again after 3 s
-extract._SwordEnergyPoint = 40
+extract._SwordEnergyState = 1
 frames(60, 1 / 60)
 check(dotOf(cbShield, 3) > 0.99 and dotOf(cbShield, 4) < 0.3, string.format("charge blade: shield phials show 3 loaded (%.2f %.2f)", dotOf(cbShield, 3), dotOf(cbShield, 4)))
-check(dotOf(weaponMesh, 2) > 0.99 and dotOf(weaponMesh, 3) < 0.3, string.format("charge blade: sword ring shows its energy (%.2f %.2f)", dotOf(weaponMesh, 2), dotOf(weaponMesh, 3)))
-extract._SwordEnergyPoint = 100
+check(dotOf(weaponMesh, 2) > 0.99 and dotOf(weaponMesh, 4) < 0.3, string.format("charge blade: sword ring shows its energy (%.2f %.2f)", dotOf(weaponMesh, 2), dotOf(weaponMesh, 4)))
+extract._SwordEnergyState = 2
 frames(60, 1 / 60)
 check(dotOf(weaponMesh, 5) > 1.7, "charge blade: full energy burns bright gold")
-extract._IsShieldEnhanced = true
+extract._ShieldEnhancedTimer = 30
 frames(40, 1 / 60)
 check((cbShield.floats["MiquellaGlow.1"] or 0) / (1.2 * glow) > 1.7, "charge blade: shield enhanced lights the shield")
-extract._TransformMode, extract._BottleNum = 1, 5
+extract._Mode, extract._ActionEnterBinNum = 1, 5
 frames(60, 1 / 60)
 check(weaponMesh.meshPath:match("wp_miquella_cb_axe") and dotOf(weaponMesh, 5) > 0.99, "charge blade: axe phials show the loaded phials")
-extract._BottleNum = 1
+extract._ActionEnterBinNum = 1
 frames(60, 1 / 60)
 check(dotOf(weaponMesh, 1) > 0.99 and dotOf(weaponMesh, 2) < 0.3, "charge blade: using phials dims them")
-extract._TransformMode = 0
+extract._Mode = 0
 weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
 weaponGO = newGO("Wp08b", 12001, weaponMesh, nil)
 subGO = nil
-extract = { _TransformMode = 0, _SlashGauge = 100, _IsAwake = false }
+extract = { _Mode = 0, _SlashGauge = 100, _SwordAwakeTimer = 0 }
 frames(200, 1 / 60)
 extract._SlashGauge = 60
 frames(60, 1 / 60)
 check(dotOf(weaponMesh, 3) > 0.99 and dotOf(weaponMesh, 4) < 0.3, string.format("switch axe: phials show the switch gauge (%.2f %.2f)", dotOf(weaponMesh, 3), dotOf(weaponMesh, 4)))
-extract._IsAwake = true
+extract._SwordAwakeTimer = 30
 frames(40, 1 / 60)
 check((weaponMesh.floats["MiquellaBlade.1"] or 0) / (1.2 * glow) > 1.7, "switch axe: amped lights the blade bright gold")
 texts = {}; onDraw()

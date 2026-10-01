@@ -48,6 +48,11 @@ local RULES = {
     ["app.cHunterWp11Handling"] = { match = "11_it11_030", kind = "gold", label = "bow", slow = true },
     ["app.cHunterWp10Handling"] = { match = "it10", kind = "gold", label = "insect glaive", slow = true,
                                     skip = { "11_it10_01", "11_it10_100", "11_it10_9" } },
+    -- Long sword (user, 2026-10-02: red trails at the red spirit level): the trail file
+    -- 11_it03_001 is gold in MiquellaLight_LongSwordFX.pak; this tints what the game may still
+    -- colour at run time. Its GPU modules (9xx) stay as they are.
+    ["app.cHunterWp03Handling"] = { match = "11_it03_", kind = "gold", label = "long sword", slow = true,
+                                    skip = { "11_it03_9" } },
 }
 local TINT_SAT = 0.6                    -- white parts of gold-tinted effects: a bright gold, not white
 local COLOR_PARAMS = { "Color", "ColorA", "ColorB", "ColorC" }

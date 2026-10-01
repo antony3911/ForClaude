@@ -36,7 +36,18 @@ from motifs import V
 
 SET = sys.argv[1] if len(sys.argv) > 1 else "great_sword_charge"
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join("out", SET)
-FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
+def _cjk_font():
+    """A font with Chinese glyphs for the labels: Linux (WenQuanYi) or Windows (Microsoft
+    JhengHei / MingLiU); set MIQUELLA_FONT to use another."""
+    for path in (os.environ.get("MIQUELLA_FONT", ""), "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+                 r"C:\Windows\Fonts\msjh.ttc", r"C:\Windows\Fonts\msjhbd.ttc", r"C:\Windows\Fonts\mingliu.ttc",
+                 "/System/Library/Fonts/PingFang.ttc"):
+        if path and os.path.exists(path):
+            return path
+    raise FileNotFoundError("No CJK font found; set MIQUELLA_FONT to a .ttc/.ttf with Chinese glyphs")
+
+
+FONT = _cjk_font()
 # "Bright gold" used by every powered-up state that is not the great sword's white stage.
 # Stronger and more saturated than the normal gold, so the bloom grows into a gold aura
 # instead of washing out toward white.

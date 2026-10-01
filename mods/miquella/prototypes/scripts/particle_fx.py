@@ -254,6 +254,36 @@ def trace(start, steps, dt, velocity):
     return pts
 
 
+GOLD_BURST = [(0.2, "#FFF6DC"), (0.4, "#FFD878"), (0.62, "#FFA628"), (0.82, "#B8641A"), (1.0, "#2A1A0A")]
+
+
+def burst_strands(prefix, center, radius, ramp=GOLD_BURST, count=220, strength=2.4, seed=3, lift=0.4):
+    """A burst of light: strands thrown out of a point through the swirling flow, bright at
+    the heart and fading out (the explosion version of fire_strands, in any palette)."""
+    import random
+    rng = random.Random(seed)
+    C = Vector(center)
+    hub = c.link(bpy.data.objects.new(f"{prefix}_Centre", None))
+    hub.location = C
+    mat = strand_material(f"{prefix}_Strand", hub, radius * 3.2, ramp, strength=strength, opacity=0.55)
+    off = Vector((rng.uniform(0, 50), rng.uniform(0, 50), rng.uniform(0, 50)))
+
+    def vel(p, t):
+        rel = p - C
+        return (rel.normalized() * (1.8 - 2.0 * t) * radius * 3 + curl(rel / radius, 0.8, off) * radius
+                + Vector((0, 0, radius * lift)))
+
+    objs = [hub]
+    for k in range(count):
+        z = rng.uniform(-1, 1)
+        a = rng.uniform(0, 2 * math.pi)
+        d = Vector((math.sqrt(1 - z * z) * math.cos(a), math.sqrt(1 - z * z) * math.sin(a), z))
+        pts = trace(C + d * radius * rng.uniform(0.1, 0.4), 36, rng.uniform(0.012, 0.022), vel)
+        objs.append(c.curve_tube(f"{prefix}_S{k}", pts, [1 - 0.8 * i / (len(pts) - 1) for i in range(len(pts))],
+                                 mat, bevel=radius * rng.uniform(0.02, 0.05), resolution=1))
+    return objs
+
+
 def fire_strands(prefix, center, radius, count=260, seed=7):
     """Frenzied flame: strands of fire leaving the ball, swirling and curling back on
     themselves, white-yellow near the ball, orange, deep red, then dark smoke."""

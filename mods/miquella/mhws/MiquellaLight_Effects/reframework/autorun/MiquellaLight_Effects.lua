@@ -41,8 +41,10 @@ local RULES = {
     ["app.cHunterWp13Handling"] = { match = "it13", kind = "gold", label = "light bowgun",
                                     skip = { "jimen", "land" } },                 -- ground dust stays as is
     -- Insect glaive (user, 2026-10-02: the red charge glow should be gold): its smoke, poison
-    -- and hit dust (010-012, 100) and the GPU modules (9xx) stay as they are.
-    ["app.cHunterWp10Handling"] = { match = "it10", kind = "gold", label = "insect glaive",
+    -- and hit dust (010-012, 100) and the GPU modules (9xx) stay as they are. Searched 4 times
+    -- a second, not every frame (slow): its charge glow lasts, and the flying kinsect brings
+    -- many effects (the user saw memory climb with every-frame searches).
+    ["app.cHunterWp10Handling"] = { match = "it10", kind = "gold", label = "insect glaive", slow = true,
                                     skip = { "11_it10_01", "11_it10_100", "11_it10_9" } },
 }
 local TINT_SAT = 0.6                    -- white parts of gold-tinted effects: a bright gold, not white
@@ -387,7 +389,8 @@ local function tick()
     if config.recolor then held_rule() end          -- once a second; new effects need it
     if #pending > 0 then pcall(take_pending) end
     if os.clock() >= nextScan then
-        nextScan = os.clock() + ((config.recolor and held_rule()) and SCAN_FAST or SCAN_SLOW)
+        local held = config.recolor and held_rule()
+        nextScan = os.clock() + ((held and not held.slow) and SCAN_FAST or SCAN_SLOW)
         pcall(scan)
     end
     if os.clock() >= cacheReset then

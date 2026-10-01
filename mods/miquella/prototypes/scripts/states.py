@@ -8,7 +8,7 @@ Sets:
   great_sword_charge  normal (gold) / charge 1 (bright gold) / charge 2 (white light)
   dual_blades_demon   normal / splitting / demon mode (three blades) / archdemon (bright gold)
   hammer_charge       levels 0-3: more rings around the head, the caged sun brightens
-  lance_charge        levels 0-3: rings appear between the spear's rings, root to tip
+  lance_charge        levels 0-3: a cone of large rings grows root to tip, brighter each level
   gunlance_reload     rest / spring compressed (core charging) / spring rebounds
 
 Usage: python states.py <set> <out_dir>
@@ -23,6 +23,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(__file__))
 import common as c
 import motifs as m
+from motifs import V
 
 SET = sys.argv[1] if len(sys.argv) > 1 else "great_sword_charge"
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join("out", SET)
@@ -230,33 +231,54 @@ def hammer_charge():
 # ------------------------------------------------------------------ lance charge
 
 def lance_charge():
-    """New rings light up in the gaps of the spear's rail, root first, on the same taper
-    as the rail (large at the root, small at the point); at full charge the point flares."""
+    """Charging grows a cone of large rings from the vamplate toward the point, a few more
+    each level and brighter each level; at full charge a faint cone of light fills them and
+    the point flares out longer, so the whole lance reads as a jousting lance of light."""
     import arsenal
     c.reset_scene()
     mats = capture_build(arsenal.lance)
     m.glow_mode(mats)
     show([bpy.data.objects["EnergyShield"]], False)
 
-    def radius_at(z):                       # the rail runs 0.07 at z 0.72 to 0.03 at z 1.5
-        return 0.07 + (0.03 - 0.07) * (z - 0.72) / 0.78
-
-    new = []
-    for i, z in enumerate((0.59, 0.85, 1.11, 1.37, 1.6)):
-        new.append(m.halo(f"Charge_Ring_{i}", (0, 0, z), radius_at(z), 0.0036 - 0.0003 * i, (0, 0, 1),
-                          mats["light"], tilt_deg=-4 if i % 2 == 0 else 4))
-    target, distance = (0, 0, 1.22), 2.6
+    z0, z1, r0, r1, n = 0.56, 1.64, 0.125, 0.032, 8          # cone of rings, root -> point
+    rings = []
+    for k in range(n):
+        t = k / (n - 1)
+        rings.append(m.halo(f"Charge_Ring_{k}", (0, 0, z0 + (z1 - z0) * t), r0 + (r1 - r0) * t,
+                            0.0052 - 0.0022 * t, (0, 0, 1), mats["light"], tilt_deg=-3 if k % 2 == 0 else 3))
+    cone_mat = m.veil_material("Charge_Cone", 0.1, 1.2)
+    bpy.ops.mesh.primitive_cone_add(vertices=96, radius1=r0 - 0.004, radius2=r1 - 0.004, depth=z1 - z0,
+                                    end_fill_type="NOTHING", location=(0, 0, (z0 + z1) / 2))
+    cone = bpy.context.active_object
+    cone.name = "Charge_Cone"
+    cone.data.materials.append(cone_mat)
+    bpy.ops.object.shade_smooth()
+    flare_mat = m.veil_material("Point_Flare", 0.35, 2.0)
+    tip = 1.98
+    flare = []
+    for name, normal in (("Point_Flare_A", (0, 1, 0)), ("Point_Flare_B", (1, 0, 0))):
+        flare += m.path_blade(name, [V(0, 0, tip - 0.38), V(0, 0, tip + 0.22)], normal,
+                              lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
+                              lambda t: 0.02 * (1 - t), flare_mat)
+    target, distance = (0, 0, 1.3), 2.75
     stage_lights(target, distance)
-    levels = [("一般", 0), ("蓄力 1", 2), ("蓄力 2", 4), ("蓄力 3（滿）", 5)]
+    # label, rings shown, light strength (None = bright gold), cone and flare
+    levels = [("一般", 0, None, False), ("蓄力 1", 3, 4.0, False), ("蓄力 2", 6, 6.0, False),
+              ("蓄力 3（滿）", 8, "bright", True)]
+    base_blade = (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
     paths = []
-    for i, (label, count) in enumerate(levels):
-        for k, objs in enumerate(new):
+    for i, (label, count, strength, full) in enumerate(levels):
+        for k, objs in enumerate(rings):
             show(objs, k < count)
-        if i == 3:
+        show([cone] + flare, full)
+        if strength == "bright":
             brighten(mats)
+        elif strength:
+            set_glow(mats["light"], c.PALETTE["glow"], strength)
+            set_blade(mats["blade"], base_blade[0], base_blade[1], 2.2 + 0.5 * i)
         paths += c.render_views(OUT, f"level{i}", target, distance, [("three_quarter", 20, 6)], lens=50)
     labelled_strip(paths, [lv[0] for lv in levels], os.path.join(OUT, "lance_charge.png"),
-                   "長槍蓄力：能量環從槍根到槍尖逐段出現，由大到小")
+                   "長槍蓄力：光環從槍根往槍尖一段段長出，滿蓄力時圍成一支光的騎槍")
 
 
 # ------------------------------------------------------------------ gunlance reload

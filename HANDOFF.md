@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-01（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
+最後更新：2026-10-01 晚上（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -110,7 +110,11 @@
 
 **大小**：執行中縮放武器在 Wilds 行不通（`set_LocalScale` 會被遊戲蓋掉：每 20 幀設一次會閃，BeginRendering 前設沒效果）→ 改成預先做好的模型 `wp_miquella_db_s12/s14/s16.mesh`（`make_size_variants.py`：握把不變，握把以上刀身長度 ×k、寬度 ×√k），選單 Size 下拉 1.0～1.6，預設 1.4（使用者想要）。已裝進遊戲，**使用者還沒回報**
 
-**特效改色（已裝，還沒驗證）**：`MiquellaLight_DualBladesFX.pak`（見 `mhws/MiquellaLight_DualBladesFX/README.md`）把雙劍 6 個特效檔的紅 → 金、藍 → 銀：鬼人化全身光、前臂火焰、真鬼人化攻擊軌跡變金；完美閃避後的藍色狀態全身光、軌跡變銀。用 `efx_walk.py`／`recolor_efx.py` 從使用者的遊戲檔產生，**改過的遊戲檔不進 repo**
+**特效改色（第一次實測 2026-10-01 晚上）**：`MiquellaLight_DualBladesFX.pak`（見 `mhws/MiquellaLight_DualBladesFX/README.md`）把雙劍特效檔的紅 → 金、藍 → 銀。用 `efx_walk.py`／`recolor_efx.py` 從使用者的遊戲檔產生，**改過的遊戲檔不進 repo**。
+- 實測：一般型態的真鬼人（使用者叫「強化鬼人狀態」：鬼人化中攻擊集滿量表 → 真鬼人，解除鬼人化後仍持續）攻擊軌跡**已變金**。**還是紅**：①真鬼人一般型態身體在金紅之間閃爍；②鬼人化中的真鬼人軌跡；③鬼人化中手上冒紅光氣。使用者要全部改金
+- 第二版（已打包在 `MiquellaTools\work\`，**等遊戲關掉自動裝**）：補上第一版漏掉的 5 種格式（光暈、火花、GPU 粒子）
+- 解出顏色運算式：`002` 的身體光和前臂火焰＝`lerp(lerp(ColorC, ColorA, IsKijin), ColorB, IsBuff)`，`001` 軌跡＝`Color`，預設值都改金了 → 還紅的多半是**遊戲執行時設顏色**或別的特效檔。寫了 **`MiquellaLight_FxProbe`**（特效偵測腳本，已放進遊戲）錄下實際播的特效檔和參數呼叫
+- 21:57 遊戲當過一次（遊戲本體背景執行緒讀空指標，堆疊沒有我們的腳本；傾印在 scratchpad），重開後正常。若再當，先拿掉特效 pak 測
 
 **已裝進使用者的遊戲（2026-10-01，Claude 在本機裝的）**：遊戲在 `C:\Program Files (x86)\Steam\steamapps\common\MonsterHunterWilds`（不用系統管理員權限就能寫）
 - `dinput8.dll` = REFramework nightly-01424（2026-09-16）。**現在改成所有 RE 遊戲共用一個 `REFramework.zip`**，不再有 `MHWILDS.zip`；只放 dinput8.dll（不用 VR 就別放其他檔）
@@ -205,7 +209,7 @@
 1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
 3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
-4. **（正在等）使用者實測**：Size 1.4 看起來如何；B 版三刃；特效改色（全身金光、真鬼人化金軌跡、藍色狀態銀光和銀軌跡）。如果顏色沒變，代表遊戲在執行時指定顏色 → 改用腳本在執行時設特效顏色。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
+4. **（正在等）使用者用特效偵測腳本錄一次**（步驟見 `mhws/MiquellaLight_FxProbe/README.md`：遊戲開著就 Insert → ScriptRunner → Reset scripts）→ 讀 `reframework/data/MiquellaLight/fx.json`：看 `params` 裡遊戲設了哪些紅色、`timeline` 裡閃爍時有哪些特效檔同時在播 → 改檔案（別的特效檔）或在換裝腳本裡掛鉤把紅色參數換成金色。同時看第二版特效 pak 有沒有讓火花、光暈變金。Size 1.4、B 版三刃使用者還沒回報。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

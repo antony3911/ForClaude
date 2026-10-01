@@ -5,8 +5,8 @@ archdemon attack trail become gold; the blue state (perfect evade in demon mode)
 blue body glow and trail becomes silver.
 
 Only colour fields whose meaning is known are touched (kagenocookie's REE-EFX-Unified
-template, the struct variants Wilds uses), plus colour expression parameters (their
-default values). Within one effect entry that has any blue colour, red colours become
+template, the struct variants Wilds uses: player glow, ribbons, billboards, GPU particles,
+channel colours), plus colour expression parameters (their default values). Within one effect entry that has any blue colour, red colours become
 silver too (that entry belongs to the blue state). Saturation, brightness and alpha are kept
 for gold; silver is the same brightness with almost no colour.
 
@@ -27,8 +27,15 @@ COLOR_FIELDS = {
     38: {"color1": 8, "color2": 12, "ukn22": 92, "ukn23": 96, "ukn24": 100},   # TypeRibbonParticle (DD2 layout)
     78: {"color": 8, "colorRange": 12},                                        # TypeNoDraw (RE7 layout; player glow)
     242: {"greenChColor": 8, "greenChColorRange": 12, "redChColor": 28, "redChColorRange": 32},  # RgbCommon (RE4)
+    # uniqueId, blendFlags, then color / colorRange in all of these (template layouts for Wilds)
+    25: {"color": 8, "colorRange": 12},          # TypeBillboard3D: glows, flames
+    33: {"color": 8, "colorRange": 12},          # TypeRibbonFollow: trails
+    34: {"color": 8, "colorRange": 12},          # TypeRibbonLength: flame streaks
+    258: {"color": 8, "colorRange": 12},         # TypeGpuBillboard: GPU particles
+    264: {"color": 8, "colorRange": 12},         # TypeGpuRibbonLength: GPU sparks
 }
-TYPE_NAMES = {38: "TypeRibbonParticle", 78: "TypeNoDraw", 242: "RgbCommon"}
+TYPE_NAMES = {38: "TypeRibbonParticle", 78: "TypeNoDraw", 242: "RgbCommon", 25: "TypeBillboard3D",
+              33: "TypeRibbonFollow", 34: "TypeRibbonLength", 258: "TypeGpuBillboard", 264: "TypeGpuRibbonLength"}
 GOLD_HUE = 38.0                 # a deep gold, so strong glow blooms gold rather than white
 SILVER_HUE, SILVER_SAT, SILVER_VALUE = 220.0, 0.08, 0.9
 

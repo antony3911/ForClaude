@@ -6,6 +6,7 @@
 |---|---|---|---|
 | `sns_sword` | `wp_miquella_sns.mesh` | `it0100_0002_0` | 雙劍的劍、刀身 0.72，×1.25：刀尖 1.0 m（原版 0.98） |
 | `sns_shield` | `wp_miquella_sns_shield.mesh` | `it0100_0002_1` | 樹紋能量盾 ×1.1：0.6 m（原版 0.58），中心 (0, 0.14, -0.07) |
+| `sns_shield_aura`／`_bubble`／`_volume` | `wp_miquella_sns_shield_aura／bubble／volume.mesh` | 同上 | **半透明光膜測試**（2026-10-02）：同一面盾加回光膜，光膜材質 `MiquellaMembrane` 抄遊戲的半透明材質再調成金色——A 玩家裝備光暈特效 `VFX_Transparent_Unique_Aura`、B 泡泡特效 `VFX_Transparent_Bubble`（開邊緣發光、關彩虹色）、C 武器自己的柔光 `Simple_VolumeBlend_Emit_ViewOffset`（大劍 `it0010_0001`）。參數在 `build_weapon_kit.py` 的 `MEMBRANES`。選單外觀 `SwordShield_ShieldA／B／C` |
 
 貼圖沿用雙劍的（`Art/Model/MiquellaLight/DualBlades/tex/`），pak 裡自帶一份。材質抄雙劍 kit 的 `.mdf2`（現在遊戲的 180 參數排列）。`.blend`（匯出前的場景）不進 repo，用下面的指令重建。
 

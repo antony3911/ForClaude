@@ -244,6 +244,7 @@
 
 **其他武器（第二帳號，2026-10-02）— 已裝進遊戲，等實測**
 - 換裝腳本選單：拿武器時 Weapon 槽選主武器外觀（`LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun`），**有盾的武器 SubWeapon 槽再選 `*_Shield`**。每把看：握的位置、刃口方向（揮砍的光痕那邊）、長度、盾有沒有穿過手臂、浮動光環
+- **半透明光膜測試（2026-10-02，等實測）**：遊戲武器材質只能鏤空裁切，但**有半透明材質可以借**（全遊戲 2157 個材質統計過）：武器自己用的 `BaseAlpha_Emit_FakeLiquid_RoughTransparent`（21 把）、`Simple_VolumeBlend_Emit_ViewOffset`（12 把，柔光），特效的 `VFX_Transparent_Unique_Aura`（玩家裝備光暈）、`VFX_Transparent_Bubble`（泡泡，有邊緣發光）。片手劍盾做了三個外觀 **`SwordShield_ShieldA`（光暈）／`B`（泡泡膜）／`C`（柔光）**，使用者在遊戲裡切換比較；**選好後套到長槍、銃槍、充能斧的盾**（那三面的光膜是單面圓片，要加背面或用雙面旗標）。之後可做「防禦時光膜變亮」
 - **武器裝置（2026-10-02 加裝 `MiquellaLight_Devices.pak`，等實測）**：銃槍龍杭＝未鍛金之針、輕弩起爆龍彈＝象牙花苞，**蓋過遊戲的特效模型**（`Art/VFX/Mesh/Weapon/it07/11_it07_000`、`it13/11_setbombshell_000`），見 `mhws/MiquellaLight_Devices_kit/README.md`。測：銃槍打龍杭砲、輕弩放起爆龍彈，看模型有沒有出現、大小方向對不對、有沒有好幾個重疊亂飛（原版分 10／3 個顯示群組，我們每組都放完整模型）。重弩、弓追蹤箭、狩獵笛響玉的遊戲檔還不確定是哪個（README 有候選），要在遊戲裡確認
 - 已知限制：斬擊斧只有斧模式；充能斧盾在斧模式不會變形（整個綁 `Emblem`）；銃槍、重弩的 `Hinge` 動作不會帶動我們的模型；弓弦中段綁 `String` 骨頭（拉弓應會拉成 V 形，等實測）；狩獵笛聲波環沒放
 - **使用者決定（2026-10-02）**：獵蟲用 **A 實心金翅**（pak 裡就是 A）；充能斧盾的斧刃像新月 → **先擱置**，使用者想改會再說；盾沒有光膜、只用光環和樹紋 → 可以

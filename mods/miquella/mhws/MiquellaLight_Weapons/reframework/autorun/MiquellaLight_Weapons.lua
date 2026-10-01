@@ -99,6 +99,26 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield.mdf2",
         glow = { MiquellaGlow = 1.2 },
     },
+    -- Test (2026-10-02): the shield with its film of light on translucent game materials
+    -- (build_weapon_kit.py MEMBRANES); the one the user picks goes on every shield.
+    SwordShield_ShieldA = {
+        label = "Miquella energy shield (sword & shield) + translucent film A: aura effect",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_aura.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_aura.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    SwordShield_ShieldB = {
+        label = "Miquella energy shield (sword & shield) + translucent film B: bubble effect",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_bubble.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_bubble.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    SwordShield_ShieldC = {
+        label = "Miquella energy shield (sword & shield) + translucent film C: soft inner glow",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_volume.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_volume.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
     Hammer = {
         label = "Miquella sun lantern (hammer)",
         mesh = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mesh",

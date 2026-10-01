@@ -205,6 +205,17 @@ def sns_shield():
                   to_file, {})
 
 
+def sns_shield_membrane(variant):
+    """The sword & shield's shield with its film of light back, on a translucent game material
+    (MEMBRANES): looks A, B, C to compare in the game."""
+    spec = sns_shield()
+    spec["name"] = f"wp_miquella_sns_shield_{variant}"
+    spec["membrane"] = variant
+    spec["materials"] = dict(ARSENAL_MATERIALS, Membrane="MiquellaMembrane", Shield_Membrane="MiquellaMembrane")
+    spec["skip_materials"] = SKIP_MATERIALS - {"Membrane", "Shield_Membrane"}
+    return spec
+
+
 def hammer():
     """Hand 0.1 above the pommel; scaled 1.4: the head's center 1.32 m above the hand, the
     striking faces 0.58 apart (originals: head up to 1.65, 1.1 wide; ours stays slender)."""
@@ -411,14 +422,18 @@ def heavy_bowgun():
 
 
 WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword": long_sword,
-           "sns_sword": sns_sword, "sns_shield": sns_shield, "hammer": hammer, "hunting_horn": hunting_horn,
+           "sns_sword": sns_sword, "sns_shield": sns_shield,
+           "sns_shield_aura": lambda: sns_shield_membrane("aura"),
+           "sns_shield_bubble": lambda: sns_shield_membrane("bubble"),
+           "sns_shield_volume": lambda: sns_shield_membrane("volume"), "hammer": hammer, "hunting_horn": hunting_horn,
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow, "heavy_bowgun": heavy_bowgun}
 
 
 # Triangle budget per game material (the originals run 5k-60k triangles in all).
-BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500}
+BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500,
+          "MiquellaMembrane": 2000}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
@@ -426,6 +441,45 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaIvory": "MiquellaIvory", "MiquellaTemper": "MiquellaGlow",
               "MiquellaGauge1": "MiquellaGlow", "MiquellaGauge2": "MiquellaGlow",
               "MiquellaGauge3": "MiquellaGlow"}
+
+
+# Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some
+# effect meshes and weapons use translucent ones. MiquellaMembrane is copied from one of
+# these game materials (read from the local extraction, see HANDOFF) with gold settings.
+EXTRACTED = "C:/Users/anton/MiquellaTools/extracted/natives/stm"
+GLOW_EMI = "Art/Model/MiquellaLight/DualBlades/tex/MiquellaGlow_EMI.tex"
+MEMBRANES = {
+    # A: the aura effect on a player's equipment (two-sided, colour gradient, opacity).
+    "aura": ("art/vfx/mesh/pl/equip/11_ch00_069_0006.mdf2.45", None, {
+        "ColorParam": [1.0, 0.8, 0.4, 1.0], "ColorA": [1.0, 0.62, 0.2, 1.0], "ColorB": [1.0, 0.86, 0.5, 1.0],
+        "EmissiveIntensity": [2.0], "Opacity": [0.5]}, {}),
+    # B: the bubble effect: rim glow, refraction; its rainbow sheen turned off, little wobble.
+    "bubble": ("art/vfx/mesh/common/other/bubble/11_bubble_00.mdf2.45", None, {
+        "ColorParam": [1.0, 0.82, 0.45, 1.0], "EmissiveParam": [1.0, 0.75, 0.3, 1.0],
+        "RimEmissive_Color": [1.0, 0.8, 0.35, 1.0], "RimEmissiveIntensity": [3.0], "RimEmissivePower": [2.0],
+        "EmissiveIntensityParam": [2.0],
+        "IridescenceBlendRate": [0.0], "Displacement": [0.02]}, {}),
+    # C: a weapon's own soft inner glow (fake volume light, fades at grazing angles, pulses).
+    "volume": ("art/model/item/it00/10/0001/it0010_0001_0.mdf2.45", "lambert5_Mat__P_Fake_InnerEmit", {
+        "Emissive_Color": [1.0, 0.72, 0.28, 1.0], "Emissive_Power": [3.0]}, {"EmissiveMap": GLOW_EMI}),
+}
+
+
+def membrane_material(variant):
+    from re_mesh_editor.modules.mdf.file_re_mdf import readMDF
+    path, mat_name, props, textures = MEMBRANES[variant]
+    mdf = readMDF(os.path.join(EXTRACTED, *path.split("/")))
+    mat = copy.deepcopy(next(m for m in mdf.materialList if mat_name in (None, m.materialName)))
+    for p in mat.propertyList:
+        if p.propName in props:
+            p.propValue = list(props[p.propName])
+    for t in mat.textureList:
+        if t.textureType in textures:
+            t.texturePath = textures[t.textureType]
+    missing = set(props) - {p.propName for p in mat.propertyList}
+    if missing:
+        log(f"  membrane {variant}: no {sorted(missing)}")
+    return mat
 
 
 # ------------------------------------------------------------------ geometry
@@ -648,13 +702,16 @@ def file_bounds(subs):
 
 # ------------------------------------------------------------------ mdf
 
-def build_mdf(path, template_mdf, names):
+def build_mdf(path, template_mdf, names, membrane=None):
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     template = readMDF(template_mdf)
     by_name = {m.materialName: m for m in template.materialList}
     materials = []
     for name in names:
-        new = copy.deepcopy(by_name[MDF_SOURCE[name]])
+        if name == "MiquellaMembrane":
+            new = membrane_material(membrane)
+        else:
+            new = copy.deepcopy(by_name[MDF_SOURCE[name]])
         new.materialName = name
         materials.append(new)
     template.materialList = materials
@@ -705,7 +762,7 @@ def main():
                                  "preserveSharpEdges": False})
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
     names = [o.name.split("__", 1)[1] for o in subs]
-    build_mdf(os.path.join(natives, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, names)
+    build_mdf(os.path.join(natives, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, names, spec.get("membrane"))
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit, f"{spec['name']}_kit.blend"))
 
 

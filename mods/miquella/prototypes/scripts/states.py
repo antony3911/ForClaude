@@ -307,33 +307,29 @@ def dual_blades_split_point():
 # ------------------------------------------------------------------ hammer charge
 
 def hammer_charge():
-    """Each charge level adds a ring beyond each striking face, smaller each time, so the
-    charge stacks outward from both faces; the caged sun grows brighter."""
+    """Beyond each striking face a cone of rings (large at the face, smaller outward) grows a
+    level at a time, more rings each level; the light goes bright gold -> brighter -> white
+    (user, 2026-10-02: on the hammer only, nothing on the hunter)."""
     import arsenal
     c.reset_scene()
     mats = capture_build(arsenal.hammer)
     m.glow_mode(mats)
     sun = bpy.data.materials["Sun"]
-    head_z = 1.04
-    rings = {1: [], 2: [], 3: []}
-    # (level, x, radius, minor): the first frames the face halo, then they shrink outward.
-    for level, x, r, minor in ((1, 0.25, 0.15, 0.0042), (2, 0.3, 0.12, 0.0036), (3, 0.35, 0.085, 0.003)):
-        for s in (-1, 1):
-            rings[level] += m.halo(f"Charge_Ring_{level}_{s}", (s * x, 0, head_z), r, minor, (1, 0, 0),
-                                   mats["light"], tilt_deg=5 if level % 2 else -5, tilt_axis=(0, 0, 1))
-    target, distance = (0, 0, 0.98), 1.9
-    stage_lights(target, distance, res=(700, 900))
-    levels = [("一般", 4.0), ("蓄力 1", 5.0), ("蓄力 2", 6.2), ("蓄力 3（滿）", 7.5)]
+    rings = arsenal.hammer_charge_rings(mats)
+    target, distance = (0, 0, 0.9), 2.3
+    stage_lights(target, distance, res=(800, 900))
+    # label, sun strength, light colour and strength (None = normal gold)
+    levels = [("一般", 4.0, None), ("蓄力 1：亮金", 6.0, ("#FF9A10", 12.0)),
+              ("蓄力 2：更亮的金", 7.5, ("#FFB43A", 14.0)), ("蓄力 3：白光", 9.0, ("#FFF0DC", 16.0))]
     paths = []
-    for i, (label, s_sun) in enumerate(levels):
+    for i, (label, s_sun, light) in enumerate(levels):
         for level, objs in rings.items():
             show(objs, level <= i)
-        set_glow(sun, c.PALETTE["glow"] if i < 3 else "#FFB840", s_sun)
-        if i == 3:
-            set_glow(mats["light"], *BRIGHT_LIGHT)
-        paths += c.render_views(OUT, f"level{i}", target, distance, [("three_quarter", 25, 10)], lens=50)
+        set_glow(sun, light[0] if light else c.PALETTE["glow"], s_sun)
+        set_glow(mats["light"], *(light or (c.PALETTE["glow"], 2.5)))
+        paths += c.render_views(OUT, f"level{i}", target, distance, [("front", 12, 8)], lens=50)
     labelled_strip(paths, [lv[0] for lv in levels], os.path.join(OUT, "hammer_charge.png"),
-                   "大槌蓄力：每一段兩端打擊面外各多一圈能量環，籠中的太陽越來越亮")
+                   "大錘蓄力：兩端各一組由大到小的錐形光環，段數越多環越多，亮金 → 白光（身上不發光）")
 
 
 # ------------------------------------------------------------------ lance charge

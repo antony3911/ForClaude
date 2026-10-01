@@ -17,10 +17,13 @@ Usage: python recolor_efx.py [options] <in.efx.5571972> <out.efx.5571972>
   --warm            red, orange and yellow -> gold (default: red only)
   --no-silver       leave blue alone (default: blue -> silver)
   --hide A,B        entries whose name contains A or B: every colour set to transparent black
+                    (=A: only the entry named exactly A)
                     (great sword: PLE_Body,PLE_IMP = the glow the game puts on the hunter's body)
   --skip-param A    colour parameters whose name contains A are left alone (e.g. Blood)
 Great sword / light bowgun (2026-10-02): --warm --no-silver, and for the great sword
 --hide PLE_Body,PLE_IMP --skip-param Blood (the user wants the charge shown on the blade only).
+Hammer, lance (2026-10-02, same wish): the hammer like the great sword; the lance
+--hide PLE_Body,PLE_IMP,PLE_Leg,=PLE,=0_PLE, without its ground effect (004_jimen).
 """
 import colorsys
 import os
@@ -90,7 +93,8 @@ def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=()):
             patch(e["value_offset"], f"expression '{e['name']}'")
     fields = [(a, name, off) for a in efx.attrs for name, off in COLOR_FIELDS.get(a.type, {}).items()
               if off + 4 <= a.size]
-    hidden = [(a, name, off) for a, name, off in fields if any(k in a.owner for k in hide)]
+    hidden = [(a, name, off) for a, name, off in fields
+              if any(a.owner == k[1:] if k.startswith("=") else k in a.owner for k in hide)]
     for a, name, off in hidden:
         at = a.data_start + off
         log(f"  hide {a.owner} {TYPE_NAMES[a.type]}.{name}: {data[at:at + 4].hex()} -> 00000000")

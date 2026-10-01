@@ -1016,6 +1016,48 @@ def arrow():
     m.render_sheets(OUT, "arrow", mats, (0, 0, 0), 1.4, views, res=(700, 1000))
 
 
+
+# ------------------------------------------------------------------ charge parts (game kits, states.py)
+
+HAMMER_HEAD_Z = 1.04
+# Rings beyond each striking face, per charge level: a cone from large (at the face) to small,
+# more rings each level (user, 2026-10-02: "a flat stack looks careless").
+HAMMER_CHARGE = [(lv, 0.238 + 0.036 * i, 0.13 - 0.015 * i) for i, lv in enumerate((1, 1, 2, 2, 3, 3, 3))]
+
+
+def hammer_charge_rings(mats):
+    """Returns {level: [objects]}; ring names Charge_Ring_<i>_<side>."""
+    out = {1: [], 2: [], 3: []}
+    n = len(HAMMER_CHARGE)
+    for i, (level, x, r) in enumerate(HAMMER_CHARGE):
+        minor = 0.0046 - 0.002 * i / (n - 1)
+        for sgn in (-1, 1):
+            out[level] += m.halo(f"Charge_Ring_{i}_{'L' if sgn < 0 else 'R'}", (sgn * x, 0, HAMMER_HEAD_Z), r, minor,
+                                 (1, 0, 0), mats["light"], tilt_deg=4 if i % 2 == 0 else -4, tilt_axis=(0, 0, 1))
+    return out
+
+
+LANCE_TIP = 1.98
+# Rings from the vamplate toward the point (DESIGN: the cone of a lance of light), levels 1-3.
+LANCE_CHARGE = (0.56, 1.64, 0.125, 0.032, 8, (1, 1, 1, 2, 2, 2, 3, 3))
+
+
+def lance_charge_parts(mats):
+    """Returns ({level: [ring objects]}, [point flare objects]): Charge_Ring_<k>, Point_Flare_A/B
+    (a longer blade of light around the point at full charge)."""
+    z0, z1, r0, r1, n, levels = LANCE_CHARGE
+    rings = {1: [], 2: [], 3: []}
+    for k in range(n):
+        t = k / (n - 1)
+        rings[levels[k]] += m.halo(f"Charge_Ring_{k}", (0, 0, z0 + (z1 - z0) * t), r0 + (r1 - r0) * t,
+                                   0.0052 - 0.0022 * t, (0, 0, 1), mats["light"], tilt_deg=-3 if k % 2 == 0 else 3)
+    flare = []
+    for name, normal in (("Point_Flare_A", (0, 1, 0)), ("Point_Flare_B", (1, 0, 0))):
+        flare += m.path_blade(name, [V(0, 0, LANCE_TIP - 0.38), V(0, 0, LANCE_TIP + 0.22)], normal,
+                              lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
+                              lambda t: 0.02 * (1 - t), mats["blade"])
+    return rings, flare
+
 WEAPONS = {
     "great_sword": great_sword,
     "hammer": hammer,

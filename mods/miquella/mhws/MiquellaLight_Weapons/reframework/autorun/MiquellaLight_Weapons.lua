@@ -24,6 +24,9 @@ local CHECK_EVERY = 20       -- frames between checks
 -- Our models. Paths are relative to natives/STM/ without the numeric extension.
 -- glow: materials whose Emissive_Intensity the Glow slider scales, with their mdf2 value.
 -- demon: demon-mode side-blade materials and their stage (hidden outside demon mode).
+-- Charge level fields (candidates from the game's type names; the first found is used).
+local CHARGE_FIELDS = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
+
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
@@ -54,7 +57,7 @@ local KITS = {
             -- The big ring around the blade near the hilt hovers like the bowgun's rings.
             { name = "MQ_BladeHalo", pos = { -0.0240, 0.0, 0.6833 }, mode = "hover" } } },
         -- Charge level 0-3 (candidates from the game's type names; the first found is used).
-        charge = { levels = 3, fields = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" } },
+        charge = { levels = 3, fields = CHARGE_FIELDS, band = true },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -123,8 +126,12 @@ local KITS = {
         label = "Miquella sun lantern (hammer)",
         mesh = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mesh",
         mdf2 = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mdf2",
-        glow = { MiquellaGlow = 1.2 },
+        glow = { MiquellaGlow = 1.2, MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
         floaters = { mode = "hover", joints = { { name = "MQ_BeltHalo", pos = { 0.0, 0.0, 1.3160 } } } },
+        -- Charge (user, 2026-10-02): a cone of rings beyond each face grows a level at a time, the
+        -- light goes bright gold -> white; the game's glow on the hunter is gone (HammerFX pak).
+        charge = { levels = 3, fields = CHARGE_FIELDS, weights = { MiquellaGlow = 1.0 }, colored = { "MiquellaGlow" },
+                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 } },
     },
     HuntingHorn = {
         label = "Miquella lyre of light (hunting horn)",
@@ -136,7 +143,15 @@ local KITS = {
         label = "Miquella light lance",
         mesh = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mesh",
         mdf2 = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
+                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2, MiquellaChargeTip = 1.2 },
+        -- Charge (DESIGN, user 2026-10-02): the cone of rings grows from the vamplate toward the
+        -- point a level at a time, brighter each level; at full charge the point's longer blade.
+        -- Only on the lance: the game's glow on the hunter is gone (LanceFX pak).
+        charge = { levels = 3, fields = CHARGE_FIELDS,
+                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaTemper = 1.0 },
+                   colored = { "MiquellaBlade", "MiquellaGlow" },
+                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3, MiquellaChargeTip = 3 } },
         shield = "Lance_Shield",
     },
     Lance_Shield = {
@@ -732,6 +747,8 @@ end
 
 -- Great sword charge (DESIGN.md: bright gold -> brighter gold -> white light; only at the
 -- third level a gold band of light runs along the temper line). mul scales the glow.
+-- The hammer and the lance use it too: their charge parts (spec.parts: material -> level,
+-- hidden at Dissolve 0 in the mdf2) fade in at their level and take the level's light.
 local GOLD = { 1.0, 0.647, 0.149 }
 local CHARGE_LOOK = {
     [0] = { mul = 1.0, color = GOLD },
@@ -740,6 +757,7 @@ local CHARGE_LOOK = {
     [3] = { mul = 3.6, color = { 1.0, 0.94, 0.82 } },     -- white light
 }
 local BAND_PERIOD, BAND_WIDTH = 0.9, 0.14
+local CHARGE_WEIGHTS = { MiquellaBlade = 1.0, MiquellaGlow = 0.4, MiquellaTemper = 1.0 }
 
 local function update_charge(entry, mesh, h, dt, now)
     local spec = entry.kit.charge
@@ -754,8 +772,23 @@ local function update_charge(entry, mesh, h, dt, now)
     local hi, t = math.min(spec.levels, lo + 1), s - lo
     local a, b = CHARGE_LOOK[lo], CHARGE_LOOK[hi]
     local mul, color = lerp(a.mul, b.mul, t), lerp3(a.color, b.color, t)
-    entry.mul = { MiquellaBlade = mul, MiquellaGlow = 1 + (mul - 1) * 0.4, MiquellaTemper = mul }
-    set_color(entry, mesh, "MiquellaBlade", color)
+    entry.mul = {}
+    for mat, w in pairs(spec.weights or CHARGE_WEIGHTS) do entry.mul[mat] = 1 + (mul - 1) * w end
+    for _, mat in ipairs(spec.colored or { "MiquellaBlade" }) do set_color(entry, mesh, mat, color) end
+    entry.vars = entry.vars or material_vars(mesh)
+    entry.partsOn = entry.partsOn or {}
+    for mat, lv in pairs(spec.parts or {}) do
+        local alpha = math.max(0, math.min(1, s - (lv - 1)))
+        local m = entry.vars[mat]
+        if m and entry.partsOn[mat] ~= (alpha > 0.001) then
+            entry.partsOn[mat] = alpha > 0.001
+            try(function() mesh:setMaterialsEnable(m.index, alpha > 0.001) end)
+        end
+        set_float(entry, mesh, mat, "Dissolve", alpha)
+        entry.mul[mat] = mul
+        set_color(entry, mesh, mat, color)
+    end
+    if not spec.band then return end
     -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).
     local band = math.max(0, s - (spec.levels - 1))
     set_float(entry, mesh, "MiquellaTemper", "Use_MoveEmit", band > 0.05 and 1.0 or 0.0)
@@ -1092,6 +1125,7 @@ local function refresh(entry)
     if not mesh then return end
     set_model(entry.go, mesh, entry.kitMesh, entry.kit.mdf2, nil)
     entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
+    entry.partsOn = nil
     apply_tuning(entry, mesh)
 end
 

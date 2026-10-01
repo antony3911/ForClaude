@@ -220,11 +220,15 @@ def hammer():
     """Hand 0.1 above the pommel; scaled 1.4: the head's center 1.32 m above the hand, the
     striking faces 0.58 apart (originals: head up to 1.65, 1.1 wide; ours stays slender)."""
     import arsenal
-    objs = capture(arsenal.hammer)
+    import motifs
+    objs = capture(lambda: (arsenal.hammer(), arsenal.hammer_charge_rings(motifs.materials())))
     to_file = upright(1.4, (0, 0, 0.1))
+    # The charge rings: one material per level, hidden until the weapons script fades them in.
+    by_name = {f"Charge_Ring_{i}_{side}": f"MiquellaCharge{level}"
+               for i, (level, _, _) in enumerate(arsenal.HAMMER_CHARGE) for side in "LR"}
     return placed("wp_miquella_hm", "Art/Model/MiquellaLight/Hammer", objs, to_file,
                   {"VFX_Attack": to_file @ Vector((0, 0, 1.04 + 0.14))},
-                  floaters={"Belt_Halo": "MQ_BeltHalo"})
+                  floaters={"Belt_Halo": "MQ_BeltHalo"}, by_name=by_name)
 
 
 def hunting_horn():
@@ -243,11 +247,16 @@ def lance():
     """Hand mid-grip; scaled 1.7: the point 3.05 m above the hand (originals 3.08). The energy
     shield is lance_shield."""
     import arsenal
-    objs = capture(arsenal.lance)
+    import motifs
+    objs = capture(lambda: (arsenal.lance(), arsenal.lance_charge_parts(motifs.materials())))
     shield = set(subtree("EnergyShield"))
     to_file = upright(1.7, (0, 0, 0.17))
+    # Charge: the cone of rings a level at a time, the point's longer blade at full charge.
+    levels = arsenal.LANCE_CHARGE[5]
+    by_name = {f"Charge_Ring_{k}": f"MiquellaCharge{lv}" for k, lv in enumerate(levels)}
+    by_name.update({"Point_Flare_A": "MiquellaChargeTip", "Point_Flare_B": "MiquellaChargeTip"})
     return placed("wp_miquella_ln", "Art/Model/MiquellaLight/Lance", [o for o in objs if o not in shield],
-                  to_file, {})
+                  to_file, {}, by_name=by_name)
 
 
 def lance_shield():
@@ -477,14 +486,19 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
 
 # Triangle budget per game material (the originals run 5k-60k triangles in all).
 BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500,
-          "MiquellaMembrane": 2000}
+          "MiquellaMembrane": 2000, "MiquellaCharge1": 8000, "MiquellaCharge2": 8000, "MiquellaCharge3": 8000,
+          "MiquellaChargeTip": 2000}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
 MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaIvory": "MiquellaIvory", "MiquellaTemper": "MiquellaGlow",
               "MiquellaGauge1": "MiquellaGlow", "MiquellaGauge2": "MiquellaGlow",
-              "MiquellaGauge3": "MiquellaGlow"}
+              "MiquellaGauge3": "MiquellaGlow",
+              "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
+              "MiquellaChargeTip": "MiquellaBlade"}
+# Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
+HIDDEN_AT_START = ("MiquellaCharge",)
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some
@@ -762,6 +776,10 @@ def build_mdf(path, template_mdf, names, membrane=None):
             new = membrane_material(membrane)
         else:
             new = copy.deepcopy(by_name[MDF_SOURCE[name]])
+            if name.startswith(HIDDEN_AT_START):
+                for p in new.propertyList:
+                    if p.propName == "Dissolve":
+                        p.propValue = [0.0]
         new.materialName = name
         materials.append(new)
     template.materialList = materials

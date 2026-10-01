@@ -20,6 +20,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_bow%.") then
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_hm%.") then
+      return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory" }
+    end
     if self.mdfPath:match("wp_miquella_gs") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
@@ -481,4 +484,29 @@ check(far > REST + 0.03, string.format("bow: loosing springs the rings past thei
 frames(120, 1 / 60)
 check(math.abs(front.lp.z - REST) < 0.01, "bow: and they settle back")
 check(math.abs(gauge(3) - 1) < 1e-3, "bow: glow back to normal")
+-- Hammer: the charge cones fade in a level at a time beyond both faces, bright gold -> white.
+weaponMesh = newMesh("Art/Model/Item/it04/00/0001/it0400_0001_0.mesh")
+weaponGO = newGO("Wp04", 7001, weaponMesh, nil)
+subGO = nil
+chargeLv = 0
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "Hammer" }; onDraw()
+frames(30, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mesh", "hammer: model swapped")
+local function part(name) return weaponMesh.matEnabled[name] == true, weaponMesh.floats[name .. ".2"] or 0 end
+local on1 = part("MiquellaCharge1")
+check(not on1 and not part("MiquellaCharge3"), "hammer: no charge rings at rest")
+chargeLv = 1
+frames(30, 1 / 60)
+local on, d = part("MiquellaCharge1")
+check(on and d == 1 and not part("MiquellaCharge2"), "hammer: level 1 shows the first rings")
+check(math.abs(weaponMesh.floats["MiquellaGlow.1"] / (1.2 * glow) - 1.8) < 1e-3, "hammer: level 1 bright gold glow on the hammer")
+chargeLv = 3
+frames(40, 1 / 60)
+check(part("MiquellaCharge3"), "hammer: level 3 shows every cone ring")
+local hc = weaponMesh.colors["MiquellaCharge3"]
+check(hc and hc.z > 0.8 and weaponMesh.colors["MiquellaGlow"].z > 0.8, "hammer: level 3 turns rings and hammer white")
+chargeLv = 0
+frames(90, 1 / 60)
+check(not part("MiquellaCharge1") and not part("MiquellaCharge3"), "hammer: rings fade out after the swing")
 print("ALL PASS")

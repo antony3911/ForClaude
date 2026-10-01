@@ -22,12 +22,14 @@ end
 local nextAddr = 0x100
 local function effect(goName, path, tint, params)
     nextAddr = nextAddr + 0x10
-    local e = { addr = nextAddr, tint = color(tint), params = params or {}, alive = true }
+    local e = { addr = nextAddr, tint = color(tint), params = params or {}, alive = true, running = true,
+                goName = goName, path = path }
     function e:get_address() return self.addr end
     function e:call(m, v)
         if not self.alive then error("destroyed") end
-        if m == "get_GameObject" then return { call = function() return goName end } end
-        if m == "get_Resource" then return { ToString = function() return "Resource[" .. path .. "]" end } end
+        if m == "get_GameObject" then return self.goName and { call = function() return self.goName end } end
+        if m == "get_Resource" then return self.path ~= "" and { ToString = function() return "Resource[" .. self.path .. "]" end } or nil end
+        if m == "get_Running" then return self.running end
         if m == "get_Color" then return color(self.tint.rgba) end
         if m == "set_Color(via.Color)" then self.tint = color(v.rgba) end
         if m == "getExternParameter(System.String)" then return self.params[v] end
@@ -82,19 +84,31 @@ local function hue_is_gold(c)
 end
 
 check(addHook ~= nil, "spawn hook installed")
--- A new trail: the game fills its shared parameter object with red and adds it.
-local trail = effect("11_it02_001", "", hex(0xFF, 0xFF, 0xFF))
-local shared = param("Color", hex(0xFF, 0x2E, 0x2E, 0xC0))
-addHook({ 0, ptr(trail), ptr(shared) })
-check(hue_is_gold(shared.c) and (shared.c.rgba >> 24) == 0xC0, "trail colour turned gold at spawn, alpha kept (" .. rgb(shared.c) .. ")")
-local monsterParam = param("Color", hex(0xFF, 0x20, 0x20))
-addHook({ 0, ptr(monster), ptr(monsterParam) })
-check(rgb(monsterParam.c) == "FF2020", "other effects' parameters untouched at spawn")
-local flag = param("IsKijin", hex(0xFF, 0x00, 0x00))
-addHook({ 0, ptr(trail), ptr(flag) })
-check(rgb(flag.c) == "FF0000", "non-colour parameter names untouched")
-
+-- New effects: the game adds their parameters (hook) and gives the trail a red Color.
+local trail = effect("11_it02_001", "", hex(0xFF, 0xFF, 0xFF), { Color = param("Color", hex(0xFF, 0x2E, 0x2E, 0xC0)) })
+local late = effect(nil, "", hex(0xFF, 0xFF, 0xFF), { Color = param("Color", hex(0xFF, 0x2E, 0x2E)) })   -- named a frame later
+local spark = effect("ef_spark", "", RED, { Color = param("Color", hex(0xFF, 0x20, 0x20)) })
+addHook({ 0, ptr(trail), ptr({}) })
+addHook({ 0, ptr(late), ptr({}) })
+addHook({ 0, ptr(spark), ptr({}) })
+clock = 0.1; onFrame()
+local c = trail.params.Color.c
+check(hue_is_gold(c) and (c.rgba >> 24) == 0xC0, "new trail gold on the next frame, alpha kept (" .. rgb(c) .. ")")
+check(rgb(spark.params.Color.c) == "FF2020" and spark.tint.rgba == RED, "other new effects untouched")
+check(rgb(late.params.Color.c) == "FF2E2E", "effect not set up yet: waits")
+late.goName = "11_it02_001"
 onFrame()
+check(hue_is_gold(late.params.Color.c), "picked up once it has its name")
+out = {}; onDraw()
+check(table.concat(out):match("Recoloured: 2 at spawn"), "spawn recolours counted")
+-- A finished trail is dropped.
+trail.running = false
+onFrame()
+out = {}; onDraw()
+trail.params.Color.c = color(hex(0xFF, 0x2E, 0x2E))
+onFrame()
+check(rgb(trail.params.Color.c) == "FF2E2E", "finished trail no longer tracked")
+late.running = false; onFrame()
 check(hue_is_gold(glow.params.ColorA.c) and hue_is_gold(glow.params.ColorC.c), "playing archdemon glow: ColorA / ColorC gold")
 local b = glow.params.ColorB.c
 local br, bg, bb = b.rgba & 0xFF, (b.rgba >> 8) & 0xFF, (b.rgba >> 16) & 0xFF
@@ -115,7 +129,7 @@ check(attackUp.tint.rgba == GREEN, "a hidden effect reused for healing shows aga
 glow.alive = false
 onFrame()
 out = {}; onDraw()
-check(table.concat(out):match("Tracking 1%."), "destroyed effect dropped (only the hidden defense-up glow tracked)")
+check(table.concat(out):match("Tracking 1%."), "destroyed and finished effects dropped (only the hidden defense-up glow tracked)")
 -- Switch the buff hiding off.
 toggle["Hide attack-up / defense-up glow"] = true; onDraw()
 check(savedCfg and savedCfg[2].hideBuffs == false, "setting saved")

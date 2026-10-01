@@ -3,9 +3,11 @@
 -- 1. Dual blades effects: red -> gold, blue -> silver at runtime. The recoloured effect
 --    files are not enough: the game hands some effects their colours while it runs, as
 --    extern parameters (Color on the attack trail 11_it02_001, ColorA/B/C on the archdemon
---    body glow and forearm flames 11_it02_002; found with the FX probe). Done twice: when
---    the game adds a colour parameter to a new dual blades effect (hook), and every frame on
---    the dual blades effects that are playing (parameters and the effect's tint).
+--    body glow and forearm flames 11_it02_002; found with the FX probe). Every new effect
+--    is caught as the game adds its parameters (hook) and checked on the next frame, so a
+--    red trail shows for one frame at most; the effects found then are re-checked every
+--    frame while they play (parameters and the effect's tint), and a slower scan of all
+--    effects catches anything the hook missed.
 -- 2. Hide the attack-up / defense-up glow: pl_state/11_pl_heal, which the game tints red
 --    (attack up) or orange (defense up) and replays every ~2 s. Its tint is set to
 --    transparent black; the same effect with other tints (healing) is left alone.
@@ -31,7 +33,11 @@ if type(saved) == "table" then
 end
 
 local stats = { spawn = 0, playing = 0, buffs = 0 }
-local tracked = {}                      -- address -> { ep, kind = "recolor" | "buff" }
+local tracked = {}                      -- address -> { ep, kind = "recolor" | "buff", ran, born }
+local pending = {}                      -- effects just created: { ep, frames }
+local MAX_PENDING = 128
+local PENDING_FRAMES = 10               -- frames to wait for a new effect's name / resource
+local IDLE_DROP = 3                     -- seconds a recoloured effect may sit idle before it is dropped
 local nextScan = 0
 local hookOk = false
 
@@ -119,13 +125,6 @@ end
 
 -- ------------------------------------------------------------------ new effects (hook)
 
-local function contains(list, x)
-    for _, v in ipairs(list) do
-        if v == x then return true end
-    end
-    return false
-end
-
 local function effect_name(ep)
     local go = try(function() return ep:call("get_GameObject") end)
     local name = go and try(function() return go:call("get_Name") end)
@@ -134,17 +133,13 @@ local function effect_name(ep)
     return res and try(function() return res:ToString() end) or ""
 end
 
--- The game fills one parameter object and adds it to each new effect (seen 300 times on the
--- same object), so the colour can be changed just before it is copied in.
+-- Every new effect gets its parameters added (the parameter itself is a fixed native object,
+-- not something a script can recolour), so this is where new effects are noticed. They are
+-- looked at on the next frame, when their name and colours are in place.
 local function on_add_param(args)
-    if not config.recolor then return end
+    if not config.recolor or #pending >= MAX_PENDING then return end
     local ep = sdk.to_managed_object(args[2])
-    if not (ep and effect_name(ep):find(RECOLOR_MATCH, 1, true)) then return end
-    local p = sdk.to_managed_object(args[3])
-    local name = p and try(function() return p:call("get_Name") end)
-    if name and contains(COLOR_PARAMS, name) and recolor_param(p) then
-        stats.spawn = stats.spawn + 1
-    end
+    if ep then pending[#pending + 1] = { ep = ep, frames = 0 } end
 end
 
 hookOk = pcall(function()
@@ -181,19 +176,31 @@ end
 
 local TRANSPARENT = 0
 
+-- Recolour an effect's colour parameters and tint; the number of colours changed.
+local function recolor_effect(ep, tint)
+    local n = 0
+    for _, name in ipairs(COLOR_PARAMS) do
+        local p = try(function() return ep:call("getExternParameter(System.String)", name) end)
+        if p and recolor_param(p) then n = n + 1 end
+    end
+    local new = recolor(tint)
+    if new and pcall(function() ep:call("set_Color(via.Color)", make_color(new)) end) then n = n + 1 end
+    return n
+end
+
 local function update(key, t)
     local ep = t.ep
     local tint = rgba_of(try(function() return ep:call("get_Color") end))
     if not tint then tracked[key] = nil; return end          -- gone
     if t.kind == "recolor" then
         if not config.recolor then tracked[key] = nil; return end
-        for _, name in ipairs(COLOR_PARAMS) do
-            local p = try(function() return ep:call("getExternParameter(System.String)", name) end)
-            if p and recolor_param(p) then stats.playing = stats.playing + 1 end
-        end
-        local new = recolor(tint)
-        if new and pcall(function() ep:call("set_Color(via.Color)", make_color(new)) end) then
-            stats.playing = stats.playing + 1
+        stats.playing = stats.playing + recolor_effect(ep, tint)
+        -- Drop effects that have finished playing (trails are new objects for every attack).
+        if try(function() return ep:call("get_Running") end) then
+            t.ran, t.idle = true, nil
+        else
+            t.idle = t.idle or os.clock()
+            if t.ran or os.clock() - t.idle > IDLE_DROP then tracked[key] = nil end
         end
     else
         if not config.hideBuffs then
@@ -208,8 +215,30 @@ local function update(key, t)
     end
 end
 
+-- New effects from the hook: dual blades ones are recoloured right away and tracked.
+local function take_pending()
+    local still = {}
+    for _, item in ipairs(pending) do
+        local ep = item.ep
+        local key = try(function() return ep:get_address() end)
+        local name = key and effect_name(ep) or ""
+        if name:find(RECOLOR_MATCH, 1, true) then
+            if not tracked[key] then
+                tracked[key] = { ep = ep, kind = "recolor" }
+                local tint = rgba_of(try(function() return ep:call("get_Color") end))
+                if tint then stats.spawn = stats.spawn + recolor_effect(ep, tint) end
+            end
+        elseif key and name == "" and item.frames < PENDING_FRAMES then
+            item.frames = item.frames + 1
+            still[#still + 1] = item                     -- not set up yet: look again next frame
+        end
+    end
+    pending = still
+end
+
 re.on_frame(function()
     if not (config.recolor or config.hideBuffs) then return end
+    if #pending > 0 then pcall(take_pending) end
     if os.clock() >= nextScan then
         nextScan = os.clock() + SCAN_EVERY
         pcall(scan)

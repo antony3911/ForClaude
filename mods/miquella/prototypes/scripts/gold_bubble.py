@@ -29,7 +29,9 @@ REL = "Art/VFX/Mesh/Common/Other/bubble"
 GLOW_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "mhws", "MiquellaLight_DualBlades_kit", "natives",
                              "STM", "Art", "Model", "MiquellaLight", "DualBlades", "wp_miquella_db.mdf2.45")
 # Rings around the shell: (tilt about X, tilt about Y, radius, thickness), in the file's units.
-RINGS = [(12, 0, 0.515, 0.0045), (72, 25, 0.522, 0.0035), (-48, -60, 0.528, 0.003)]
+# A third of the first version's thickness, dimmer (user, 2026-10-02: the lines were too thick).
+RINGS = [(12, 0, 0.515, 0.0016), (72, 25, 0.522, 0.0013), (-48, -60, 0.528, 0.0011)]
+RING_GLOW = 1.4
 
 
 def build_mesh(mesh_col):
@@ -86,7 +88,7 @@ def build_mdf(src, dst):
     glow.materialName = "MiquellaRing"
     for p in glow.propertyList:
         if p.propName == "Emissive_Intensity":
-            p.propValue = [2.0]
+            p.propValue = [RING_GLOW]
     mdf.materialList.append(glow)
     writeMDF(mdf, dst)
     log(f"mdf: {[m.materialName for m in readMDF(dst).materialList]}")

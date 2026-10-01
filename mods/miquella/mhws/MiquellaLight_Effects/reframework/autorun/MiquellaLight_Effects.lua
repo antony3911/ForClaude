@@ -40,6 +40,10 @@ local RULES = {
                                     charge = { "11_it00_00", "11_it00_01" } },    -- charge levels, true charge
     ["app.cHunterWp13Handling"] = { match = "it13", kind = "gold", label = "light bowgun",
                                     skip = { "jimen", "land" } },                 -- ground dust stays as is
+    -- Insect glaive (user, 2026-10-02: the red charge glow should be gold): its smoke, poison
+    -- and hit dust (010-012, 100) and the GPU modules (9xx) stay as they are.
+    ["app.cHunterWp10Handling"] = { match = "it10", kind = "gold", label = "insect glaive",
+                                    skip = { "11_it10_01", "11_it10_100", "11_it10_9" } },
 }
 local TINT_SAT = 0.6                    -- white parts of gold-tinted effects: a bright gold, not white
 local COLOR_PARAMS = { "Color", "ColorA", "ColorB", "ColorC" }

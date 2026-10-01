@@ -26,3 +26,4 @@
 - 第六版（2026-10-02，等實測）：**依手上的武器套規則**（`RULES`）。雙劍照舊；**大劍（`it00`）、輕弩（`it13`）的特效整個染金**（特效的染色 `set_Color`：白色部分變亮金 `#FFC766`、暖色變金，其他顏色不動；輕弩的地面煙塵 `jimen`／`land` 不染）。選單多一個「Great sword: hide the game's charge effects」：把大劍剩下的蓄力特效（`11_it00_00x`、`11_it00_01x`）也藏掉，只看刀身。拿著這三把之一才每幀搜尋。顏色參數的攔截仍只管雙劍
 - 搭配的改檔 pak（不進 repo，從使用者的遊戲檔產生）：`MiquellaLight_GreatSwordFX.pak`（大劍 18 檔：暖色 → 金、**身上發光 `PLE_Body`／`PLE_IMP` 改全黑透明 = 拿掉**，使用者要蓄力只在刀身表現）、`MiquellaLight_LightBowgunFX.pak`（輕弩 19 檔：暖色 → 金）。重做：
   `recolor_efx.py --warm --no-silver --hide PLE_Body,PLE_IMP --skip-param Blood <解出的 11_it00_*.efx> <輸出>`（輕弩只要 `--warm --no-silver`），再 `make_patch_pak.py`
+- 第七版（2026-10-02，等實測）：**操蟲棍（`it10`）的特效也整個染金**（使用者：蓄力時還看得到紅色光氣，要金色）；煙、毒、命中塵土（`11_it10_01x`、`11_it10_100`）和 `9xx` 不染。搭配 `MiquellaLight_InsectGlaiveFX.pak` 第二版：原本藏掉精華身上顏色的 `020`／`021`，加上 14 個特效檔暖色 → 金（指令見 `recolor_efx.py` 說明）。另外 `MiquellaLight_LongSwordFX.pak`（新）：太刀練氣白黃紅的刀身光（`11_it03_000` 的 `PLE_wep`）和身上光、粒子（`11_it03_004`）拿掉，讓我們刀身的流光看得清楚

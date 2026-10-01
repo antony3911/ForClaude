@@ -5,7 +5,7 @@
 | 名稱 | 模型 | 原版（骨架、對齊用） | 擺放 |
 |---|---|---|---|
 | `insect_glaive` | `wp_miquella_ig.mesh` | `it1000_0000_0` | 手在握把中間，×1.6：上刃 1.82、下刃 -1.56（原版 +1.74／-1.6）。兩端的光環磁浮（`MQ_TopHalo`、`MQ_BottomHalo`）。**精華三顆球**（2026-10-02）：腐敗＝粉紅黴球團、冰凍＝霜面冰塊＋冰晶、癲火＝橘色餘燼球（`arsenal.extract_orb`，遊戲版只用一般模型；火、寒氣之後用特效），各自材質 `MiquellaExtractRed／White／Orange`（`Dissolve` 0 預設隱藏、三色貼圖 `InsectGlaive/tex/MiquellaExtract_*`）、各自骨頭 `MQ_OrbRed／White／Orange`：腳本在點燈時淡入、繞上刃轉 |
-| `kinsect` | `wp_miquella_kinsect.mesh` | `it1003_0000_0` | 金色燕尾光蝶：頭 +Z、背 +Y（跟原版一樣，轉 180°），翼展 1.1、高 1.2（原版 1.85 × 0.94，我們的燕尾比較長）。翅膀綁原版的 `L_Wing`／`R_Wing`（會拍），其他綁 `Body`。**A 實心金翅**（pak 裡是這個） |
+| `kinsect` | `wp_miquella_kinsect.mesh` | `it1003_0000_0` | 金色燕尾光蝶：頭 +Z、背 +Y（跟原版一樣，轉 180°），翼展 1.1、高 1.2（原版 1.85 × 0.94，我們的燕尾比較長）。翅膀**不綁原版的 `L_Wing`／`R_Wing`**（原版拍得太快，金色大翅膀會閃爍刺眼，使用者 2026-10-02），改綁我們的 `MQ_WingL`／`MQ_WingR`（`Body` 的子骨頭，在翅根、身體中線上），換裝腳本讓它們像蝴蝶一樣慢慢拍（1.6 Hz，往背上 −14°～+38°，`KITS.Kinsect.floaters.flap`）；其他綁 `Body`。**A 實心金翅**（pak 裡是這個） |
 | `kinsect_outline` | `wp_miquella_kinsect_b.mesh` | 同上 | **B 鏤空翅**（只有輪廓和翅脈）。獵蟲 2026-10-02 **接進換裝腳本**：從武器處理器的 `_Insect` 拿獵蟲物件（猜的，選單 `Kinsect:` 會顯示找到沒），原版路徑 `Item/it10/03/...` 換成 A；收刀時不隱藏 |
 
 貼圖沿用雙劍的（`Art/Model/MiquellaLight/DualBlades/tex/`），pak 裡自帶一份。材質抄雙劍 kit 的 `.mdf2`（現在遊戲的 180 參數排列）。`.blend`（匯出前的場景）不進 repo，用下面的指令重建。

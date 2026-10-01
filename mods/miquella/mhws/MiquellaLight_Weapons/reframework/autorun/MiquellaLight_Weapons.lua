@@ -157,9 +157,11 @@ local KITS = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
             { name = "MQ_Tsuba1", pos = { 0.0152, 0.0, 0.2052 } } } },
         -- Spirit gauge levels (none / white / yellow / red): pale gold -> gold -> bright gold ->
-        -- white light, the temper line's band of light running from yellow on (DESIGN; user
-        -- 2026-10-02: not in the game yet). Fields guessed (menu "Charge:").
-        charge = { levels = 3, fields = { "_AuraLevel", "_NowAuraLevel" }, look = "spirit", band = true, bandFrom = 2 },
+        -- white light, the temper line's band of light running from yellow on (DESIGN). The game
+        -- counts 1 none .. 4 red (recorded 2026-10-02: <AuraLevel>k__BackingField; the guess
+        -- _AuraLevel did not exist, so the band never ran). A wider, brighter band (user: not seen).
+        charge = { levels = 3, fields = { "<AuraLevel>k__BackingField", "_AuraLevel" }, offset = -1, look = "spirit",
+                   band = true, bandFrom = 2, bandWidth = 0.24, bandBoost = 2.5 },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -244,8 +246,12 @@ local KITS = {
         -- Reload, charged shelling and Wyvern's Fire wind the spring (user, 2026-10-02); charged
         -- shelling's levels light it gold -> bright gold -> white gold. Fields guessed from the
         -- game's type names (menu: "Gunlance:").
+        -- Recorded 2026-10-02: no Wyvern's Fire timer; its gauge (_RyuugekiGauge, 1..2) drops by
+        -- one when it is used -> wind the spring for the wind-up; a shell fired lowers
+        -- _ChargeShotBulletNum -> a short press.
         gunlance = { reload = { "_IsReload", "_IsContinueReload" }, chargeShot = { "_ChargeShotElapsedTimer" },
-                     wyvern = { "_RyuugekiChargeTimer" },
+                     wyvern = { "_RyuugekiChargeTimer" }, wyvernGauge = { "_RyuugekiGauge" },
+                     shells = { "_ChargeShotBulletNum" },
                      charge = { levels = 3, look = "whiteGold", colored = { "MiquellaBlade", "MiquellaGlow", "MiquellaCore" },
                                 weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 } } },
         shield = "Gunlance_Shield",
@@ -334,6 +340,12 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mesh",
         mdf2 = "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2 },
+        -- The wings on bones of our own (children of Body, at the wings' roots; local positions):
+        -- a slow butterfly beat about the body's length (+Z), up toward the back (+Y). The game's
+        -- own wing beat was so fast our gold wings flickered (user, 2026-10-02).
+        floaters = { mode = "flap", flap = { hz = 1.6, base = 12, amp = 26 }, joints = {
+            { name = "MQ_WingL", pos = { 0.0, 0.0023, 0.0027 }, flap = 1 },
+            { name = "MQ_WingR", pos = { 0.0, 0.0023, 0.0027 }, flap = -1 } } },
     },
     Bow = {
         label = "Miquella light bow",
@@ -435,6 +447,8 @@ local config = {
     floatStrength = 1.0,
     -- The bow's charge field counts from 0 (level 1 = 0): set in the menu if the rings light late.
     bowFrom0 = false,
+    -- While drawing, the bow's rings move onto the drawn arrow's line (found in the scene).
+    bowFollowArrow = true,
     -- weapon type -> true: the mode field reads the other way round (switch axe, charge blade)
     modeInvert = {},
     -- Record the weapon handling's number / true-false fields while playing (for Claude to find
@@ -954,7 +968,7 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     if not level then
         local name = h and resolve(h, "charge", spec.fields)
         local raw = name and read_number(h, name) or 0
-        level = math.max(0, math.min(spec.levels, math.floor(raw + 0.5)))
+        level = math.max(0, math.min(spec.levels, math.floor(raw + (spec.offset or 0) + 0.5)))
         stateInfo.charge = name and string.format("%s = %s (level %d)", name, tostring(raw), level)
             or ("not found; fields with 'Charge': " .. table.concat(h and similar_fields(h, "Charge") or {}, ", "))
     end
@@ -987,8 +1001,8 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     set_float(entry, mesh, "MiquellaTemper", "Use_MoveEmit", band > 0.05 and 1.0 or 0.0)
     if band > 0.05 then
         set_float(entry, mesh, "MiquellaTemper", "MoveEmit", ((now / BAND_PERIOD) % 1) * 1.3 - 0.15)
-        set_float(entry, mesh, "MiquellaTemper", "MoveEmit_Width", BAND_WIDTH)
-        entry.mul.MiquellaTemper = mul * (1 + band)
+        set_float(entry, mesh, "MiquellaTemper", "MoveEmit_Width", spec.bandWidth or BAND_WIDTH)
+        entry.mul.MiquellaTemper = mul * (1 + band * (spec.bandBoost or 1))
     end
 end
 
@@ -1102,6 +1116,8 @@ end
 -- spring back; charged shelling winds it tighter each level and holds it until the shot;
 -- Wyvern's Fire winds it all the way until it fires. The light follows the level.
 local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
+local SHELL_PULSE = 0.18             -- a shell fired: a short press
+local WYVERN_WINDUP = 1.7            -- Wyvern's Fire: from the gauge dropping to the blast (guess)
 local GL_CHARGE_STEP = 0.6           -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
 
 local function first_number(h, names)
@@ -1117,6 +1133,12 @@ local function update_gunlance(entry, mesh, h, dt, now)
     local reload, rn = first_number(h, spec.reload)
     local shot, sn = first_number(h, spec.chargeShot)
     local wyv, wn = first_number(h, spec.wyvern)
+    local gauge, gn = first_number(h, spec.wyvernGauge or {})
+    local shells = first_number(h, spec.shells or {})
+    if gauge and entry.lastWyvGauge and gauge < entry.lastWyvGauge - 0.5 then entry.wyvernAt = now end
+    entry.lastWyvGauge = gauge
+    if shells and entry.lastShells and shells < entry.lastShells then entry.shellUntil = now + SHELL_PULSE end
+    entry.lastShells = shells
     local reloading = (reload or 0) > 0
     if reloading and not entry.wasReloading then entry.reloadUntil = now + RELOAD_PULSE end
     entry.wasReloading = reloading
@@ -1125,11 +1147,12 @@ local function update_gunlance(entry, mesh, h, dt, now)
     entry.lastShot = shot
     entry.countingAt = counting and now or entry.countingAt
     local charging = entry.countingAt ~= nil and now - entry.countingAt < 0.15
-    local winding = (wyv or 0) > 0
+    local winding = (wyv or 0) > 0 or (entry.wyvernAt ~= nil and now - entry.wyvernAt < WYVERN_WINDUP)
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
     local level, pack = 0, 0
     if entry.reloadUntil and now < entry.reloadUntil then level, pack = 1, 0.8 end
+    if entry.shellUntil and now < entry.shellUntil then level, pack = math.max(level, 1), math.max(pack, 0.5) end
     if charging then
         local lv = math.min(3, 1 + math.floor((shot or (now - entry.chargeSince)) / GL_CHARGE_STEP))
         level, pack = math.max(level, lv), math.max(pack, 0.4 + 0.2 * lv)
@@ -1141,7 +1164,8 @@ local function update_gunlance(entry, mesh, h, dt, now)
     if not isWeaponDrawn then level, pack = 0, 0 end
     entry.packTarget = pack
     local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
-    stateInfo.gunlance = string.format("%s %s %s (level %d, spring %.2f)", show(rn, reload), show(sn, shot), show(wn, wyv),
+    stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
+                                       show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
                                        level, entry.pack or 0)
     update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
@@ -1465,7 +1489,7 @@ local function float_joints(entry)
     f = f or { joints = {} }
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
-        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, off = { 0, 0, 0 },
+        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, flap = j.flap, off = { 0, 0, 0 },
                                    vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -1541,7 +1565,7 @@ end
 -- which work without it.
 local function rings_active(entry)
     return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil
-                               or (entry.kit.floaters and entry.kit.floaters.orbit) ~= nil)
+                               or (entry.kit.floaters and (entry.kit.floaters.orbit or entry.kit.floaters.flap)) ~= nil)
 end
 
 -- An orb circling the blade: its place on the circle (slot 0-2, a third apart), a slow bob,
@@ -1552,6 +1576,82 @@ local function orbit_ring(s, spec, t)
     s.pos = { c[1] + spec.radius * math.cos(a), c[2] + spec.radius * math.sin(a),
               c[3] + 0.03 * math.sin(2 * math.pi * 0.7 * t + s.orbit * 2.1) }
     s.rot = qaxis({ 0.3, 1.0, 0.2 }, (t * 70 + s.orbit * 120) % 360)
+end
+
+-- The bow's drawn arrow (user, 2026-10-02: the arrow left the rings around the middle one;
+-- its line comes from the hunter's draw, not the bow): the game's arrow model, found by its
+-- path among the scene's meshes (the nearest to the bow, looked for twice a second until
+-- found), gives its line in the bow's frame; the rings slide across onto it and turn square
+-- to it. Rings sit on the line where their own height (+Z) meets it.
+local ARROW_MATCH, ARROW_LOOK, ARROW_NEAR = "it1199_0000_0", 0.5, 1.5
+local ARROW_BLEND, ARROW_MAX_OFF = 0.12, 0.25
+local arrowInfo = "not looked for"
+
+local function current_scene()
+    return try(function()
+        return sdk.call_native_func(sdk.get_native_singleton("via.SceneManager"),
+            sdk.find_type_definition("via.SceneManager"), "get_CurrentScene()")
+    end)
+end
+
+local function vec_of(v) return v and { v.x, v.y, v.z } or nil end
+
+local function find_arrow(P)
+    local scene = current_scene()
+    local arr = scene and try(function() return scene:call("findComponents(System.Type)", sdk.typeof(MESH)) end)
+    local best, bestD = nil, ARROW_NEAR
+    for _, m in ipairs(arr and try(function() return arr:get_elements() end) or {}) do
+        local path = resource_path(try(function() return m:getMesh() end))
+        if path and path:find(ARROW_MATCH, 1, true) then
+            local go = try(function() return m:call("get_GameObject") end)
+            local tf = go and try(function() return go:call("get_Transform") end)
+            local p = tf and vec_of(try(function() return tf:call("get_Position") end))
+            local d = p and vlen(vsub(p, P))
+            if d and d < bestD then best, bestD = tf, d end
+        end
+    end
+    return best
+end
+
+local function follow_arrow(entry, P, R, now)
+    local drawing = (entry.packTarget or 0) > 0 and config.bowFollowArrow
+    local line = nil
+    if drawing then
+        local tf = entry.arrowTf
+        local ap = tf and vec_of(try(function() return tf:call("get_Position") end))
+        if not ap or vlen(vsub(ap, P)) > ARROW_NEAR then
+            tf, ap = nil, nil
+            if now >= (entry.arrowLookAt or 0) then
+                entry.arrowLookAt = now + ARROW_LOOK
+                tf = find_arrow(P)
+                ap = tf and vec_of(try(function() return tf:call("get_Position") end))
+            end
+        end
+        entry.arrowTf = tf
+        local ar = tf and try(function() return tf:call("get_Rotation") end)
+        if ap and ar then
+            local inv = qconj(R)
+            local d = qrot(inv, qrot({ ar.x, ar.y, ar.z, ar.w }, { 0, 0, 1 }))
+            if d[3] > 0.5 then line = { p = qrot(inv, vsub(ap, P)), d = d } end
+        end
+        arrowInfo = line and string.format("found, line off the bow's axis by (%.1f, %.1f) cm at the bow, (%.1f, %.1f) cm 1 m ahead",
+            100 * (line.p[1] - line.d[1] * line.p[3] / line.d[3]), 100 * (line.p[2] - line.d[2] * line.p[3] / line.d[3]),
+            100 * (line.p[1] + line.d[1] * (1 - line.p[3]) / line.d[3]), 100 * (line.p[2] + line.d[2] * (1 - line.p[3]) / line.d[3]))
+            or "drawing, arrow not found"
+    end
+    if line then entry.arrowLine = line end
+    entry.arrowBlend = approach(entry.arrowBlend or 0, line and 1 or 0, 1 / 60, ARROW_BLEND, ARROW_BLEND)
+end
+
+-- A ring onto the arrow's line at its height, square to it, by entry.arrowBlend.
+local function ring_on_arrow(s, line, blend)
+    local t = (s.pos[3] - line.p[3]) / line.d[3]
+    local dx, dy = line.p[1] + line.d[1] * t - s.pivot[1], line.p[2] + line.d[2] * t - s.pivot[2]
+    local l = math.sqrt(dx * dx + dy * dy)
+    if l > ARROW_MAX_OFF then dx, dy = dx * ARROW_MAX_OFF / l, dy * ARROW_MAX_OFF / l end
+    s.pos = { s.pos[1] + blend * dx, s.pos[2] + blend * dy, s.pos[3] }
+    local angle = math.deg(math.acos(math.max(-1, math.min(1, line.d[3]))))
+    s.rot = qmul(qaxis(cross({ 0, 0, 1 }, line.d), angle * blend), s.rot)
 end
 
 -- Run the springs once per frame (the first hook that fires), using the weapon's transform.
@@ -1575,13 +1675,20 @@ local function step_floaters()
             local rot = try(function() return f.tf:call("get_Rotation") end)
             if pos and rot then
                 local P, R = { pos.x, pos.y, pos.z }, { rot.x, rot.y, rot.z, rot.w }
+                if entry.kit.bow then follow_arrow(entry, P, R, now) end
+                local blend = entry.kit.bow and entry.arrowLine and (entry.arrowBlend or 0) or 0
                 for _, s in ipairs(f.joints) do
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
-                    if s.orbit then
+                    if s.flap then
+                        local w = entry.kit.floaters.flap
+                        s.pos = s.pivot
+                        s.rot = qaxis({ 0, 0, 1 }, s.flap * (w.base + w.amp * math.sin(2 * math.pi * w.hz * now)))
+                    elseif s.orbit then
                         orbit_ring(s, entry.kit.floaters.orbit, now)
                     else
                         step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, strength, entry.pack or 0)
+                        if blend > 0.001 then ring_on_arrow(s, entry.arrowLine, blend) end
                     end
                 end
             end
@@ -1720,6 +1827,11 @@ re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
     if not chr then return end
+    -- Drop weapon objects the game destroyed (switching weapons) before touching them again:
+    -- calls on them throw inside the game (REFramework logs each one).
+    for addr, entry in pairs(swapped) do
+        if not try(function() return entry.go:get_Valid() end) then swapped[addr] = nil end
+    end
     if config.enabled then refresh_pass() end
     if config.enabled then update_states(chr) end
     if not floatHooked then step_floaters(); apply_floaters("frame") end
@@ -1731,9 +1843,6 @@ re.on_frame(function()
             end
         end
         return
-    end
-    for addr, entry in pairs(swapped) do
-        if not try(function() return entry.go:get_Valid() end) then swapped[addr] = nil end
     end
     update_slot("Weapon", try(function() return chr:get_Weapon() end))
     update_slot("SubWeapon", try(function() return chr:get_SubWeapon() end))
@@ -1792,6 +1901,9 @@ re.on_draw_ui(function()
         if entry.kit.bow and stateInfo.draw then
             imgui.text("Draw: " .. stateInfo.draw)
             c, config.bowFrom0 = imgui.checkbox("Bow charge counts from 0", config.bowFrom0)
+            changed = changed or c
+            c, config.bowFollowArrow = imgui.checkbox("Rings follow the arrow", config.bowFollowArrow)
+            imgui.text("Arrow: " .. arrowInfo)
             changed = changed or c
         end
         if entry.kit.gauge and stateInfo.gauge then imgui.text("Gauge: " .. stateInfo.gauge) end

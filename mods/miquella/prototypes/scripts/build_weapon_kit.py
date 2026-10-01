@@ -659,12 +659,24 @@ def kinsect():
     span = 2 * max(abs((o.matrix_world @ Vector(b)).x) for o in objs for b in o.bound_box)
     to_file = Matrix.Translation((0, 0, 0.2)) @ Matrix.Scale(1.1 / span, 4) @ Matrix.Rotation(math.pi, 4, "Z")
 
+    # The wings: not on the originals' wing bones (they beat so fast that our big gold wings
+    # flickered, user 2026-10-02) but on bones of our own, children of Body at the wings' roots,
+    # which the weapons script swings slowly like a butterfly's ("flap").
+    wings = [o for o in objs if o.name.startswith(("Fore", "Hind"))]
+    pts = [to_file @ (o.matrix_world @ v.co) for o in wings if o.type == "MESH" for v in o.data.vertices]
+    if not pts:
+        pts = [to_file @ (o.matrix_world @ Vector(b)) for o in wings for b in o.bound_box]
+    roots = sorted(pts, key=lambda p: abs(p.x))[:max(8, len(pts) // 20)]
+    hinge = sum(roots, Vector()) / len(roots)
+    log(f"  wing hinge at y {hinge.y:+.4f} z {hinge.z:+.4f}")
+    pivots = {"MQ_WingL": Vector((0.0, hinge.y, hinge.z)), "MQ_WingR": Vector((0.0, hinge.y, hinge.z))}
+
     def wing_bone(o, file_center):
         if o.name.startswith(("Fore", "Hind")):
-            return "L_Wing" if file_center.x > 0 else "R_Wing"
+            return "MQ_WingL" if file_center.x > 0 else "MQ_WingR"
         return "Body"
     return placed("wp_miquella_kinsect", "Art/Model/MiquellaLight/Kinsect", objs, to_file, {},
-                  bone_fn=wing_bone)
+                  bone_fn=wing_bone, file_pivots=pivots, bone_parents={"MQ_WingL": "Body", "MQ_WingR": "Body"})
 
 
 def kinsect_outline():
@@ -1013,7 +1025,7 @@ def build_parts(spec, mesh_col):
     return subs, pivots
 
 
-def import_skeleton(orig_mesh, mesh_col, bones, new_bones):
+def import_skeleton(orig_mesh, mesh_col, bones, new_bones, parents=None):
     from re_mesh_editor.modules.mesh.blender_re_mesh import importREMeshFile
     opts = {"clearScene": False, "createCollections": True, "loadMaterials": False,
             "loadMDFData": False, "loadShellFur": False, "loadUnusedTextures": False,
@@ -1054,15 +1066,17 @@ def import_skeleton(orig_mesh, mesh_col, bones, new_bones):
             m[3][0], m[3][1], m[3][2] = (sign * p.x, sign * p.y, sign * p.z)
             b[key] = m
         log(f"  bone {name} -> ({pos.x:+.3f}, {pos.y:+.3f}, {pos.z:+.3f})")
-    add_bones(arm, new_bones)
+    add_bones(arm, new_bones, parents)
     log(f"skeleton: {[b.name for b in arm.data.bones]}")
     return arm
 
 
-def add_bones(arm, pivots):
-    """New children of Base at the given file-space points, no rotation. Export uses the
-    stored RE matrices (Base's identity with our translation); the Blender bones are only
-    placeholders."""
+def add_bones(arm, pivots, parents=None):
+    """New children of Base (or of the bone named in `parents`, which must not be rotated) at
+    the given file-space points, no rotation. Export uses the stored RE matrices (Base's
+    identity with our translation; the local one relative to the parent); the Blender bones
+    are only placeholders."""
+    parents = parents or {}
     if not pivots:
         return
     bpy.ops.object.select_all(action="DESELECT")
@@ -1074,14 +1088,17 @@ def add_bones(arm, pivots):
         eb = arm.data.edit_bones.new(name)
         eb.head = base.head
         eb.tail = base.head + Vector((0, 0, 0.05))
-        eb.parent = base
+        eb.parent = arm.data.edit_bones[parents.get(name, "Base")]
     bpy.ops.object.mode_set(mode="OBJECT")
     ref = arm.data.bones["Base"]
     for name, pos in pivots.items():
         b = arm.data.bones[name]
-        for key, sign in (("reMeshWorldMatrix", 1), ("reMeshLocalMatrix", 1), ("reMeshInverseMatrix", -1)):
+        pm = arm.data.bones[parents.get(name, "Base")]["reMeshWorldMatrix"]
+        local = pos - Vector((pm[3][0], pm[3][1], pm[3][2]))
+        for key, sign, p in (("reMeshWorldMatrix", 1, pos), ("reMeshLocalMatrix", 1, local),
+                             ("reMeshInverseMatrix", -1, pos)):
             m = [list(r) for r in ref[key]]
-            m[3][0], m[3][1], m[3][2] = (sign * pos.x, sign * pos.y, sign * pos.z)
+            m[3][0], m[3][1], m[3][2] = (sign * p.x, sign * p.y, sign * p.z)
             b[key] = m
         log(f"  new bone {name} at ({pos.x:+.4f}, {pos.y:+.4f}, {pos.z:+.4f})")
 
@@ -1219,7 +1236,7 @@ def main():
     subs, pivots = build_parts(spec, mesh_col)
     lo, hi = file_bounds(subs)
     log(f"file-space bounds min=({lo.x:+.3f}, {lo.y:+.3f}, {lo.z:+.3f}) max=({hi.x:+.3f}, {hi.y:+.3f}, {hi.z:+.3f})")
-    arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots)
+    arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots, spec.get("bone_parents"))
     bind(subs, arm)
     # Drop everything that is not part of the export.
     keep = set(subs) | {arm}

@@ -25,6 +25,12 @@ Great sword / light bowgun (2026-10-02): --warm --no-silver, and for the great s
 --hide PLE_Body,PLE_IMP --skip-param Blood (the user wants the charge shown on the blade only).
 Hammer, lance (2026-10-02, same wish): the hammer like the great sword; the lance
 --hide PLE_Body,PLE_IMP,PLE_Leg,=PLE,=0_PLE, without its ground effect (004_jimen).
+Long sword (2026-10-02, the user: the spirit levels' white / yellow / red hid our blade's band):
+--only-hide, 11_it03_000 --hide PLE_wep (the blade's glow per level), 11_it03_004
+--hide PLE_Body,GPUP (the body's glow and sparks per level).
+Insect glaive (2026-10-02, the red charge glow should be gold): --warm --no-silver on 001, 002,
+004, 022, 031, 049-051, 053, 055-057, 059, 060 (the others have no warm colours, or are smoke,
+poison and hit dust); 020 and 021 stay --only-hide (the extracts' colours on the body).
 """
 import colorsys
 import os

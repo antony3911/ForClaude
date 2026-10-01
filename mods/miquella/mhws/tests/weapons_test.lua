@@ -517,6 +517,24 @@ texts = {}; onDraw()
 local sawDraw = false
 for _, t in ipairs(texts) do if t:match("^Draw: _IsBowStringConstToHand") then sawDraw = true end end
 check(sawDraw, "bow: menu shows the draw field")
+-- The drawn arrow in the scene (the game's arrow model, found by its path), off the rings'
+-- axis and tilted 6 degrees toward +X: the rings move onto its line.
+local arrowMesh = newMesh("Art/Model/Item/it11/99/0000/it1199_0000_0.mesh")
+local arrowGO = newGO("Arrow", 9901, arrowMesh, nil)
+arrowGO.tf.pos = { x = 0.05, y = 0.0, z = -0.3 }
+arrowGO.tf.rot = { x = 0, y = math.sin(math.rad(3)), z = 0, w = math.cos(math.rad(3)) }
+function arrowMesh:call(m) if m == "get_GameObject" then return arrowGO end end
+sdk.get_native_singleton = function() return {} end
+sdk.call_native_func = function()
+  return { call = function() return { get_elements = function() return { arrowMesh } end } end }
+end
+frames(40, 1 / 60)
+local want = 0.05 + math.tan(math.rad(6)) * (front.lp.z + 0.3)
+check(math.abs(front.lp.x - want) < 0.015 and math.abs(front.lp.y) < 0.015 and math.abs(front.lr.y) > 0.03,
+      string.format("bow: rings move onto the drawn arrow's line (x %.3f, want %.3f; y %.3f)", front.lp.x, want, front.lp.y))
+texts = {}; onDraw()
+check(anyText("^Arrow: found"), "bow: menu says the arrow was found")
+sdk.call_native_func = nil
 bowDraw, chargeLv = false, 0
 local far = 0
 for _ = 1, 90 do frames(1, 1 / 60); far = math.max(far, front.lp.z) end
@@ -563,6 +581,12 @@ comboPick = { slot = "Weapon", name = "InsectGlaive" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh", "insect glaive: model swapped")
 check(kinsectMesh.meshPath == "Art/Model/MiquellaLight/Kinsect/wp_miquella_kinsect.mesh", "insect glaive: kinsect takes the swallowtail")
+-- Its wings beat slowly on our own bones: mirrored, and changing over a fraction of a second.
+local wl, wr = insectGO.tf.joints["MQ_WingL"], insectGO.tf.joints["MQ_WingR"]
+local q0 = wl and wl.lr and wl.lr.z
+frames(9, 1 / 60)
+check(wl and wr and wl.lr and wr.lr and math.abs(wl.lr.z + wr.lr.z) < 1e-6 and math.abs(wl.lr.z - q0) > 0.01
+      and math.abs(wl.lr.z) < 0.35, "insect glaive: kinsect wings flap slowly, mirrored")
 local function orb(n) return weaponMesh.matEnabled["MiquellaExtract" .. n] == true end
 check(not orb("Red") and not orb("White") and not orb("Orange"), "insect glaive: no orbs without extracts")
 extract._ExtractTimerRed = 30
@@ -631,6 +655,19 @@ check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire w
 extract._RyuugekiChargeTimer = 0
 frames(120, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
+-- Recorded fields: Wyvern's Fire drops its gauge by one; a shell fired lowers the shell count.
+extract._RyuugekiGauge, extract._ChargeShotBulletNum = 2.0, 5
+frames(10, 1 / 60)
+extract._RyuugekiGauge = 1.0
+frames(60, 1 / 60)
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire (its gauge used) winds the spring")
+frames(120, 1 / 60)
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released after the wind-up")
+extract._ChargeShotBulletNum = 4
+frames(6, 1 / 60)
+check(top.lp.z < REST_TOP - 0.05, string.format("gunlance: a shell fired presses the spring (%.3f)", top.lp.z))
+frames(90, 1 / 60)
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the shell")
 texts = {}; onDraw()
 local sawGl = false
 for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") then sawGl = true end end
@@ -740,21 +777,21 @@ check(sawG, "switch axe: menu shows the gauge fields")
 weaponMesh = newMesh("Art/Model/Item/it03/00/0002/it0300_0002_0.mesh")
 weaponGO = newGO("Wp03b", 13001, weaponMesh, nil)
 subGO = nil
-extract = { _AuraLevel = 0 }
+extract = { ["<AuraLevel>k__BackingField"] = 1 }      -- the game counts 1 (none) .. 4 (red)
 frames(200, 1 / 60)
 comboPick = { slot = "Weapon", name = "LongSword" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath:match("MiquellaLight/LongSword"), "long sword: model swapped")
 local function ls(mat) return (weaponMesh.floats[mat .. ".1"] or 0) / (1.2 * glow) end
 check(math.abs(ls("MiquellaBlade") - 0.8) < 0.01, string.format("long sword: no spirit = pale gold (%.2f)", ls("MiquellaBlade")))
-extract._AuraLevel = 2
+extract["<AuraLevel>k__BackingField"] = 3
 frames(60, 1 / 60)
 check(math.abs(ls("MiquellaBlade") - 1.8) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 1.0, "long sword: yellow = bright gold, the band runs")
-extract._AuraLevel = 3
+extract["<AuraLevel>k__BackingField"] = 4
 frames(60, 1 / 60)
 local lc = weaponMesh.colors["MiquellaBlade"]
 check(lc and lc.z > 0.8, "long sword: red = white light")
-extract._AuraLevel = 1
+extract["<AuraLevel>k__BackingField"] = 2
 frames(90, 1 / 60)
 check(math.abs(ls("MiquellaBlade") - 1.0) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 0.0, "long sword: white = gold, no band")
 print("ALL PASS")

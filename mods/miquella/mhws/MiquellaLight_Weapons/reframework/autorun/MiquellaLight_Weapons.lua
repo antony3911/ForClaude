@@ -263,7 +263,7 @@ local KITS = {
             { name = "MQ_OrbWhite", pos = { -0.1219, -0.0704, 1.4160 }, orbit = 1 },
             { name = "MQ_OrbOrange", pos = { 0.1219, -0.0704, 1.4160 }, orbit = 2 } } },
         -- Charge (user, 2026-10-02): gold -> bright gold -> white gold.
-        charge = { levels = 3, fields = CHARGE_FIELDS, look = "whiteGold" },
+        charge = { levels = 2, fields = { "<ChargeLv>k__BackingField" }, look = "whiteGold2" },
         -- An orb shows while its extract is lit (the game's timers); all three: the blade bright gold.
         extracts = { orbs = { MiquellaExtractRed = "_ExtractTimerRed", MiquellaExtractWhite = "_ExtractTimerWhite",
                               MiquellaExtractOrange = "_ExtractTimerOrange" },
@@ -871,6 +871,12 @@ local CHARGE_LOOK = {
 }
 -- Insect glaive (user, 2026-10-02): gold -> bright gold -> white gold.
 local CHARGE_LOOKS = {
+    -- Insect glaive: two levels (recorded 2026-10-02), gold -> bright gold -> white gold.
+    whiteGold2 = {
+        [0] = { mul = 1.0, color = GOLD },
+        [1] = { mul = 2.2, color = { 1.0, 0.56, 0.06 } },
+        [2] = { mul = 3.2, color = { 1.0, 0.86, 0.58 } },
+    },
     -- Long sword spirit levels.
     spirit = {
         [0] = { mul = 0.8, color = { 1.0, 0.78, 0.45 } },     -- pale gold
@@ -1216,6 +1222,8 @@ local function record_fields(h, now)
         local v = try(function() return h:get_field(n) end)
         if type(v) == "userdata" then
             -- Objects held by the handling (gauges, timers): their own fields, once found.
+            rec.objects = rec.objects or {}
+            rec.objects[n] = rec.objects[n] or try(function() return v:get_type_definition():get_full_name() end) or "?"
             rec.sub = rec.sub or {}
             if rec.sub[n] == nil then rec.sub[n] = field_names(v) end
             for i, sn in ipairs(rec.sub[n]) do
@@ -1243,7 +1251,7 @@ local function record_fields(h, now)
         end
         local safe = rec.type:gsub("[^%w_]", "_")
         try(function() json.dump_file("MiquellaLight/fields_" .. safe .. ".json",
-            { type = rec.type, samples = rec.samples, changed = changed, all = rec.data }) end)
+            { type = rec.type, samples = rec.samples, changed = changed, all = rec.data, objects = rec.objects }) end)
     end
 end
 
@@ -1534,12 +1542,16 @@ local function refresh(entry)
     apply_tuning(entry, mesh)
 end
 
--- The insect glaive's kinsect: the weapon handling's _Insect (a component or its GameObject).
+-- The insect glaive's kinsect: the hunter's get_Wp10Insect (like get_Weapon; found in the
+-- game's type names), else the weapon handling's _Insect. A component or its GameObject.
 local function kinsect_of(chr)
     local t = slots.Weapon and weapon_type(slots.Weapon.original)
     if t ~= "it10" then return nil end
-    local h = try(function() return chr:call("get_WeaponHandling") end)
-    local ins = h and try(function() return h:get_field("_Insect") end)
+    local ins = try(function() return chr:call("get_Wp10Insect") end)
+    if not ins then
+        local h = try(function() return chr:call("get_WeaponHandling") end)
+        ins = h and try(function() return h:get_field("_Insect") end)
+    end
     if not ins then return nil end
     local go = try(function() return ins:call("get_GameObject") end)
     if not go and try(function() return ins:get_type_definition():get_full_name() end) == "via.GameObject" then go = ins end
@@ -1648,7 +1660,7 @@ re.on_draw_ui(function()
         local k = assigned_kit(slots.Kinsect.original)
         imgui.text("Kinsect: " .. slots.Kinsect.original .. (k and ("  ->  " .. k) or ""))
     elseif slots.Weapon and weapon_type(slots.Weapon.original) == "it10" then
-        imgui.text("Kinsect: not found (weapon handling has no _Insect?)")
+        imgui.text("Kinsect: not found (no get_Wp10Insect / _Insect)")
     end
     for _, name in ipairs({ "Weapon", "SubWeapon" }) do
         local s = slots[name]

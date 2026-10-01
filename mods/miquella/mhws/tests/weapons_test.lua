@@ -569,10 +569,10 @@ frames(40, 1 / 60)
 check(orb("White") and orb("Orange"), "insect glaive: all three orbs")
 check(weaponMesh.floats["MiquellaBlade.1"] / (1.2 * glow) > 1.7, "insect glaive: three extracts brighten the blade")
 extract._ExtractTimerTripple = 0
-chargeLv = 3
+chargeLv = 2
 frames(60, 1 / 60)
 local ic = weaponMesh.colors["MiquellaBlade"]
-check(ic and ic.y > 0.8 and ic.z > 0.5 and ic.z < 0.7, "insect glaive: level 3 charge is white gold")
+check(ic and ic.y > 0.8 and ic.z > 0.5 and ic.z < 0.7, "insect glaive: level 2 (full) charge is white gold")
 chargeLv = 0
 extract._ExtractTimerRed = 0
 frames(60, 1 / 60)

@@ -20,6 +20,7 @@ Usage: python recolor_efx.py [options] <in.efx.5571972> <out.efx.5571972>
                     (=A: only the entry named exactly A)
                     (great sword: PLE_Body,PLE_IMP = the glow the game puts on the hunter's body)
   --skip-param A    colour parameters whose name contains A are left alone (e.g. Blood)
+  --only-hide       only the --hide entries change, no recolouring
 Great sword / light bowgun (2026-10-02): --warm --no-silver, and for the great sword
 --hide PLE_Body,PLE_IMP --skip-param Blood (the user wants the charge shown on the blade only).
 Hammer, lance (2026-10-02, same wish): the hammer like the great sword; the lance
@@ -72,7 +73,7 @@ def to_silver(r, g, b):
     return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(SILVER_HUE / 360, SILVER_SAT * s, SILVER_VALUE * v))
 
 
-def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=()):
+def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=(), only_hide=False):
     data = bytearray(data)
     efx = Efx(bytes(data))
     changed = 0
@@ -89,6 +90,8 @@ def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=()):
         changed += 1
 
     for e in efx.expressions:
+        if only_hide:
+            break
         if e["type"] == 1 and not any(k in e["name"] for k in skip_params):   # colour parameter default
             patch(e["value_offset"], f"expression '{e['name']}'")
     fields = [(a, name, off) for a in efx.attrs for name, off in COLOR_FIELDS.get(a.type, {}).items()
@@ -101,6 +104,9 @@ def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=()):
         data[at:at + 4] = bytes(4)
         changed += 1
     fields = [f for f in fields if f not in hidden]
+    if only_hide:
+        Efx(bytes(data))
+        return bytes(data), changed
     blue_entries = {a.owner for a, _, off in fields
                     if silver and classify(*data[a.data_start + off:a.data_start + off + 3]) == "blue"}
     for a, name, off in fields:
@@ -119,6 +125,8 @@ def main():
             opts["silver"] = False
         elif flag == "--hide":
             opts["hide"] = tuple(args.pop(0).split(","))
+        elif flag == "--only-hide":
+            opts["only_hide"] = True
         elif flag == "--skip-param":
             opts["skip_params"] = tuple(args.pop(0).split(","))
         else:

@@ -437,6 +437,11 @@ def phial_column(prefix, x, z0, count, step, mats, size=0.012):
                              mats, size=size)
 
 
+# Spine and edge points of each sickle blade made, by name (build_weapon_kit.py fits the switch
+# axe's morph from them: each axe blade turns into a fin on the sword's back).
+SICKLES = {}
+
+
 def sickle_blade(name, ctrl, wmax, thick_max, mats, side=1, n=80):
     """A slim curved single-edged wedge of light along a control path; the edge lies on the
     `side` of the path (turning right when side=1)."""
@@ -452,6 +457,7 @@ def sickle_blade(name, ctrl, wmax, thick_max, mats, side=1, n=80):
 
     objs = m.wedge_blade(name, spine, edge, thick, mats["blade"])
     objs += blade_dressing(name, spine, edge, thick, mats, trail=(0.3, 0.9), temper_u=0.35)
+    SICKLES[name] = (spine, edge)
     return objs, spine
 
 
@@ -589,13 +595,7 @@ def charge_blade():
     blades.BLADE_LEN = 0.8
     sword = blades.build_sword("CB_Sword", mats["ivory"], mats["light"], mats["blade"], mats["core"], seed=9)
     sword.location = (-0.38, 0, 0.0)
-    # Phial ring on the sword: five droplets orbiting a halo above the guard.
-    gz = blades.GUARD_Z + 0.13
-    ring = m.halo("Sword_Phial_Ring", (-0.38, 0, gz), 0.06, 0.0028, (0, 0, 1), mats["light"], tilt_deg=10)
-    for k in range(5):
-        a = 2 * math.pi * k / 5
-        pos = V(-0.38 + 0.06 * math.cos(a), 0.06 * math.sin(a), gz)
-        m.droplet(f"Sword_Phial_{k}", pos, 0.009, (-math.sin(a), math.cos(a), 0), mats["light"], stretch=1.1)
+    sword_phial_ring(mats, -0.38)
     root = energy_shield(mats, (0.2, 0, 0.55), 1.05)
     rad = 0.27 * 1.05
     # Phials: five droplets along the upper rim, pointing outward.
@@ -633,6 +633,21 @@ def charge_blade():
                     extra=[("shield", (0.2, 0, 0.55), 1.1, [("shield", 15, 5)])])
 
 
+CB_AXE_OUTLINE = []      # the axe head's outline, the last one built
+
+
+def sword_phial_ring(mats, x, ring=True):
+    """The charge blade sword's phial ring: five droplets orbiting a halo above the guard."""
+    import blades
+    gz = blades.GUARD_Z + 0.13
+    objs = m.halo("Sword_Phial_Ring", (x, 0, gz), 0.06, 0.0028, (0, 0, 1), mats["light"], tilt_deg=10) if ring else []
+    for k in range(5):
+        a = 2 * math.pi * k / 5
+        pos = V(x + 0.06 * math.cos(a), 0.06 * math.sin(a), gz)
+        objs += m.droplet(f"Sword_Phial_{k}", pos, 0.009, (-math.sin(a), math.cos(a), 0), mats["light"], stretch=1.1)
+    return objs
+
+
 def charge_blade_axe():
     """Axe mode. The sword slides into the shield and becomes the haft and the spine of the
     head; because the shield is light, its halo does not stay round but reshapes into a
@@ -659,6 +674,8 @@ def charge_blade_axe():
             V(0.05, 0, 0.56), V(0.02, 0, 0.67), V(-0.03, 0, 0.73), V(-0.04, 0, 0.88)]
     loop = m.resample(m.catmull(ctrl + [ctrl[0]], 200), 240)
     centroid = sum(loop, V(0, 0, 0)) / len(loop)
+    # (build_weapon_kit.py: the rim's bones sit along this outline for the morph)
+    CB_AXE_OUTLINE[:] = loop
     # Rim of light (the halo, reshaped) and a thinner inner line.
     m.path_blade("Axe_Rim", loop, (0, 1, 0), lambda t: 0.009, lambda t: 0.009, mats["light"], samples=240, subsurf=0)
     inner = [centroid.lerp(p, 0.93) for p in loop]

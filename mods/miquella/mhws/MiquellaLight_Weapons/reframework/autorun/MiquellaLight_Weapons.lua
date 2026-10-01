@@ -30,6 +30,73 @@ local BOTTLE_FIELDS = { "_ActionEnterBinNum", "_BottleNum" }
 -- Charge level fields (candidates from the game's type names; the first found is used).
 local CHARGE_FIELDS = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
 
+-- Mode morphs (switch axe, charge blade; user 2026-10-02: swapping models flashed, the weapon
+-- should change shape): both modes are one model. Written by build_weapon_kit.py
+-- (<kit>/<model>_morph.lua): joints with their pivot (bind pose) and their pose in the base
+-- mode and the other (missing: the bind pose), file-space metres and xyzw quaternions; fades:
+-- materials shown in one mode only; second: the sub weapon (the shield) fades out toward the
+-- other mode. Windows are shares of the morph's progress (0 base mode, 1 the other), eased.
+local MORPH_SA = {
+    seconds = 0.45,
+    joints = {
+        { name = "MQ_Blade0", pivot = { -0.095, 0.0, 1.178 }, alt = { pos = { -0.0334, 0.0, 1.975 }, rot = { -0.26449, 0.0, 0.96439, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_Fin0", pivot = { -0.0334, 0.0, 1.975 }, base = { pos = { -0.095, 0.0, 1.178 }, rot = { -0.26449, 0.0, 0.96439, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_Blade1", pivot = { -0.095, 0.0, 1.064 }, alt = { pos = { 0.0445, -0.0, 1.6666 }, rot = { -0.61489, 0.0, 0.78862, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_Fin1", pivot = { 0.0445, -0.0, 1.6666 }, base = { pos = { -0.095, 0.0, 1.064 }, rot = { -0.61489, 0.0, 0.78862, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_Blade2", pivot = { -0.095, 0.0, 0.95 }, alt = { pos = { 0.0941, -0.0, 1.3135 }, rot = { 0.87964, -0.0, -0.47563, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_Fin2", pivot = { 0.0941, -0.0, 1.3135 }, base = { pos = { -0.095, 0.0, 0.95 }, rot = { 0.87964, -0.0, -0.47563, 0.0 } }, win = { 0.1, 0.9 } },
+        { name = "MQ_SwordTip", pivot = { 0.0475, 0.016, 2.774 }, base = { pos = { 0.0475, 0.016, 1.216 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.0, 0.7 } },
+        { name = "MQ_HeadHalo", pivot = { 0.0, 0.0, 1.387 }, alt = { pos = { -0.038, 0.0, 1.292 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.0, 0.6 } },
+    },
+    fades = {
+        { mats = { "MiquellaSwordBlade", "MiquellaSwordGlow" }, show = "alt", win = { 0.0, 0.25 } },
+        { mats = { "MiquellaSpikeBlade" }, show = "base", win = { 0.0, 0.35 } },
+        { mats = { "MiquellaAxeBlade", "MiquellaAxeGlow" }, show = "base", win = { 0.45, 0.8 } },
+        { mats = { "MiquellaFinBlade", "MiquellaFinGlow" }, show = "alt", win = { 0.35, 0.7 } },
+    },
+}
+local MORPH_CB = {
+    seconds = 0.5,
+    second = { 0.0, 0.4 },
+    joints = {
+        { name = "MQ_Phial0", pivot = { -0.084, 0.0, 0.294 }, alt = { pos = { 0.126, -0.0, 0.952 }, rot = { -0.23359, 0.0, 0.66741, 0.70711 } }, win = { 0.2, 0.8 } },
+        { name = "MQ_Phial1", pivot = { -0.026, -0.0799, 0.294 }, alt = { pos = { 0.126, -0.0, 1.057 }, rot = { -0.0524, -0.16127, 0.14971, 0.97408 } }, win = { 0.2, 0.8 } },
+        { name = "MQ_Phial2", pivot = { 0.068, -0.0494, 0.294 }, alt = { pos = { 0.126, -0.0, 1.162 }, rot = { 0.15156, -0.11011, -0.43303, 0.8817 } }, win = { 0.2, 0.8 } },
+        { name = "MQ_Phial3", pivot = { 0.068, 0.0494, 0.294 }, alt = { pos = { 0.126, -0.0, 1.267 }, rot = { 0.28323, 0.20578, -0.80922, 0.47181 } }, win = { 0.2, 0.8 } },
+        { name = "MQ_Phial4", pivot = { -0.026, 0.0799, 0.294 }, alt = { pos = { 0.126, -0.0, 1.372 }, rot = { -0.22564, 0.69446, 0.6447, 0.2262 } }, win = { 0.2, 0.8 } },
+        { name = "MQ_SwordTip", pivot = { 0.0, 0.0, 1.932 }, alt = { pos = { 0.0, 0.0, 1.232 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.1, 0.6 } },
+        { name = "MQ_Rim0", pivot = { 0.042, -0.0, 1.33 }, base = { pos = { 0.0604, 0.0, 1.4088 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim1", pivot = { -0.0285, 0.0, 1.4314 }, base = { pos = { -0.0282, 0.0, 1.4721 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim2", pivot = { -0.073, 0.0, 1.5478 }, base = { pos = { -0.1277, 0.0, 1.5062 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim3", pivot = { -0.1126, 0.0, 1.6659 }, base = { pos = { -0.2313, 0.0, 1.5088 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim4", pivot = { -0.1986, 0.0, 1.6719 }, base = { pos = { -0.3319, 0.0, 1.4796 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim5", pivot = { -0.2793, 0.0, 1.5771 }, base = { pos = { -0.4227, 0.0, 1.4207 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim6", pivot = { -0.3528, 0.0, 1.4767 }, base = { pos = { -0.4975, 0.0, 1.3361 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim7", pivot = { -0.4017, 0.0, 1.3623 }, base = { pos = { -0.5511, 0.0, 1.2315 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim8", pivot = { -0.4323, 0.0, 1.2416 }, base = { pos = { -0.58, 0.0, 1.1141 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim9", pivot = { -0.445, 0.0, 1.1178 }, base = { pos = { -0.5822, 0.0, 0.9918 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim10", pivot = { -0.4395, 0.0, 0.9934 }, base = { pos = { -0.5575, 0.0, 0.8731 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim11", pivot = { -0.4181, 0.0, 0.8708 }, base = { pos = { -0.5076, 0.0, 0.766 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim12", pivot = { -0.3844, 0.0, 0.7639 }, base = { pos = { -0.4358, 0.0, 0.6777 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim13", pivot = { -0.3325, 0.0, 0.6507 }, base = { pos = { -0.3472, 0.0, 0.6144 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim14", pivot = { -0.2694, 0.0, 0.5434 }, base = { pos = { -0.2477, 0.0, 0.5803 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim15", pivot = { -0.1988, 0.0, 0.4407 }, base = { pos = { -0.1441, 0.0, 0.5777 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim16", pivot = { -0.1116, 0.0, 0.3717 }, base = { pos = { -0.0435, 0.0, 0.6069 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim17", pivot = { -0.0993, 0.0, 0.4952 }, base = { pos = { 0.0473, 0.0, 0.6658 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim18", pivot = { -0.08, 0.0, 0.6183 }, base = { pos = { 0.1221, 0.0, 0.7504 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim19", pivot = { -0.055, 0.0, 0.7403 }, base = { pos = { 0.1757, 0.0, 0.855 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim20", pivot = { -0.0066, 0.0, 0.8528 }, base = { pos = { 0.2046, 0.0, 0.9724 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim21", pivot = { 0.0504, -0.0, 0.9569 }, base = { pos = { 0.2068, 0.0, 1.0947 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim22", pivot = { 0.0559, -0.0, 1.0813 }, base = { pos = { 0.1821, 0.0, 1.2134 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+        { name = "MQ_Rim23", pivot = { 0.0523, -0.0, 1.2058 }, base = { pos = { 0.1322, 0.0, 1.3205 }, rot = { 0.0, 0.0, 0.0, 1.0 } }, win = { 0.15, 0.85 } },
+    },
+    fades = {
+        { mats = { "MiquellaRimGlow" }, show = "alt", win = { 0.0, 0.2 } },
+        { mats = { "MiquellaEdgeBlade", "MiquellaEdgeGlow" }, show = "alt", win = { 0.45, 0.85 } },
+        { mats = { "MiquellaAxeGlow", "MiquellaAxeIvory" }, show = "alt", win = { 0.5, 0.95 } },
+    },
+}
+
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
@@ -193,31 +260,27 @@ local KITS = {
         label = "Miquella trident axe (switch axe)",
         mesh = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh",
         mdf2 = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
-                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
-        -- The five floating phials are the switch gauge; amped (awakened) and power axe light the
-        -- blades bright gold (DESIGN; user 2026-10-02: they did nothing). Fields guessed.
+        glow = { MiquellaAxeBlade = 1.2, MiquellaAxeGlow = 1.2, MiquellaSpikeBlade = 1.2, MiquellaSwordBlade = 1.2,
+                 MiquellaSwordGlow = 1.2, MiquellaFinBlade = 1.2, MiquellaFinGlow = 1.2, MiquellaGlow = 1.2,
+                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2,
+                 MiquellaGauge5 = 1.2 },
+        -- The five floating phials are the switch gauge; amped (awakened) lights the sword, power
+        -- axe the axe blades bright gold (DESIGN).
         gauges = { { key = "slash", dots = PHIALS, fields = { "_SlashGauge", "_SwitchGauge", "_Gauge" } } },
-        boosts = { { key = "awake", fields = { "_SwordAwakeTimer" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
-                   { key = "axeEnh", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" } } },
-        -- Sword mode: its own model (user, 2026-10-02: both modes showed the axe). The game's
-        -- mode field is guessed (menu "Mode:"; "Swap modes" if it reads the wrong way round).
-        mode = { fields = { "_Mode" }, alt = "SwitchAxe_Sword",
-                 names = { "axe", "sword" } },
-    },
-    SwitchAxe_Sword = {
-        label = "Miquella trident axe, sword mode",
-        part = true,
-        mesh = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mesh",
-        mdf2 = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },  -- (the axe kit's glow is used)
+        boosts = { { key = "awake", fields = { "_SwordAwakeTimer" },
+                     mats = { "MiquellaSwordBlade", "MiquellaSwordGlow", "MiquellaFinBlade" } },
+                   { key = "axeEnh", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaAxeBlade", "MiquellaSpikeBlade" } } },
+        -- _Mode 0 axe, 1 sword (recorded 2026-10-02; "Swap modes" if it reads the wrong way round):
+        -- the axe blades swing onto the sword's back as it grows out of the shaft.
+        mode = { fields = { "_Mode" }, names = { "axe", "sword" }, morph = MORPH_SA },
     },
     ChargeBlade = {
         label = "Miquella light blade (charge blade)",
         mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mesh",
         mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
-                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
+                 MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2,
+                 MiquellaRimGlow = 1.2, MiquellaEdgeBlade = 1.2, MiquellaEdgeGlow = 1.2, MiquellaAxeGlow = 1.2 },
         shield = "ChargeBlade_Shield",
         -- Sword: the phial ring is the sword's energy (bright gold when full); axe: the phials on
         -- its back are the loaded phials. Sword / axe enhanced light the blade (DESIGN).
@@ -225,18 +288,11 @@ local KITS = {
                      fullBright = true, when = "base" },
                    { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true, when = "alt" } },
         boosts = { { key = "swordEnh", fields = { "_SwordEnhancedTimer" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
-                   { key = "axeEnhCB", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade" }, when = "alt" } },
-        -- Axe mode: the designed axe (the shield's light reshaped into a bardiche on the sword)
-        -- in place of the sword, the shield model hidden (user, 2026-10-02).
-        mode = { fields = { "_Mode" }, alt = "ChargeBlade_Axe",
-                 hideSecond = true, names = { "sword & shield", "axe" } },
-    },
-    ChargeBlade_Axe = {
-        label = "Miquella light axe (charge blade, axe mode)",
-        part = true,
-        mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mesh",
-        mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+                   { key = "axeEnhCB", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade", "MiquellaEdgeBlade" },
+                     when = "alt" } },
+        -- _Mode 0 sword & shield, 1 axe: the shield fades out while its light gathers on the sword
+        -- as an oval and reshapes into the bardiche (user, 2026-10-02).
+        mode = { fields = { "_Mode" }, names = { "sword & shield", "axe" }, morph = MORPH_CB },
     },
     ChargeBlade_Shield = {
         label = "Miquella energy shield (charge blade)",
@@ -576,16 +632,14 @@ local function glow_slots(mesh, kit)
     return slots
 end
 
--- Kits whose other mode is showing (switch axe sword mode, charge blade axe mode).
+-- Kits whose game is in the other mode (switch axe sword mode, charge blade axe mode).
 local modeOn = {}
 
 local function kit_mesh(kit)
-    if kit.mode and modeOn[kit] then return KITS[kit.mode.alt].mesh end
     return kit.sizes and kit.sizes[config.size] or kit.mesh
 end
 
 local function kit_mdf(kit)
-    if kit.mode and modeOn[kit] then return KITS[kit.mode.alt].mdf2 end
     return kit.mdf2
 end
 
@@ -705,8 +759,8 @@ end
 
 -- ------------------------------------------------------------------ per frame
 
--- Our weapons vanish when sheathed (not the kinsect); a shield also while its weapon's other
--- mode shows it merged into the weapon (charge blade axe).
+-- Our weapons vanish when sheathed (not the kinsect); a shield also once it has faded into its
+-- weapon's other mode (charge blade axe).
 local function entry_visible(entry)
     if entry.hiddenByMode then return false end
     if entry.keep or not config.hideSheathed then return true end
@@ -1093,7 +1147,29 @@ local function update_gunlance(entry, mesh, h, dt, now)
 end
 
 -- Weapon modes: read the game's mode, put on the other mode's model when it changes.
-local function update_mode(entry, mesh, h)
+-- A morph window: progress p across win = { from, to }, smoothstepped.
+local function eased(p, win)
+    local x = ramp(p, win[1], win[2])
+    return x * x * (3 - 2 * x)
+end
+
+-- A material's visibility: Dissolve (dithered fade), switched off when fully gone.
+local function set_alpha(entry, mesh, mat, a)
+    entry.vars = entry.vars or material_vars(mesh)
+    local m = entry.vars[mat]
+    if not m then return end
+    entry.fadeOn = entry.fadeOn or {}
+    if entry.fadeOn[mat] ~= (a > 0.001) then
+        entry.fadeOn[mat] = a > 0.001
+        try(function() mesh:setMaterialsEnable(m.index, a > 0.001) end)
+    end
+    set_float(entry, mesh, mat, "Dissolve", a)
+end
+
+-- The game's mode drives the morph's progress (entry.morphP, 0 base mode .. 1 the other) over
+-- morph.seconds; parts of one mode fade, the shield fades out toward the other mode. The
+-- joints follow in apply_morph (with the floating rings, so they land after the game's motion).
+local function update_mode(entry, mesh, h, dt)
     -- Only the weapon in the hand (an older weapon object may still be listed).
     if not (slots.Weapon and slots.Weapon.go == entry.go) then return end
     local spec = entry.kit.mode
@@ -1101,17 +1177,30 @@ local function update_mode(entry, mesh, h)
     local v = name and read_number(h, name) or 0
     local wtype = slots.Weapon and weapon_type(slots.Weapon.original)
     local on = (v > 0) ~= (config.modeInvert[wtype or ""] == true)
-    stateInfo.mode = name and string.format("%s = %s (%s look)", name, tostring(v), spec.names[on and 2 or 1])
+    modeOn[entry.kit] = on
+    local m = spec.morph
+    local target = on and 1 or 0
+    -- A weapon just put on starts in the game's mode (no morph on drawing it).
+    entry.morphP = approach(entry.morphP or target, target, dt, m.seconds, m.seconds)
+    local p = entry.morphP
+    stateInfo.mode = name and string.format("%s = %s (%s look, morph %.2f)", name, tostring(v), spec.names[on and 2 or 1], p)
         or ("not found; fields with 'Mode': " .. table.concat(h and similar_fields(h, "Mode") or {}, ", "))
-    if (modeOn[entry.kit] or false) ~= on then
-        modeOn[entry.kit] = on
-        set_model(entry.go, mesh, kit_mesh(entry.kit), kit_mdf(entry.kit), nil)
-        entry.kitMesh, entry.kitMdf = kit_mesh(entry.kit), kit_mdf(entry.kit)
-        entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float, entry.partsOn = nil, nil, nil, nil, nil, nil
-        apply_tuning(entry, mesh)
+    for _, f in ipairs(m.fades) do
+        local a = eased(p, f.win)
+        if f.show == "base" then a = 1 - a end
+        for _, mat in ipairs(f.mats) do set_alpha(entry, mesh, mat, a) end
     end
+    if not m.second then return end
+    local a = 1 - eased(p, m.second)
     for _, other in pairs(swapped) do
-        if other.slot == "SubWeapon" then other.hiddenByMode = spec.hideSecond and on or nil end
+        if other.slot == "SubWeapon" then
+            local mesh2 = component(other.go, MESH)
+            if mesh2 then
+                other.vars = other.vars or material_vars(mesh2)
+                for mat in pairs(other.vars) do set_float(other, mesh2, mat, "Dissolve", a) end
+            end
+            other.hiddenByMode = a < 0.001 or nil
+        end
     end
 end
 
@@ -1278,7 +1367,7 @@ local function update_states(chr)
                 if entry.kit.bow then update_bow(entry, mesh, h, dt) end
                 if entry.kit.extracts then update_extracts(entry, mesh, h, dt) end
                 if entry.kit.gunlance then update_gunlance(entry, mesh, h, dt, now) end
-                if entry.kit.mode then update_mode(entry, mesh, h) end
+                if entry.kit.mode then update_mode(entry, mesh, h, dt) end
                 if entry.kit.gauges or entry.kit.boosts then update_gauges(entry, mesh, h, dt) end
                 apply_tuning(entry, mesh)
             end
@@ -1500,8 +1589,62 @@ local function step_floaters()
     end
 end
 
+-- Quaternion slerp, the shorter way (as build_weapon_kit's preview does).
+local function qslerp(a, b, t)
+    local d = a[1] * b[1] + a[2] * b[2] + a[3] * b[3] + a[4] * b[4]
+    if d < 0 then b, d = { -b[1], -b[2], -b[3], -b[4] }, -d end
+    local wa, wb
+    if d > 0.9995 then
+        wa, wb = 1 - t, t
+    else
+        local th = math.acos(d)
+        wa, wb = math.sin((1 - t) * th) / math.sin(th), math.sin(t * th) / math.sin(th)
+    end
+    local q = { wa * a[1] + wb * b[1], wa * a[2] + wb * b[2], wa * a[3] + wb * b[3], wa * a[4] + wb * b[4] }
+    local l = math.sqrt(q[1] * q[1] + q[2] * q[2] + q[3] * q[3] + q[4] * q[4])
+    return { q[1] / l, q[2] / l, q[3] / l, q[4] / l }
+end
+
+local IDENTITY = { 0, 0, 0, 1 }
+local morphInfo = { found = 0, total = 0 }
+
+-- The morph's joints at entry.morphP. A joint resting at its bind pose is set once (the game
+-- may also put it back there); one away from it is set in every pass.
+local function apply_morph(entry)
+    local m = entry.kit.mode and entry.kit.mode.morph
+    if not (m and entry.morphP and config.enabled) then return end
+    local js = entry.morphJoints
+    if not js then
+        local tf = try(function() return entry.go:call("get_Transform") end)
+        if not tf then return end
+        js = {}
+        for i, j in ipairs(m.joints) do
+            js[i] = { joint = try(function() return tf:call("getJointByName", j.name) end) }
+        end
+        entry.morphJoints = js
+    end
+    morphInfo.found, morphInfo.total = 0, #m.joints
+    local p = entry.morphP
+    for i, j in ipairs(m.joints) do
+        local s = js[i]
+        if s.joint then
+            morphInfo.found = morphInfo.found + 1
+            local e = eased(p, j.win)
+            local a, b = j.base or { pos = j.pivot, rot = IDENTITY }, j.alt or { pos = j.pivot, rot = IDENTITY }
+            local atBind = (not j.base or e >= 1) and (not j.alt or e <= 0)
+            if not (atBind and s.atBind) then
+                local pos, rot = lerp3(a.pos, b.pos, e), qslerp(a.rot, b.rot, e)
+                try(function() s.joint:call("set_LocalPosition", Vector3f.new(pos[1], pos[2], pos[3])) end)
+                try(function() s.joint:call("set_LocalRotation", to_quat(rot)) end)
+                s.atBind = atBind
+            end
+        end
+    end
+end
+
 local function apply_floaters(phase)
     floatInfo.phases[phase] = true
+    for _, entry in pairs(swapped) do apply_morph(entry) end
     for _, entry in pairs(swapped) do
         local f = entry.float
         if f and rings_active(entry) then
@@ -1538,7 +1681,7 @@ local function refresh(entry)
     if not mesh then return end
     set_model(entry.go, mesh, entry.kitMesh, entry.kitMdf or entry.kit.mdf2, nil)
     entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
-    entry.partsOn = nil
+    entry.partsOn, entry.fadeOn, entry.morphJoints = nil, nil, nil
     apply_tuning(entry, mesh)
 end
 
@@ -1636,6 +1779,9 @@ re.on_draw_ui(function()
         if stateInfo.gauges and stateInfo.gauges[entry.kit] then imgui.text("Gauges: " .. stateInfo.gauges[entry.kit]) end
         if entry.kit.mode and stateInfo.mode then
             imgui.text("Mode: " .. stateInfo.mode)
+            if morphInfo.total > 0 then
+                imgui.text(string.format("Morph joints found: %d/%d", morphInfo.found, morphInfo.total))
+            end
             local wtype = slots.Weapon and weapon_type(slots.Weapon.original)
             if wtype then
                 local inv

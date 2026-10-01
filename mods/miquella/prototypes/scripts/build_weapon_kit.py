@@ -16,8 +16,10 @@ Usage: python build_weapon_kit.py <weapon, see WEAPONS> <kit dir> <original *_0.
 Requires bpy 4.5 with RE Mesh Editor in the user addons dir. The originals are only read.
 """
 import copy
+import json
 import math
 import os
+import random
 import sys
 
 import bpy
@@ -354,16 +356,93 @@ def gunlance_shield():
     return placed("wp_miquella_gl_shield", "Art/Model/MiquellaLight/Gunlance", subtree("EnergyShield"), to_file, {})
 
 
+# The switch axe's morph: each axe blade turns into the fin of the same name on the sword's back.
+SA_PAIRS = (("Blade_Upper", "Fin_Upper"), ("Blade_Middle", "Fin_Middle"), ("Blade_Lower", "Fin_Lower"))
+
+
 def switch_axe():
-    """Axe mode only for now (the sword mode needs the game's mode field). Hand 0.38 above the
-    pommel so the shaft runs 0.72 m below it like the originals' long handles (-0.83); scaled
-    1.9: the head's top ~1.7 m above the hand (originals 1.96). Turned 180 about Z: the
-    originals' axe blades reach out on -X, ours on +X."""
+    """Both modes in one model (user, 2026-10-02: swapping models flashed from one to the other;
+    wanted the weapon to morph). Axe mode is the base, sword mode A the other. Parts of one mode
+    only are sets with their own materials (faded by Dissolve), the moving parts have bones, and
+    the weapons script moves them in about half a second (MORPHS in the script, written from
+    `morph`): the long blade grows out of the shaft (its vertices weighted between Base and
+    MQ_SwordTip, which starts pushed down to the blade's root); each axe blade swings up and
+    over onto the sword's back, fading into its fin (the fins start where the blades are: the
+    rigid fit of blade onto fin); the spike fades as the blade passes it; the head halo slides
+    down to the blade's root. Hand 0.38 above the pommel so the shaft runs 0.72 m below it like
+    the originals' long handles (-0.83); scaled 1.9: the head's top ~1.7 m above the hand
+    (originals 1.96). Turned 180 about Z: the originals' axe blades reach out on -X, ours on +X."""
     import arsenal
-    objs = capture(arsenal.switch_axe)
+    import motifs
+
+    def build():
+        mats = motifs.materials()
+        arsenal.switch_axe_common(mats, random.Random(81))
+        arsenal.switch_axe_axe_head(mats)
+        arsenal.switch_axe_sword_head(mats, "a")
+    objs = capture(build)
     to_file = upright(1.9, (0, 0, 0.38), turn=180)
+
+    def F(p):
+        return to_file @ Vector(p)
+    # The head halo moves to where sword mode's root halo is; that one is not kept.
+    root_halo = bpy.data.objects["Sword_Root_Halo"]
+    halo_to = F(root_halo.matrix_world.translation)
+    objs.remove(root_halo)
+    bpy.data.objects.remove(root_halo, do_unlink=True)
+    names = [o.name for o in objs]
+    sets = {"Axe": {n for n in names if n.startswith(tuple(b for b, _ in SA_PAIRS))},
+            "Spike": {n for n in names if n.startswith("Top_Spike")},
+            "Sword": {n for n in names if n.startswith("Sword_Blade")},
+            "Fin": {n for n in names if n.startswith("Fin_")}}
+    joints, bone_prefix = [], [("Top_Halo", "MQ_HeadHalo")]
+    for k, (blade, fin) in enumerate(SA_PAIRS):
+        sb, eb = arsenal.SICKLES[blade]
+        sf, ef = arsenal.SICKLES[fin]
+        R, t = rigid_fit([F(p) for p in sb + eb], [F(p) for p in sf + ef])
+        pa = F(sb[0])
+        pf = R @ pa + t
+        # Blade: from its place (bind) to the fin's; fin: from the blade's place to its own.
+        joints.append({"name": f"MQ_Blade{k}", "pivot": pa, "alt": (pf, R), "win": (0.1, 0.9)})
+        joints.append({"name": f"MQ_Fin{k}", "pivot": pf, "base": (pa, R.transposed()), "win": (0.1, 0.9)})
+        bone_prefix += [(blade, f"MQ_Blade{k}"), (fin, f"MQ_Fin{k}")]
+    # The long blade: root on Base, tip on MQ_SwordTip, between them by height; in axe mode the
+    # tip sits on the root (the blade flattened to nothing, and faded out).
+    zs = [(o.matrix_world @ Vector(b)) for o in objs if o.name == "Sword_Blade" for b in o.bound_box]
+    z0, z1 = min(F(p).z for p in zs), max(F(p).z for p in zs)
+    tip = F(max(zs, key=lambda p: p.z))
+    joints.append({"name": "MQ_SwordTip", "pivot": tip, "base": (tip - Vector((0, 0, z1 - z0)), Matrix.Identity(3)),
+                   "win": (0.0, 0.7)})
+    head = F(bpy.data.objects["Top_Halo"].matrix_world.translation)
+    joints.append({"name": "MQ_HeadHalo", "pivot": head, "alt": (halo_to, Matrix.Identity(3)), "win": (0.0, 0.6)})
+
+    def weights(o, co):
+        if not o.name.startswith("Sword_Blade"):
+            return None
+        w = min(1.0, max(0.0, (co.z - z0) / (z1 - z0)))
+        return [("MQ_SwordTip", w), ("Base", 1.0 - w)]
+
+    def bone(o, center):
+        return next((b for prefix, b in bone_prefix if o.name.startswith(prefix)), None)
+    axe_top = top_z([o for o in objs if o.name not in sets["Sword"] | sets["Fin"]])
+    morph = {"seconds": 0.45, "joints": joints,
+             "fades": [("Sword", "alt", (0.0, 0.25)), ("Spike", "base", (0.0, 0.35)),
+                       ("Axe", "base", (0.45, 0.8)), ("Fin", "alt", (0.35, 0.7))]}
     return placed("wp_miquella_sa", "Art/Model/MiquellaLight/SwitchAxe", objs, to_file,
-                  {"VFX_Attack_A": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
+                  {"VFX_Attack_A": to_file @ Vector((0, 0, axe_top))}, by_name=phial_gauges("Phial"),
+                  sets=sets, morph=morph, weight_fn=weights, bone_fn=bone,
+                  file_pivots={j["name"]: j["pivot"] for j in joints})
+
+
+def rigid_fit(src, dst):
+    """Rotation R (3x3) and translation t with R @ s + t closest to d (least squares, no scale)."""
+    import numpy as np
+    a, b = np.array([list(p) for p in src]), np.array([list(p) for p in dst])
+    ca, cb = a.mean(0), b.mean(0)
+    u, _, vt = np.linalg.svd((a - ca).T @ (b - cb))
+    d = np.sign(np.linalg.det(vt.T @ u.T))
+    r = vt.T @ np.diag([1.0, 1.0, d]) @ u.T
+    return Matrix(r.tolist()), Vector((cb - r @ ca).tolist())
 
 
 def phial_gauges(prefix, n=5, halos=True):
@@ -377,34 +456,9 @@ def phial_gauges(prefix, n=5, halos=True):
     return out
 
 
-def switch_axe_sword():
-    """Sword mode A (the user's pick): the long blade risen from the shaft, the three axe blades
-    folded up along its back like feathers. Placed like the axe (same shaft, same hand); the
-    weapons script swaps it in while the game is in sword mode."""
-    import arsenal
-    objs = capture(lambda: arsenal.switch_axe_sword("a"))
-    to_file = upright(1.9, (0, 0, 0.38), turn=180)
-    return placed("wp_miquella_sa_sword", "Art/Model/MiquellaLight/SwitchAxe", objs, to_file,
-                  {"VFX_Attack_A": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
-
-
-def charge_blade_axe():
-    """Axe mode: the sword is the haft and the spine of the head, the shield's light reshaped
-    into a bardiche (DESIGN), placed and scaled like the sword (1.4, hand mid-grip). The
-    weapons script swaps it in while the game is in axe mode and hides the shield model."""
-    import arsenal
-    import blades
-    objs = capture(arsenal.charge_blade_axe)
-    mw = bpy.data.objects["CB_Sword"].matrix_world
-    # Turned 180 about Z: the edge toward -X like the originals' single edges (great sword, switch axe).
-    to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)), turn=180)
-    return placed("wp_miquella_cb_axe", "Art/Model/MiquellaLight/ChargeBlade", objs, to_file,
-                  {"VFX_Attack": to_file @ Vector((0, 0, top_z(objs)))}, by_name=phial_gauges("Phial"))
-
-
-def charge_blade_scene(blade_len):
-    """The charge blade prototype with a longer sword blade (set inside build_sword, which the
-    prototype calls after setting its own length)."""
+def charge_blade_scene(blade_len, fn=None):
+    """A charge blade prototype (sword & shield, or `fn`) with a longer sword blade (set inside
+    build_sword, which the prototype calls after setting its own length)."""
     import arsenal
     import blades
     orig = blades.build_sword
@@ -414,22 +468,109 @@ def charge_blade_scene(blade_len):
         return orig(*a, **k)
     blades.build_sword = build
     try:
-        return capture(arsenal.charge_blade)
+        return capture(fn or arsenal.charge_blade)
     finally:
         blades.build_sword = orig
 
 
+# The charge blade's morph: bones along the axe head's outline (they draw the shield's oval in
+# sword mode); the shield's halo, 0.27 x 1.05 across and 1.18 times as tall (arsenal.charge_blade).
+CB_RIM_BONES = 24
+CB_SHIELD_RADII = (0.27 * 1.05, 0.27 * 1.05 * 1.18)
+
+
 def charge_blade():
-    """The sword (it09 _0): the prototype's 0.8 blade made 1.3, the whole scaled 1.4: tip
-    1.93 m above the hand (originals 1.92)."""
+    """The sword (it09 _0) with axe mode's head in the same model (user, 2026-10-02: swapping
+    models flashed; the shield should change into the axe). Sword & shield mode is the base, axe
+    mode the other; the weapons script morphs between them (MORPHS, written from `morph`): the
+    shield model fades out while an oval of light the shield's size appears on the sword and
+    reshapes into the bardiche outline (its rim on 24 bones along the outline), the sword
+    shortens into the haft and spine of the head (vertices between Base and MQ_SwordTip), the
+    five lit phials fly from the ring above the guard to the head's back, then the cutting edge,
+    the sigil, the scrollwork and the phials' halos fade in. The prototype's 0.8 blade made 1.3,
+    the whole scaled 1.4: tip 1.93 m above the hand (originals 1.92); 0.8 in axe mode like the
+    axe design. Turned 180 about Z: the axe's edge toward -X like the originals' single edges."""
+    import arsenal
     import blades
-    objs = charge_blade_scene(1.3)
-    sword = set(subtree("CB_Sword")) | {o for o in objs if o.name.startswith("Sword_Phial")}
+    import motifs
+    objs = charge_blade_scene(1.3, lambda: (arsenal.charge_blade_axe(),
+                                            arsenal.sword_phial_ring(motifs.materials(), 0.0, ring=False)))
     mw = bpy.data.objects["CB_Sword"].matrix_world
-    to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)))
-    tip = mw @ Vector((0, 0, blades.GUARD_Z + 1.3))
-    return placed("wp_miquella_cb", "Art/Model/MiquellaLight/ChargeBlade", [o for o in objs if o in sword],
-                  to_file, {"VFX_Attack": to_file @ tip}, by_name=phial_gauges("Sword_Phial", halos=False))
+    to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)), turn=180)
+    lin = to_file.to_3x3()
+
+    def F(p):
+        return to_file @ Vector(p)
+
+    def axis_of(o):
+        return (lin @ (o.matrix_world.to_3x3() @ Vector((0, 0, 1)))).normalized()
+    joints = []
+    # Phials: the sword's five (bind: the ring) fly to the axe's column; the axe's own droplets go.
+    for k in range(5):
+        drop, slot = bpy.data.objects[f"Sword_Phial_{k}"], bpy.data.objects[f"Phial_{k}"]
+        rot = axis_of(drop).rotation_difference(axis_of(slot)).to_matrix()
+        joints.append({"name": f"MQ_Phial{k}", "pivot": F(drop.matrix_world.translation),
+                       "alt": (F(slot.matrix_world.translation), rot), "win": (0.2, 0.8)})
+        objs.remove(slot)
+        bpy.data.objects.remove(slot, do_unlink=True)
+    names = [o.name for o in objs]
+    sets = {"Rim": {"Axe_Rim", "Axe_Rim_Inner"},
+            "Edge": {n for n in names if n.startswith("Axe_Edge")},
+            "Axe": {o.name for o in subtree("Axe_Sigil")} | {n for n in names if n.startswith(("Joint_", "Phial_Halo"))}}
+    # The sword shortens from 1.3 to 0.8 (the blade and its core lines, by height).
+    g0, g1 = F((0, 0, blades.GUARD_Z)), F((0, 0, blades.GUARD_Z + 1.3))
+    sword_parts = {o.name for o in subtree("CB_Sword") if o.name.split(".")[0] in ("Blade", "Core_-1", "Core_1")}
+    joints.append({"name": "MQ_SwordTip", "pivot": g1, "alt": (F((0, 0, blades.GUARD_Z + 0.8)), Matrix.Identity(3)),
+                   "win": (0.1, 0.6)})
+    # The rim: bones evenly along the outline (by length); sword mode puts them on an oval the
+    # shield's size around the outline's centre, at the same share of the way round.
+    loop = [F(p) for p in arsenal.CB_AXE_OUTLINE]
+    if (loop[0] - loop[-1]).length < 1e-6:
+        loop = loop[:-1]
+    seg = [(loop[(i + 1) % len(loop)] - loop[i]).length for i in range(len(loop))]
+    total = sum(seg)
+    arc = [sum(seg[:i]) / total for i in range(len(loop))]
+    centre = sum(loop, Vector()) / len(loop)
+    area = sum(loop[i].x * loop[(i + 1) % len(loop)].z - loop[(i + 1) % len(loop)].x * loop[i].z
+               for i in range(len(loop)))
+    turn = 1.0 if area > 0 else -1.0
+    a0 = math.atan2(loop[0].z - centre.z, loop[0].x - centre.x)
+    rx, rz = (1.4 * r for r in CB_SHIELD_RADII)
+    for b in range(CB_RIM_BONES):
+        s_b = b / CB_RIM_BONES
+        i = min(range(len(loop)), key=lambda i: abs(arc[i] - s_b))
+        a = a0 + turn * 2 * math.pi * s_b
+        oval = centre + Vector((rx * math.cos(a), 0, rz * math.sin(a)))
+        joints.append({"name": f"MQ_Rim{b}", "pivot": loop[i], "base": (oval, Matrix.Identity(3)),
+                       "win": (0.15, 0.85)})
+    from mathutils.kdtree import KDTree
+    tree = KDTree(len(loop))
+    for i, p in enumerate(loop):
+        tree.insert(p, i)
+    tree.balance()
+    follows_rim = sets["Rim"] | sets["Edge"]
+
+    def weights(o, co):
+        if o.name in sword_parts:
+            w = min(1.0, max(0.0, (co.z - g0.z) / (g1.z - g0.z)))
+            return [("MQ_SwordTip", w), ("Base", 1.0 - w)]
+        if o.name in follows_rim:
+            _, i, _ = tree.find(co)
+            u = arc[i] * CB_RIM_BONES
+            b, f = int(u) % CB_RIM_BONES, u - int(u)
+            return [(f"MQ_Rim{b}", 1.0 - f), (f"MQ_Rim{(b + 1) % CB_RIM_BONES}", f)]
+        return None
+
+    def bone(o, center):
+        k = o.name.split(".")[0]
+        return f"MQ_Phial{k[-1]}" if k.startswith("Sword_Phial_") else None
+    morph = {"seconds": 0.5, "joints": joints,
+             "fades": [("Rim", "alt", (0.0, 0.2)), ("Edge", "alt", (0.45, 0.85)), ("Axe", "alt", (0.5, 0.95))],
+             # the shield model (the sub weapon) fades out as the axe forms
+             "second": (0.0, 0.4)}
+    return placed("wp_miquella_cb", "Art/Model/MiquellaLight/ChargeBlade", objs, to_file,
+                  {"VFX_Attack": g1}, by_name=phial_gauges("Sword_Phial", halos=False), sets=sets, morph=morph,
+                  weight_fn=weights, bone_fn=bone, file_pivots={j["name"]: j["pivot"] for j in joints})
 
 
 def charge_blade_shield():
@@ -638,8 +779,22 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
-           "switch_axe_sword": switch_axe_sword, "charge_blade_axe": charge_blade_axe,
            "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun}
+
+
+# Parts of one mode only (switch axe, charge blade): Miquella<Set><Blade|Glow|Ivory>, so the
+# weapons script can fade each set by its Dissolve (temper lines go on the set's Glow).
+MODE_SETS = ("Axe", "Sword", "Fin", "Spike", "Rim", "Edge")
+SET_BUDGET = {"MiquellaBlade": 4000, "MiquellaGlow": 5000, "MiquellaIvory": 6000}
+
+
+def base_material(name):
+    """MiquellaAxeBlade -> MiquellaBlade; other names unchanged."""
+    for s in MODE_SETS:
+        rest = name[len("Miquella" + s):]
+        if name.startswith("Miquella" + s) and rest[:1].isupper():
+            return "Miquella" + rest
+    return name
 
 
 # Triangle budget per game material (the originals run 5k-60k triangles in all).
@@ -722,12 +877,19 @@ def game_material(o, spec):
         if o.name == prefix or o.name.startswith(prefix + "."):
             return mat
     names = [s.material.name for s in o.material_slots if s.material]
+    mat = None
     for n in names:
         base = n.split(".")[0]
         if base in spec["materials"]:
-            return spec["materials"][base]
-    log(f"  unmapped material {names} on {o.name} -> MiquellaIvory")
-    return "MiquellaIvory"
+            mat = spec["materials"][base]
+            break
+    if mat is None:
+        log(f"  unmapped material {names} on {o.name} -> MiquellaIvory")
+        mat = "MiquellaIvory"
+    for set_name, members in spec.get("sets", {}).items():
+        if o.name in members:
+            return "Miquella" + set_name + ("Glow" if mat == "MiquellaTemper" else mat[len("Miquella"):])
+    return mat
 
 
 def lower_resolution(objs):
@@ -774,9 +936,12 @@ def build_parts(spec, mesh_col):
         if name in floaters:
             bone_of[o.name] = floaters[name]
             pivots[floaters[name]] = spec["to_file"] @ o.matrix_world.translation
-    # Bones whose pivot is not a part's origin (a cluster of parts), in the prototype's space.
+    # Bones whose pivot is not a part's origin (a cluster of parts), in the prototype's space,
+    # or already in file space.
     for bone, point in spec.get("pivots", {}).items():
         pivots[bone] = spec["to_file"] @ Vector(point)
+    for bone, point in spec.get("file_pivots", {}).items():
+        pivots[bone] = Vector(point)
     missing = set(floaters) - {n.split(".")[0] for n in bone_of}
     if missing:
         log(f"  floaters not found: {sorted(missing)}")
@@ -827,7 +992,8 @@ def build_parts(spec, mesh_col):
                 d.uv = (u, 0.5)
         before = tris(o)
         budget = {**BUDGET, **spec.get("budget", {})}
-        ratio = min(1.0, budget.get(mat, GAUGE_BUDGET) / max(before, 1))
+        limit = budget.get(mat) or (SET_BUDGET.get(base_material(mat)) if mat != base_material(mat) else None)
+        ratio = min(1.0, (limit or GAUGE_BUDGET) / max(before, 1))
         if ratio < 1.0:
             dec = o.modifiers.new("decimate", "DECIMATE")
             dec.ratio = ratio
@@ -938,7 +1104,7 @@ def file_bounds(subs):
 
 # ------------------------------------------------------------------ mdf
 
-def build_mdf(path, template_mdf, names, membrane=None):
+def build_mdf(path, template_mdf, names, membrane=None, hidden=()):
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     template = readMDF(template_mdf)
     by_name = {m.materialName: m for m in template.materialList}
@@ -947,8 +1113,8 @@ def build_mdf(path, template_mdf, names, membrane=None):
         if name == "MiquellaMembrane":
             new = membrane_material(membrane)
         else:
-            new = copy.deepcopy(by_name[MDF_SOURCE[name]])
-            if name.startswith(HIDDEN_AT_START):
+            new = copy.deepcopy(by_name[MDF_SOURCE[base_material(name)]])
+            if name.startswith(HIDDEN_AT_START) or name in hidden:
                 for p in new.propertyList:
                     if p.propName == "Dissolve":
                         p.propValue = [0.0]
@@ -981,6 +1147,52 @@ def build_mdf(path, template_mdf, names, membrane=None):
     writeMDF(template, path)
     check = readMDF(path)
     log(f"mdf: {[m.materialName for m in check.materialList]}")
+
+
+# ------------------------------------------------------------------ morph
+
+def set_materials(names, set_name):
+    return [n for n in names if n.startswith("Miquella" + set_name) and n[len("Miquella" + set_name):][:1].isupper()]
+
+
+def write_morph(kit, name, morph, names):
+    """The morph for the weapons script (a Lua table to paste into MORPHS) and for
+    preview_morph.py (json): joints with their pivot and their pose in each mode (missing: the
+    bind pose), as file-space positions and xyzw quaternions; the windows are shares of the
+    morph's progress (0 base mode, 1 the other)."""
+    def pose(j, side):
+        if side not in j:
+            return None
+        pos, rot = j[side]
+        q = rot.to_quaternion()
+        return {"pos": [round(c, 4) for c in pos], "rot": [round(c, 5) for c in (q.x, q.y, q.z, q.w)]}
+    data = {"seconds": morph["seconds"], "second": list(morph["second"]) if morph.get("second") else None,
+            "joints": [{"name": j["name"], "pivot": [round(c, 4) for c in j["pivot"]], "base": pose(j, "base"),
+                        "alt": pose(j, "alt"), "win": list(j["win"])} for j in morph["joints"]],
+            "fades": [{"set": s, "mats": set_materials(names, s), "show": show, "win": list(win)}
+                      for s, show, win in morph["fades"]]}
+    with open(os.path.join(kit, f"{name}_morph.json"), "w") as f:
+        json.dump(data, f, indent=1)
+
+    def lua(v):
+        if isinstance(v, dict):
+            return "{ " + ", ".join(f"{k} = {lua(x)}" for k, x in v.items() if x is not None) + " }"
+        if isinstance(v, (list, tuple)):
+            return "{ " + ", ".join(lua(x) for x in v) + " }"
+        if isinstance(v, str):
+            return f'"{v}"'
+        return repr(v)
+    lines = [f"    seconds = {data['seconds']},"]
+    if data["second"]:
+        lines.append(f"    second = {lua(data['second'])},")
+    lines.append("    joints = {")
+    lines += [f"        {lua(j)}," for j in data["joints"]]
+    lines += ["    },", "    fades = {"]
+    lines += [f"        {lua({k: v for k, v in fd.items() if k != 'set'})}," for fd in data["fades"]]
+    lines.append("    },")
+    with open(os.path.join(kit, f"{name}_morph.lua"), "w") as f:
+        f.write("{\n" + "\n".join(lines) + "\n}\n")
+    log(f"morph: {len(data['joints'])} joints, fades {[(fd['set'], len(fd['mats'])) for fd in data['fades']]}")
 
 
 # ------------------------------------------------------------------ main
@@ -1025,7 +1237,16 @@ def main():
                                  "preserveSharpEdges": False})
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
     names = [o.name.split("__", 1)[1] for o in subs]
-    build_mdf(os.path.join(natives, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, names, spec.get("membrane"))
+    morph = spec.get("morph")
+    hidden = set()
+    if morph:
+        # Parts of the other mode start hidden: the base mode shows without the script.
+        for set_name, show, _ in morph["fades"]:
+            if show == "alt":
+                hidden |= set(set_materials(names, set_name))
+        write_morph(kit, spec["name"], morph, names)
+    build_mdf(os.path.join(natives, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, names, spec.get("membrane"),
+              hidden)
     if spec.get("textures"):
         spec["textures"](kit)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit, f"{spec['name']}_kit.blend"))

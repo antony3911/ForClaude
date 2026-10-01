@@ -23,9 +23,19 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_ls%.") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
-    if self.mdfPath:match("wp_miquella_sa") or self.mdfPath:match("wp_miquella_cb") then
+    if self.mdfPath:match("wp_miquella_sa%.") then
+      return { "MiquellaAxeBlade", "MiquellaAxeGlow", "MiquellaFinBlade", "MiquellaFinGlow", "MiquellaGauge1",
+               "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5", "MiquellaGlow", "MiquellaIvory",
+               "MiquellaSpikeBlade", "MiquellaSwordBlade", "MiquellaSwordGlow" }
+    end
+    if self.mdfPath:match("wp_miquella_cb%.") then
+      return { "MiquellaAxeGlow", "MiquellaAxeIvory", "MiquellaBlade", "MiquellaEdgeBlade", "MiquellaEdgeGlow",
+               "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5", "MiquellaGlow",
+               "MiquellaIvory", "MiquellaRimGlow", "MiquellaTemper" }
+    end
+    if self.mdfPath:match("wp_miquella_cb_shield") then
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5",
-               "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+               "MiquellaGlow", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_gl%.") then
       return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory" }
@@ -625,8 +635,13 @@ texts = {}; onDraw()
 local sawGl = false
 for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") then sawGl = true end end
 check(sawGl, "gunlance: menu shows the fields")
--- Switch axe: sword mode puts on the sword model; charge blade: axe mode puts on the axe and
--- hides the shield; "Swap modes" flips the reading.
+-- Switch axe and charge blade: both modes are one model; the game's mode drives a morph (joints
+-- move, parts of one mode fade by Dissolve), never a model swap. Charge blade: the shield fades
+-- out toward axe mode and is hidden once gone.
+local function jointAt(name, pos)
+  local j = weaponGO.tf.joints[name]
+  return j and j.lp and math.abs(j.lp.x - pos[1]) + math.abs(j.lp.y - pos[2]) + math.abs(j.lp.z - pos[3]) < 1e-3
+end
 weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
 weaponGO = newGO("Wp08", 10001, weaponMesh, nil)
 subGO = nil
@@ -634,16 +649,29 @@ extract = { _Mode = 0 }
 frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "SwitchAxe" }; onDraw()
 frames(40, 1 / 60)
-check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: axe model in axe mode")
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: our model")
+check(dissolve("MiquellaAxeBlade") == 1 and dissolve("MiquellaSwordBlade") == 0 and not visible("MiquellaSwordBlade")
+      and dissolve("MiquellaFinBlade") == 0, "switch axe: axe mode shows the axe blades, not the sword")
+frames(40, 1 / 60)                   -- (past the model's set-again a second after the swap)
+local sets = weaponMesh.setCount
 extract._Mode = 1
-frames(25, 1 / 60)
-check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa_sword.mesh"
-      and weaponMesh.mdfPath:match("wp_miquella_sa_sword%.mdf2"), "switch axe: sword model in sword mode")
-frames(60, 1 / 60)
-check(weaponMesh.meshPath:match("wp_miquella_sa_sword"), "switch axe: the sword model stays (not swapped back)")
+frames(12, 1 / 60)                   -- 0.2 s of the 0.45 s morph
+local b0 = weaponGO.tf.joints["MQ_Blade0"]
+check(dissolve("MiquellaSwordBlade") == 1 and dissolve("MiquellaAxeBlade") > 0 and b0 and b0.lp
+      and not jointAt("MQ_Blade0", { -0.095, 0.0, 1.178 }) and math.abs(b0.lr.w) < 0.99,
+      "switch axe: mid-morph the sword is out and the axe blades swing")
+frames(30, 1 / 60)
+check(dissolve("MiquellaAxeBlade") == 0 and not visible("MiquellaAxeBlade") and dissolve("MiquellaFinBlade") == 1
+      and dissolve("MiquellaSpikeBlade") == 0 and jointAt("MQ_HeadHalo", { -0.038, 0.0, 1.292 })
+      and jointAt("MQ_SwordTip", { 0.0475, 0.016, 2.774 }), "switch axe: sword mode (fins shown, halo at the blade's root)")
+check(weaponMesh.setCount == sets and weaponMesh.meshPath:match("wp_miquella_sa%.mesh"), "switch axe: no model swap")
+texts = {}; onDraw()
+check(anyText("^Morph joints found: 8/8") and anyText("^Mode: _Mode = 1 %(sword look, morph 1%.00%)"),
+      "switch axe: menu shows the morph")
 extract._Mode = 0
-frames(25, 1 / 60)
-check(weaponMesh.meshPath == "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh", "switch axe: back to the axe")
+frames(40, 1 / 60)
+check(dissolve("MiquellaAxeBlade") == 1 and dissolve("MiquellaSwordBlade") == 0 and jointAt("MQ_Blade0", { -0.095, 0.0, 1.178 })
+      and jointAt("MQ_SwordTip", { 0.0475, 0.016, 1.216 }), "switch axe: back to the axe")
 weaponMesh = newMesh("Art/Model/Item/it09/00/0002/it0900_0002_0.mesh")
 weaponGO = newGO("Wp09", 11001, weaponMesh, nil)
 local cbShield = newMesh("Art/Model/Item/it09/00/0002/it0900_0002_1.mesh")
@@ -652,14 +680,24 @@ frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "ChargeBlade" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and cbShield.meshPath:match("wp_miquella_cb_shield"), "charge blade: sword and shield")
-check(subGO.draw == true, "charge blade: shield shown in sword mode")
+check(subGO.draw == true and dissolve("MiquellaRimGlow") == 0 and not visible("MiquellaEdgeBlade"),
+      "charge blade: shield shown in sword mode, the axe head hidden")
+frames(40, 1 / 60)
+sets = weaponMesh.setCount
 extract._Mode = 1
-frames(25, 1 / 60)
-check(weaponMesh.meshPath == "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_axe.mesh", "charge blade: axe model in axe mode")
-check(subGO.draw == false, "charge blade: shield hidden in axe mode (it is part of the axe)")
+frames(9, 1 / 60)                   -- 0.15 s of 0.5 s
+local shieldA = cbShield.floats["MiquellaGlow.2"] or 1
+check(shieldA > 0 and shieldA < 1 and subGO.draw == true and dissolve("MiquellaRimGlow") == 1,
+      string.format("charge blade: mid-morph the shield fades (%.2f) as the axe's rim appears", shieldA))
+frames(30, 1 / 60)
+check(subGO.draw == false and (cbShield.floats["MiquellaGlow.2"] or 1) == 0, "charge blade: shield gone in axe mode")
+check(dissolve("MiquellaEdgeBlade") == 1 and dissolve("MiquellaAxeGlow") == 1 and jointAt("MQ_Phial0", { 0.126, 0.0, 0.952 })
+      and jointAt("MQ_SwordTip", { 0.0, 0.0, 1.232 }), "charge blade: axe mode (head shown, phials on its back, sword shortened)")
+check(weaponMesh.setCount == sets, "charge blade: no model swap")
 extract._Mode = 0
-frames(25, 1 / 60)
-check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and subGO.draw == true, "charge blade: back to sword and shield")
+frames(40, 1 / 60)
+check(weaponMesh.meshPath:match("wp_miquella_cb%.mesh") and subGO.draw == true and cbShield.floats["MiquellaGlow.2"] == 1
+      and dissolve("MiquellaRimGlow") == 0, "charge blade: back to sword and shield")
 -- Charge blade phials: the shield's rim phials count the loaded phials; the sword's ring is its
 -- energy (bright gold when full); in axe mode the axe's phials count them; shield enhanced
 -- lights the shield. Switch axe: the phials are the switch gauge, amped lights the blade.
@@ -678,7 +716,7 @@ frames(40, 1 / 60)
 check((cbShield.floats["MiquellaGlow.1"] or 0) / (1.2 * glow) > 1.7, "charge blade: shield enhanced lights the shield")
 extract._Mode, extract._ActionEnterBinNum = 1, 5
 frames(60, 1 / 60)
-check(weaponMesh.meshPath:match("wp_miquella_cb_axe") and dotOf(weaponMesh, 5) > 0.99, "charge blade: axe phials show the loaded phials")
+check(dissolve("MiquellaEdgeBlade") == 1 and dotOf(weaponMesh, 5) > 0.99, "charge blade: axe phials show the loaded phials")
 extract._ActionEnterBinNum = 1
 frames(60, 1 / 60)
 check(dotOf(weaponMesh, 1) > 0.99 and dotOf(weaponMesh, 2) < 0.3, "charge blade: using phials dims them")
@@ -693,7 +731,7 @@ frames(60, 1 / 60)
 check(dotOf(weaponMesh, 3) > 0.99 and dotOf(weaponMesh, 4) < 0.3, string.format("switch axe: phials show the switch gauge (%.2f %.2f)", dotOf(weaponMesh, 3), dotOf(weaponMesh, 4)))
 extract._SwordAwakeTimer = 30
 frames(40, 1 / 60)
-check((weaponMesh.floats["MiquellaBlade.1"] or 0) / (1.2 * glow) > 1.7, "switch axe: amped lights the blade bright gold")
+check((weaponMesh.floats["MiquellaSwordBlade.1"] or 0) / (1.2 * glow) > 1.7, "switch axe: amped lights the blade bright gold")
 texts = {}; onDraw()
 local sawG = false
 for _, t in ipairs(texts) do if t:match("^Gauges: _SlashGauge") then sawG = true end end

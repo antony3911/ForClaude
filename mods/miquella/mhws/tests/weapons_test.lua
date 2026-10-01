@@ -174,7 +174,7 @@ imgui = {
   end,
 }
 local savedCfg
-json = { load_file = function() return nil end, dump_file = function(p, t) savedCfg = t end }
+json = { load_file = function() return nil end, dump_file = function(p, t) if p == "MiquellaLight/Weapons.json" then savedCfg = t end end }
 
 if arg[2] == "missing" then
   failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh"] = true
@@ -185,6 +185,10 @@ local function frames(n, dt)
     fakeTime = fakeTime + (dt or 0)
     onFrame()
   end
+end
+local function anyText(pattern)
+  for _, t in ipairs(texts) do if t:match(pattern) then return true end end
+  return false
 end
 local function check(cond, msg) print((cond and "PASS " or "FAIL ") .. msg); if not cond then os.exit(1) end end
 
@@ -202,7 +206,7 @@ if arg[2] == "missing" then
 end
 frames(20)
 texts = {}; onDraw()
-check(texts[2] and texts[2]:match("it0200_0002_1%.mesh"), "menu shows the original main weapon path")
+check(anyText("it0200_0002_1%.mesh"), "menu shows the original main weapon path")
 comboAnswer = 2; onDraw()
 check(savedCfg and savedCfg.assignType["it02"] == "DualBlades", "assignment saved for all dual blades")
 frames(20)
@@ -321,7 +325,7 @@ weaponGO = newGO("Wp00", 2001, weaponMesh, weaponChain)
 subGO = nil
 frames(20)
 texts = {}; onDraw()
-check(texts[2] and texts[2]:match("it0000_0000_0%.mesh"), "great sword: menu shows its model path")
+check(anyText("it0000_0000_0%.mesh"), "great sword: menu shows its model path")
 comboAnswer = 3; onDraw()
 check(savedCfg.assignType["it00"] == "GreatSword", "great sword: assignment saved for all great swords")
 frames(20)

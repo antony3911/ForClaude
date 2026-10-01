@@ -380,6 +380,9 @@ local config = {
     bowFrom0 = false,
     -- weapon type -> true: the mode field reads the other way round (switch axe, charge blade)
     modeInvert = {},
+    -- Record the weapon handling's number / true-false fields while playing (for Claude to find
+    -- the charge, draw, mode ... fields): reframework/data/MiquellaLight/fields_<type>.json
+    recordFields = true,
     -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
     -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
     swappedFrom = {},
@@ -1162,6 +1165,60 @@ local function update_gauges(entry, mesh, h, dt)
     stateInfo.gauges[entry.kit] = table.concat(info, "  ")
 end
 
+-- Field recorder: 4 times a second, every number / true-false field of the weapon handling
+-- (its type and parents); per field the lowest, highest and last value and how often it
+-- changed; saved every 5 s, one file per handling type.
+local rec = { type = nil, names = nil, data = nil, nextRead = 0, nextSave = 0, samples = 0 }
+
+local function field_names(h)
+    local out, seen = {}, {}
+    local td = try(function() return h:get_type_definition() end)
+    while td do
+        for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
+            local n = try(function() return f:get_name() end)
+            if n and not seen[n] and not try(function() return f:is_static() end) then
+                seen[n] = true
+                out[#out + 1] = n
+            end
+        end
+        td = try(function() return td:get_parent_type() end)
+    end
+    return out
+end
+
+local function record_fields(h, now)
+    if not (config.recordFields and h) or now < rec.nextRead then return end
+    rec.nextRead = now + 0.25
+    local tn = handling_type(h)
+    if rec.type ~= tn then
+        rec = { type = tn, names = field_names(h), data = {}, nextRead = now + 0.25, nextSave = now + 5, samples = 0 }
+    end
+    rec.samples = rec.samples + 1
+    for _, n in ipairs(rec.names) do
+        local v = try(function() return h:get_field(n) end)
+        if type(v) == "boolean" then v = v and 1 or 0 end
+        if type(v) == "number" then
+            local d = rec.data[n]
+            if not d then
+                rec.data[n] = { min = v, max = v, last = v, changes = 0 }
+            else
+                if v ~= d.last then d.changes = d.changes + 1 end
+                d.min, d.max, d.last = math.min(d.min, v), math.max(d.max, v), v
+            end
+        end
+    end
+    if now >= rec.nextSave then
+        rec.nextSave = now + 5
+        local changed = {}
+        for n, d in pairs(rec.data) do
+            if d.changes > 0 then changed[n] = d end
+        end
+        local safe = rec.type:gsub("[^%w_]", "_")
+        try(function() json.dump_file("MiquellaLight/fields_" .. safe .. ".json",
+            { type = rec.type, samples = rec.samples, changed = changed, all = rec.data }) end)
+    end
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -1170,6 +1227,10 @@ local function update_states(chr)
     local rate = dt / (target > demonProgress and DEMON_IN or DEMON_OUT)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
+    if config.recordFields then
+        h = try(function() return chr:call("get_WeaponHandling") end)
+        record_fields(h, now)
+    end
     for _, entry in pairs(swapped) do
         if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
             or entry.kit.mode or entry.kit.gauges or entry.kit.boosts then
@@ -1512,6 +1573,11 @@ re.on_draw_ui(function()
     for i, n in ipairs(SIZE_NAMES) do if n == config.size then sizeIdx = i end end
     local c3, newSize = imgui.combo("Size (dual blades)", sizeIdx, SIZE_NAMES)
     if c3 then config.size = SIZE_NAMES[newSize]; changed = true end
+    c, config.recordFields = imgui.checkbox("Record weapon fields (for Claude)", config.recordFields)
+    changed = changed or c
+    if config.recordFields and rec.type then
+        imgui.text(string.format("Recording %s: %d samples", rec.type, rec.samples))
+    end
     c, config.float = imgui.checkbox("Floating rings", config.float)
     changed = changed or c
     c, config.floatStrength = imgui.slider_float("Ring motion", config.floatStrength, 0.0, 3.0, "%.2f")

@@ -212,7 +212,7 @@
 1. ~~安裝 REFramework 和 Fluffy~~ → **已完成**：Claude 已把 REFramework、偵察腳本、換裝腳本、光劍 pak 手動裝好（見第 4 節「遊戲端」），Fluffy 暫時不需要。**等使用者開遊戲**，確認按 Insert 有 REFramework 選單；開不了就先刪 `pak_mods`，還不行再刪 `dinput8.dll`。遊戲資料夾的 `re2_framework_log.txt` 可以直接讀來除錯
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
 3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
-4. **（正在等）使用者測 `MiquellaLight_Effects` 第四版**（見 `mhws/MiquellaLight_Effects/README.md` 版本紀錄）：buff 閃光第三版**已完全消失**；軌跡還是先紅，攔截掛鉤都沒觸發 → 第四版每幀搜尋、找到就換色。還是紅的話：用偵測腳本第三版錄一次，看新軌跡第一次出現時參數和染色是什麼、何時變紅；或改特效檔讓軌跡不吃執行時的 `Color`（例如改運算式）。Size 1.4、B 版三刃使用者還沒回報。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
+4. ~~特效顏色~~ → **完成**：`MiquellaLight_Effects` 第四版起軌跡、身上特效都是金色，攻擊／防禦上升閃光已藏（見 `mhws/MiquellaLight_Effects/README.md` 版本紀錄）。第五版加了效能顯示（選單第三行 ms/幀）、只有拿雙劍才每幀搜尋，**等使用者回報數字**。還沒驗證：藍鬼人（完美閃避）的銀色。Size 1.4、B 版三刃使用者還沒回報。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

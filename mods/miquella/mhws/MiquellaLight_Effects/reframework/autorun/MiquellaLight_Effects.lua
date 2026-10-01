@@ -23,7 +23,8 @@
 local MOD = "MiquellaLight Effects"
 local CONFIG_PATH = "MiquellaLight/Effects.json"
 local EP = "via.effect.EffectPlayer"
-local SCAN_EVERY = 0                    -- every frame: a new trail must be found before it is drawn
+local SCAN_FAST, SCAN_SLOW = 0, 0.25    -- every frame with dual blades (a new trail must be found
+                                        -- before it is drawn), otherwise 4 times a second
 local RECOLOR_MATCH = "it02"            -- dual blades effect files / objects (11_it02_*)
 local COLOR_PARAMS = { "Color", "ColorA", "ColorB", "ColorC" }
 local BUFF_MATCH = "11_pl_heal"
@@ -303,11 +304,28 @@ local function take_pending()
     pending = still
 end
 
+-- Whether the hunter holds dual blades (checked once a second).
+local holding, holdingCheck = false, -1
+local function holding_dual_blades()
+    if os.clock() < holdingCheck then return holding end
+    holdingCheck = os.clock() + 1
+    local pm = sdk.get_managed_singleton("app.PlayerManager")
+    local master = pm and try(function() return pm:getMasterPlayer() end)
+    local chr = master and try(function() return master:get_Character() end)
+    local h = chr and try(function() return chr:call("get_WeaponHandling") end)
+    local name = h and try(function() return h:get_type_definition():get_full_name() end)
+    holding = name == "app.cHunterWp02Handling"
+    return holding
+end
+
+local cost = { total = 0, frames = 0, shown = 0 }   -- time spent per frame, averaged over a second
+
 local function tick()
     if not (config.recolor or config.hideBuffs) then return end
+    local t0 = os.clock()
     if #pending > 0 then pcall(take_pending) end
     if os.clock() >= nextScan then
-        nextScan = os.clock() + SCAN_EVERY
+        nextScan = os.clock() + ((config.recolor and holding_dual_blades()) and SCAN_FAST or SCAN_SLOW)
         pcall(scan)
     end
     if os.clock() >= cacheReset then
@@ -316,6 +334,10 @@ local function tick()
     end
     for key, t in pairs(tracked) do
         pcall(update, key, t)
+    end
+    cost.total, cost.frames = cost.total + (os.clock() - t0), cost.frames + 1
+    if cost.frames >= 60 then
+        cost.shown, cost.total, cost.frames = cost.total / cost.frames * 1000, 0, 0
     end
 end
 
@@ -344,5 +366,7 @@ re.on_draw_ui(function()
         stats.intercepted, stats.spawn, stats.found, stats.playing, stats.buffs))
     imgui.text(string.format("Tracking %d effects, %d colour parameters. Hooks %d/%d. %s", n, nParams, nHooks, #hooks,
         (entryOk and os.clock() - tickedAt < 0.5) and "Before rendering." or "Once per frame."))
+    imgui.text(string.format("Cost: %.2f ms per frame (%s).", cost.shown,
+        holding and "dual blades: searching every frame" or "searching 4 times a second"))
     imgui.tree_pop()
 end)

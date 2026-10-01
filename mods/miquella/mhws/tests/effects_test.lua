@@ -64,6 +64,13 @@ sdk = {
     end,
     to_managed_object = function(p) return pointers[p] end,
     to_int64 = function(v) return v end,
+    get_managed_singleton = function(n)
+        return { getMasterPlayer = function() return { get_Character = function() return { call = function(_, m)
+            if m == "get_WeaponHandling" then
+                return { get_type_definition = function() return { get_full_name = function() return "app.cHunterWp02Handling" end } end }
+            end
+        end } end } end }
+    end,
     to_ptr = function(v) return v end,
     typeof = function(n) return n end,
     get_native_singleton = function() return {} end,
@@ -183,4 +190,5 @@ beforeRender()
 check(hue_is_gold(fresh.params.Color.c), "new trail found by the per-frame search is gold before its first frame is drawn")
 out = {}; onDraw()
 check(tonumber(table.concat(out):match("(%d+) when found")) >= 1, "counted as recoloured when found")
+check(table.concat(out):match("Cost: [%d.]+ ms per frame %(dual blades: searching every frame%)"), "cost and search rate shown")
 print("ALL PASS")

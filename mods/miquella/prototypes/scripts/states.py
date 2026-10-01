@@ -287,6 +287,7 @@ def lance_charge():
     """Charging grows the cone of rings a few at a time, brighter each level; at full charge
     the faint cone and the point flare appear: the whole lance reads as a lance of light."""
     mats, rings, cone, cone_mat, flare = build_lance_charge()
+    set_cone(cone_mat, 0.08, fade_to_tip=True)       # chosen by the user (lance_full_variants, no. 3)
     target, distance, views = LANCE_VIEW
     stage_lights(target, distance)
     # label, rings shown, light strength ("bright" = bright gold), cone and flare

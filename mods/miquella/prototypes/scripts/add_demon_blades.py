@@ -4,10 +4,10 @@ slide outward, short first, then long).
 
 The weapon has no bones we can animate, so the slide is three fixed stages, each its own
 material (MiquellaDemon1..3) holding a left and a right side blade:
-  stage 1: 40 % length,  9 deg   stage 2: 53.5 %, 15 deg   stage 3: 66 %, 22 deg (final pose)
-They branch 4 cm up the main blade from the guard. (First in-game version: at the guard,
-45 / 60 / 74 %; the user found it crowded near the grip and the side blades a bit long.
-Picked as option A of states.py dual_blades_split_point.)
+  stage 1: 37.7 % length,  9 deg   stage 2: 50.3 %, 15 deg   stage 3: 62 %, 22 deg (final pose)
+They branch 7 cm up the main blade from the guard, so the halo at the guard stays visible.
+(First in-game version: at the guard, 45 / 60 / 74 %; the user found it crowded near the
+grip and the side blades a bit long, and picked option B of states.py dual_blades_split_point.)
 They are hidden by default (Dissolve 0). MiquellaLight_Weapons.lua cross-fades them with the
 game's demon-mode value (app.cHunterWp02Handling._KijinExtern, 0 -> 1).
 
@@ -28,8 +28,8 @@ import blades
 from fit_dual_blades import MDF_EXT, MESH_EXT, NAME, REL_DIR, TO_WEAPON_AXIS
 
 # (length scale, splay angle, sideways offset) per stage, from states.py's preview.
-STAGES = ((0.40, 9.0, 0.004), (0.535, 15.0, 0.007), (0.66, 22.0, 0.010))
-BRANCH_FORWARD = 0.04     # metres from the guard toward the tip where the side blades branch
+STAGES = ((0.377, 9.0, 0.004), (0.503, 15.0, 0.007), (0.62, 22.0, 0.010))
+BRANCH_FORWARD = 0.07     # metres from the guard toward the tip where the side blades branch
 SIDE_SCALE_X, SIDE_SCALE_Y = 0.72, 0.8
 
 

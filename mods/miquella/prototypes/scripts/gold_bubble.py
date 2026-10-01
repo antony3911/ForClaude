@@ -33,8 +33,10 @@ GLOW_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "mhws", "Miq
 # the thickness: still not thinner -> the thick line is likely the shell's glowing rim too).
 RINGS = [(12, 0, 0.515, 0.0009), (72, 25, 0.522, 0.0008), (-48, -60, 0.528, 0.0007)]
 RING_GLOW = 0.9
-# The shell's edge glow: a higher power keeps it to a thin line at the very edge.
-SHELL_RIM = {"RimEmissiveIntensity": [1.5], "RimEmissivePower": [6.0]}
+# The shell's edge glow: off, as in the game's own bubble. It was the thick line: ours (3.0,
+# power 2) looked thick, and 1.5 at power 6 thicker still (user, 2026-10-02) - in this shader the
+# power widens the edge. The three thin rings are the bubble's lines.
+SHELL_RIM = {"RimEmissiveIntensity": [0.0], "RimEmissivePower": [1.0]}
 
 
 def build_mesh(mesh_col):

@@ -20,6 +20,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_bow%.") then
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_gl%.") then
+      return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory" }
+    end
     if self.mdfPath:match("wp_miquella_ig%.") then
       return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
@@ -559,4 +562,47 @@ frames(2, 1 / 60)
 check(weaponGO.draw == false and insectGO.draw == true, "insect glaive: sheathed glaive hidden, kinsect stays")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(2, 1 / 60)
+-- Gunlance: a reload winds the spring and lets it go; charged shelling winds it tighter per
+-- level and holds until the shot, gold -> white gold; Wyvern's Fire winds it all the way.
+weaponMesh = newMesh("Art/Model/Item/it07/00/0004/it0700_0004_0.mesh")
+weaponGO = newGO("Wp07", 9001, weaponMesh, nil)
+subGO = newGO("Wp07_Shield", 9002, newMesh("Art/Model/Item/it07/00/0004/it0700_0004_1.mesh"), nil)
+insectGO = nil
+extract = { _IsReload = false, _IsChargeShot = false, _RyuugekiChargeTimer = 0 }
+frames(20, 1 / 60)
+comboPick = { slot = "Weapon", name = "Gunlance" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh", "gunlance: model swapped")
+local top = weaponGO.tf.joints["MQ_SpringTop"]
+local REST_TOP = 1.6640
+check(top.lp and math.abs(top.lp.z - REST_TOP) < 1e-3, "gunlance: spring at rest")
+extract._IsReload = true
+local low = REST_TOP
+for _ = 1, 30 do frames(1, 1 / 60); low = math.min(low, top.lp.z) end
+check(low < REST_TOP - 0.35, string.format("gunlance: a reload winds the spring (top down to %.3f)", low))
+extract._IsReload = false
+frames(90, 1 / 60)
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: and lets it spring back")
+extract._IsChargeShot = true
+frames(20, 1 / 60)
+local z1 = top.lp.z
+frames(70, 1 / 60)
+local z3 = top.lp.z
+check(z3 < z1 - 0.05, string.format("gunlance: charged shelling winds tighter per level (%.3f -> %.3f)", z1, z3))
+local gc = weaponMesh.colors["MiquellaCore"]
+check(gc and gc.y > 0.8 and gc.z > 0.5, "gunlance: full charge is white gold")
+extract._IsChargeShot = false
+local far = 0
+for _ = 1, 60 do frames(1, 1 / 60); far = math.max(far, top.lp.z) end
+check(far > REST_TOP + 0.02, string.format("gunlance: the shot lets the spring fly back past its place (%.3f)", far))
+extract._RyuugekiChargeTimer = 1.0
+frames(60, 1 / 60)
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire winds it all the way")
+extract._RyuugekiChargeTimer = 0
+frames(120, 1 / 60)
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
+texts = {}; onDraw()
+local sawGl = false
+for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") then sawGl = true end end
+check(sawGl, "gunlance: menu shows the fields")
 print("ALL PASS")

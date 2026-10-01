@@ -276,9 +276,23 @@ def gunlance():
     shield = set(subtree("EnergyShield"))
     to_file = upright(1.3, (0, 0, 0.17))
     muzzle = to_file @ Vector((0, 0, arsenal.GUNLANCE_TIP + 0.03))
+    # The ivory spring: its top on a bone of its own, every vertex weighted by its height between
+    # Base (the bottom stays) and MQ_SpringTop, so moving that bone down compresses it evenly
+    # (reload, charged shelling, Wyvern's Fire: weapons script). The energy core has its own material.
+    z0 = (to_file @ Vector((0, 0, arsenal.GUNLANCE_BASE + 0.1))).z
+    top = (to_file @ Vector((0, 0, arsenal.SPRING_TOP))).z
+    log(f"  spring from file z {z0:+.4f} to {top:+.4f}")
+
+    def spring_weights(o, co):
+        if not o.name.startswith("Binding"):
+            return None
+        w = min(1.0, max(0.0, (co.z - z0) / (top - z0)))
+        return [("MQ_SpringTop", w), ("Base", 1.0 - w)]
     return placed("wp_miquella_gl", "Art/Model/MiquellaLight/Gunlance", [o for o in objs if o not in shield],
                   to_file, {"VFX_Fire": muzzle},
-                  floaters={"Barrel_Halo_0": "MQ_Halo0", "Barrel_Halo_1": "MQ_Halo1"})
+                  floaters={"Barrel_Halo_0": "MQ_Halo0", "Barrel_Halo_1": "MQ_Halo1"},
+                  pivots={"MQ_SpringTop": (0, 0, arsenal.SPRING_TOP)}, weight_fn=spring_weights,
+                  by_name={"Energy_Core": "MiquellaCore"})
 
 
 def gunlance_shield():
@@ -543,7 +557,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
-              "MiquellaExtractOrange": "MiquellaGlow"}
+              "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow"}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract")
 

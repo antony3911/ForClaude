@@ -164,10 +164,20 @@ local KITS = {
         label = "Miquella light gunlance",
         mesh = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh",
         mdf2 = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCore = 1.2 },
+        -- MQ_SpringTop: the ivory spring's top; packing it moves it 0.636 toward the root
+        -- (the spring at 45 % of its length).
         floaters = { mode = "hover", joints = {
             { name = "MQ_Halo0", pos = { 0.0, 0.0, 1.0140 } },
-            { name = "MQ_Halo1", pos = { 0.0, 0.0, 1.4950 } } } },
+            { name = "MQ_Halo1", pos = { 0.0, 0.0, 1.4950 } },
+            { name = "MQ_SpringTop", pos = { 0.0, 0.0, 1.6640 }, pack = -0.636, mode = "fixed" } } },
+        -- Reload, charged shelling and Wyvern's Fire wind the spring (user, 2026-10-02); charged
+        -- shelling's levels light it gold -> bright gold -> white gold. Fields guessed from the
+        -- game's type names (menu: "Gunlance:").
+        gunlance = { reload = { "_IsReload", "_IsContinueReload" }, chargeShot = { "_IsChargeShot", "_ChargeShotTimer" },
+                     wyvern = { "_RyuugekiChargeTimer" },
+                     charge = { levels = 3, look = "whiteGold", colored = { "MiquellaBlade", "MiquellaGlow", "MiquellaCore" },
+                                weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 } } },
         shield = "Gunlance_Shield",
     },
     Gunlance_Shield = {
@@ -793,13 +803,16 @@ local CHARGE_LOOKS = {
 local BAND_PERIOD, BAND_WIDTH = 0.9, 0.14
 local CHARGE_WEIGHTS = { MiquellaBlade = 1.0, MiquellaGlow = 0.4, MiquellaTemper = 1.0 }
 
-local function update_charge(entry, mesh, h, dt, now)
-    local spec = entry.kit.charge
-    local name = h and resolve(h, "charge", spec.fields)
-    local raw = name and read_number(h, name) or 0
-    local level = math.max(0, math.min(spec.levels, math.floor(raw + 0.5)))
-    stateInfo.charge = name and string.format("%s = %s (level %d)", name, tostring(raw), level)
-        or ("not found; fields with 'Charge': " .. table.concat(h and similar_fields(h, "Charge") or {}, ", "))
+-- spec: the kit's charge table; level: given by the caller (the gunlance) or read from spec.fields.
+local function update_charge(entry, mesh, h, dt, now, spec, level)
+    spec = spec or entry.kit.charge
+    if not level then
+        local name = h and resolve(h, "charge", spec.fields)
+        local raw = name and read_number(h, name) or 0
+        level = math.max(0, math.min(spec.levels, math.floor(raw + 0.5)))
+        stateInfo.charge = name and string.format("%s = %s (level %d)", name, tostring(raw), level)
+            or ("not found; fields with 'Charge': " .. table.concat(h and similar_fields(h, "Charge") or {}, ", "))
+    end
     entry.chargeSmooth = approach(entry.chargeSmooth or 0, level, dt, 0.12, 0.35)
     local s = entry.chargeSmooth
     local lo = math.floor(s)
@@ -940,6 +953,48 @@ local function update_extracts(entry, mesh, h, dt)
     end
 end
 
+-- Gunlance (user, 2026-10-02): a reload winds the ivory spring toward the root and lets it
+-- spring back; charged shelling winds it tighter each level and holds it until the shot;
+-- Wyvern's Fire winds it all the way until it fires. The light follows the level.
+local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
+
+local function first_number(h, names)
+    for _, n in ipairs(names) do
+        local v = read_number(h, n)
+        if v ~= nil then return v, n end
+    end
+    return nil, nil
+end
+
+local function update_gunlance(entry, mesh, h, dt, now)
+    local spec = entry.kit.gunlance
+    local reload, rn = first_number(h, spec.reload)
+    local shot, sn = first_number(h, spec.chargeShot)
+    local wyv, wn = first_number(h, spec.wyvern)
+    local reloading = (reload or 0) > 0
+    if reloading and not entry.wasReloading then entry.reloadUntil = now + RELOAD_PULSE end
+    entry.wasReloading = reloading
+    local charging, winding = (shot or 0) > 0, (wyv or 0) > 0
+    entry.chargeSince = charging and (entry.chargeSince or now) or nil
+    entry.windSince = winding and (entry.windSince or now) or nil
+    local level, pack = 0, 0
+    if entry.reloadUntil and now < entry.reloadUntil then level, pack = 1, 0.8 end
+    if charging then
+        local lv = math.min(3, 1 + math.floor((now - entry.chargeSince) / GL_LEVEL_TIME))
+        level, pack = math.max(level, lv), math.max(pack, 0.4 + 0.2 * lv)
+    end
+    if winding then
+        level = math.max(level, math.min(3, 1 + math.floor((now - entry.windSince) / GL_LEVEL_TIME)))
+        pack = 1.0
+    end
+    if not isWeaponDrawn then level, pack = 0, 0 end
+    entry.packTarget = pack
+    local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
+    stateInfo.gunlance = string.format("%s %s %s (level %d, spring %.2f)", show(rn, reload), show(sn, shot), show(wn, wyv),
+                                       level, entry.pack or 0)
+    update_charge(entry, mesh, h, dt, now, spec.charge, level)
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -949,7 +1004,7 @@ local function update_states(chr)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
     local h = nil
     for _, entry in pairs(swapped) do
-        if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts then
+        if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
@@ -957,6 +1012,7 @@ local function update_states(chr)
                 if entry.kit.gauge then update_gauge(entry, mesh, h, dt) end
                 if entry.kit.bow then update_bow(entry, mesh, h, dt) end
                 if entry.kit.extracts then update_extracts(entry, mesh, h, dt) end
+                if entry.kit.gunlance then update_gunlance(entry, mesh, h, dt, now) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -989,6 +1045,9 @@ local FLOAT_MODES = {
               drift = 0.0015, driftTilt = 2.5, driftHz = { 0.31, 0.43, 0.37 }, tremor = 0 },
     hover = { hz = 2.2, damping = 0.35, gain = 0.05, max = 0.012, tilt = 6,
               drift = 0.004, driftTilt = 3.0, driftHz = { 0.47, 0.71, 0.59 }, tremor = 0.0004 },
+    -- does not float: only packs (the gunlance's spring)
+    fixed = { hz = 1.0, damping = 1.0, gain = 0, max = 0.001, tilt = 0,
+              drift = 0, driftTilt = 0, driftHz = { 0, 0, 0 }, tremor = 0 },
 }
 local MAX_ACCEL = 150.0
 
@@ -1125,7 +1184,7 @@ end
 -- Rings move when floating is on, or when they pack (the bow) or orbit (the extract orbs),
 -- which work without it.
 local function rings_active(entry)
-    return config.enabled and (config.float or entry.kit.bow ~= nil
+    return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil
                                or (entry.kit.floaters and entry.kit.floaters.orbit) ~= nil)
 end
 
@@ -1151,7 +1210,7 @@ local function step_floaters()
     for _, entry in pairs(swapped) do
         local f = rings_active(entry) and float_joints(entry)
         if f then
-            if entry.kit.bow then step_pack(entry, dt) end
+            if entry.kit.bow or entry.kit.gunlance then step_pack(entry, dt) end
             local strength = config.float and config.floatStrength or 0
             floatInfo.found = floatInfo.found + f.found
             floatInfo.total = floatInfo.total + #f.joints
@@ -1297,6 +1356,7 @@ re.on_draw_ui(function()
     for _, entry in pairs(swapped) do
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
+        if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
         if entry.kit.bow and stateInfo.draw then
             imgui.text("Draw: " .. stateInfo.draw)
             c, config.bowFrom0 = imgui.checkbox("Bow charge counts from 0", config.bowFrom0)

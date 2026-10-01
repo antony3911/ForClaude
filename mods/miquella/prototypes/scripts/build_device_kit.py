@@ -78,7 +78,19 @@ def shot_arrow(name, groups):
             "groups": groups, "budget": 3000, "glow_material": True}
 
 
-DEVICES = {"wyrmstake": wyrmstake, "wyvernblast": wyvernblast,
+def shellcase():
+    """The gunlance's spent shells (Art/VFX/Mesh/Common/Shell/shellcase/11_shellcase_02, 0.035 x
+    0.095 along Z, effect 11_it07_199 on reload): the user saw machine parts flying out. Ours:
+    a small drop of light in a ring, the same size."""
+    import motifs as m
+    mats = m.materials()
+    objs = m.droplet("Spent_Drop", (0, 0, -0.01), 0.013, (0, 0, 1), mats["light"], stretch=1.6)
+    objs += m.halo("Spent_Halo", (0, 0, 0.0), 0.017, 0.0022, (0, 0, 1), mats["light"])
+    return {"name": "11_shellcase_02", "rel": "Art/VFX/Mesh/Common/Shell/shellcase", "objects": objs,
+            "to_file": Matrix.Identity(4), "groups": 1, "budget": 1200, "glow_material": True}
+
+
+DEVICES = {"wyrmstake": wyrmstake, "wyvernblast": wyvernblast, "shellcase": shellcase,
            "arrow_00": lambda: shot_arrow("11_arrow_00", 1), "arrow_01": lambda: shot_arrow("11_arrow_01", 1),
            "arrow_02": lambda: shot_arrow("11_arrow_02", 2)}
 

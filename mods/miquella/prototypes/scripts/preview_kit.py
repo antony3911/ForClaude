@@ -90,10 +90,13 @@ def main():
     c.add_light("key", "AREA", (1.5, -2.0, 2.0), 300, size=2.0, target=(OFFSET / 2, 0, (lo + hi) / 2))
     cam_data = bpy.data.cameras.new("cam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = (hi - lo) * 1.12
+    # Wide things (shields, bows, the kinsect) must fit across too (the frame is 900 x 1100).
+    axis = 0 if VIEW == "front" else 1
+    hs = [(o.matrix_world @ v.co)[axis] for o in ours + theirs for v in o.data.vertices]
+    cam_data.ortho_scale = max(hi - lo, (max(hs) - min(hs)) * 1100 / 900) * 1.12
     cam = bpy.data.objects.new("cam", cam_data)
     bpy.context.scene.collection.objects.link(cam)
-    mid = OFFSET / 2
+    mid = (max(hs) + min(hs)) / 2
     if VIEW == "gun":
         cam_data.type = "PERSP"
         cam.location = (0.15, -3.6, OFFSET / 2 + 0.35)

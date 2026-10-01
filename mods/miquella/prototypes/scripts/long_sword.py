@@ -196,10 +196,9 @@ def tsuba_halo(glow_material, ivory, rng):
     return objs
 
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
+def build():
+    """All the parts, unparented, in prototype space; returns (objects, materials, tip)."""
     rng = random.Random(8)
-    c.reset_scene()
     ivory = c.make_material("Ivory", c.PALETTE["ivory"], roughness=0.32, coat=0.3,
                             emission=c.PALETTE["glow"], strength=0.05, subsurface=0.15)
     glow = c.make_material("Light", c.PALETTE["glow"], roughness=0.1, coat=0.5,
@@ -209,6 +208,14 @@ def main():
                             emission=c.PALETTE["blade_core"], strength=1.2)
     parts = [build_blade(blade)] + hamon_line(hamon) + handle(ivory, glow, rng) + tsuba_halo(glow, ivory, rng)
     parts += blade_wrap(ivory, rng)
+    tip = blade_center(1.0) + Vector((blade_profile(1.0)[0], 0, 0))
+    return parts, (ivory, glow, blade, hamon), tip
+
+
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    c.reset_scene()
+    parts, (ivory, glow, blade, hamon), _ = build()
     root = c.link(bpy.data.objects.new("LongSword", None))
     for p in parts:
         p.parent = root

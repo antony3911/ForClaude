@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-02 00:30（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
+最後更新：2026-10-02 03:00（**本機 session、第二個帳號**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）。第一個帳號在做大劍、輕弩（換裝腳本和 `weapons_test.lua` 有它**還沒 commit 的修改**：外觀改成依武器種類、預先載入、重設模型）；第二個帳號做其他武器，只 commit 自己的部分
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -121,6 +121,7 @@
 - `reframework/autorun/`：`MiquellaLight_Scout.lua`、`MiquellaLight_Weapons.lua`
 - `pak_mods/MiquellaLight_DualBlades.pak`：REFramework 的「PAK Directory Loading」預設就開著，不用 Fluffy
 - `pak_mods/MiquellaLight_GreatSword.pak`、`MiquellaLight_LightBowgun.pak`（各自帶一份雙劍的貼圖）、`MiquellaLight_GreatSwordFX.pak`、`MiquellaLight_LightBowgunFX.pak`（改過色的遊戲特效檔，不進 repo）
+- **2026-10-02 03:00 加裝（第二帳號）**：`MiquellaLight_LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun` 共 11 個 pak（都讀回驗證過）；`autorun/MiquellaLight_Weapons.lua` 換成「已 commit 的版本＋這些外觀」（沒有第一帳號未 commit 的修改；用原本的測試 65 項全過）
 - 全部移除：刪掉 `dinput8.dll`、`reframework/`、`pak_mods/`
 
 | 東西 | 內容 |
@@ -133,6 +134,7 @@
 | `MiquellaLight_HideSheathed` | 舊的收刀隱藏腳本，已被換裝腳本取代，留作備案 |
 | `MiquellaLight_DualBlades_kit` | 雙劍遊戲素材（`.mesh`、`.mdf2`、`.tex`、貼圖原檔） |
 | `MiquellaLight_GreatSword_kit`、`MiquellaLight_LightBowgun_kit` | 大劍、輕弩遊戲素材（`.mesh`、`.mdf2`；貼圖用雙劍的）。對齊原版的量測和重做指令在各自的 README |
+| `MiquellaLight_LongSword_kit`、`SwordShield_kit`、`Hammer_kit`、`HuntingHorn_kit`、`Lance_kit`、`Gunlance_kit`、`SwitchAxe_kit`、`ChargeBlade_kit`、`InsectGlaive_kit`（含獵蟲 A／B）、`Bow_kit`、`HeavyBowgun_kit` | **其他武器的遊戲素材（第一版，2026-10-02）**：照原版量的位置和長度、盾牌是另一個外觀（副武器槽）、光膜拿掉（遊戲材質沒有半透明）。各自的 README 有比例和原版量測；`.blend` 不進 repo，用指令重建 |
 | `tests/` | Lua 離線測試（模擬 REFramework API）：`lua5.4 scout_test.lua ...`、`weapons_test.lua`；本機沒有 lua 就用 `python run_lua.py`（`pip install lupa`） |
 
 ---
@@ -176,7 +178,7 @@
 | `python inspect_wilds_mesh.py <.mesh>...` | 印出骨架、材質、每個子模型的範圍和權重（不經 Blender 匯入） |
 | `python inspect_wilds_mdf.py [--all-params] <.mdf2>...` | 印出材質的 shader、旗標、貼圖、參數 |
 | `python fit_dual_blades.py <kit> <原版 .mesh> <原版 .mdf2>` | 把雙劍光劍對齊原版（方向、握把、骨架）並用原版材質重建 `.mdf2` |
-| `python build_weapon_kit.py <great_sword\|light_bowgun> <kit> <原版 .mesh> <雙劍 .mdf2>` | **新武器的素材包一次做完**：原型 → 減面、依材質分槽 → 照原版擺放 → 原版骨架（特效骨頭移到我們的刀尖／槍口）→ `.mesh`＋`.mdf2`（材質抄雙劍 kit）。加武器就在 `WEAPONS` 加一個函式 |
+| `python build_weapon_kit.py <名稱> <kit> <原版 .mesh> <雙劍 .mdf2>`（名稱見 `WEAPONS`：14 種武器、各盾牌、獵蟲） | **新武器的素材包一次做完**：原型 → 減面、依材質分槽 → 照原版擺放 → 原版骨架（特效骨頭移到我們的刀尖／槍口）→ `.mesh`＋`.mdf2`（材質抄雙劍 kit）。加武器就在 `WEAPONS` 加一個函式 |
 | `python preview_kit.py <kit .blend> <原版 .mesh> <out.png> <front\|side\|gun> [間距]` | 素材包和原版並排的預覽（原版灰色）；圖裡有原版，**不進 repo**（放 `MiquellaTools\work\previews\`） |
 
 **共用模組**：`common.py`（場景、材質、算圖）、`motifs.py`（光環、編織管、細枝束、卷草、懸浮光點、光刃…）、`status_fx.py`（腐敗黴球、寫實腐敗蝶、冰塊）、`particle_fx.py`（用旋渦氣流描出的火絲、爆炸光絲、體積冷霧）
@@ -235,6 +237,13 @@
 7. 學 Armor VFX Manager 生成特效的寫法，做操蟲棍三顆球的特效、裝置的爆炸、重弩「米凱拉的光」光柱
 8. 角色正式版：身體＋長袍（貼身上半身、擺動下擺）、頭髮（擺動鏈）、頭冠綁頭骨
 9. 之後：Ascendance 的新動作
+
+**其他武器（第二帳號，2026-10-02）— 已裝進遊戲，等實測**
+- 換裝腳本選單：拿武器時 Weapon 槽選主武器外觀（`LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun`），**有盾的武器 SubWeapon 槽再選 `*_Shield`**。每把看：握的位置、刃口方向（揮砍的光痕那邊）、長度、盾有沒有穿過手臂、浮動光環
+- 已知限制：斬擊斧只有斧模式；充能斧盾在斧模式不會變形（整個綁 `Emblem`）；銃槍、重弩的 `Hinge` 動作不會帶動我們的模型；弓弦中段綁 `String` 骨頭（拉弓應會拉成 V 形，等實測）；狩獵笛聲波環沒放
+- **使用者要決定**：①獵蟲翅膀 A 實心金翅／B 鏤空（預覽 `MiquellaTools\work\previews\kinsect_AB.png`）；②充能斧盾的斧刃正面看像新月，要不要改
+- **第一帳號的「依武器種類選外觀」接上時**：同種類的 `_0`、`_1` 會套同一個外觀 → 有盾的武器要用主武器 `KITS` 的 `shield` 欄位給 `_1` 換盾（已經寫好欄位，程式還沒用）
+- Claude 接著：獵蟲接進換裝腳本（先用偵察腳本找獵蟲的 GameObject）；防禦時才出現的盾光膜（需要防禦狀態欄位＋半透明材質，可試原版銃槍 `it0700_0002` 的 `liquid` 材質 `BaseAlpha_Emit_FakeLiquid_RoughTransparent`）；斬擊斧劍模式、充能斧斧模式（要找模式欄位）
 
 **不需要遊戲、隨時可做**：調整任何預覽、做新的設計提案、整理文件
 

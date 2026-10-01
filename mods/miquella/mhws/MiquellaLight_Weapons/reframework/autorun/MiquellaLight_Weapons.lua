@@ -74,6 +74,113 @@ local KITS = {
                   fields = { "_RapidAmmoGauge", "_RapidFireAmmo_Gauge", "_RapidFireTimer_Gauge", "_RapidModeTimer" },
                   mode = { "_IsRapidMode", "_IsRapidShotBoost" } },
     },
+    LongSword = {
+        label = "Miquella light blade (long sword)",
+        mesh = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mesh",
+        mdf2 = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        -- The two rings in place of a tsuba hover.
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
+            { name = "MQ_Tsuba1", pos = { 0.0152, 0.0, 0.2052 } } } },
+    },
+    -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
+    -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
+    SwordShield = {
+        label = "Miquella light blade (sword & shield)",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        shield = "SwordShield_Shield",
+    },
+    SwordShield_Shield = {
+        label = "Miquella energy shield (sword & shield)",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    Hammer = {
+        label = "Miquella sun lantern (hammer)",
+        mesh = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+        floaters = { mode = "hover", joints = { { name = "MQ_BeltHalo", pos = { 0.0, 0.0, 1.3160 } } } },
+    },
+    HuntingHorn = {
+        label = "Miquella lyre of light (hunting horn)",
+        mesh = "Art/Model/MiquellaLight/HuntingHorn/wp_miquella_hh.mesh",
+        mdf2 = "Art/Model/MiquellaLight/HuntingHorn/wp_miquella_hh.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+    },
+    Lance = {
+        label = "Miquella light lance",
+        mesh = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        shield = "Lance_Shield",
+    },
+    Lance_Shield = {
+        label = "Miquella energy shield (lance)",
+        mesh = "Art/Model/MiquellaLight/Lance/wp_miquella_ln_shield.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Lance/wp_miquella_ln_shield.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    Gunlance = {
+        label = "Miquella light gunlance",
+        mesh = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_Halo0", pos = { 0.0, 0.0, 1.0140 } },
+            { name = "MQ_Halo1", pos = { 0.0, 0.0, 1.4950 } } } },
+        shield = "Gunlance_Shield",
+    },
+    Gunlance_Shield = {
+        label = "Miquella energy shield (gunlance)",
+        mesh = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl_shield.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl_shield.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    SwitchAxe = {
+        label = "Miquella trident axe (switch axe, axe mode)",
+        mesh = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwitchAxe/wp_miquella_sa.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+    },
+    ChargeBlade = {
+        label = "Miquella light blade (charge blade)",
+        mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mesh",
+        mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        shield = "ChargeBlade_Shield",
+    },
+    ChargeBlade_Shield = {
+        label = "Miquella energy shield (charge blade)",
+        mesh = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_shield.mesh",
+        mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb_shield.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+    },
+    InsectGlaive = {
+        label = "Miquella light glaive (insect glaive)",
+        mesh = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh",
+        mdf2 = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        floaters = { mode = "hover", joints = {
+            { name = "MQ_TopHalo", pos = { 0.0, 0.0, 1.2560 } },
+            { name = "MQ_BottomHalo", pos = { 0.0, 0.0, -1.2880 } } } },
+    },
+    Bow = {
+        label = "Miquella light bow",
+        mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mesh",
+        mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+    },
+    HeavyBowgun = {
+        label = "Miquella heavy bowgun",
+        mesh = "Art/Model/MiquellaLight/HeavyBowgun/wp_miquella_hbg.mesh",
+        mdf2 = "Art/Model/MiquellaLight/HeavyBowgun/wp_miquella_hbg.mdf2",
+        glow = { MiquellaGlow = 1.2, MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+    },
 }
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
 local KIT_NAMES = { "(original)" }

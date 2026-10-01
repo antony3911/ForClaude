@@ -120,7 +120,13 @@ imgui = {
   checkbox = function(l, v) return false, v end, button = function() return false end,
   text = function(t) texts[#texts + 1] = t end, text_colored = function(t) texts[#texts + 1] = "!! " .. t end,
   combo = function(label, idx, list)
-    if comboAnswer and label:match("##Weapon$") then local a = comboAnswer; comboAnswer = nil; return true, a end
+    if comboAnswer and label:match("##Weapon$") then
+      -- Answers count in the first looks' order; find them by name (more looks sort in between).
+      local a = comboAnswer; comboAnswer = nil
+      local name = ({ "(original)", "DualBlades", "GreatSword", "LightBowgun" })[a]
+      for i, k in ipairs(list) do if k == name then a = i end end
+      return true, a
+    end
     if sizeAnswer and label == "Size (dual blades)" then local a = sizeAnswer; sizeAnswer = nil; return true, a end
     return false, idx
   end,

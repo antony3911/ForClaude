@@ -653,8 +653,8 @@ def insect_glaive_extracts():
         if layout == "B":
             # Close-ups of each lit mote (the last state has all three lit).
             close = []
-            for kind, label in (("rot", "猩紅腐敗"), ("flame", "癲火"), ("frost", "冰凍")):
-                close += c.render_views(OUT, f"B_close_{kind}", motes[kind] + V(0, 0, 0.03), 0.42,
+            for kind, dist in (("rot", 0.3), ("flame", 0.42), ("frost", 0.42)):
+                close += c.render_views(OUT, f"B_close_{kind}", motes[kind] + V(0, 0, 0.025), dist,
                                         [("front", 12, 6)], lens=50)
             labelled_strip(close, ["猩紅腐敗", "癲火", "冰凍"], os.path.join(OUT, "insect_glaive_extracts_B_close.png"),
                            "方案 B 特寫：三顆光粒點亮後的樣子")

@@ -115,8 +115,8 @@ def mould_material():
     bsdf.inputs["Sheen Roughness"].default_value = 0.3
     bsdf.inputs["Sheen Tint"].default_value = c.hex_to_linear("#FFE3E0")
     bsdf.inputs["Subsurface Weight"].default_value = 0.3
-    bsdf.inputs["Emission Color"].default_value = c.hex_to_linear("#FF3048")
-    bsdf.inputs["Emission Strength"].default_value = 0.25
+    # Realistic, not glowing (user's call): the texture matters more than the light here.
+    bsdf.inputs["Emission Strength"].default_value = 0.0
     noise = nodes.new("ShaderNodeTexNoise")
     noise.inputs["Scale"].default_value = 90.0
     noise.inputs["Detail"].default_value = 10.0
@@ -147,11 +147,40 @@ def mould_material():
     return mat
 
 
+def fuzz_material():
+    """The mould's fuzz: pale pink, whitening toward the tips."""
+    mat = bpy.data.materials.new("FX_mould_fuzz")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.7
+    bsdf.inputs["Subsurface Weight"].default_value = 0.4
+    info = nodes.new("ShaderNodeHairInfo")
+    ramp = nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = c.hex_to_linear("#B8706A")
+    ramp.color_ramp.elements[1].color = c.hex_to_linear("#F2CFC8")
+    links.new(info.outputs["Intercept"], ramp.inputs["Fac"])
+    # Some strands brown and dead, in patches.
+    pick = nodes.new("ShaderNodeValToRGB")
+    pick.color_ramp.elements[0].position = 0.78
+    pick.color_ramp.elements[1].position = 0.8
+    links.new(info.outputs["Random"], pick.inputs["Fac"])
+    mix = nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.inputs["B"].default_value = c.hex_to_linear("#5A2E26")
+    links.new(pick.outputs["Color"], mix.inputs["Factor"])
+    links.new(ramp.outputs["Color"], mix.inputs["A"])
+    links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    return mat
+
+
 def mould_ball(name, center, radius, mat):
-    """A lumpy ball: one main sphere with a few smaller ones grown onto it, all roughened."""
+    """A cluster of mouldy balls (like the rot-cure moss balls), each lumpy and fuzzy."""
     center = Vector(center)
     objs = []
-    lumps = [(V(0, 0, 0), 1.0), (V(0.55, -0.2, 0.45), 0.55), (V(-0.6, -0.15, 0.3), 0.5), (V(0.1, -0.3, -0.62), 0.48)]
+    lumps = [(V(0, 0, 0), 0.68), (V(0.78, -0.1, 0.12), 0.58), (V(-0.72, -0.05, 0.22), 0.56),
+             (V(0.08, -0.3, 0.72), 0.52), (V(0.05, 0.35, -0.45), 0.5)]
+    fuzz_mat = fuzz_material()
     tex = bpy.data.textures.new(f"{name}_Lumps", "CLOUDS")
     tex.noise_scale = 0.25
     for k, (off, scale) in enumerate(lumps):
@@ -164,15 +193,17 @@ def mould_ball(name, center, radius, mat):
         disp.strength = radius * 0.18
         disp.mid_level = 0.5
         ball.data.materials.append(mat)
+        ball.data.materials.append(fuzz_mat)
         bpy.ops.object.shade_smooth()
-        # Short fuzz all over, like mould.
+        # Dense fuzz all over, like mould.
         fuzz = ball.modifiers.new("fuzz", "PARTICLE_SYSTEM").particle_system.settings
         fuzz.type = "HAIR"
-        fuzz.count = int(3000 * scale)
-        fuzz.hair_length = radius * 0.16
+        fuzz.count = int(9000 * scale)
+        fuzz.hair_length = radius * 0.22
         fuzz.root_radius = 1.0
-        fuzz.tip_radius = 0.1
-        fuzz.radius_scale = radius * 0.012
+        fuzz.tip_radius = 0.05
+        fuzz.radius_scale = radius * 0.008
+        fuzz.material = 2
         fuzz.use_rotations = True
         fuzz.rotation_factor_random = 0.6
         objs.append(ball)
@@ -183,73 +214,175 @@ BUTTERFLY_FORE = [(0.0, 0.004), (0.03, 0.03), (0.07, 0.06), (0.11, 0.08), (0.13,
                   (0.1, 0.012), (0.07, -0.004), (0.03, -0.01)]
 BUTTERFLY_HIND = [(0.0, -0.006), (0.04, -0.03), (0.08, -0.06), (0.09, -0.085), (0.07, -0.1),
                   (0.04, -0.09), (0.015, -0.05)]
-BUTTERFLY_COLOURS = {"scarlet": ("#C8102E", "#FF6A2A"), "violet": ("#5A3CC8", "#B49CFF"),
-                     "white": ("#F2EEF8", "#FFFFFF")}
+# root (near the body), middle, outer, decayed edge band, vein colour
+BUTTERFLY_COLOURS = {
+    "scarlet": ("#120203", "#4E060E", "#9E1A12", "#C9786A", "#0A0202"),
+    "violet": ("#08040E", "#241448", "#4A3C9E", "#A898CC", "#050309"),
+    "white": ("#2A2424", "#9A948E", "#D8D2CA", "#E6E0D8", "#2A2222"),
+}
 
 
-def butterfly_materials():
-    """Wings dark and see-through toward the root, glowing toward the edge (like the rot
-    butterflies around Malenia's wings), with a brighter rim line."""
-    mats = {}
-    for key, (wing, edge) in BUTTERFLY_COLOURS.items():
-        w = bpy.data.materials.new(f"Fly_{key}")
-        w.use_nodes = True
-        nodes, links = w.node_tree.nodes, w.node_tree.links
-        for nd in list(nodes):
-            nodes.remove(nd)
-        out = nodes.new("ShaderNodeOutputMaterial")
-        mix = nodes.new("ShaderNodeMixShader")
-        mix.inputs["Fac"].default_value = 0.85
-        transparent = nodes.new("ShaderNodeBsdfTransparent")
-        emission = nodes.new("ShaderNodeEmission")
-        emission.inputs["Strength"].default_value = 1.4
-        coords = nodes.new("ShaderNodeTexCoord")
-        gradient = nodes.new("ShaderNodeTexGradient")
-        gradient.gradient_type = "SPHERICAL"
-        mapping = nodes.new("ShaderNodeMapping")
-        mapping.inputs["Scale"].default_value = (60, 60, 60)      # object space: wing ~1/60 m
-        ramp = nodes.new("ShaderNodeValToRGB")
-        ramp.color_ramp.elements[0].position = 0.0
-        ramp.color_ramp.elements[0].color = c.hex_to_linear(edge)
-        ramp.color_ramp.elements[1].position = 0.7
-        ramp.color_ramp.elements[1].color = c.hex_to_linear(wing)
-        links.new(coords.outputs["Object"], mapping.inputs["Vector"])
-        links.new(mapping.outputs["Vector"], gradient.inputs["Vector"])
-        links.new(gradient.outputs["Fac"], ramp.inputs["Fac"])
-        links.new(ramp.outputs["Color"], emission.inputs["Color"])
-        links.new(transparent.outputs["BSDF"], mix.inputs[1])
-        links.new(emission.outputs["Emission"], mix.inputs[2])
-        links.new(mix.outputs["Shader"], out.inputs["Surface"])
-        e = c.make_material(f"Fly_{key}_Edge", edge, roughness=0.3, emission=edge, strength=2.5)
-        body = c.make_material(f"Fly_{key}_Body", "#2A1014", roughness=0.6, emission=wing, strength=0.3)
-        mats[key] = (w, e, body)
-    return mats
+def wing_material(key, span):
+    """Real butterfly wing, not a sheet of light: dark at the body, scarlet outward, a pale
+    decayed band at the edge, dark veins radiating from the body and cross veins, mottled
+    dusty scales, a little translucency. Object space: the body is at the origin and the
+    wings lie roughly in the XY plane; `span` is the wing length."""
+    root, mid, outer, edge, vein = BUTTERFLY_COLOURS[key]
+    mat = bpy.data.materials.new(f"Wing_{key}")
+    mat.use_nodes = True
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.8
+    bsdf.inputs["Sheen Weight"].default_value = 0.15         # a little dust on the scales
+    bsdf.inputs["Specular IOR Level"].default_value = 0.2
+    coords = nodes.new("ShaderNodeTexCoord")
+    xy = nodes.new("ShaderNodeVectorMath")
+    xy.operation = "MULTIPLY"
+    xy.inputs[1].default_value = (1 / span, 1 / span, 0)
+    links.new(coords.outputs["Object"], xy.inputs[0])
+    dist = nodes.new("ShaderNodeVectorMath")
+    dist.operation = "LENGTH"
+    links.new(xy.outputs["Vector"], dist.inputs[0])
+    # Mottling: shift the distance a little with noise so the bands are not clean.
+    noise = nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 18.0
+    noise.inputs["Detail"].default_value = 6.0
+    links.new(xy.outputs["Vector"], noise.inputs["Vector"])
+    wobble = nodes.new("ShaderNodeMath")
+    wobble.operation = "MULTIPLY_ADD"
+    wobble.inputs[1].default_value = 0.25
+    links.new(noise.outputs["Fac"], wobble.inputs[0])
+    links.new(dist.outputs["Value"], wobble.inputs[2])
+    tone = nodes.new("ShaderNodeValToRGB")
+    els = tone.color_ramp.elements
+    els[0].position, els[0].color = 0.1, c.hex_to_linear(root)
+    els[1].position, els[1].color = 1.05, c.hex_to_linear(edge)
+    e = els.new(0.45)
+    e.color = c.hex_to_linear(mid)
+    e = els.new(0.85)
+    e.color = c.hex_to_linear(outer)
+    links.new(wobble.outputs["Value"], tone.inputs["Fac"])
+    # Veins: thin dark lines radiating from the body, plus a few cross veins.
+    radial = nodes.new("ShaderNodeTexGradient")
+    radial.gradient_type = "RADIAL"
+    links.new(coords.outputs["Object"], radial.inputs["Vector"])
+    spokes = nodes.new("ShaderNodeMath")
+    spokes.operation = "MULTIPLY"
+    spokes.inputs[1].default_value = 2 * math.pi * 26
+    links.new(radial.outputs["Fac"], spokes.inputs[0])
+    wave = nodes.new("ShaderNodeMath")
+    wave.operation = "SINE"
+    links.new(spokes.outputs["Value"], wave.inputs[0])
+    rings = nodes.new("ShaderNodeMath")
+    rings.operation = "MULTIPLY"
+    rings.inputs[1].default_value = 2 * math.pi * 3.2
+    links.new(dist.outputs["Value"], rings.inputs[0])
+    wave2 = nodes.new("ShaderNodeMath")
+    wave2.operation = "SINE"
+    links.new(rings.outputs["Value"], wave2.inputs[0])
+    both = nodes.new("ShaderNodeMath")
+    both.operation = "MAXIMUM"
+    links.new(wave.outputs["Value"], both.inputs[0])
+    links.new(wave2.outputs["Value"], both.inputs[1])
+    lines = nodes.new("ShaderNodeValToRGB")
+    lines.color_ramp.elements[0].position = 0.9
+    lines.color_ramp.elements[0].color = (0, 0, 0, 1)
+    lines.color_ramp.elements[1].position = 0.985
+    lines.color_ramp.elements[1].color = (1, 1, 1, 1)
+    links.new(both.outputs["Value"], lines.inputs["Fac"])
+    mix = nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.inputs["B"].default_value = c.hex_to_linear(vein)
+    links.new(lines.outputs["Color"], mix.inputs["Factor"])
+    links.new(tone.outputs["Color"], mix.inputs["A"])
+    links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    # Only a trace of light, so they still read in the dark.
+    links.new(mix.outputs["Result"], bsdf.inputs["Emission Color"])
+    bsdf.inputs["Emission Strength"].default_value = 0.12
+    return mat
 
 
-def butterfly(name, center, size, yaw_deg, open_deg, pitch_deg, mats):
-    """A tiny butterfly; size is the wing length, open_deg how far the wings are raised
-    (0 = flat, 80 = nearly closed), yaw/pitch its heading."""
-    wing_mat, edge_mat, body_mat = mats
-    center = Vector(center)
+def body_material():
+    mat = c.make_material("Fly_Body", "#140806", roughness=0.9)
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Sheen Weight"].default_value = 0.25
+    bsdf.inputs["Specular IOR Level"].default_value = 0.2
+    return mat
+
+
+def butterfly_materials(span=0.02):
+    body = body_material()
+    return {key: (wing_material(key, span), body) for key in BUTTERFLY_COLOURS}
+
+
+def ragged(outline, rng, notches=2):
+    """Tattered wing edge: the outline wobbles and has a couple of bites taken out."""
+    pts = m.catmull([V(x, z, 0) for x, z in outline] + [V(outline[0][0], outline[0][1], 0)], 70)[:-1]
+    bites = [rng.randrange(10, len(pts) - 10) for _ in range(notches)]
+    out = []
+    for i, p in enumerate(pts):
+        f = 1.0 + 0.05 * math.sin(i * 1.7 + rng.random()) * (p.length > 0.03)
+        for b in bites:
+            d = abs(i - b)
+            if d < 4:
+                f *= 1 - 0.18 * (1 - d / 4)
+        out.append(p * f)
+    return out
+
+
+def butterfly(name, center, size, yaw_deg, open_deg, pitch_deg, mats, seed=0):
+    """A small, realistic butterfly: one object with four ragged wings around the body at
+    its origin (so the wing pattern is centred on the body), a segmented fuzzy body and two
+    thin antennae with clubbed tips. size: wing length; open_deg: how far the wings are
+    raised; yaw/pitch: heading."""
+    import bmesh
+    import random
+    rng = random.Random(seed)
+    wing_mat, body_mat = mats
     k = size / 0.13
-    yaw, pitch, lift = math.radians(yaw_deg), math.radians(pitch_deg), math.radians(open_deg)
-    rot = mathutils_matrix(yaw, pitch)
-    objs = []
+    lift = math.radians(open_deg)
+    bm = bmesh.new()
     for s in (-1, 1):
-        for wname, outline in (("Fore", BUTTERFLY_FORE), ("Hind", BUTTERFLY_HIND)):
-            loop = m.catmull([V(x, z, 0) for x, z in outline] + [V(outline[0][0], outline[0][1], 0)], 40)
-            pts = [center + rot @ V(s * p.x * k * math.cos(lift), p.x * k * math.sin(lift), p.y * k) for p in loop]
-            objs += m.flat_fill(f"{name}_{wname}_{s}", pts[:-1], wing_mat, center_origin=True)
-            objs.append(c.curve_tube(f"{name}_{wname}_Edge_{s}", pts, [1.0] * len(pts), edge_mat,
-                                     bevel=0.00035 * k, resolution=1))
-    body = [center + rot @ V(0, 0, z * k) for z in (0.03, -0.075)]
-    objs.append(c.curve_tube(f"{name}_Body", body, [1.0, 0.5], body_mat, bevel=0.0012 * k, resolution=2))
+        for outline in (BUTTERFLY_FORE, BUTTERFLY_HIND):
+            loop = ragged(outline, rng)
+            verts = [bm.verts.new(V(s * p.x * k * math.cos(lift), p.y * k, p.x * k * math.sin(lift))) for p in loop]
+            edges = [bm.edges.new((verts[i], verts[(i + 1) % len(verts)])) for i in range(len(verts))]
+            bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=edges)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = c.link(bpy.data.objects.new(name, mesh))
+    obj.data.materials.append(wing_mat)
+    obj.location = Vector(center)
+    obj.rotation_euler = (math.radians(pitch_deg), 0, math.radians(yaw_deg))
+    objs = [obj]
+    # Body: thorax and a tapering abdomen of small segments, then antennae.
+    parts = [(0.012, 0.016), (-0.004, 0.012), (-0.018, 0.0105), (-0.032, 0.009), (-0.046, 0.0075), (-0.058, 0.006)]
+    for j, (y, r) in enumerate(parts):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r * k, segments=12, ring_count=8, location=(0, y * k, 0))
+        seg = bpy.context.active_object
+        seg.name = f"{name}_Body_{j}"
+        seg.scale = (0.8, 1.3, 0.8)
+        seg.data.materials.append(body_mat)
+        seg.parent = obj
+        seg.matrix_parent_inverse.identity()
+        objs.append(seg)
+    for s in (-1, 1):
+        ant = [V(s * 0.004 * k, 0.026 * k, 0.004 * k), V(s * 0.02 * k, 0.07 * k, 0.02 * k),
+               V(s * 0.03 * k, 0.1 * k, 0.03 * k)]
+        a = c.curve_tube(f"{name}_Antenna_{s}", m.catmull(ant, 16), [1.0] * 16, body_mat, bevel=0.0012 * k,
+                         resolution=1)
+        a.parent = obj
+        a.matrix_parent_inverse.identity()
+        objs.append(a)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.0035 * k, segments=8, ring_count=6, location=ant[-1])
+        club = bpy.context.active_object
+        club.name = f"{name}_Club_{s}"
+        club.data.materials.append(body_mat)
+        club.parent = obj
+        club.matrix_parent_inverse.identity()
+        objs.append(club)
     return objs
-
-
-def mathutils_matrix(yaw, pitch):
-    from mathutils import Matrix
-    return Matrix.Rotation(yaw, 3, "Z") @ Matrix.Rotation(pitch, 3, "X")
 
 
 def rot_mote(prefix, center, radius, count=9, spread=0.075):
@@ -264,6 +397,6 @@ def rot_mote(prefix, center, radius, count=9, spread=0.075):
         a = math.radians(40 + 75 * i)
         pos = center + V(math.cos(a) * spread * (0.35 + 0.65 * t), -0.02 - 0.03 * t * math.sin(a) ** 2,
                          0.004 + 0.045 * t + 0.012 * math.sin(3 * a))
-        objs += butterfly(f"{prefix}_Fly_{i}", pos, 0.016 * (1.0 - 0.4 * t), 25 * i - 40, 15 + 50 * (i % 3) / 2,
-                          -60 + 25 * (i % 2), fly_mats[colours[i % len(colours)]])
+        objs += butterfly(f"{prefix}_Fly_{i}", pos, 0.019 * (1.0 - 0.35 * t), 25 * i - 40, 10 + 30 * (i % 3),
+                          -55 + 25 * (i % 2), fly_mats[colours[i % len(colours)]], seed=i)
     return objs

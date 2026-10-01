@@ -113,7 +113,7 @@ function chr:call(m)
       end
       if n == "_RapidAmmoGauge" then return rapidGauge end
       if n == "_IsRapidMode" then return rapidMode end
-      if n == "_IsCharge" then return bowDraw end
+      if n == "_IsBowStringConstToHand" then return bowDraw end
       if extract[n] ~= nil then return extract[n] end
       if n == "_Insect" and insectGO then return { call = function(_, m) if m == "get_GameObject" then return insectGO end end } end
     end }
@@ -505,7 +505,7 @@ local col = weaponMesh.colors["MiquellaGauge3"]
 check(col and col.z > 0.5 and col.y > 0.8, "bow: level 3 turns them white gold")
 texts = {}; onDraw()
 local sawDraw = false
-for _, t in ipairs(texts) do if t:match("^Draw: _IsCharge") then sawDraw = true end end
+for _, t in ipairs(texts) do if t:match("^Draw: _IsBowStringConstToHand") then sawDraw = true end end
 check(sawDraw, "bow: menu shows the draw field")
 bowDraw, chargeLv = false, 0
 local far = 0

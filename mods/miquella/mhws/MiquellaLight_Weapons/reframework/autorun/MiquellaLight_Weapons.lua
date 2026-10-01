@@ -297,9 +297,9 @@ local KITS = {
             { name = "MQ_Ring5", pos = { 0.0, 0.036, 1.0080 }, pack = -0.5490 } } },
         -- Charge level (bright gold -> white gold) and drawing; the ring pairs Gauge1-3 light
         -- one pair per level. Field names guessed from the game's type names, as for the great sword.
+        -- (recorded 2026-10-02: the level rests at 1; drawing = the string held by the hand)
         bow = { levels = 3, rings = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3" },
-                fields = { "_ChargeLv", "_ChargeLevel", "_ArrowLv", "_CurrentChargeLevel" },
-                draw = { "_IsCharge", "_IsChargeStart", "_IsAim", "_IsCharged" } },
+                fields = { "<ChargeLv>k__BackingField" }, draw = { "_IsBowStringConstToHand" } },
         shield = "Bow_Quiver",
     },
     -- The bow's quiver (_1), two designs to pick from in the game (2026-10-02).

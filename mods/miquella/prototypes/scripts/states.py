@@ -5,7 +5,7 @@ the look before building the in-game version (material parameters, parts shown/h
 faded with Dissolve, parts moved by bones; see mods/research/mhws_modding_notes.md).
 
 Sets:
-  great_sword_charge  normal (gold) / charge 1 (bright gold) / charge 2 (white light)
+  great_sword_charge  normal (gold) / charge 1 (bright gold) / 2 (brighter gold) / 3 (white light)
   dual_blades_demon   normal / splitting / demon mode (three blades) / archdemon (bright gold)
   hammer_charge       levels 0-3: more rings around the head, the caged sun brightens
   lance_charge        levels 0-3: a cone of large rings grows root to tip, brighter each level
@@ -130,28 +130,84 @@ def labelled_strip(paths, labels, out_path, title, cols=None):
 
 # ------------------------------------------------------------------ great sword charge
 
+def blade_band(mat, centers, width, hex_color, amount):
+    """Sweep bands of colour over a blade material's emission (its length is generated z),
+    so the flowing light reads even on a white-hot blade."""
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    for nd in [nd for nd in nodes if nd.label == "bladeband"]:
+        nodes.remove(nd)
+    ramp = ramp_node(mat)
+    links.new(ramp.outputs["Color"], bsdf.inputs["Emission Color"])
+    if not centers:
+        return
+    mix = nodes.new("ShaderNodeMix")
+    mix.label = "bladeband"
+    mix.data_type = "RGBA"
+    mix.inputs["B"].default_value = c.hex_to_linear(hex_color)
+    amt = nodes.new("ShaderNodeMath")
+    amt.label = "bladeband"
+    amt.operation = "MULTIPLY"
+    amt.inputs[1].default_value = amount
+    links.new(band_sum(nodes, links, centers, width, "bladeband"), amt.inputs[0])
+    links.new(amt.outputs["Value"], mix.inputs["Factor"])
+    links.new(ramp.outputs["Color"], mix.inputs["A"])
+    links.new(mix.outputs["Result"], bsdf.inputs["Emission Color"])
+
+
 def great_sword_charge():
+    """Three charge levels (the game's): bright gold, brighter gold, white. At the third,
+    two bands of gold light flow along the temper lines like the long sword's hamon (the
+    user asked for it, only at level 3)."""
     import arsenal
     c.reset_scene()
     mats = capture_build(arsenal.great_sword)
     m.glow_mode(mats)
+    flow = flow_material("Temper_Flow")
+    for line in [o for o in bpy.data.objects if "_Temper_" in o.name]:
+        ribbon = line.copy()
+        ribbon.data = line.data.copy()
+        ribbon.name = line.name.replace("_Temper_", "_Flow_")
+        ribbon.data.bevel_depth = line.data.bevel_depth * 2.4
+        ribbon.data.materials[0] = flow
+        ribbon.location.y += 0.0008 * (-1 if line.name.endswith("-1") else 1)
+        bpy.context.scene.collection.objects.link(ribbon)
     target, distance = (0.04, 0, 0.8), 3.2
     stage_lights(target, distance)
     stages = [
-        # label, blade core, blade edge, blade strength, light colour, light strength, core strength
-        ("一般（金）", c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2, c.PALETTE["glow"], 2.5, 3.0),
-        ("一段蓄力（亮金）", BRIGHT_BLADE[0], BRIGHT_BLADE[1], BRIGHT_BLADE[2], BRIGHT_LIGHT[0], BRIGHT_LIGHT[1],
-         BRIGHT_CORE[1]),
-        ("二段蓄力（白光）", "#FFFBF0", "#FFE7B0", 6.0, "#FFF2D6", 5.5, 7.0),
+        # label, blade (core, edge, strength), light (colour, strength), core strength, flow
+        ("一般（金）", (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2), (c.PALETTE["glow"], 2.5), 3.0, None),
+        ("一段蓄力（亮金）", BRIGHT_BLADE, BRIGHT_LIGHT, BRIGHT_CORE[1], None),
+        ("二段蓄力（更亮的金）", ("#FFC860", "#FF9A20", 24.0), ("#FFB848", 20.0), 26.0, None),
+        ("三段蓄力（白光）", ("#FFFBF0", "#FFE7B0", 4.5), ("#FFF2D6", 5.5), 7.0, ([0.25, 0.7], 0.1, "#FF9A10", 60.0)),
     ]
+
+    def apply(stage, centers=None):
+        label, blade, light, s_core, fl = stage
+        set_blade(mats["blade"], *blade)
+        set_glow(mats["light"], *light)
+        set_glow(mats["core"], blade[0], s_core)
+        if fl:
+            bands = centers if centers is not None else fl[0]
+            set_flow(flow, bands, fl[1], fl[2], fl[3])
+            blade_band(mats["blade"], bands, fl[1], fl[2], 0.85)
+        else:
+            set_flow(flow, [], 0.1, "#FFFFFF", 0.0)
+            blade_band(mats["blade"], [], 0.1, "#FFFFFF", 0.0)
+
     paths = []
-    for i, (label, core_hex, edge_hex, s_blade, light_hex, s_light, s_core) in enumerate(stages):
-        set_blade(mats["blade"], core_hex, edge_hex, s_blade)
-        set_glow(mats["light"], light_hex, s_light)
-        set_glow(mats["core"], core_hex, s_core)
+    for i, stage in enumerate(stages):
+        apply(stage)
         paths += c.render_views(OUT, f"stage{i}", target, distance, [("front", 0, 4)], lens=50)
-    labelled_strip(paths, [s[0] for s in stages], os.path.join(OUT, "great_sword_charge.png"),
-                   "大劍蓄力：光刃從金 → 亮金 → 白光")
+    labelled_strip(paths, [st[0] for st in stages], os.path.join(OUT, "great_sword_charge.png"),
+                   "大劍蓄力三段：亮金 → 更亮的金 → 白光，三段時刃紋上有光流過")
+    top = stages[3]
+    paths = []
+    for i, shift in enumerate((0.0, 0.17, 0.34)):
+        apply(top, [b + shift for b in top[4][0]])
+        paths += c.render_views(OUT, f"flow{i}", (0.06, 0, 1.0), 1.9, [("front", 0, 4)], lens=50)
+    labelled_strip(paths, ["流光 1", "流光 2", "流光 3"], os.path.join(OUT, "great_sword_flow.png"),
+                   "大劍三段（白光）：刃紋上的光從刀根往刀尖流")
 
 
 # ------------------------------------------------------------------ dual blades demon mode

@@ -76,7 +76,9 @@ sdk = {
   end,
 }
 local onFrame, onDraw
-re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
+local preRender
+re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end,
+       on_pre_application_entry = function(name, f) if name == "BeginRendering" then preRender = f end end }
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
 local comboAnswer = nil
 local sliderAnswer = {}
@@ -101,7 +103,14 @@ if arg[2] == "missing" then
   failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh"] = true
 end
 dofile(arg[1])
-local function frames(n, dt) for _ = 1, n do fakeTime = fakeTime + (dt or 0); onFrame() end end
+local function frames(n, dt)
+  for _ = 1, n do
+    fakeTime = fakeTime + (dt or 0)
+    onFrame()
+    weaponGO.scale = 1.0          -- the game resets the weapon transform every frame
+    if preRender then preRender() end
+  end
+end
 local function check(cond, msg) print((cond and "PASS " or "FAIL ") .. msg); if not cond then os.exit(1) end end
 
 if arg[2] == "missing" then
@@ -140,7 +149,7 @@ sliderAnswer.Glow = 2.0; sliderAnswer.Size = 1.3; onDraw()
 frames(20)
 check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6 and math.abs(weaponMesh.floats["MiquellaGlow.1"] - 2.4) < 1e-6, "glow slider scales blade and droplet")
 check(weaponMesh.floats["MiquellaIvory.1"] == nil, "ivory not made to glow")
-check(math.abs(weaponGO.scale - 1.3) < 1e-6, "size slider scales the weapon")
+check(math.abs(weaponGO.scale - 1.3) < 1e-6, "size slider scales the weapon, every frame before rendering")
 check(math.abs(subGO.scale - 1.0) < 1e-6, "unassigned sub weapon keeps its size")
 -- Demon mode: side blades hidden, then split out in stages, then merge back.
 local function visible(name) return weaponMesh.matEnabled[name] == true end

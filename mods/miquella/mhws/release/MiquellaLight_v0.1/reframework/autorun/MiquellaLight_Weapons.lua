@@ -164,13 +164,12 @@ local function set_scale(go, s)
     if t then try(function() t:set_LocalScale(Vector3f.new(s, s, s)) end) end
 end
 
--- Apply the Glow and Size sliders to a swapped weapon.
+-- Apply the Glow slider to a swapped weapon.
 local function apply_tuning(entry, mesh)
     entry.glowSlots = entry.glowSlots or glow_slots(mesh, entry.kit)
     for _, s in ipairs(entry.glowSlots) do
         try(function() mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
     end
-    set_scale(entry.go, config.scale)
 end
 
 local function swap_in(go, mesh, original, kit)
@@ -302,6 +301,21 @@ local function update_states(chr)
     end
 end
 
+-- Size: the game resets the weapon's transform every frame, so a scale set now and then
+-- flickers between our size and the original (first test: the blade "kept stretching").
+-- Re-apply it every frame just before rendering, after the game's own update; leave the
+-- transform alone while the slider is at 1.
+local scaleApplied = 1.0
+local function apply_scale()
+    local s = config.enabled and config.scale or 1.0
+    if s == 1.0 and scaleApplied == 1.0 then return end
+    for _, entry in pairs(swapped) do set_scale(entry.go, s) end
+    scaleApplied = s
+end
+if not pcall(function() re.on_pre_application_entry("BeginRendering", apply_scale) end) then
+    re.on_frame(apply_scale)
+end
+
 re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
@@ -332,7 +346,7 @@ re.on_draw_ui(function()
     changed = c
     c, config.hideSheathed = imgui.checkbox("Hide while sheathed", config.hideSheathed)
     changed = changed or c
-    c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0, "%.2f")
+    c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 10.0, "%.2f")
     changed = changed or c
     c, config.scale = imgui.slider_float("Size", config.scale, 0.5, 2.0, "%.2f")
     changed = changed or c

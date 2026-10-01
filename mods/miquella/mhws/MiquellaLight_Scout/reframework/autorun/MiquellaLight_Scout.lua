@@ -174,37 +174,45 @@ local function find_handling()
     return nil
 end
 
--- Every instance field (including inherited ones) whose value is a number or true/false.
-local function watchable_fields(obj)
-    local list = {}
+-- Every instance field (including inherited ones) whose value is a number or true/false,
+-- plus the same one level down inside object fields (a gauge or timer often lives in its
+-- own small object). `catalog` collects every field's name and type for the report.
+local function watchable_fields(obj, prefix, depth, list, catalog)
+    list, catalog = list or {}, catalog or {}
     local td = try(function() return obj:get_type_definition() end)
     while td and #list < MAX_FIELDS do
         for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
             if #list >= MAX_FIELDS then break end
             if not try(function() return f:is_static() end) then
+                local name = prefix .. f:get_name()
+                local ftype = try(function() return f:get_type():get_full_name() end) or "?"
+                catalog[#catalog + 1] = name .. " : " .. ftype
                 local v = try(function() return f:get_data(obj) end)
                 if type(v) == "number" or type(v) == "boolean" then
-                    list[#list + 1] = { field = f, name = f:get_name(), last = v, changes = 0, min = v, max = v }
+                    list[#list + 1] = { field = f, owner = obj, name = name, last = v, changes = 0, min = v, max = v }
+                elseif depth > 0 and type(v) == "userdata" and not ftype:match("^System%.") then
+                    watchable_fields(v, name .. ".", depth - 1, list, catalog)
                 end
             end
         end
         td = try(function() return td:get_parent_type() end)
     end
-    return list
+    return list, catalog
 end
 
 local function start_watch()
     local h, method = find_handling()
     if not h then return "Weapon handling object not found (tried " .. table.concat(HANDLING_METHODS, ", ") .. ")." end
     local typeName = try(function() return h:get_type_definition():get_full_name() end) or "?"
-    watch = { target = h, method = method, type = typeName, fields = watchable_fields(h), log = {}, t0 = os.clock() }
+    local fields, catalog = watchable_fields(h, "", 1)
+    watch = { target = h, method = method, type = typeName, fields = fields, catalog = catalog, log = {}, t0 = os.clock() }
     return "Watching " .. typeName .. " (" .. #watch.fields .. " fields). Do the action now."
 end
 
 local function update_watch()
     if not watch then return end
     for _, w in ipairs(watch.fields) do
-        local v = try(function() return w.field:get_data(watch.target) end)
+        local v = try(function() return w.field:get_data(w.owner) end)
         if v ~= nil and v ~= w.last then
             w.changes = w.changes + 1
             if type(v) == "number" then
@@ -228,7 +236,8 @@ local function watch_report()
         end
     end
     table.sort(changed, function(a, b) return a.name < b.name end)
-    return { type = watch.type, method = watch.method, fields = #watch.fields, changed = changed, log = watch.log }
+    return { type = watch.type, method = watch.method, fields = #watch.fields, changed = changed, log = watch.log,
+             catalog = watch.catalog }
 end
 
 re.on_frame(update_watch)

@@ -23,12 +23,15 @@ local CHECK_EVERY = 20       -- frames between checks
 
 -- Our models. Paths are relative to natives/STM/ without the numeric extension.
 -- glow: materials whose Emissive_Intensity the Glow slider scales, with their mdf2 value.
+-- demon: demon-mode side-blade materials and their stage (hidden outside demon mode).
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
         mesh = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh",
         mdf2 = "Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2,
+                 MiquellaDemon1 = 1.2, MiquellaDemon2 = 1.2, MiquellaDemon3 = 1.2 },
+        demon = { MiquellaDemon1 = 1, MiquellaDemon2 = 2, MiquellaDemon3 = 3 },
     },
 }
 local KIT_NAMES = { "(original)" }
@@ -234,10 +237,76 @@ local function update_slot(name, weapon)
     end
 end
 
+-- ------------------------------------------------------------------ weapon states
+
+-- Demon mode (dual blades): the game's own 0 -> 1 value, read from the weapon handling
+-- object (found with the scout script's Watch: app.cHunterWp02Handling._KijinExtern).
+local function demon_target(chr)
+    local h = try(function() return chr:call("get_WeaponHandling") end)
+    if not h then return 0 end
+    local v = try(function() return h:get_field("_KijinExtern") end)
+    return type(v) == "number" and math.max(0, math.min(1, v)) or 0
+end
+
+local function ramp(p, a, b) return math.max(0, math.min(1, (p - a) / (b - a))) end
+-- Side-blade stages cross-fade as the split progresses (0 = one blade, 1 = three blades):
+-- short and narrow first, then longer and wider, so the blades seem to slide outward.
+local function stage_alpha(stage, p)
+    if stage == 1 then return math.min(ramp(p, 0.0, 0.3), 1 - ramp(p, 0.3, 0.6)) end
+    if stage == 2 then return math.min(ramp(p, 0.3, 0.6), 1 - ramp(p, 0.6, 0.9)) end
+    return ramp(p, 0.6, 1.0)
+end
+
+local demonProgress, lastClock = 0, os.clock()
+local DEMON_IN, DEMON_OUT = 0.35, 0.2      -- seconds for the split / the merge
+
+local function state_slots(mesh, kit)
+    local slots = {}
+    local n = try(function() return mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do
+        local stage = kit.demon and kit.demon[try(function() return mesh:getMaterialName(i) end) or ""]
+        if stage then
+            local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+            local dissolve
+            for j = 0, vars - 1 do
+                if try(function() return mesh:getMaterialVariableName(i, j) end) == "Dissolve" then dissolve = j end
+            end
+            slots[#slots + 1] = { mat = i, stage = stage, dissolve = dissolve }
+        end
+    end
+    return slots
+end
+
+local function update_states(chr)
+    local now = os.clock()
+    local dt = math.min(now - lastClock, 0.1)
+    lastClock = now
+    local target = demon_target(chr)
+    local rate = dt / (target > demonProgress and DEMON_IN or DEMON_OUT)
+    demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
+    for _, entry in pairs(swapped) do
+        if entry.kit.demon then
+            local mesh = component(entry.go, MESH)
+            if mesh then
+                entry.stateSlots = entry.stateSlots or state_slots(mesh, entry.kit)
+                for _, s in ipairs(entry.stateSlots) do
+                    local a = stage_alpha(s.stage, demonProgress)
+                    if a ~= s.last then
+                        try(function() mesh:setMaterialsEnable(s.mat, a > 0.001) end)
+                        if s.dissolve then try(function() mesh:setMaterialFloat(s.mat, s.dissolve, a) end) end
+                        s.last = a
+                    end
+                end
+            end
+        end
+    end
+end
+
 re.on_frame(function()
     frame = frame + 1
     local chr = player_character()
     if not chr then return end
+    if config.enabled then update_states(chr) end
     -- Visibility follows draw/sheathe immediately; model checks run less often.
     if frame % CHECK_EVERY ~= 0 then
         if config.enabled and config.hideSheathed then

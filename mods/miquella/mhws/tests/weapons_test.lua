@@ -10,15 +10,18 @@ local function newMesh(meshPath)
   function m:set_Enabled(v) self.enabled = v end
   m.floats = {}
   local function mats(self)
-    if self.mdfPath:match("wp_miquella_db") then return { "MiquellaBlade", "MiquellaIvory", "MiquellaGrip", "MiquellaGlow" } end
+    if self.mdfPath:match("wp_miquella_db") then
+      return { "MiquellaBlade", "MiquellaIvory", "MiquellaGrip", "MiquellaGlow", "MiquellaDemon1", "MiquellaDemon2", "MiquellaDemon3" }
+    end
     return { "lambert" }
   end
   function m:get_MaterialNum() return #mats(self) end
   function m:getMaterialName(i) return mats(self)[i + 1] end
-  function m:getMaterialVariableNum(i) return 2 end
-  function m:getMaterialVariableName(i, j) return ({ "Emissive_Color", "Emissive_Intensity" })[j + 1] end
+  function m:getMaterialVariableNum(i) return 3 end
+  function m:getMaterialVariableName(i, j) return ({ "Emissive_Color", "Emissive_Intensity", "Dissolve" })[j + 1] end
   function m:setMaterialFloat(i, j, v) self.floats[mats(self)[i + 1] .. "." .. j] = v end
-  function m:setMaterialsEnable(i, v) end
+  m.matEnabled = {}
+  function m:setMaterialsEnable(i, v) self.matEnabled[mats(self)[i + 1]] = v end
   return m
 end
 local function newChain(path)
@@ -44,6 +47,14 @@ local weaponGO = newGO("Wp02_R", 1001, weaponMesh, weaponChain)
 local subMesh = newMesh("Art/Model/Item/it02/00/0002/it0200_0002_0.mesh")
 local subGO = newGO("Wp02_L", 1002, subMesh, nil)
 local chr = {}
+local kijin = 0
+function chr:call(m)
+  if m == "get_WeaponHandling" then
+    return { get_field = function(_, n) if n == "_KijinExtern" then return kijin end end }
+  end
+end
+local fakeTime = 0
+os.clock = function() return fakeTime end
 function chr:get_Weapon() return { get_GameObject = function() return weaponGO end } end
 function chr:get_SubWeapon() return { get_GameObject = function() return subGO end } end
 local master = { get_Valid = function() return true end, get_Character = function() return chr end }
@@ -90,7 +101,7 @@ if arg[2] == "missing" then
   failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db.mesh"] = true
 end
 dofile(arg[1])
-local function frames(n) for _ = 1, n do onFrame() end end
+local function frames(n, dt) for _ = 1, n do fakeTime = fakeTime + (dt or 0); onFrame() end end
 local function check(cond, msg) print((cond and "PASS " or "FAIL ") .. msg); if not cond then os.exit(1) end end
 
 if arg[2] == "missing" then
@@ -131,6 +142,25 @@ check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 2.4) < 1e-6 and math.abs(w
 check(weaponMesh.floats["MiquellaIvory.1"] == nil, "ivory not made to glow")
 check(math.abs(weaponGO.scale - 1.3) < 1e-6, "size slider scales the weapon")
 check(math.abs(subGO.scale - 1.0) < 1e-6, "unassigned sub weapon keeps its size")
+-- Demon mode: side blades hidden, then split out in stages, then merge back.
+local function visible(name) return weaponMesh.matEnabled[name] == true end
+local function dissolve(name) return weaponMesh.floats[name .. ".2"] or 0 end
+check(not visible("MiquellaDemon1") and not visible("MiquellaDemon2") and not visible("MiquellaDemon3"),
+      "side blades hidden outside demon mode")
+check(visible("MiquellaBlade"), "main blade visible")
+kijin = 1
+frames(3, 0.05)          -- 0.15 s of 0.35 s: about 43 %
+check(visible("MiquellaDemon1") and visible("MiquellaDemon2") and not visible("MiquellaDemon3"),
+      "early in the split: short and middle stages showing")
+check(dissolve("MiquellaDemon1") > 0 and dissolve("MiquellaDemon1") < 1, "stage 1 partly faded")
+frames(6, 0.05)
+check(not visible("MiquellaDemon1") and not visible("MiquellaDemon2") and visible("MiquellaDemon3")
+      and dissolve("MiquellaDemon3") == 1, "demon mode: only the final three-blade pose, fully shown")
+check(math.abs(weaponMesh.floats["MiquellaDemon3.1"] - 2.4) < 1e-6, "glow slider also brightens the side blades")
+kijin = 0
+frames(6, 0.05)
+check(not visible("MiquellaDemon1") and not visible("MiquellaDemon2") and not visible("MiquellaDemon3"),
+      "side blades gone after demon mode ends")
 -- Game reloads its own model (e.g. after a loading screen): we swap again.
 weaponMesh.meshPath = "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh"
 frames(20)

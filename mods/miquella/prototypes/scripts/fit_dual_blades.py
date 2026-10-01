@@ -23,7 +23,7 @@ import sys
 import bpy
 from mathutils import Matrix
 
-KIT, ORIG_MESH, ORIG_MDF = (os.path.abspath(a) for a in sys.argv[1:4])
+KIT = ORIG_MESH = ORIG_MDF = None        # set from the command line in main()
 NAME = "wp_miquella_db"
 REL_DIR = "Art/Model/MiquellaLight/DualBlades"
 MESH_EXT, MDF_EXT = ".241111606", ".45"
@@ -129,6 +129,8 @@ def rebuild_mdf(natives):
 
 
 def main():
+    global KIT, ORIG_MESH, ORIG_MDF
+    KIT, ORIG_MESH, ORIG_MDF = (os.path.abspath(a) for a in sys.argv[1:4])
     import addon_utils
     sys.path.append(bpy.utils.user_resource("SCRIPTS", path="addons"))
     addon_utils.modules_refresh()

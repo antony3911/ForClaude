@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-01 晚上（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
+最後更新：2026-10-01 深夜（**本機 session**，在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -66,8 +66,8 @@
 | 雙劍 | v4：葉形光刃、編織柄、護手兩側三叉；**已做成遊戲素材包＋可安裝的測試版** | `prototypes/dual_blades/`、`mhws/` |
 | 片手劍 | 光劍＋樹狀紋章能量盾 | `prototypes/sword_shield/` |
 | 太刀 | 彎刃＋刃紋、懸浮光環當刀鐔、編織刀柄 | `prototypes/long_sword/` |
-| 重弩、輕弩 | 光環隧道、懸浮光環；**槍管上方、靠前的三顆懸浮光點**（使用者很喜歡輕弩） | `prototypes/heavy_bowgun/`、`light_bowgun/` |
-| 大劍 | **不對稱單刃、光刃懸浮**不碰柄、S 形刃口、卷草托架 | `prototypes/great_sword/` |
+| 重弩、輕弩 | 光環隧道、懸浮光環；**槍管上方、靠前的三顆懸浮光點**（使用者很喜歡輕弩）；**輕弩已做成遊戲素材包、裝進遊戲，等實測** | `prototypes/heavy_bowgun/`、`light_bowgun/`、`mhws/MiquellaLight_LightBowgun_kit/` |
+| 大劍 | **不對稱單刃、光刃懸浮**不碰柄、S 形刃口、卷草托架；**已做成遊戲素材包、裝進遊戲，等實測** | `prototypes/great_sword/`、`mhws/MiquellaLight_GreatSword_kit/` |
 | 大錘 | 細枝燈籠包光球，比純鏤空多一點遮擋，金色花絲卷草 | `prototypes/hammer/` |
 | 狩獵笛 | 光的豎琴，手臂末端是卷草 | `prototypes/hunting_horn/` |
 | 長槍、銃槍 | 鏤空雙螺旋槍身、花瓣護手、輕量能量盾；銃槍有象牙彈簧 | `prototypes/lance/`、`gunlance/` |
@@ -120,6 +120,7 @@
 - `dinput8.dll` = REFramework nightly-01424（2026-09-16）。**現在改成所有 RE 遊戲共用一個 `REFramework.zip`**，不再有 `MHWILDS.zip`；只放 dinput8.dll（不用 VR 就別放其他檔）
 - `reframework/autorun/`：`MiquellaLight_Scout.lua`、`MiquellaLight_Weapons.lua`
 - `pak_mods/MiquellaLight_DualBlades.pak`：REFramework 的「PAK Directory Loading」預設就開著，不用 Fluffy
+- `pak_mods/MiquellaLight_GreatSword.pak`、`MiquellaLight_LightBowgun.pak`（23:34 放進去，遊戲當時開著 → **下次開遊戲才載入**；各自帶一份雙劍的貼圖）
 - 全部移除：刪掉 `dinput8.dll`、`reframework/`、`pak_mods/`
 
 | 東西 | 內容 |
@@ -131,6 +132,7 @@
 | `MiquellaLight_Scout` | 偵察腳本（只讀）：列武器／防具／子物件的模型、材質、**材質參數名稱**、骨頭；**「Watch weapon state」記錄做動作時武器處理器裡變動的欄位**；存成 `scout.json`、`watch.json` |
 | `MiquellaLight_HideSheathed` | 舊的收刀隱藏腳本，已被換裝腳本取代，留作備案 |
 | `MiquellaLight_DualBlades_kit` | 雙劍遊戲素材（`.mesh`、`.mdf2`、`.tex`、貼圖原檔） |
+| `MiquellaLight_GreatSword_kit`、`MiquellaLight_LightBowgun_kit` | 大劍、輕弩遊戲素材（`.mesh`、`.mdf2`；貼圖用雙劍的）。對齊原版的量測和重做指令在各自的 README |
 | `tests/` | Lua 離線測試（模擬 REFramework API）：`lua5.4 scout_test.lua ...`、`weapons_test.lua`；本機沒有 lua 就用 `python run_lua.py`（`pip install lupa`） |
 
 ---
@@ -174,6 +176,8 @@
 | `python inspect_wilds_mesh.py <.mesh>...` | 印出骨架、材質、每個子模型的範圍和權重（不經 Blender 匯入） |
 | `python inspect_wilds_mdf.py [--all-params] <.mdf2>...` | 印出材質的 shader、旗標、貼圖、參數 |
 | `python fit_dual_blades.py <kit> <原版 .mesh> <原版 .mdf2>` | 把雙劍光劍對齊原版（方向、握把、骨架）並用原版材質重建 `.mdf2` |
+| `python build_weapon_kit.py <great_sword\|light_bowgun> <kit> <原版 .mesh> <雙劍 .mdf2>` | **新武器的素材包一次做完**：原型 → 減面、依材質分槽 → 照原版擺放 → 原版骨架（特效骨頭移到我們的刀尖／槍口）→ `.mesh`＋`.mdf2`（材質抄雙劍 kit）。加武器就在 `WEAPONS` 加一個函式 |
+| `python preview_kit.py <kit .blend> <原版 .mesh> <out.png> <front\|side\|gun> [間距]` | 素材包和原版並排的預覽（原版灰色）；圖裡有原版，**不進 repo**（放 `MiquellaTools\work\previews\`） |
 
 **共用模組**：`common.py`（場景、材質、算圖）、`motifs.py`（光環、編織管、細枝束、卷草、懸浮光點、光刃…）、`status_fx.py`（腐敗黴球、寫實腐敗蝶、冰塊）、`particle_fx.py`（用旋渦氣流描出的火絲、爆炸光絲、體積冷霧）
 
@@ -190,7 +194,9 @@
 - **特效**：`.efx` 沒有公開編輯器，只能改顏色。可行的路是 **Armor VFX Manager（Nexus 4908）** 那種做法：執行時生成遊戲現成的特效、掛到任一骨頭、改顏色、依動作觸發；VFX Unleashed（Nexus 4842）可減弱原版蓄力強光、依蓄力段數換特效
 - **武器模型的規格（實測＋解出原版確認）**：刀身朝檔案 **+Z**、**手握在原點**（雙劍刀柄約 -0.04～+0.13，柄頭到 -0.10～-0.15）；骨架 `root` → `Base` → `VFX_Attack`（刀尖，例 z=1.285），全部頂點綁 `Base`；原版雙劍長 1.2～1.6 m（我們的光劍 0.81 m）。遊戲裡的路徑長這樣：`Art/Model/Item/it02/00/0024/it0200_0024_0.mesh`
 - **材質一定要從遊戲現在的原版 `.mdf2` 複製**：RE Mesh Editor 0.66 的 Wilds 預設是舊版（176 參數），現在 180 個；排列不對，發光等數值會全部讀錯（第一版光劍變黑的原因）
-- 武器檔案：雙劍 `it02`（`_0` 左手、`_1` 右手）、太刀 `it03`、片手劍 `it01`（`_1` 是盾）、重弩 `it12`、輕弩 `it13`；其他武器的編號照 MDF-XL 資料庫的 WPType 推測，要用偵察腳本確認
+- **大劍**（`it00`）：手在原點、就在護手正下方，握柄往下到 -0.8 m，刀尖約 2.2 m；**單刃武器刃口朝 -X**（單刃原版和太刀的弧度都這樣）。**輕弩**（`it13`）：槍口 +Z、**+Y 朝上**（掛繩、物理鏈往 -Y 垂），原點在機匣頂端，槍膛在下方約 0.19 m（`VFX_Fire`）；原版的 visconGroup 3／4／5 是槍托、長槍管、附件，我們只做 group 0
+- 重設場景（`read_factory_settings`）會關掉 RE Mesh Editor 外掛，之後再匯入會無聲當掉 → 建完模型後再啟用外掛（`build_weapon_kit.py` 的 `enable_addon`）
+- 武器檔案：雙劍 `it02`（`_0` 左手、`_1` 右手）、大劍 `it00`、太刀 `it03`、片手劍 `it01`（`_1` 是盾）、重弩 `it12`、輕弩 `it13`；其他武器的編號照 MDF-XL 資料庫的 WPType 推測，要用偵察腳本確認
 - 資料片《荒野：Ascendance》預定 2027，會給每種武器加 Boost Bracer 新動作，出了再補
 - 雲端環境連不上 Nexus 和 Fluffy 官網；GitHub 可以
 
@@ -213,7 +219,10 @@
 2. ~~雙劍鬼人化的 Watch~~ → 完成（見第 4 節）。**還要**：真鬼人化再錄一次 Watch（鬼人化中攻擊把量表集滿、解除後進真鬼人化），新的 `watch.json` 有 `catalog`（全部欄位名稱和型別）可以找；之後大劍、大錘、長槍、銃槍也各錄一次；各武器掃一次存 `scout.json`（都在遊戲資料夾的 `reframework/data/MiquellaLight/`，**Claude 在本機可以直接讀**）
 3. ~~大小~~（做完了，見第 4 節）。舊紀錄：位置、金光已驗證 OK。執行中縮放武器（`set_LocalScale`）在 Wilds 行不通：每 20 幀設一次會在兩個大小之間閃（使用者說「瘋狂伸縮」），改在 BeginRendering 前設則完全沒效果。改成**預先做好的大小模型**：`make_size_variants.py` 已產生 `wp_miquella_db_s12/s14/s16.mesh`（握把不變，握把以上放大，刀身長度 ×k、寬度 ×√k），換裝腳本的 repo 版已改成 Size 下拉選單（1.0／1.2／1.4／1.6，預設 1.4，使用者想要 1.4）。**還沒做**：更新 `weapons_test.lua`（拿掉 scale 測試、加 Size 選單測試）並跑過；重新打包 pak（含三個大小）；裝進遊戲（遊戲開著時 pak 被鎖，要用背景等待關遊戲再複製）；遊戲資料夾裡現在還是舊的 BeginRendering 版腳本。使用者把 Glow 拉到 5（上限已改 10）
 4. ~~特效顏色~~ → **完成**：`MiquellaLight_Effects` 軌跡、身上特效都是金色，攻擊／防禦上升閃光已藏（見 `mhws/MiquellaLight_Effects/README.md` 版本紀錄）。競技場實測：**1.72 ms/幀**（拿雙劍時每幀搜尋全部特效）、173 when found、**0 later**（找到時換一次就夠，遊戲不會再改回紅）、0 at spawn（產生時的掛鉤沒作用）。**使用者決定先維持現狀**（沒感覺卡頓）。之後要優化：掛鉤 `EffectPlayer.set_Resource` 抓新軌跡，抓得到就把全場搜尋降回每秒 4 次；或收刀時不每幀搜尋；拿掉對舊軌跡的每幀檢查。只有拿雙劍才每幀搜尋，其他武器每秒 4 次（約 0.1 ms/幀）。還沒驗證：藍鬼人（完美閃避）的銀色、Size 1.4、B 版三刃。Glow 使用者拉到 5（之後寫回 `.mdf2` 預設值）
-5. **下一步：大劍和輕弩**（使用者選的）。使用者**不熟這兩把**，不一定能完整試玩：測試步驟要簡單、寫清楚按哪個鍵（先查好 Wilds 的操作），建議在**訓練場**做（不用打魔物；大劍蓄力、輕弩射擊都能對木樁做）。先做換模型（只要裝備、拔刀就能驗證），蓄力／速射量表的 Watch 一次錄一個動作。每把的流程照雙劍：①偵察腳本 Scan＋Watch 錄那把武器（找模型路徑、骨頭、狀態欄位）；②`extract_game_files.py` 解出原版模型對齊（`fit_dual_blades.py` 是範例）；③做遊戲素材、打 pak、換裝腳本加 kit；④狀態效果（蓄力等）用 Watch 找欄位；⑤特效顏色用 `MiquellaLight_FxProbe` 錄、`MiquellaLight_Effects` 加規則。**新的特效規則只在拿那把武器時才每幀搜尋**（使用者擔心其他武器也一起卡）
+5. **大劍和輕弩：換模型做完、已裝進遊戲，等使用者實測**（2026-10-01 深夜）。`build_weapon_kit.py` 做素材包（量測和理由見兩個 kit 的 README），換裝腳本加了 `GreatSword`、`LightBowgun`（Size 選單改名「Size (dual blades)」，只管雙劍），`weapons_test.lua` 加了大劍案例，全過。
+   **使用者的測試步驟**（他不熟這兩把，在訓練場做，不用打魔物）：①重開遊戲，到訓練場（風原之地基地營地北邊、掛紅布的木架；地圖可快速移動）；②裝大劍、拔刀，按 Insert → `MiquellaLight: Light Weapons` → `Look` 選 `GreatSword`；③看：右手在護手正下方、左手在握柄上（不是浮著）；揮砍時 S 形刃口（有光痕那邊）朝前；收刀消失；④換輕弩，`Look` 選 `LightBowgun`；瞄準、開槍：握把在手裡、槍口朝前、火光從最前面的光環出來。畫面右下有按鍵提示
+   **刃口反了**：`build_weapon_kit.py` 的 `great_sword()` 拿掉 `Matrix.Rotation(math.pi, ...)` 重做；**握的位置不對**：調 `hand`（大劍）或 `bore_y`／`back`（輕弩），重打 pak（遊戲關著才能覆蓋 pak）。
+   之後照雙劍流程：④狀態效果（大劍三段蓄力 → `MiquellaTemper` 光流、輕弩速射 → `MiquellaGauge1～3`）用 Watch 一次錄一個動作；⑤特效顏色 FxProbe → Effects 規則，**新的特效規則只在拿那把武器時才每幀搜尋**（使用者擔心其他武器也一起卡）
 4. 裝 Armor VFX Manager，翻遊戲特效挑出最像癲火、寒氣、腐敗蝶、爆炸、光柱的；把它的 Lua 腳本給 Claude 研究
 
 **Claude 接著做（拿到上面的檔案之後）**

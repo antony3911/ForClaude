@@ -13,6 +13,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_db") then
       return { "MiquellaBlade", "MiquellaIvory", "MiquellaGrip", "MiquellaGlow", "MiquellaDemon1", "MiquellaDemon2", "MiquellaDemon3" }
     end
+    if self.mdfPath:match("wp_miquella_gs") then
+      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     return { "lambert" }
   end
   function m:get_MaterialNum() return #mats(self) end
@@ -86,7 +89,7 @@ imgui = {
   text = function(t) texts[#texts + 1] = t end, text_colored = function(t) texts[#texts + 1] = "!! " .. t end,
   combo = function(label, idx, list)
     if comboAnswer and label:match("##Weapon$") then local a = comboAnswer; comboAnswer = nil; return true, a end
-    if sizeAnswer and label == "Size" then local a = sizeAnswer; sizeAnswer = nil; return true, a end
+    if sizeAnswer and label == "Size (dual blades)" then local a = sizeAnswer; sizeAnswer = nil; return true, a end
     return false, idx
   end,
   slider_float = function(label, v)
@@ -230,4 +233,27 @@ frames(10, 0.05)
 comboAnswer = 1; onDraw()
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/Item/it02/00/0002/it0200_0002_1.mesh", "older config: the right-hand model guessed and restored")
+-- Another weapon type: a great sword (one model, no sub weapon, no demon mode).
+weaponMesh = newMesh("Art/Model/Item/it00/00/0000/it0000_0000_0.mesh")
+weaponChain = newChain("Art/Model/Item/it00/00/0000/it0000_0000_0.chain2")
+weaponGO = newGO("Wp00", 2001, weaponMesh, weaponChain)
+subGO = nil
+frames(20)
+texts = {}; onDraw()
+check(texts[2] and texts[2]:match("it0000_0000_0%.mesh"), "great sword: menu shows its model path")
+comboAnswer = 3; onDraw()
+check(savedCfg.assign["Art/Model/Item/it00/00/0000/it0000_0000_0.mesh"] == "GreatSword", "great sword: assignment saved")
+frames(20)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh", "great sword: model swapped (no size variants)")
+check(weaponMesh.mdfPath == "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2", "great sword: material swapped")
+check(math.abs((weaponMesh.floats["MiquellaTemper.1"] or 0) - 1.2 * savedCfg.glow) < 1e-6, "great sword: Glow slider reaches the temper line")
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
+frames(1)
+check(weaponGO.draw == false, "great sword: hidden while sheathed")
+hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
+frames(1)
+check(weaponGO.draw == true, "great sword: shown when drawn")
+comboAnswer = 1; onDraw()
+frames(20)
+check(weaponMesh.meshPath == "Art/Model/Item/it00/00/0000/it0000_0000_0.mesh", "great sword: original restored")
 print("ALL PASS")

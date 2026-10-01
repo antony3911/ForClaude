@@ -73,7 +73,7 @@ def blade_dressing(prefix, spine, edge, thick, mats, trail=(0.28, 0.84), temper_
     return objs
 
 
-def great_sword():
+def great_sword(gt=0.36, render=True):
     """Asymmetric single-edged great sword whose blade of light floats above the hilt.
 
     The blade is a sculpted wedge (thick spine, sharp edge) with a sinuous edge: narrow
@@ -81,10 +81,12 @@ def great_sword():
     all on a gently curving spine. It hovers a hand's width above the guard, held in a
     levitation ring and cradled, without contact, by three ivory prongs that grow from the
     grip. A thin temper line runs along both faces and a faint afterimage of light trails the
-    edge. The guard is one-sided: scrollwork on the back, a tilted halo around the blade."""
+    edge. The guard is one-sided: scrollwork on the back, a tilted halo around the blade.
+
+    gt is the grip length (the game kit uses a longer one, for two hands); render=False
+    returns (objects, materials, blade tip) instead of rendering."""
     mats = m.materials()
     rng = random.Random(31)
-    gt = 0.36
     z0, length = gt + 0.1, 1.2
     objs = m.woven_tube("Grip", [V(0, 0, 0), V(0, 0, gt)], 0.017, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.017)
@@ -141,6 +143,8 @@ def great_sword():
         # Steeply tilted so they read as rings, not ticks, from the side of the blade.
         objs += m.halo(f"Spine_Ring_{k}", spine[i] - normals[i] * 0.004, 0.034 - 0.005 * k, 0.003, d,
                        mats["light"], tilt_deg=38 if k % 2 == 0 else -34, tilt_axis=(1, 0, 0))
+    if not render:
+        return objs, mats, spine[-1]
     target = (0.04, 0, 0.78)
     views = [("front", 0, 4), ("three_quarter", 35, 10), ("back", 180, 4)]
     m.render_sheets(OUT, "great_sword", mats, target, 3.3, views, res=(700, 1000),

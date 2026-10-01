@@ -40,6 +40,20 @@ local KITS = {
                  MiquellaDemon1 = 1.2, MiquellaDemon2 = 1.2, MiquellaDemon3 = 1.2 },
         demon = { MiquellaDemon1 = 1, MiquellaDemon2 = 2, MiquellaDemon3 = 3 },
     },
+    -- One size each, matched to the game's originals (build_weapon_kit.py).
+    GreatSword = {
+        label = "Miquella light blade (great sword)",
+        mesh = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh",
+        mdf2 = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+    },
+    LightBowgun = {
+        label = "Miquella light bowgun",
+        mesh = "Art/Model/MiquellaLight/LightBowgun/wp_miquella_lbg.mesh",
+        mdf2 = "Art/Model/MiquellaLight/LightBowgun/wp_miquella_lbg.mdf2",
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2,
+                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+    },
 }
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
 local KIT_NAMES = { "(original)" }
@@ -383,7 +397,7 @@ re.on_draw_ui(function()
     changed = changed or c
     local sizeIdx = 1
     for i, n in ipairs(SIZE_NAMES) do if n == config.size then sizeIdx = i end end
-    local c3, newSize = imgui.combo("Size", sizeIdx, SIZE_NAMES)
+    local c3, newSize = imgui.combo("Size (dual blades)", sizeIdx, SIZE_NAMES)
     if c3 then config.size = SIZE_NAMES[newSize]; changed = true end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 

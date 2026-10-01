@@ -82,10 +82,10 @@ def shot_arrow(name, groups):
     import arsenal
     import motifs as m
     from build_weapon_kit import ARROW_NOCK, ARROW_TIP
-    objs = arsenal.light_arrow("Arrow", Vector((0, 0, ARROW_NOCK - 1.1)), Vector((0, 0, ARROW_TIP - 1.1)),
-                               m.materials(), head=0.5)
+    mats = m.materials()
+    objs = arsenal.needle_arrow("Arrow", Vector((0, 0, ARROW_NOCK - 1.1)), Vector((0, 0, ARROW_TIP - 1.1)), mats)
     return {"name": name, "rel": "Art/VFX/Mesh/common/shell/arrow", "objects": objs, "to_file": Matrix.Identity(4),
-            "groups": groups, "budget": 3000, "glow_material": True}
+            "groups": groups, "budget": 3000, "glow_material": True, "glow_intensity": 0.6}
 
 
 def shellcase():
@@ -218,7 +218,7 @@ GLOW_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "mhws", "Miq
                              "STM", "Art", "Model", "MiquellaLight", "DualBlades", "wp_miquella_db.mdf2.45")
 
 
-def build_mdf(path, template_mdf, glow=False):
+def build_mdf(path, template_mdf, glow=False, intensity=2.5):
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     if glow:
         mdf = readMDF(GLOW_TEMPLATE)
@@ -230,7 +230,7 @@ def build_mdf(path, template_mdf, glow=False):
                     t.texturePath = f"{TEX_REL}/MiquellaDevice_{kind}.tex"
         for p in mat.propertyList:
             if p.propName == "Emissive_Intensity":
-                p.propValue = [2.5]
+                p.propValue = [intensity]
         mdf.materialList = [mat]
         writeMDF(mdf, path)
         log(f"mdf (glow): {[(m.materialName, m.mmtrPath if hasattr(m, 'mmtrPath') else '') for m in readMDF(path).materialList]}")
@@ -302,7 +302,8 @@ def finish(spec, kit, template_mdf, mesh_col):
                                  "exportBoundingBoxes": False, "autoSolveRepeatedUVs": True,
                                  "preserveSharpEdges": False})
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
-    build_mdf(os.path.join(out_dir, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, spec.get("glow_material", False))
+    build_mdf(os.path.join(out_dir, f"{spec['name']}.mdf2{MDF_EXT}"), template_mdf, spec.get("glow_material", False),
+              spec.get("glow_intensity", 2.5))
     tex_dir = os.path.join(natives, *TEX_REL.split("/"))
     if not os.path.exists(os.path.join(tex_dir, f"MiquellaDevice_ALBD.tex{TEX_EXT}")):
         src = os.path.join(kit, "texture_sources")

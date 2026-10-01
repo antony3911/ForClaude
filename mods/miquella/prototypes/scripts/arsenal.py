@@ -863,7 +863,7 @@ def build_bow(mats, rail_pack=0.0, with_arrow=True):
                              bevel=0.0022, resolution=2))
     # Arrow of light from the string, over the arrow rest, through the rings.
     if with_arrow:
-        objs += light_arrow("Drawn_Arrow", V(string_x, 0, BOW_ARROW_Z), V(-0.78, 0, BOW_ARROW_Z), mats)
+        objs += needle_arrow("Drawn_Arrow", V(string_x, 0, BOW_ARROW_Z), V(-0.78, 0, BOW_ARROW_Z), mats)
     for i, x in enumerate(bow_rail_x(rail_pack)):
         t = i / (BOW_RAIL_N - 1)
         objs += m.halo(f"Arrow_Rail_{i}", (x, 0, BOW_ARROW_Z), 0.075 + (0.035 - 0.075) * t, 0.0045 - 0.0011 * t,
@@ -918,6 +918,31 @@ def light_arrow(prefix, nock, tip, mats, head=0.45, width=0.062):
     return objs
 
 
+def needle_arrow(prefix, nock, tip, mats, girth=0.45):
+    """The arrows are Miquella's Unalloyed Gold Needle (user, 2026-10-02: the light arrow was too
+    thick for the rings and read as an energy weapon): gold metal with a faint warmth, the point
+    forward, the twisted gold eye with its drop of light at the nock. The wyrmstake's needle
+    (devices.needle) stretched to the arrow's length and slimmed: `girth` scales its thickness."""
+    import devices
+    from mathutils import Matrix
+    mats.setdefault("gold", devices.gold_material())
+    before = set(bpy.data.objects)
+    devices.needle(mats, 0.5, V(0, 0, 0), V(0, 0, -1))
+    objs = [o for o in bpy.data.objects if o not in before]
+    nock, tip = Vector(nock), Vector(tip)
+    L = (tip - nock).length
+    k = L / 0.5
+    rot = V(0, 0, -1).rotation_difference((nock - tip).normalized()).to_matrix().to_4x4()
+    M = Matrix.Translation(tip) @ rot @ Matrix.Diagonal((k * girth, k * girth, k, 1.0))
+    bpy.context.view_layer.update()
+    for o in objs:
+        o.name = f"{prefix}_{o.name.split('.')[0]}"
+        if o.parent is None:
+            o.matrix_world = M @ o.matrix_world
+    bpy.context.view_layer.update()
+    return [o for o in objs if o.type in ("MESH", "CURVE")]
+
+
 # Quivers (the bow's second model). Built along +Z: the bottom at z 0, the mouth at QUIVER_LEN,
 # the arrows' vanes standing out above it.
 QUIVER_LEN = 0.55
@@ -929,7 +954,7 @@ def quiver_arrows(prefix, mats, n, spread_top, spread_bottom, nock_z, tip_z, rng
         a = 2 * math.pi * k / n + 0.35
         top = V(spread_top * math.cos(a), spread_top * math.sin(a), nock_z + rng.uniform(-0.012, 0.012))
         bot = V(spread_bottom * math.cos(a + 0.4), spread_bottom * math.sin(a + 0.4), tip_z)
-        objs += light_arrow(f"{prefix}_{k}", top, bot, mats, width=0.045)
+        objs += needle_arrow(f"{prefix}_{k}", top, bot, mats)
     return objs
 
 
@@ -1011,7 +1036,7 @@ def quiver(variant):
 
 def arrow():
     mats = m.materials()
-    light_arrow("Arrow", V(0, 0, -0.5), V(0, 0, 0.5), mats)
+    needle_arrow("Arrow", V(0, 0, -0.5), V(0, 0, 0.5), mats)
     views = [("side", 0, 4), ("three_quarter", 40, 18)]
     m.render_sheets(OUT, "arrow", mats, (0, 0, 0), 1.4, views, res=(700, 1000))
 

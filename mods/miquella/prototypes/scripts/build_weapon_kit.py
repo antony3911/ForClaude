@@ -118,7 +118,7 @@ def long_sword():
 ARSENAL_MATERIALS = {"Ivory": "MiquellaIvory", "Light": "MiquellaGlow", "Blade_Light": "MiquellaBlade",
                      "Blade_Core": "MiquellaTemper", "Sun": "MiquellaGlow", "Face_Membrane": "MiquellaGlow",
                      "Sigil_Light": "MiquellaGlow", "Droplet": "MiquellaGlow", "Phial_Lit": "MiquellaGlow",
-                     "Wing_Membrane": "MiquellaBlade"}
+                     "Wing_Membrane": "MiquellaBlade", "Unalloyed_Gold": "MiquellaGold"}
 SKIP_MATERIALS = {"Membrane", "Shield_Membrane", "Axe_Membrane"}
 # Our shields face -Y; the originals' fronts face +Y: their grips are narrow parts on -Y, the
 # plates widest at y +0.05..+0.15 (measured per depth). Ours sit at the plates' depth, off the arm.
@@ -591,11 +591,11 @@ ARROW_NOCK, ARROW_TIP = -0.04, 2.688
 def arrow():
     import arsenal
     import motifs
-    objs = capture(lambda: arsenal.light_arrow("Arrow", Vector((0, 0, ARROW_NOCK)), Vector((0, 0, ARROW_TIP)),
-                                               motifs.materials(), head=0.5))
+    objs = capture(lambda: arsenal.needle_arrow("Arrow", Vector((0, 0, ARROW_NOCK)), Vector((0, 0, ARROW_TIP)),
+                                                motifs.materials()))
     # Many fly at once: about the original's size (1.6k vertices).
     return placed("it1199_0000_0", "Art/Model/Item/it11/99/0000", objs, Matrix.Identity(4), {},
-                  budget={"MiquellaBlade": 1200, "MiquellaGlow": 1200, "MiquellaIvory": 200, "MiquellaTemper": 600})
+                  budget={"MiquellaGold": 2400, "MiquellaGlow": 400})
 
 
 def heavy_bowgun():
@@ -656,8 +656,11 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
-              "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow",
+              "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
+# Gold metal with a faint warmth (the needle arrows): the devices' three-band texture, its gold band.
+DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
+UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract")
 
@@ -817,8 +820,9 @@ def build_parts(spec, mesh_col):
         bpy.ops.object.mode_set(mode="OBJECT")
         if mat == "MiquellaTemper":
             length_uv(o)
-        if mat in spec.get("uv_band", {}):
-            u = (spec["uv_band"][mat] + 0.5) / 3
+        bands = {**UV_BANDS, **spec.get("uv_band", {})}
+        if mat in bands:
+            u = (bands[mat] + 0.5) / 3
             for d in o.data.uv_layers.active.data:
                 d.uv = (u, 0.5)
         before = tris(o)
@@ -948,6 +952,14 @@ def build_mdf(path, template_mdf, names, membrane=None):
                 for p in new.propertyList:
                     if p.propName == "Dissolve":
                         p.propValue = [0.0]
+            if name == "MiquellaGold":
+                for p in new.propertyList:
+                    if p.propName == "Emissive_Intensity":
+                        p.propValue = [0.6]
+                for t in new.textureList:
+                    for kind in ("ALBD", "NRRO", "EMI"):
+                        if t.texturePath.upper().endswith(f"_{kind}.TEX"):
+                            t.texturePath = f"{DEVICE_TEX_REL}/MiquellaDevice_{kind}.tex"
             if name.startswith("MiquellaFilm"):
                 for p in new.propertyList:
                     if p.propName == "Dissolve":

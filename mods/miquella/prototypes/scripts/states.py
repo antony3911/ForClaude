@@ -12,6 +12,8 @@ Sets:
   lance_full_variants full charge with the cone of light at different strengths
   gunlance_reload     rest / spring compressed (core charging) / spring rebounds
   long_sword_spirit   spirit levels: pale gold / gold / bright gold / white, light flowing on the hamon
+  insect_glaive_extracts  extracts as scarlet rot / frost / frenzied flame, two layouts
+  switch_axe_states   switch gauge on the phials, power axe, sword mode, amped
 
 Usage: python states.py <set> <out_dir>
 """
@@ -525,6 +527,190 @@ def long_sword_spirit():
                    "太刀紅刃（白光）：刃紋上的光從刀根往刀尖流")
 
 
+# ------------------------------------------------------------------ insect glaive extracts
+
+def insect_glaive_extracts():
+    """Red, white and orange extracts as Elden Ring's scarlet rot, frost and frenzied flame
+    (user's idea), in two layouts. A: the top blade becomes three blades (rot in the middle,
+    flame on the left, frost on the right) and each takes on its status when that extract is
+    lit. B: the single blade with three motes floating in a triangle around it (rot at the
+    apex, flame lower left, frost lower right); a lit mote shows its status, and with all
+    three a line of light joins them and the blade turns bright gold."""
+    import arsenal
+    import status_fx as fx
+    c.reset_scene()
+    mats = capture_build(arsenal.insect_glaive)
+    m.glow_mode(mats)
+    top = 1.45
+    fx_mats = {kind: fx.effect_material(kind) for kind in fx.STATUS}
+    gold = (c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
+
+    def blade_copy(name):
+        mat = mats["blade"].copy()
+        mat.name = name
+        return mat
+
+    center = bpy.data.objects["Blade_Top"]
+    center_mat = blade_copy("Blade_Center")
+    center.data.materials[0] = center_mat
+
+    def leaf(wmax):
+        return lambda t: wmax * (0.8 + 0.3 * math.sin(math.pi * min(t / 0.45, 1) * 0.5)) * (1 - t ** 2.6)
+
+    # ---- layout A: three blades
+    a_objs, a_fx, a_mats = [], {}, {"rot": center_mat}
+    root = V(0, 0, top + 0.02)
+    dirs = {"flame": V(-math.sin(math.radians(30)), 0, math.cos(math.radians(30))),
+            "frost": V(math.sin(math.radians(30)), 0, math.cos(math.radians(30)))}
+    for kind, d in dirs.items():
+        mat = blade_copy(f"Blade_{kind}")
+        a_mats[kind] = mat
+        a_objs += m.path_blade(f"Side_Blade_{kind}", [root, root + d * 0.3], (0, 1, 0), leaf(0.052),
+                               lambda t: 0.01 * (1 - t ** 2), mat)
+    a_fx["rot"] = fx.rot("A_Rot", [(V(-0.014, -0.014, top + 0.08), (0, -1, 0.15)),
+                                   (V(0.016, -0.014, top + 0.16), (0, -1, 0.1)),
+                                   (V(-0.008, -0.013, top + 0.25), (0, -1, 0.1))],
+                         [V(0.036, -0.004, top + 0.16), V(-0.036, -0.004, top + 0.22), V(0.03, -0.004, top + 0.3),
+                          V(-0.026, -0.004, top + 0.33)],
+                         fx_mats["rot"], radius=0.02)
+    d = dirs["flame"]
+    out = V(-d.z, 0, d.x)                     # the left blade's outer side
+    a_fx["flame"] = fx.flame("A_Flame", [root + d * (0.3 * u) + out * 0.022 for u in (0.08, 0.3, 0.52, 0.72)],
+                             (0.15, 0.19, 0.16, 0.11), fx_mats["flame"], width=0.03, lean=(-0.45, 0, 1))
+    d = dirs["frost"]
+    out = V(d.z, 0, -d.x)                     # the right blade's outer side
+    roots = [root + d * (0.3 * u) + out * 0.016 for u in (0.2, 0.38, 0.55, 0.72)]
+    a_fx["frost"] = fx.frost("A_Frost", roots, [out + d * k for k in (-0.2, 0.3, 0.6, 1.0)],
+                             (0.07, 0.085, 0.065, 0.05), fx_mats["frost"], width=0.012)
+    a_fx["frost"] += fx.frost("A_Frost_Inner", [root + d * 0.12 - out * 0.012, root + d * 0.26 - out * 0.01],
+                              [-out + d * 0.8, -out + d * 1.3], (0.025, 0.02), fx_mats["frost"], width=0.006)
+
+    # ---- layout B: three motes in a triangle around the single blade
+    b_objs, b_fx, b_mats = [], {}, {}
+    motes = {"rot": V(0, -0.025, top + 0.5), "flame": V(-0.095, -0.025, top + 0.12),
+             "frost": V(0.095, -0.025, top + 0.12)}
+    for kind, p in motes.items():
+        mat = c.make_material(f"Mote_{kind}", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"],
+                              strength=2.0)
+        b_mats[kind] = mat
+        b_objs += m.droplet(f"Mote_{kind}", p, 0.014, (0, 0, 1), mat, stretch=1.4)
+        b_objs += m.halo(f"Mote_Halo_{kind}", p + V(0, 0, 0.004), 0.026, 0.0022, (0, 1, 0), mats["light"])
+    tri = [motes["rot"], motes["flame"], motes["frost"], motes["rot"]]
+    b_triangle = []
+    for k in range(3):
+        a, b = tri[k], tri[k + 1]
+        u = (b - a).normalized()
+        b_triangle.append(c.curve_tube(f"Triangle_{k}", [a + u * 0.03, b - u * 0.03], [1, 1], mats["light"],
+                                       bevel=0.0018, resolution=2))
+    p = motes["rot"]
+    b_fx["rot"] = fx.rot("B_Rot", [(p + V(-0.034, 0, 0.012), (0, -1, 0.2)), (p + V(0.034, 0, 0.004), (0, -1, 0.2)),
+                                   (p + V(0.004, 0, 0.038), (0, -1, 0.2))],
+                         [p + V(-0.014, 0, -0.032), p + V(0.016, 0, -0.042)], fx_mats["rot"], radius=0.016)
+    p = motes["flame"]
+    b_fx["flame"] = fx.flame("B_Flame", [p + V(-0.012, 0, 0.012), p + V(0.006, 0, 0.016), p + V(0.018, 0, 0.008)],
+                             (0.08, 0.1, 0.065), fx_mats["flame"], width=0.016)
+    p = motes["frost"]
+    angles = (20, 70, 120, 165, -30, -80)
+    b_fx["frost"] = fx.frost("B_Frost", [p] * len(angles),
+                             [V(math.cos(math.radians(a)), 0, math.sin(math.radians(a))) for a in angles],
+                             (0.05, 0.06, 0.045, 0.05, 0.04, 0.035), fx_mats["frost"], width=0.007)
+
+    target, distance = (0, 0, top + 0.24), 1.05
+    stage_lights(target, distance, res=(480, 800))
+    states = [("一般", ()), ("紅：猩紅腐敗", ("rot",)), ("白：冰凍", ("frost",)), ("橘：癲火", ("flame",)),
+              ("三燈齊", ("rot", "frost", "flame"))]
+
+    def blade_state(mat, kind, lit):
+        core, edge, strength = fx.STATUS[kind][:3] if lit else gold
+        set_blade(mat, core, edge, strength)
+
+    for layout in ("A", "B"):
+        show(a_objs + sum(a_fx.values(), []), layout == "A")
+        show(b_objs + sum(b_fx.values(), []) + b_triangle, layout == "B")
+        paths = []
+        for i, (label, lit) in enumerate(states):
+            if layout == "A":
+                for kind in fx.STATUS:
+                    blade_state(a_mats[kind], kind, kind in lit)
+                    show(a_fx[kind], kind in lit)
+            else:
+                full = len(lit) == 3
+                set_blade(center_mat, *(BRIGHT_BLADE if full else gold))
+                for kind in fx.STATUS:
+                    color, strength = (fx.STATUS[kind][0], 4.0) if kind in lit else (c.PALETTE["glow"], 2.0)
+                    set_glow(b_mats[kind], color, strength)
+                    show(b_fx[kind], kind in lit)
+                show(b_triangle, full)
+            paths += c.render_views(OUT, f"{layout}_state{i}", target, distance, [("front", 12, 4)], lens=50)
+        title = ("方案 A：光刃變三刃（中猩紅腐敗、左癲火、右冰凍）" if layout == "A"
+                 else "方案 B：單刃＋三顆光粒圍成三角形（上猩紅腐敗、左癲火、右冰凍）")
+        labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, f"insect_glaive_extracts_{layout}.png"),
+                       title)
+
+
+# ------------------------------------------------------------------ switch axe
+
+def switch_axe_states():
+    """Axe mode: the floating phials show the switch gauge (dark when empty, lit one by one;
+    from three the axe can morph); power axe mode brightens the three axe blades. Sword
+    mode (design A, chosen by the user): amped state turns the sword and its fins bright
+    gold with light flowing along the blade."""
+    import arsenal
+    import random
+    c.reset_scene()
+    mats = m.materials()
+    common = arsenal.switch_axe_common(mats, random.Random(81))
+    axe_mats = dict(mats, blade=mats["blade"].copy(), light=mats["light"].copy())
+    axe = arsenal.switch_axe_axe_head(axe_mats)
+    sword_mats = dict(mats, blade=mats["blade"].copy(), light=mats["light"].copy(), core=mats["core"].copy())
+    sword = arsenal.switch_axe_sword_head(sword_mats, "a")
+    m.glow_mode(mats)
+    for mm in (axe_mats, sword_mats):
+        set_blade(mm["blade"], c.PALETTE["blade_core"], c.PALETTE["blade_edge"], 2.2)
+        set_glow(mm["light"], c.PALETTE["glow"], 2.5)
+    set_glow(sword_mats["core"], c.PALETTE["glow"], 3.0)
+    phials = sorted([o for o in bpy.data.objects if o.name.startswith("Phial_") and "Halo" not in o.name],
+                    key=lambda o: o.location.z)
+    phial_mats, halo_mats = [], []
+    for k, o in enumerate(phials):
+        mat = o.data.materials[0].copy()
+        mat.name = f"Phial_Lit_{k}"
+        o.data.materials[0] = mat
+        phial_mats.append(mat)
+        halo = bpy.data.objects[o.name.replace("Phial_", "Phial_Halo_")]
+        hmat = halo.data.materials[0].copy()
+        halo.data.materials[0] = hmat
+        halo_mats.append(hmat)
+    target, distance = (0.05, 0, 0.95), 2.6
+    stage_lights(target, distance, res=(500, 1000))
+    states = [
+        # label, mode, phials lit, power axe, amped
+        ("斧：量表空", "axe", 0, False, False),
+        ("斧：量表 3 格（可變形）", "axe", 3, False, False),
+        ("斧：量表滿", "axe", 5, False, False),
+        ("強化斧模式", "axe", 5, True, False),
+        ("劍模式", "sword", 3, False, False),
+        ("劍模式：覺醒", "sword", 3, False, True),
+    ]
+    paths = []
+    for i, (label, mode, lit, power, amped) in enumerate(states):
+        show(axe, mode == "axe")
+        show(sword, mode == "sword")
+        for k, (mat, hmat) in enumerate(zip(phial_mats, halo_mats)):
+            set_glow(mat, c.PALETTE["glow"] if k < lit else "#4A3E2A", 3.0 if k < lit else 0.05)
+            set_glow(hmat, c.PALETTE["glow"] if k < lit else "#8A7450", 2.5 if k < lit else 0.15)
+        if power:
+            set_blade(axe_mats["blade"], *BRIGHT_BLADE)
+            set_glow(axe_mats["light"], *BRIGHT_LIGHT)
+        if amped:
+            set_blade(sword_mats["blade"], *BRIGHT_BLADE)
+            set_glow(sword_mats["light"], *BRIGHT_LIGHT)
+            set_glow(sword_mats["core"], *BRIGHT_CORE)
+        paths += c.render_views(OUT, f"state{i}", target, distance, [("front", 15, 5)], lens=50)
+    labelled_strip(paths, [st[0] for st in states], os.path.join(OUT, "switch_axe_states.png"),
+                   "斬擊斧：光點＝變形量表，強化斧讓三片光刃變亮，劍模式覺醒變亮金")
+
+
 SETS = {
     "great_sword_charge": great_sword_charge,
     "dual_blades_demon": dual_blades_demon,
@@ -533,6 +719,8 @@ SETS = {
     "lance_full_variants": lance_full_variants,
     "gunlance_reload": gunlance_reload,
     "long_sword_spirit": long_sword_spirit,
+    "insect_glaive_extracts": insect_glaive_extracts,
+    "switch_axe_states": switch_axe_states,
 }
 
 if __name__ == "__main__":

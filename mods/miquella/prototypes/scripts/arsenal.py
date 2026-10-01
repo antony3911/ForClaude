@@ -451,33 +451,19 @@ def sickle_blade(name, ctrl, wmax, thick_max, mats, side=1, n=80):
     return objs, spine
 
 
-def switch_axe():
-    """Axe mode. The head is Miquella's trident made of light: three slim curved blades
-    floating in a fan beside the shaft (the upper one sweeping up, the middle one reaching
-    out, the lower one hanging as the beard), edges all turned the same way like a
-    pinwheel. Their outer ends draw the axe's silhouette. Three ivory prongs reach from the
-    shaft toward the blade roots and curl short of them; floating collars mark the head.
-    Scrollwork on the back, a light spike on top, the phials as lit droplets floating in
-    small halos behind the shaft."""
-    mats = m.materials()
-    rng = random.Random(81)
-    top = 1.1
+SWITCH_AXE_TOP = 1.1
+
+
+def switch_axe_common(mats, rng):
+    """What both modes share: the shaft with its gold vine, the floating collars, the
+    scrollwork on the back, the prongs reaching from the shaft, and the phial column."""
+    top = SWITCH_AXE_TOP
     objs = m.woven_tube("Shaft", [V(0, 0, 0), V(0, 0, top)], 0.019, mats["ivory"], rng)
     objs += pommel(mats, -0.01, 0.019)
-    specs = [
-        ("Blade_Upper", [V(0.05, 0, 1.0), V(0.13, 0, 1.04), V(0.22, 0, 1.11), V(0.27, 0, 1.2)], 0.055),
-        ("Blade_Middle", [V(0.05, 0, 0.94), V(0.16, 0, 0.955), V(0.26, 0, 0.945), V(0.33, 0, 0.92)], 0.065),
-        ("Blade_Lower", [V(0.05, 0, 0.88), V(0.13, 0, 0.84), V(0.2, 0, 0.76), V(0.23, 0, 0.66)], 0.06),
-    ]
-    roots = []
-    for name, ctrl, w in specs:
-        o, spine = sickle_blade(name, ctrl, w, 0.011, mats)
-        objs += o
-        roots.append(spine[0])
     xz = m.plane_mapper((0, 0, 0), (1, 0, 0), (0, 0, 1))
-    # Scrolls reaching out beneath each blade root, curling short of it.
-    for k, (r, turns, head) in enumerate(zip(roots, (1.3, -1.2, -1.4), (14, -4, -18))):
-        objs += m.tendril(f"Prong_{k}", xz, (0.012, r.z), head, 0.085, turns, 0.0055, mats, curl_start=0.45)
+    # Scrolls reaching out beneath each axe blade root, curling short of it.
+    for k, (z, turns, head) in enumerate(zip((1.0, 0.94, 0.88), (1.3, -1.2, -1.4), (14, -4, -18))):
+        objs += m.tendril(f"Prong_{k}", xz, (0.012, z), head, 0.085, turns, 0.0055, mats, curl_start=0.45)
     # A gold-threaded cord winding up the shaft like a vine, ending in a scroll.
     vine = m.cylinder_mapper((0, 0, 0.46), 0.027)
     # Gold, so it reads against the ivory shaft.
@@ -492,14 +478,99 @@ def switch_axe():
     objs += m.tendril("Back_Out", xz, bp, 186, 0.29, -1.55, 0.0105, mats,
                       offshoots=[(0.3, 1, 0.35, 1.2), (0.52, -1, 0.25, -1.0)])
     objs += m.tendril("Back_Down", xz, bp, 240, 0.18, -1.2, 0.0082, mats, offshoots=[(0.45, 1, 0.35, 1.0)])
+    # Phial: lit droplets floating in a column behind the shaft, each in a small halo.
+    objs += phial_column("Phial", -0.078, 0.5, 5, 0.068, mats)
+    return objs
+
+
+def switch_axe_axe_head(mats):
+    """Axe mode head: three slim curved blades of light in a fan beside the shaft, and the
+    light spike on top."""
+    top = SWITCH_AXE_TOP
+    specs = [
+        ("Blade_Upper", [V(0.05, 0, 1.0), V(0.13, 0, 1.04), V(0.22, 0, 1.11), V(0.27, 0, 1.2)], 0.055),
+        ("Blade_Middle", [V(0.05, 0, 0.94), V(0.16, 0, 0.955), V(0.26, 0, 0.945), V(0.33, 0, 0.92)], 0.065),
+        ("Blade_Lower", [V(0.05, 0, 0.88), V(0.13, 0, 0.84), V(0.2, 0, 0.76), V(0.23, 0, 0.66)], 0.06),
+    ]
+    objs = []
+    for name, ctrl, w in specs:
+        objs += sickle_blade(name, ctrl, w, 0.011, mats)[0]
     objs += m.path_blade("Top_Spike", [V(0, 0, top - 0.02), V(0, 0, top + 0.16)], (0, 1, 0),
                          lambda t: 0.034 * (1 - t), lambda t: 0.01 * (1 - t), mats["blade"])
     objs += m.halo("Top_Halo", (0, 0, top + 0.01), 0.045, 0.0032, (0, 0, 1), mats["light"], tilt_deg=8)
-    # Phial: lit droplets floating in a column behind the shaft, each in a small halo.
-    objs += phial_column("Phial", -0.078, 0.5, 5, 0.068, mats)
+    return objs
+
+
+def sword_blade(name, z0, length, wmax, mats, n=90):
+    """A long single-edged blade of light rising from the shaft top: spine on the axis
+    bowing slightly back, the edge toward +X with a gentle S rhythm (the great sword's
+    language, slimmer)."""
+    spine, edge = [], []
+    knots = [(0.0, 0.3 * wmax), (0.12, 0.8 * wmax), (0.45, wmax), (0.7, 0.85 * wmax), (0.88, 0.5 * wmax),
+             (0.97, 0.15 * wmax), (1.0, 0.0)]
+    for i in range(n):
+        t = i / (n - 1)
+        sp = V(-0.025 * t ** 2, 0, z0 + length * t)
+        spine.append(sp)
+        edge.append(sp + V(m.interp1d(knots, t), 0, 0.02 * math.sin(math.pi * t)))
+
+    def thick(t):
+        return 0.016 * (1 - t ** 3) + 0.0008
+
+    objs = m.wedge_blade(name, spine, edge, thick, mats["blade"])
+    objs += blade_dressing(name, spine, edge, thick, mats, trail=(0.25, 0.9), temper_u=0.3)
+    return objs, spine, edge
+
+
+def switch_axe_sword_head(mats, variant):
+    """Sword mode. A: a long blade rises from the shaft and the three axe blades fold up
+    along its back like feathers, smaller toward the tip. B: the middle axe blade grows into
+    the long sword, the upper and lower fold up beside its root like closed wings."""
+    top = SWITCH_AXE_TOP
+    objs, spine, edge = sword_blade("Sword_Blade", top - 0.08, 0.82, 0.075, mats)
+    objs += m.halo("Sword_Root_Halo", (0.02, 0, top - 0.04), 0.05, 0.0034, (0, 0, 1), mats["light"], tilt_deg=10)
+    if variant == "a":
+        # Fins on the spine side, rooted at the back of the blade, sweeping up and back.
+        for name, u, size in (("Fin_Lower", 0.08, 1.0), ("Fin_Middle", 0.33, 0.82), ("Fin_Upper", 0.56, 0.64)):
+            i = int(u * (len(spine) - 1))
+            r = spine[i] + V(-0.006, 0, 0)
+            ctrl = [r, r + V(-0.05, 0, 0.07) * size, r + V(-0.085, 0, 0.17) * size, r + V(-0.09, 0, 0.27) * size]
+            objs += sickle_blade(name, ctrl, 0.045 * size, 0.009, mats, side=-1)[0]
+    else:
+        # Wings: the upper blade folds up on the spine side, the lower on the edge side.
+        r = V(-0.01, 0, top - 0.05)
+        ctrl = [r, r + V(-0.06, 0, 0.06), r + V(-0.1, 0, 0.17), r + V(-0.1, 0, 0.3)]
+        objs += sickle_blade("Wing_Back", ctrl, 0.05, 0.010, mats, side=-1)[0]
+        r = V(0.03, 0, top - 0.07)
+        ctrl = [r, r + V(0.07, 0, 0.03), r + V(0.12, 0, 0.11), r + V(0.13, 0, 0.21)]
+        objs += sickle_blade("Wing_Edge", ctrl, 0.045, 0.010, mats, side=1)[0]
+    return objs
+
+
+def switch_axe():
+    """Axe mode. The head is Miquella's trident made of light: three slim curved blades
+    floating in a fan beside the shaft (the upper one sweeping up, the middle one reaching
+    out, the lower one hanging as the beard), edges all turned the same way like a
+    pinwheel. Their outer ends draw the axe's silhouette. Three ivory prongs reach from the
+    shaft toward the blade roots and curl short of them; floating collars mark the head.
+    Scrollwork on the back, a light spike on top, the phials as lit droplets floating in
+    small halos behind the shaft."""
+    mats = m.materials()
+    rng = random.Random(81)
+    objs = switch_axe_common(mats, rng) + switch_axe_axe_head(mats)
     views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
     m.render_sheets(OUT, "switch_axe", mats, (0.08, 0, 0.6), 2.7, views, res=(800, 1000),
                     extra=[("head", (0.15, 0, 0.93), 0.9, [("head", 25, 8)])])
+
+
+def switch_axe_sword(variant="a"):
+    """Sword mode (see switch_axe_sword_head)."""
+    mats = m.materials()
+    rng = random.Random(81)
+    objs = switch_axe_common(mats, rng) + switch_axe_sword_head(mats, variant)
+    views = [("front", 0, 5), ("three_quarter", 35, 12), ("back_three_quarter", 145, 12)]
+    m.render_sheets(OUT, f"switch_axe_sword_{variant}", mats, (0.02, 0, 0.92), 3.1, views, res=(800, 1100),
+                    extra=[("head", (0.0, 0, 1.3), 1.2, [("head", 25, 8)])])
 
 
 # ------------------------------------------------------------------ charge blade
@@ -798,6 +869,8 @@ WEAPONS = {
     "lance": lance,
     "gunlance": gunlance,
     "switch_axe": switch_axe,
+    "switch_axe_sword_a": lambda: switch_axe_sword("a"),
+    "switch_axe_sword_b": lambda: switch_axe_sword("b"),
     "charge_blade": charge_blade,
     "charge_blade_axe": charge_blade_axe,
     "insect_glaive": insect_glaive,

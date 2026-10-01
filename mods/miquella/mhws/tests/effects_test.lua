@@ -175,4 +175,12 @@ clock = 2; onFrame()
 reloaded.tint = color(ORANGE)
 beforeRender()
 check(reloaded.tint.rgba == 0, "replayed buff tint hidden in the before-rendering pass")
+-- A new trail in the scene that no hook saw: recoloured in the same pass that finds it.
+local fresh = effect("11_it02_001", "Art/VFX/EffectEditor/Weapon/it02/11_it02_001.efx", hex(0xFF, 0xFF, 0xFF),
+    { Color = param("Color", hex(0xFF, 0x2E, 0x2E)) })
+playing = { reloaded, fresh }
+beforeRender()
+check(hue_is_gold(fresh.params.Color.c), "new trail found by the per-frame search is gold before its first frame is drawn")
+out = {}; onDraw()
+check(tonumber(table.concat(out):match("(%d+) when found")) >= 1, "counted as recoloured when found")
 print("ALL PASS")

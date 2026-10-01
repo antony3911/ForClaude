@@ -7,9 +7,10 @@
 --    piece by piece and each piece keeps the colour it was emitted with, so the colour has
 --    to be right before the first piece: the parameter objects of dual blades effects are
 --    noted when they are fetched (hook on getExternParameter) and the game's own set_Color
---    on them is changed on the way in (hook). Backups: new effects are caught as the game
---    adds their parameters and checked right away, and dual blades effects are re-checked
---    every frame while they play (parameters and tint), before rendering.
+--    on them is changed on the way in (hook). In game those hooks never fired (v3: 0
+--    intercepted), so all effects are also searched every frame, before rendering: a new
+--    dual blades effect is recoloured the frame it is found ("when found") and re-checked
+--    every frame while it plays ("later": the game setting red again).
 -- 2. Hide the attack-up / defense-up glow: pl_state/11_pl_heal, which the game tints red
 --    (attack up) or orange (defense up) and replays every ~2 s, setting the tint again each
 --    time. Every instance of that effect is watched for its whole life and the two buff tints
@@ -22,7 +23,7 @@
 local MOD = "MiquellaLight Effects"
 local CONFIG_PATH = "MiquellaLight/Effects.json"
 local EP = "via.effect.EffectPlayer"
-local SCAN_EVERY = 0.25                 -- seconds between searches for new effects
+local SCAN_EVERY = 0                    -- every frame: a new trail must be found before it is drawn
 local RECOLOR_MATCH = "it02"            -- dual blades effect files / objects (11_it02_*)
 local COLOR_PARAMS = { "Color", "ColorA", "ColorB", "ColorC" }
 local BUFF_MATCH = "11_pl_heal"
@@ -35,7 +36,7 @@ if type(saved) == "table" then
     for k, v in pairs(saved) do config[k] = v end
 end
 
-local stats = { spawn = 0, playing = 0, buffs = 0, intercepted = 0 }
+local stats = { spawn = 0, found = 0, playing = 0, buffs = 0, intercepted = 0 }
 local paramOwned = {}                   -- address of a dual blades colour parameter object -> true
 local nParams = 0
 local it02Cache = {}                    -- effect player address -> true when it is a dual blades effect
@@ -229,7 +230,7 @@ local function scan()
         if key and not tracked[key] then
             local name = effect_name(ep)
             if config.recolor and name:find(RECOLOR_MATCH, 1, true) then
-                tracked[key] = { ep = ep, kind = "recolor" }
+                tracked[key] = { ep = ep, kind = "recolor", fresh = true }
             elseif config.hideBuffs and name:find(BUFF_MATCH, 1, true) then
                 tracked[key] = { ep = ep, kind = "buff" }        -- watched for its whole life
             end
@@ -257,7 +258,12 @@ local function update(key, t)
     if not tint then tracked[key] = nil; return end          -- gone
     if t.kind == "recolor" then
         if not config.recolor then tracked[key] = nil; return end
-        stats.playing = stats.playing + recolor_effect(ep, tint)
+        local n = recolor_effect(ep, tint)
+        if t.fresh then
+            stats.found, t.fresh = stats.found + n, nil
+        else
+            stats.playing = stats.playing + n
+        end
         -- Drop effects that have finished playing (trails are new objects for every attack).
         if try(function() return ep:call("get_Running") end) then
             t.ran, t.idle = true, nil
@@ -334,8 +340,8 @@ re.on_draw_ui(function()
     if changed then json.dump_file(CONFIG_PATH, config) end
     local n = 0
     for _ in pairs(tracked) do n = n + 1 end
-    imgui.text(string.format("Recoloured: %d intercepted, %d at spawn, %d on playing effects. Buff glows hidden: %d.",
-        stats.intercepted, stats.spawn, stats.playing, stats.buffs))
+    imgui.text(string.format("Recoloured: %d intercepted, %d at spawn, %d when found, %d later. Buff glows hidden: %d.",
+        stats.intercepted, stats.spawn, stats.found, stats.playing, stats.buffs))
     imgui.text(string.format("Tracking %d effects, %d colour parameters. Hooks %d/%d. %s", n, nParams, nHooks, #hooks,
         (entryOk and os.clock() - tickedAt < 0.5) and "Before rendering." or "Once per frame."))
     imgui.tree_pop()

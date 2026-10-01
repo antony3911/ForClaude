@@ -17,5 +17,7 @@
 - 第一版：軌跡大多變金但先紅一下（0 at spawn，全靠 0.25 秒掃描）；buff 閃光消失（使用者確認）
 - 第二版（下一幀換色）：軌跡還是先紅；buff 閃光反而**每次重播閃一下**。原因：①軌跡是一段段發射的，每段發射時就定色，晚一幀換色時第一段已經是紅的；②遊戲每次重播 buff 都重設染色，第二版看到非 buff 色就不追蹤，要等掃描才抓回來
 - 第三版：**攔截遊戲設顏色的那一刻**：掛鉤 `EffectPlayer.getExternParameter(String)`／`getExternParameters(UInt64)` 記下雙劍特效的顏色參數物件，再掛鉤 `via.effect.script.EffectCustomExternParameter.set_Color(via.Color)`，遊戲設紅色時直接把參數換成金色。buff 特效從找到起就一直盯著。每幀的工作改在 `re.on_pre_application_entry("BeginRendering")`（遊戲更新完、算圖前），沒有這個入口就退回每幀一次。選單第二行顯示掛鉤數和時機
+- 第三版實測：**buff 閃光完全消失**（藏 1 次就夠：遊戲重播不會重設染色，第二版的閃是因為停止追蹤）；軌跡還是先紅。選單：0 intercepted、0 at spawn、0 colour parameters、32 on playing、Hooks 4/4、Before rendering → 遊戲設軌跡顏色**不經過** `getExternParameter`／`EffectCustomExternParameter.set_Color`，`addExternParameter` 的新特效也沒認出來；只有 0.25 秒一次的掃描在換色
+- 第四版：**每幀**搜尋全部特效（算圖前），新的雙劍特效在找到的那一輪就換色（選單的 when found），之後每幀再檢查（later）
 
 離線測試 `tests/effects_test.lua` 通過。不確定的地方：特效的染色是否也作用在玩家身體發光（PLE）上；`ValueType.new(via.Color)` 的 `rgba` 欄位寫法。

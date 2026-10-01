@@ -21,7 +21,8 @@ local function newMesh(meshPath)
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_ls%.") then
-      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaBand1", "MiquellaBand2", "MiquellaBand3",
+               "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }
     end
     if self.mdfPath:match("wp_miquella_sa%.") then
       return { "MiquellaAxeBlade", "MiquellaAxeGlow", "MiquellaFinBlade", "MiquellaFinGlow", "MiquellaGauge1",
@@ -83,7 +84,11 @@ local function newGO(name, addr, mesh, chain)
     if m == "getJointByName" then
       if not self.joints[a] then
         local j = { name = a }
-        function j:call(jm, v) if jm == "set_LocalPosition" then self.lp = v elseif jm == "set_LocalRotation" then self.lr = v end end
+        function j:call(jm, v)
+          if jm == "set_LocalPosition" then self.lp = v elseif jm == "set_LocalRotation" then self.lr = v end
+          if jm == "get_LocalRotation" then return self.lr or { x = 0, y = 0, z = 0, w = 1 } end
+          if jm == "get_LocalPosition" then return self.lp or { x = 0, y = 0, z = 0 } end
+        end
         self.joints[a] = j
       end
       return self.joints[a]
@@ -655,14 +660,19 @@ check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire w
 extract._RyuugekiChargeTimer = 0
 frames(120, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
--- Recorded fields: Wyvern's Fire drops its gauge by one; a shell fired lowers the shell count.
+-- Wyvern's Fire: its wind-up turns the original Heat_Hinge bone (read off our model's
+-- skeleton); its gauge drops by one at the blast. A shell fired lowers the shell count.
 extract._RyuugekiGauge, extract._ChargeShotBulletNum = 2.0, 5
 frames(10, 1 / 60)
-extract._RyuugekiGauge = 1.0
+local heat = weaponGO.tf:call("getJointByName", "Heat_Hinge")
+heat.lr = { x = math.sin(math.rad(15)), y = 0, z = 0, w = math.cos(math.rad(15)) }
 frames(60, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire (its gauge used) winds the spring")
+check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (Heat_Hinge turning) winds the spring")
+extract._RyuugekiGauge = 1.0
 frames(120, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released after the wind-up")
+check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released at the blast (gauge used), though the bone is still turned")
+heat.lr = nil
+frames(30, 1 / 60)
 extract._ChargeShotBulletNum = 4
 frames(6, 1 / 60)
 check(top.lp.z < REST_TOP - 0.05, string.format("gunlance: a shell fired presses the spring (%.3f)", top.lp.z))
@@ -786,12 +796,27 @@ local function ls(mat) return (weaponMesh.floats[mat .. ".1"] or 0) / (1.2 * glo
 check(math.abs(ls("MiquellaBlade") - 0.8) < 0.01, string.format("long sword: no spirit = pale gold (%.2f)", ls("MiquellaBlade")))
 extract["<AuraLevel>k__BackingField"] = 3
 frames(60, 1 / 60)
-check(math.abs(ls("MiquellaBlade") - 1.8) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 1.0, "long sword: yellow = bright gold, the band runs")
+local function bandRange()
+  local lo, hi = math.huge, 0
+  for k = 1, 8 do local v = ls("MiquellaBand" .. k); lo, hi = math.min(lo, v), math.max(hi, v) end
+  return lo, hi
+end
+local blo, bhi = bandRange()
+check(math.abs(ls("MiquellaBlade") - 1.8) < 0.01 and bhi > 1.8 * 2.5 and blo < 1.8 * 1.3,
+      string.format("long sword: yellow = bright gold, the band runs along the pieces (%.2f .. %.2f)", blo, bhi))
+local firstHi = nil
+for k = 1, 8 do if ls("MiquellaBand" .. k) == bhi then firstHi = k end end
+frames(12, 1 / 60)
+local nowHi = nil
+blo, bhi = bandRange()
+for k = 1, 8 do if ls("MiquellaBand" .. k) == bhi then nowHi = k end end
+check(firstHi and nowHi and nowHi ~= firstHi, string.format("long sword: the band moves (piece %s -> %s)", tostring(firstHi), tostring(nowHi)))
 extract["<AuraLevel>k__BackingField"] = 4
 frames(60, 1 / 60)
 local lc = weaponMesh.colors["MiquellaBlade"]
 check(lc and lc.z > 0.8, "long sword: red = white light")
 extract["<AuraLevel>k__BackingField"] = 2
 frames(90, 1 / 60)
-check(math.abs(ls("MiquellaBlade") - 1.0) < 0.01 and weaponMesh.floats["MiquellaTemper.3"] == 0.0, "long sword: white = gold, no band")
+blo, bhi = bandRange()
+check(math.abs(ls("MiquellaBlade") - 1.0) < 0.01 and bhi - blo < 0.01, "long sword: white = gold, no band")
 print("ALL PASS")

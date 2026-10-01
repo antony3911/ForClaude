@@ -31,6 +31,7 @@ Long sword (2026-10-02, the user: the spirit levels' white / yellow / red hid ou
 Insect glaive (2026-10-02, the red charge glow should be gold): --warm --no-silver on 001, 002,
 004, 022, 031, 049-051, 053, 055-057, 059, 060 (the others have no warm colours, or are smoke,
 poison and hit dust); 020 and 021 stay --only-hide (the extracts' colours on the body).
+Bow (2026-10-02, the charge's red aura): --warm --no-silver on 11_it11_030 (charge levels 0-3).
 """
 import colorsys
 import os

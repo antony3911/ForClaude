@@ -29,9 +29,12 @@ REL = "Art/VFX/Mesh/Common/Other/bubble"
 GLOW_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "..", "mhws", "MiquellaLight_DualBlades_kit", "natives",
                              "STM", "Art", "Model", "MiquellaLight", "DualBlades", "wp_miquella_db.mdf2.45")
 # Rings around the shell: (tilt about X, tilt about Y, radius, thickness), in the file's units.
-# A third of the first version's thickness, dimmer (user, 2026-10-02: the lines were too thick).
-RINGS = [(12, 0, 0.515, 0.0016), (72, 25, 0.522, 0.0013), (-48, -60, 0.528, 0.0011)]
-RING_GLOW = 1.4
+# Thinner and dimmer each round (user, 2026-10-02: the lines were too thick; after a third of
+# the thickness: still not thinner -> the thick line is likely the shell's glowing rim too).
+RINGS = [(12, 0, 0.515, 0.0009), (72, 25, 0.522, 0.0008), (-48, -60, 0.528, 0.0007)]
+RING_GLOW = 0.9
+# The shell's edge glow: a higher power keeps it to a thin line at the very edge.
+SHELL_RIM = {"RimEmissiveIntensity": [1.5], "RimEmissivePower": [6.0]}
 
 
 def build_mesh(mesh_col):
@@ -78,7 +81,7 @@ def build_mesh(mesh_col):
 def build_mdf(src, dst):
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     mdf = readMDF(src)
-    props = MEMBRANES["bubble"][2]
+    props = dict(MEMBRANES["bubble"][2], **SHELL_RIM)
     for mat in mdf.materialList:
         for p in mat.propertyList:
             if p.propName in props:

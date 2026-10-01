@@ -60,6 +60,51 @@ def great_sword():
     }
 
 
+LS_BANDS = 8
+
+
+def split_bands(subs, mat, prefix, n):
+    """The sub-mesh on `mat` cut into n pieces along file +Z (by face centre), materials
+    prefix1..n; the subs renumbered."""
+    import bmesh
+    src = next((o for o in subs if o.name.split("__", 1)[1] == mat), None)
+    if src is None:
+        log(f"  bands: no {mat}")
+        return subs
+    inv = FILE_TO_BLENDER.inverted()
+    zs = [(inv @ v.co).z for v in src.data.vertices]
+    z0, z1 = min(zs), max(zs)
+    out = [o for o in subs if o is not src]
+    for k in range(n):
+        o = src.copy()
+        o.data = src.data.copy()
+        for col in src.users_collection:
+            col.objects.link(o)
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        lo, hi = k / n, (k + 1) / n
+        kill = []
+        for f in bm.faces:
+            u = ((inv @ f.calc_center_median()).z - z0) / max(z1 - z0, 1e-6)
+            if not (lo <= u < hi or (k == n - 1 and u >= hi)):
+                kill.append(f)
+        bmesh.ops.delete(bm, geom=kill, context="FACES")
+        bm.to_mesh(o.data)
+        bm.free()
+        name = f"{prefix}{k + 1}"
+        o.data.materials.clear()
+        o.data.materials.append(bpy.data.materials.get(name) or bpy.data.materials.new(name))
+        o.name = f"Band_tmp_{k}__{name}"
+        log(f"  band {name}: {tris(o)} tris")
+        out.append(o)
+    bpy.data.objects.remove(src, do_unlink=True)
+    for i, o in enumerate(out):
+        o.name = f"tmp_{i}__{o.name.split('__', 1)[1]}"
+    for i, o in enumerate(out):
+        o.name = f"Group_0_Sub_{i}__{o.name.split('__', 1)[1]}"
+    return out
+
+
 def light_bowgun():
     """Prototype axes: +Y muzzle, +Z up. Scaled 1.6x (originals are ~1.5 m long, ours
     0.93 m); bore placed 0.19 below the origin (the originals' muzzle bones sit at y -0.16
@@ -109,6 +154,10 @@ def long_sword():
         "by_name": {},
         # The two rings in place of a tsuba hover like the bowgun's (weapons script).
         "floaters": {"Tsuba_Halo": "MQ_Tsuba0", "Tsuba_Halo_Inner": "MQ_Tsuba1"},
+        # The temper line in 8 pieces root -> tip, a material each (MiquellaBand1-8): the weapons
+        # script runs the band of light along them (the material's own moving glow, MoveEmit,
+        # showed nothing in the game, user 2026-10-02).
+        "bands": ("MiquellaTemper", "MiquellaBand", LS_BANDS),
     }
 
 
@@ -342,8 +391,11 @@ def gunlance():
             return None
         w = min(1.0, max(0.0, (co.z - z0) / (top - z0)))
         return [("MQ_SpringTop", w), ("Base", 1.0 - w)]
+    # The wyrmstake (and the heat effects) start at the originals' VFX_Pile / VFX_Heat, 0.11-0.19
+    # off the axis where their barrels are; ours is on the axis: on it, at the same heights (user,
+    # 2026-10-02: the needle showed beside the spring, not in it).
     return placed("wp_miquella_gl", "Art/Model/MiquellaLight/Gunlance", [o for o in objs if o not in shield],
-                  to_file, {"VFX_Fire": muzzle},
+                  to_file, {"VFX_Fire": muzzle, "VFX_Pile": Vector((0, 0, 0.530)), "VFX_Heat": Vector((0, 0, 1.153))},
                   floaters={"Barrel_Halo_0": "MQ_Halo0", "Barrel_Halo_1": "MQ_Halo1"},
                   pivots={"MQ_SpringTop": (0, 0, arsenal.SPRING_TOP)}, weight_fn=spring_weights,
                   by_name={"Energy_Core": "MiquellaCore"})
@@ -824,6 +876,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
+              **{f"MiquellaBand{k + 1}": "MiquellaGlow" for k in range(LS_BANDS)},
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
 # Gold metal with a faint warmth (the needle arrows): the devices' three-band texture, its gold band.
 DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
@@ -1234,6 +1287,8 @@ def main():
     mesh_col = bpy.data.collections.new(f"{spec['name']}.mesh")
     bpy.context.scene.collection.children.link(mesh_col)
     subs, pivots = build_parts(spec, mesh_col)
+    if spec.get("bands"):
+        subs = split_bands(subs, *spec["bands"])
     lo, hi = file_bounds(subs)
     log(f"file-space bounds min=({lo.x:+.3f}, {lo.y:+.3f}, {lo.z:+.3f}) max=({hi.x:+.3f}, {hi.y:+.3f}, {hi.z:+.3f})")
     arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots, spec.get("bone_parents"))

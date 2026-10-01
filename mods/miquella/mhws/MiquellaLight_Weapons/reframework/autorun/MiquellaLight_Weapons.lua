@@ -151,7 +151,9 @@ local KITS = {
         label = "Miquella light blade (long sword)",
         mesh = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mesh",
         mdf2 = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaBand1 = 1.2, MiquellaBand2 = 1.2,
+                 MiquellaBand3 = 1.2, MiquellaBand4 = 1.2, MiquellaBand5 = 1.2, MiquellaBand6 = 1.2, MiquellaBand7 = 1.2,
+                 MiquellaBand8 = 1.2 },
         -- The two rings in place of a tsuba hover.
         floaters = { mode = "hover", joints = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
@@ -159,9 +161,12 @@ local KITS = {
         -- Spirit gauge levels (none / white / yellow / red): pale gold -> gold -> bright gold ->
         -- white light, the temper line's band of light running from yellow on (DESIGN). The game
         -- counts 1 none .. 4 red (recorded 2026-10-02: <AuraLevel>k__BackingField; the guess
-        -- _AuraLevel did not exist, so the band never ran). A wider, brighter band (user: not seen).
+        -- _AuraLevel did not exist). The band runs along the temper line's 8 pieces (MiquellaBand1-8,
+        -- root -> tip; the material's own MoveEmit showed nothing in the game, user 2026-10-02).
         charge = { levels = 3, fields = { "<AuraLevel>k__BackingField", "_AuraLevel" }, offset = -1, look = "spirit",
-                   band = true, bandFrom = 2, bandWidth = 0.24, bandBoost = 2.5 },
+                   band = true, bandFrom = 2, bandWidth = 0.16, bandBoost = 3.0, bandPeriod = 0.8,
+                   bands = { "MiquellaBand1", "MiquellaBand2", "MiquellaBand3", "MiquellaBand4", "MiquellaBand5",
+                             "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" } },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -998,6 +1003,17 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     if not spec.band then return end
     -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).
     local band = math.max(0, math.min(1, s - ((spec.bandFrom or spec.levels) - 1)))
+    if spec.bands then
+        -- Pieces of the temper line lit in turn: a pulse travelling root -> tip, then again.
+        local n, w = #spec.bands, spec.bandWidth or BAND_WIDTH
+        local front = ((now / (spec.bandPeriod or BAND_PERIOD)) % 1) * (1 + 2 * w) - w
+        for k, mat in ipairs(spec.bands) do
+            local x = ((k - 0.5) / n - front) / w
+            entry.mul[mat] = mul * (1 + band * (spec.bandBoost or 1) * math.exp(-x * x))
+            set_color(entry, mesh, mat, color)
+        end
+        return
+    end
     set_float(entry, mesh, "MiquellaTemper", "Use_MoveEmit", band > 0.05 and 1.0 or 0.0)
     if band > 0.05 then
         set_float(entry, mesh, "MiquellaTemper", "MoveEmit", ((now / BAND_PERIOD) % 1) * 1.3 - 0.15)
@@ -1117,7 +1133,44 @@ end
 -- Wyvern's Fire winds it all the way until it fires. The light follows the level.
 local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
 local SHELL_PULSE = 0.18             -- a shell fired: a short press
-local WYVERN_WINDUP = 1.7            -- Wyvern's Fire: from the gauge dropping to the blast (guess)
+-- Wyvern's Fire: its gauge drops at the blast (user, 2026-10-02: the spring did not wind, the
+-- drop is too late), so the wind-up is read off the weapon's own skeleton: the game animates the
+-- original gunlance bones on our model (Hinge opens the barrel to reload; Heat_Hinge, under it,
+-- is taken for Wyvern's Fire). Turned past GL_WIND_DEG or moved past GL_WIND_M from its first
+-- seen pose = winding, until the gauge drops (the blast). Guessed: the joints' moves are logged
+-- (glEvents, saved with the field recorder's file) to check which one goes with what.
+local GL_JOINTS = { "Hinge", "Heat_Hinge" }
+local GL_WIND_JOINT, GL_WIND_DEG, GL_WIND_M = "Heat_Hinge", 6, 0.01
+local glEvents = {}
+
+local function gl_event(text)
+    glEvents[#glEvents + 1] = string.format("%8.2f  %s", os.clock(), text)
+    if #glEvents > 100 then table.remove(glEvents, 1) end
+end
+
+-- Each watched joint: its turn (degrees, from its first seen rotation) and move (metres).
+local function gl_joints(entry)
+    local tf = entry.glTf or try(function() return entry.go:call("get_Transform") end)
+    entry.glTf, entry.glJoints, entry.glRest = tf, entry.glJoints or {}, entry.glRest or {}
+    local out = {}
+    for _, n in ipairs(GL_JOINTS) do
+        local j = entry.glJoints[n]
+        if j == nil then
+            j = tf and try(function() return tf:call("getJointByName", n) end) or false
+            entry.glJoints[n] = j
+        end
+        local q = j and try(function() return j:call("get_LocalRotation") end)
+        local p = j and try(function() return j:call("get_LocalPosition") end)
+        if q and p then
+            local r = entry.glRest[n] or { q = { q.x, q.y, q.z, q.w }, p = { p.x, p.y, p.z } }
+            entry.glRest[n] = r
+            local d = math.abs(q.x * r.q[1] + q.y * r.q[2] + q.z * r.q[3] + q.w * r.q[4])
+            local m = math.sqrt((p.x - r.p[1]) ^ 2 + (p.y - r.p[2]) ^ 2 + (p.z - r.p[3]) ^ 2)
+            out[n] = { deg = math.deg(2 * math.acos(math.min(1, d))), m = m }
+        end
+    end
+    return out
+end
 local GL_CHARGE_STEP = 0.6           -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
 
 local function first_number(h, names)
@@ -1135,19 +1188,41 @@ local function update_gunlance(entry, mesh, h, dt, now)
     local wyv, wn = first_number(h, spec.wyvern)
     local gauge, gn = first_number(h, spec.wyvernGauge or {})
     local shells = first_number(h, spec.shells or {})
-    if gauge and entry.lastWyvGauge and gauge < entry.lastWyvGauge - 0.5 then entry.wyvernAt = now end
+    if gauge and entry.lastWyvGauge and gauge < entry.lastWyvGauge - 0.5 then
+        entry.blastAt = now
+        gl_event(string.format("Wyvern's Fire gauge %.2f -> %.2f (the blast)", entry.lastWyvGauge, gauge))
+    end
     entry.lastWyvGauge = gauge
-    if shells and entry.lastShells and shells < entry.lastShells then entry.shellUntil = now + SHELL_PULSE end
+    if shells and entry.lastShells and shells < entry.lastShells then
+        entry.shellUntil = now + SHELL_PULSE
+        gl_event(string.format("shells %s -> %s", tostring(entry.lastShells), tostring(shells)))
+    end
     entry.lastShells = shells
+    local joints = gl_joints(entry)
+    entry.glMoved = entry.glMoved or {}
+    for _, n in ipairs(GL_JOINTS) do
+        local jt = joints[n]
+        local moved = jt ~= nil and (jt.deg > GL_WIND_DEG or jt.m > GL_WIND_M)
+        if moved ~= (entry.glMoved[n] or false) then
+            gl_event(string.format("%s %s (%.0f deg, %.3f m)", n, moved and "moves" or "back", jt and jt.deg or 0, jt and jt.m or 0))
+            entry.glMoved[n] = moved
+        end
+    end
     local reloading = (reload or 0) > 0
-    if reloading and not entry.wasReloading then entry.reloadUntil = now + RELOAD_PULSE end
+    if reloading and not entry.wasReloading then
+        entry.reloadUntil = now + RELOAD_PULSE
+        gl_event("reload")
+    end
     entry.wasReloading = reloading
     -- Charging while the timer counts up (it keeps its value after the shot).
     local counting = shot ~= nil and entry.lastShot ~= nil and shot > entry.lastShot + 1e-5 and shot > 0
     entry.lastShot = shot
     entry.countingAt = counting and now or entry.countingAt
     local charging = entry.countingAt ~= nil and now - entry.countingAt < 0.15
-    local winding = (wyv or 0) > 0 or (entry.wyvernAt ~= nil and now - entry.wyvernAt < WYVERN_WINDUP)
+    -- After the blast the bone may stay turned a while: wait for it to come back first.
+    if entry.blastAt == now then entry.blastLatch = true end
+    if not entry.glMoved[GL_WIND_JOINT] then entry.blastLatch = nil end
+    local winding = (wyv or 0) > 0 or (entry.glMoved[GL_WIND_JOINT] and not entry.blastLatch)
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
     local level, pack = 0, 0
@@ -1167,6 +1242,9 @@ local function update_gunlance(entry, mesh, h, dt, now)
     stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
                                        show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
                                        level, entry.pack or 0)
+        .. string.format("  joints: Hinge %.0f deg, Heat_Hinge %.0f deg %.3f m",
+                         joints.Hinge and joints.Hinge.deg or -1, joints.Heat_Hinge and joints.Heat_Hinge.deg or -1,
+                         joints.Heat_Hinge and joints.Heat_Hinge.m or -1)
     update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
 
@@ -1364,7 +1442,8 @@ local function record_fields(h, now)
         end
         local safe = rec.type:gsub("[^%w_]", "_")
         try(function() json.dump_file("MiquellaLight/fields_" .. safe .. ".json",
-            { type = rec.type, samples = rec.samples, changed = changed, all = rec.data, objects = rec.objects }) end)
+            { type = rec.type, samples = rec.samples, changed = changed, all = rec.data, objects = rec.objects,
+              events = #glEvents > 0 and glEvents or nil }) end)
     end
 end
 

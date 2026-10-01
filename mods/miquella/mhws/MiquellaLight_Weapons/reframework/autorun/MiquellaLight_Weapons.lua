@@ -109,24 +109,19 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield.mdf2",
         glow = { MiquellaGlow = 1.2 },
     },
-    -- Test (2026-10-02): the shield with its film of light on translucent game materials
-    -- (build_weapon_kit.py MEMBRANES); the one the user picks goes on every shield.
-    SwordShield_ShieldA = {
-        label = "Miquella energy shield (sword & shield) + translucent film A: aura effect",
-        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_aura.mesh",
-        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_aura.mdf2",
-        glow = { MiquellaGlow = 1.2 },
-    },
-    SwordShield_ShieldB = {
-        label = "Miquella energy shield (sword & shield) + translucent film B: bubble effect",
-        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_bubble.mesh",
-        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_bubble.mdf2",
-        glow = { MiquellaGlow = 1.2 },
-    },
+    -- Test (2026-10-02): the shield with a film of light. A (aura effect) and B (bubble effect)
+    -- showed nothing in the game, C (a weapon's inner glow) came out hard-edged in patches (user);
+    -- D: our glowing material, see-through by a partial Dissolve in bands that thin toward the rim.
     SwordShield_ShieldC = {
         label = "Miquella energy shield (sword & shield) + translucent film C: soft inner glow",
         mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_volume.mesh",
         mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_volume.mdf2",
+        glow = { MiquellaGlow = 1.2 },
+    },
+    SwordShield_ShieldD = {
+        label = "Miquella energy shield (sword & shield) + film D: our glow, dithered, soft edge",
+        mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_film.mesh",
+        mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_film.mdf2",
         glow = { MiquellaGlow = 1.2 },
     },
     Hammer = {

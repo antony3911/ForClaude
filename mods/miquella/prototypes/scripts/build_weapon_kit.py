@@ -216,6 +216,58 @@ def sns_shield_membrane(variant):
     return spec
 
 
+# Film D (2026-10-02, after A-C: A, B invisible, C hard-edged in patches): our own glowing
+# material, made see-through by a partial Dissolve (scattered pixels the game's anti-aliasing
+# blends, as when the dual blades' side blades fade in), in concentric bands that thin out
+# toward the rim so the edge softens away: (inner, outer radius as a fraction, Dissolve).
+FILM_BANDS = [(0.0, 0.35, 0.42), (0.35, 0.6, 0.36), (0.6, 0.78, 0.28), (0.78, 0.9, 0.18), (0.9, 1.0, 0.08)]
+
+
+def film_bands(name, radius, mat_prefix, n_seg=96):
+    """Flat annuli in the local XY plane, both sides (two layers 0.002 apart, the back flipped)."""
+    import bmesh
+    objs = []
+    for k, (f0, f1, _) in enumerate(FILM_BANDS):
+        bm = bmesh.new()
+        for z, flip in ((0.001, False), (-0.001, True)):
+            inner, outer = [], []
+            for i in range(n_seg):
+                a = 2 * math.pi * i / n_seg
+                d = Vector((math.cos(a), math.sin(a), 0))
+                inner.append(bm.verts.new(d * radius * max(f0, 0.004) + Vector((0, 0, z))))
+                outer.append(bm.verts.new(d * radius * f1 + Vector((0, 0, z))))
+            for i in range(n_seg):
+                j = (i + 1) % n_seg
+                quad = (inner[i], outer[i], outer[j], inner[j])
+                bm.faces.new(tuple(reversed(quad)) if flip else quad)
+        me = bpy.data.meshes.new(f"{name}_{k}")
+        bm.to_mesh(me)
+        bm.free()
+        me.uv_layers.new(name="UVMap")
+        o = bpy.data.objects.new(f"{name}_{k}", me)
+        bpy.context.scene.collection.objects.link(o)
+        mat = bpy.data.materials.get(f"{mat_prefix}{k + 1}") or bpy.data.materials.new(f"{mat_prefix}{k + 1}")
+        me.materials.append(mat)
+        objs.append(o)
+    return objs
+
+
+def sns_shield_film():
+    """The sword & shield's shield with film D in place of its membrane disc."""
+    spec = sns_shield()
+    disc = bpy.data.objects["Shield_Membrane"]
+    radius = max(Vector(v.co.xy).length for v in disc.data.vertices)
+    for o in film_bands("Shield_Film", radius, "Film_"):
+        o.parent = disc.parent
+        o.matrix_world = disc.matrix_world.copy()
+    bpy.data.objects.remove(disc, do_unlink=True)
+    bpy.context.view_layer.update()
+    spec["objects"] = subtree("EnergyShield")
+    spec["name"] = "wp_miquella_sns_shield_film"
+    spec["materials"] = dict(ARSENAL_MATERIALS, **{f"Film_{k + 1}": f"MiquellaFilm{k + 1}" for k in range(len(FILM_BANDS))})
+    return spec
+
+
 def hammer():
     """Hand 0.1 above the pommel; scaled 1.4: the head's center 1.32 m above the hand, the
     striking faces 0.58 apart (originals: head up to 1.65, 1.1 wide; ours stays slender)."""
@@ -582,7 +634,7 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "sns_sword": sns_sword, "sns_shield": sns_shield,
            "sns_shield_aura": lambda: sns_shield_membrane("aura"),
            "sns_shield_bubble": lambda: sns_shield_membrane("bubble"),
-           "sns_shield_volume": lambda: sns_shield_membrane("volume"), "hammer": hammer, "hunting_horn": hunting_horn,
+           "sns_shield_volume": lambda: sns_shield_membrane("volume"), "sns_shield_film": sns_shield_film, "hammer": hammer, "hunting_horn": hunting_horn,
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
@@ -604,7 +656,8 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
-              "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow"}
+              "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow",
+              **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract")
 
@@ -895,6 +948,12 @@ def build_mdf(path, template_mdf, names, membrane=None):
                 for p in new.propertyList:
                     if p.propName == "Dissolve":
                         p.propValue = [0.0]
+            if name.startswith("MiquellaFilm"):
+                for p in new.propertyList:
+                    if p.propName == "Dissolve":
+                        p.propValue = [FILM_BANDS[int(name[len("MiquellaFilm"):]) - 1][2]]
+                    elif p.propName == "Emissive_Intensity":
+                        p.propValue = [0.9]
             if name.startswith("MiquellaExtract"):
                 # Their own colours from the band texture: white emissive colour, our textures.
                 for p in new.propertyList:

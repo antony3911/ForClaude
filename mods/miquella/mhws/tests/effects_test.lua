@@ -48,14 +48,23 @@ local monster = effect("ef_fire", "Art/VFX/EffectEditor/Enemy/em0001/fire.efx", 
 local playing = { glow, attackUp, defenseUp, heal, monster }
 
 local addHook
+local hooked = {}
 local pointers = {}
-local function ptr(o) pointers[#pointers + 1] = o; return #pointers end
+local function ptr(o)
+    for i, x in ipairs(pointers) do if x == o then return i end end
+    pointers[#pointers + 1] = o; return #pointers
+end
 sdk = {
     find_type_definition = function(n)
-        return { get_method = function(_, sig) return sig end }
+        return { get_method = function(_, sig) return n .. "::" .. sig end }
     end,
-    hook = function(m, pre, post) if m == "addExternParameter(via.effect.ExternParameter)" then addHook = pre end end,
+    hook = function(m, pre, post)
+        hooked[m] = { pre = pre, post = post }
+        if m == "via.effect.EffectPlayer::addExternParameter(via.effect.ExternParameter)" then addHook = pre end
+    end,
     to_managed_object = function(p) return pointers[p] end,
+    to_int64 = function(v) return v end,
+    to_ptr = function(v) return v end,
     typeof = function(n) return n end,
     get_native_singleton = function() return {} end,
     call_native_func = function() return { call = function(_, m, t)
@@ -66,7 +75,9 @@ sdk = {
 }
 ValueType = { new = function() return color(0) end }
 local onFrame, onDraw
-re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
+local beforeRender
+re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end,
+       on_pre_application_entry = function(name, f) if name == "BeginRendering" then beforeRender = f end end }
 local out, toggle = {}, {}
 imgui = { tree_node = function() return true end, tree_pop = function() end, text = function(t) out[#out + 1] = t end,
           checkbox = function(l, v) if toggle[l] then toggle[l] = nil; return true, not v end return false, v end }
@@ -84,6 +95,25 @@ local function hue_is_gold(c)
 end
 
 check(addHook ~= nil, "spawn hook installed")
+check(hooked["via.effect.script.EffectCustomExternParameter::set_Color(via.Color)"]
+      and hooked["via.effect.EffectPlayer::getExternParameter(System.String)"].post, "parameter hooks installed")
+-- The game fetches a new trail's Color parameter and sets it red: changed on the way in.
+local newTrail = effect("11_it02_001", "", hex(0xFF, 0xFF, 0xFF), { Color = param("Color", hex(0xFF, 0xFF, 0xFF)) })
+local get = hooked["via.effect.EffectPlayer::getExternParameter(System.String)"]
+local setColor = hooked["via.effect.script.EffectCustomExternParameter::set_Color(via.Color)"]
+local function game_sets(ep, name, rgba)
+    get.pre({ 0, ptr(ep), name })
+    local p = ep.params[name]
+    get.post(ptr(p))
+    local args = { 0, ptr(p), rgba }
+    setColor.pre(args)
+    p.c = color(args[3])
+    return p.c
+end
+local c0 = game_sets(newTrail, "Color", hex(0xFF, 0x2E, 0x2E, 0xC0))
+check(hue_is_gold(c0) and (c0.rgba >> 24) == 0xC0, "game's red set on a trail parameter arrives gold (" .. rgb(c0) .. ")")
+local c1 = game_sets(monster, "Color", hex(0xFF, 0x20, 0x20))
+check(rgb(c1) == "FF2020", "other effects' colour sets pass through")
 -- New effects: the game adds their parameters (hook) and gives the trail a red Color.
 local trail = effect("11_it02_001", "", hex(0xFF, 0xFF, 0xFF), { Color = param("Color", hex(0xFF, 0x2E, 0x2E, 0xC0)) })
 local late = effect(nil, "", hex(0xFF, 0xFF, 0xFF), { Color = param("Color", hex(0xFF, 0x2E, 0x2E)) })   -- named a frame later
@@ -100,7 +130,7 @@ late.goName = "11_it02_001"
 onFrame()
 check(hue_is_gold(late.params.Color.c), "picked up once it has its name")
 out = {}; onDraw()
-check(table.concat(out):match("Recoloured: 2 at spawn"), "spawn recolours counted")
+check(table.concat(out):match("1 intercepted, 2 at spawn"), "intercepted and spawn recolours counted")
 -- A finished trail is dropped.
 trail.running = false
 onFrame()
@@ -129,11 +159,20 @@ check(attackUp.tint.rgba == GREEN, "a hidden effect reused for healing shows aga
 glow.alive = false
 onFrame()
 out = {}; onDraw()
-check(table.concat(out):match("Tracking 1%."), "destroyed and finished effects dropped (only the hidden defense-up glow tracked)")
+check(table.concat(out):match("Tracking 3 effects"), "destroyed and finished effects dropped (the three buff/heal effects stay watched)")
 -- Switch the buff hiding off.
 toggle["Hide attack-up / defense-up glow"] = true; onDraw()
 check(savedCfg and savedCfg[2].hideBuffs == false, "setting saved")
 defenseUp.tint = color(ORANGE)
 onFrame(); clock = 1; onFrame()
 check(defenseUp.tint.rgba == ORANGE, "with hiding off the glow stays")
+-- A buff effect already black (e.g. after a script reload) is still watched: the game's
+-- next replay sets the tint again and it is hidden before rendering.
+toggle["Hide attack-up / defense-up glow"] = true; onDraw()
+local reloaded = effect("11_pl_heal", "Art/VFX/EffectEditor/Player/pl_cm/pl_state/11_pl_heal.efx", 0)
+playing = { reloaded }
+clock = 2; onFrame()
+reloaded.tint = color(ORANGE)
+beforeRender()
+check(reloaded.tint.rgba == 0, "replayed buff tint hidden in the before-rendering pass")
 print("ALL PASS")

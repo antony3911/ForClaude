@@ -3,14 +3,17 @@
 -- 1. Dual blades effects: red -> gold, blue -> silver at runtime. The recoloured effect
 --    files are not enough: the game hands some effects their colours while it runs, as
 --    extern parameters (Color on the attack trail 11_it02_001, ColorA/B/C on the archdemon
---    body glow and forearm flames 11_it02_002; found with the FX probe). Every new effect
---    is caught as the game adds its parameters (hook) and checked on the next frame, so a
---    red trail shows for one frame at most; the effects found then are re-checked every
---    frame while they play (parameters and the effect's tint), and a slower scan of all
---    effects catches anything the hook missed.
+--    body glow and forearm flames 11_it02_002; found with the FX probe). Trails are emitted
+--    piece by piece and each piece keeps the colour it was emitted with, so the colour has
+--    to be right before the first piece: the parameter objects of dual blades effects are
+--    noted when they are fetched (hook on getExternParameter) and the game's own set_Color
+--    on them is changed on the way in (hook). Backups: new effects are caught as the game
+--    adds their parameters and checked right away, and dual blades effects are re-checked
+--    every frame while they play (parameters and tint), before rendering.
 -- 2. Hide the attack-up / defense-up glow: pl_state/11_pl_heal, which the game tints red
---    (attack up) or orange (defense up) and replays every ~2 s. Its tint is set to
---    transparent black; the same effect with other tints (healing) is left alone.
+--    (attack up) or orange (defense up) and replays every ~2 s, setting the tint again each
+--    time. Every instance of that effect is watched for its whole life and the two buff tints
+--    are made transparent black before rendering; other tints (healing) are left alone.
 --
 -- Both can be switched off in the REFramework menu (Script Generated UI -> MiquellaLight
 -- Effects); the choice is saved in reframework/data/MiquellaLight/Effects.json.
@@ -32,7 +35,13 @@ if type(saved) == "table" then
     for k, v in pairs(saved) do config[k] = v end
 end
 
-local stats = { spawn = 0, playing = 0, buffs = 0 }
+local stats = { spawn = 0, playing = 0, buffs = 0, intercepted = 0 }
+local paramOwned = {}                   -- address of a dual blades colour parameter object -> true
+local nParams = 0
+local it02Cache = {}                    -- effect player address -> true when it is a dual blades effect
+local getCtx = nil                      -- effect player whose parameter is being fetched (hook pre -> post)
+local tickedAt = -1
+local CACHE_LIFE, cacheReset = 5, 0
 local tracked = {}                      -- address -> { ep, kind = "recolor" | "buff", ran, born }
 local pending = {}                      -- effects just created: { ep, frames }
 local MAX_PENDING = 128
@@ -142,11 +151,66 @@ local function on_add_param(args)
     if ep then pending[#pending + 1] = { ep = ep, frames = 0 } end
 end
 
-hookOk = pcall(function()
-    sdk.hook(sdk.find_type_definition(EP):get_method("addExternParameter(via.effect.ExternParameter)"),
-        function(args) pcall(on_add_param, args) end,
-        function(retval) return retval end)
-end)
+-- Cached per effect player (the game fetches parameters often); the cache is emptied every
+-- few seconds in case an address is reused by another effect.
+local function is_it02(key, ep)
+    local known = it02Cache[key]
+    if known ~= nil then return known end
+    local name = ep and effect_name(ep) or ""
+    local yes = name:find(RECOLOR_MATCH, 1, true) ~= nil
+    if yes or name ~= "" then it02Cache[key] = yes end      -- not set up yet: ask again next time
+    return yes
+end
+
+-- The game fetches a dual blades effect's colour parameter: remember that parameter object.
+local function on_get_param_pre(args)
+    getCtx = nil
+    if not config.recolor then return end
+    local key = sdk.to_int64(args[2])
+    if is_it02(key, sdk.to_managed_object(args[2])) then getCtx = key end
+end
+
+local function on_get_param_post(retval)
+    if not getCtx then return end
+    getCtx = nil
+    local p = sdk.to_managed_object(retval)
+    local name = p and try(function() return p:call("get_Name") end)
+    if not (name == "Color" or name == "ColorA" or name == "ColorB" or name == "ColorC") then return end
+    local key = sdk.to_int64(retval)
+    if not paramOwned[key] then
+        if nParams > 4000 then paramOwned, nParams = {}, 0 end
+        paramOwned[key], nParams = true, nParams + 1
+    end
+end
+
+-- The game sets a colour on one of those parameters: recolour it on the way in.
+local function on_set_color_pre(args)
+    if not (config.recolor and paramOwned[sdk.to_int64(args[2])]) then return end
+    local v = sdk.to_int64(args[3])
+    if v < 0 or v > 0xFFFFFFFF then return end           -- not a colour passed by value
+    local new = recolor(v)
+    if new then
+        args[3] = sdk.to_ptr(new)
+        stats.intercepted = stats.intercepted + 1
+    end
+end
+
+local hooks = {
+    { EP, "addExternParameter(via.effect.ExternParameter)", function(args) pcall(on_add_param, args) end },
+    { EP, "getExternParameter(System.String)", function(args) pcall(on_get_param_pre, args) end,
+      function(retval) pcall(on_get_param_post, retval); return retval end },
+    { EP, "getExternParameters(System.UInt64)", function(args) pcall(on_get_param_pre, args) end,
+      function(retval) pcall(on_get_param_post, retval); return retval end },
+    { "via.effect.script.EffectCustomExternParameter", "set_Color(via.Color)",
+      function(args) pcall(on_set_color_pre, args) end },
+}
+local nHooks = 0
+for _, h in ipairs(hooks) do
+    if pcall(function()
+        sdk.hook(sdk.find_type_definition(h[1]):get_method(h[2]), h[3], h[4] or function(retval) return retval end)
+    end) then nHooks = nHooks + 1 end
+end
+hookOk = nHooks == #hooks
 
 -- ------------------------------------------------------------------ playing effects
 
@@ -167,8 +231,7 @@ local function scan()
             if config.recolor and name:find(RECOLOR_MATCH, 1, true) then
                 tracked[key] = { ep = ep, kind = "recolor" }
             elseif config.hideBuffs and name:find(BUFF_MATCH, 1, true) then
-                local tint = rgba_of(try(function() return ep:call("get_Color") end))
-                if tint and BUFF_TINTS[rgb_of(tint)] then tracked[key] = { ep = ep, kind = "buff" } end
+                tracked[key] = { ep = ep, kind = "buff" }        -- watched for its whole life
             end
         end
     end
@@ -209,9 +272,7 @@ local function update(key, t)
             if pcall(function() ep:call("set_Color(via.Color)", make_color(TRANSPARENT)) end) then
                 stats.buffs = stats.buffs + 1
             end
-        elseif tint ~= TRANSPARENT then
-            tracked[key] = nil                                 -- reused for something else (healing)
-        end
+        end                                                    -- other tints (healing): left alone
     end
 end
 
@@ -236,16 +297,32 @@ local function take_pending()
     pending = still
 end
 
-re.on_frame(function()
+local function tick()
     if not (config.recolor or config.hideBuffs) then return end
     if #pending > 0 then pcall(take_pending) end
     if os.clock() >= nextScan then
         nextScan = os.clock() + SCAN_EVERY
         pcall(scan)
     end
+    if os.clock() >= cacheReset then
+        cacheReset = os.clock() + CACHE_LIFE
+        it02Cache = {}
+    end
     for key, t in pairs(tracked) do
         pcall(update, key, t)
     end
+end
+
+-- Before rendering, after the game's own update set this frame's colours. If that entry
+-- point does not exist, fall back to once per frame.
+local entryOk = pcall(function()
+    re.on_pre_application_entry("BeginRendering", function()
+        tickedAt = os.clock()
+        tick()
+    end)
+end)
+re.on_frame(function()
+    if not entryOk or os.clock() - tickedAt > 0.1 then tick() end
 end)
 
 re.on_draw_ui(function()
@@ -257,7 +334,9 @@ re.on_draw_ui(function()
     if changed then json.dump_file(CONFIG_PATH, config) end
     local n = 0
     for _ in pairs(tracked) do n = n + 1 end
-    imgui.text(string.format("Recoloured: %d at spawn, %d on playing effects. Buff glows hidden: %d. Tracking %d.%s",
-        stats.spawn, stats.playing, stats.buffs, n, hookOk and "" or " (spawn hook unavailable)"))
+    imgui.text(string.format("Recoloured: %d intercepted, %d at spawn, %d on playing effects. Buff glows hidden: %d.",
+        stats.intercepted, stats.spawn, stats.playing, stats.buffs))
+    imgui.text(string.format("Tracking %d effects, %d colour parameters. Hooks %d/%d. %s", n, nParams, nHooks, #hooks,
+        (entryOk and os.clock() - tickedAt < 0.5) and "Before rendering." or "Once per frame."))
     imgui.tree_pop()
 end)

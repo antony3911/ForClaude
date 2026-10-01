@@ -13,6 +13,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_db") then
       return { "MiquellaBlade", "MiquellaIvory", "MiquellaGrip", "MiquellaGlow", "MiquellaDemon1", "MiquellaDemon2", "MiquellaDemon3" }
     end
+    if self.mdfPath:match("wp_miquella_lbg") then
+      return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory" }
+    end
     if self.mdfPath:match("wp_miquella_gs") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
@@ -20,9 +23,12 @@ local function newMesh(meshPath)
   end
   function m:get_MaterialNum() return #mats(self) end
   function m:getMaterialName(i) return mats(self)[i + 1] end
-  function m:getMaterialVariableNum(i) return 3 end
-  function m:getMaterialVariableName(i, j) return ({ "Emissive_Color", "Emissive_Intensity", "Dissolve" })[j + 1] end
+  local VARS = { "Emissive_Color", "Emissive_Intensity", "Dissolve", "Use_MoveEmit", "MoveEmit", "MoveEmit_Width" }
+  function m:getMaterialVariableNum(i) return #VARS end
+  function m:getMaterialVariableName(i, j) return VARS[j + 1] end
   function m:setMaterialFloat(i, j, v) self.floats[mats(self)[i + 1] .. "." .. j] = v end
+  m.colors = {}
+  function m:setMaterialFloat4(i, j, v) self.colors[mats(self)[i + 1]] = v end
   m.matEnabled = {}
   function m:setMaterialsEnable(i, v) self.matEnabled[mats(self)[i + 1]] = v end
   return m
@@ -66,9 +72,16 @@ local subMesh = newMesh("Art/Model/Item/it02/00/0002/it0200_0002_0.mesh")
 local subGO = newGO("Wp02_L", 1002, subMesh, nil)
 local chr = {}
 local kijin = 0
+local chargeLv = nil
+local rapidGauge, rapidMode = nil, nil
 function chr:call(m)
   if m == "get_WeaponHandling" then
-    return { get_field = function(_, n) if n == "_KijinExtern" then return kijin end end }
+    return { get_field = function(_, n)
+      if n == "_KijinExtern" then return kijin end
+      if n == "_ChargeLv" then return chargeLv end
+      if n == "_RapidAmmoGauge" then return rapidGauge end
+      if n == "_IsRapidMode" then return rapidMode end
+    end }
   end
 end
 local fakeTime = 0
@@ -96,6 +109,7 @@ sdk = {
 local onFrame, onDraw
 re = { on_frame = function(f) onFrame = f end, on_draw_ui = function(f) onDraw = f end }
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
+Vector4f = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
 Quaternion = { new = function(w, x, y, z) return { w = w, x = x, y = y, z = z } end }
 local comboAnswer = nil
 local sizeAnswer = nil
@@ -275,8 +289,8 @@ check(weaponGO.draw == true, "great sword: shown when drawn")
 frames(5, 1 / 60)
 texts = {}; onDraw()
 local sawRings = false
-for _, t in ipairs(texts) do if t:match("^Rings found: 3/3") then sawRings = true end end
-check(sawRings, "great sword: menu reports the 3 ring joints")
+for _, t in ipairs(texts) do if t:match("^Rings found: 4/4") then sawRings = true end end
+check(sawRings, "great sword: menu reports the 4 ring joints")
 local ring = weaponGO.tf.joints["MQ_Ring1"]
 local pivot = { 0.0222, 0.0, 1.4818 }
 local function ringOff()
@@ -301,7 +315,52 @@ check(ringOff() < 0.004, string.format("great sword: the ring settles back (%.4f
 sliderAnswer["Ring motion"] = 0.0; onDraw()
 frames(30, 1 / 60)
 check(ringOff() < 1e-3, "great sword: Ring motion 0 keeps the ring still")
+-- Charge: the game's level brightens the blade; the third level turns it white and runs the band.
+local glow = savedCfg.glow
+chargeLv = 0
+frames(200, 1 / 60)                  -- the field is looked for again after 3 s
+texts = {}; onDraw()
+local sawCharge = false
+for _, t in ipairs(texts) do if t:match("^Charge: _ChargeLv = 0") then sawCharge = true end end
+check(sawCharge, "great sword: menu shows the charge field it found")
+check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow) < 1e-6, "great sword: level 0 keeps the base glow")
+chargeLv = 2
+frames(30, 1 / 60)
+check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow * 2.8) < 1e-6, "great sword: level 2 glows 2.8x")
+check(weaponMesh.floats["MiquellaTemper.3"] == 0.0, "great sword: no band before level 3")
+chargeLv = 3
+frames(30, 1 / 60)
+local c = weaponMesh.colors["MiquellaBlade"]
+check(c and c.z > 0.8, "great sword: level 3 turns the blade white")
+check(weaponMesh.floats["MiquellaTemper.3"] == 1.0, "great sword: level 3 runs the band on the temper line")
+local band1 = weaponMesh.floats["MiquellaTemper.4"]
+frames(10, 1 / 60)
+check(weaponMesh.floats["MiquellaTemper.4"] ~= band1, "great sword: the band moves")
+chargeLv = 0
+frames(90, 1 / 60)                   -- 0.35 s per level on the way down
+check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow) < 1e-6 and weaponMesh.floats["MiquellaTemper.3"] == 0.0,
+      "great sword: releasing the charge fades back")
 comboAnswer = 1; onDraw()
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/Item/it00/00/0000/it0000_0000_0.mesh", "great sword: original restored")
+-- Light bowgun: the rapid-fire gauge lights the three drops, rapid-fire mode brightens them.
+weaponMesh = newMesh("Art/Model/Item/it13/00/0001/it1300_0001_0.mesh")
+weaponGO = newGO("Wp13", 3001, weaponMesh, newChain("Art/Model/Item/it13/00/0001/it1300_0001_0.chain2"))
+rapidGauge, rapidMode = 100, false
+frames(20, 1 / 60)
+comboAnswer = 4; onDraw()
+frames(260, 1 / 60)
+check(weaponMesh.meshPath == "Art/Model/MiquellaLight/LightBowgun/wp_miquella_lbg.mesh", "light bowgun: model swapped")
+local function dot(i) return weaponMesh.floats["MiquellaGauge" .. i .. ".1"] / (1.2 * glow) end
+check(math.abs(dot(3) - 1) < 1e-3, "light bowgun: full gauge lights all three drops")
+rapidGauge = 50
+frames(60, 1 / 60)
+check(math.abs(dot(1) - 1) < 1e-3 and dot(3) < 0.4, string.format("light bowgun: half gauge (%.2f %.2f %.2f)", dot(1), dot(2), dot(3)))
+rapidMode = true
+frames(60, 1 / 60)
+check(dot(1) > 1.7, "light bowgun: rapid-fire mode brightens the drops")
+texts = {}; onDraw()
+local sawGauge = false
+for _, t in ipairs(texts) do if t:match("^Gauge: _RapidAmmoGauge") then sawGauge = true end end
+check(sawGauge, "light bowgun: menu shows the gauge field")
 print("ALL PASS")

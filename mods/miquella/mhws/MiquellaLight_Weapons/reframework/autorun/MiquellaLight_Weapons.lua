@@ -50,7 +50,11 @@ local KITS = {
         floaters = { mode = "swing", joints = {
             { name = "MQ_Ring0", pos = { 0.0456, 0.0, 1.2189 } },
             { name = "MQ_Ring1", pos = { 0.0222, 0.0, 1.4818 } },
-            { name = "MQ_Ring2", pos = { -0.0217, 0.0, 1.7585 } } } },
+            { name = "MQ_Ring2", pos = { -0.0217, 0.0, 1.7585 } },
+            -- The big ring around the blade near the hilt hovers like the bowgun's rings.
+            { name = "MQ_BladeHalo", pos = { -0.0240, 0.0, 0.6833 }, mode = "hover" } } },
+        -- Charge level 0-3 (candidates from the game's type names; the first found is used).
+        charge = { levels = 3, fields = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" } },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -65,6 +69,10 @@ local KITS = {
             { name = "MQ_Halo2", pos = { 0.0, -0.19, 0.572 } },
             { name = "MQ_Halo3", pos = { 0.0, -0.19, 0.668 } },
             { name = "MQ_Halo4", pos = { 0.0, -0.19, 0.748 } } } },
+        -- Rapid-fire gauge on the three drops (Gauge1-3), brighter in rapid-fire mode.
+        gauge = { dots = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3" },
+                  fields = { "_RapidAmmoGauge", "_RapidFireAmmo_Gauge", "_RapidFireTimer_Gauge", "_RapidModeTimer" },
+                  mode = { "_IsRapidMode", "_IsRapidShotBoost" } },
     },
 }
 local SIZE_NAMES = { "1.0", "1.2", "1.4", "1.6" }
@@ -192,7 +200,8 @@ local function glow_slots(mesh, kit)
             local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
             for j = 0, vars - 1 do
                 if try(function() return mesh:getMaterialVariableName(i, j) end) == "Emissive_Intensity" then
-                    slots[#slots + 1] = { mat = i, var = j, base = base }
+                    slots[#slots + 1] = { mat = i, var = j, base = base,
+                                          name = try(function() return mesh:getMaterialName(i) end) }
                 end
             end
         end
@@ -204,11 +213,55 @@ local function kit_mesh(kit)
     return kit.sizes and kit.sizes[config.size] or kit.mesh
 end
 
--- Apply the Glow slider to a swapped weapon.
+-- Material variable index by material and variable name, found once per swap.
+local function material_vars(mesh)
+    local vars = {}
+    local n = try(function() return mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do
+        local mat = try(function() return mesh:getMaterialName(i) end)
+        if mat then
+            vars[mat] = { index = i }
+            local count = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+            for j = 0, count - 1 do
+                local name = try(function() return mesh:getMaterialVariableName(i, j) end)
+                if name then vars[mat][name] = j end
+            end
+        end
+    end
+    return vars
+end
+
+-- Write a material value only when it changed (most of them stay put most frames).
+local function set_float(entry, mesh, mat, var, value)
+    entry.vars = entry.vars or material_vars(mesh)
+    local m = entry.vars[mat]
+    local j = m and m[var]
+    if not j then return end
+    entry.written = entry.written or {}
+    local key = mat .. "." .. var
+    if entry.written[key] == value then return end
+    entry.written[key] = value
+    try(function() mesh:setMaterialFloat(m.index, j, value) end)
+end
+
+local function set_color(entry, mesh, mat, rgb)
+    entry.vars = entry.vars or material_vars(mesh)
+    local m = entry.vars[mat]
+    local j = m and m.Emissive_Color
+    if not j then return end
+    entry.written = entry.written or {}
+    local key = mat .. ".Emissive_Color"
+    local tag = string.format("%.3f %.3f %.3f", rgb[1], rgb[2], rgb[3])
+    if entry.written[key] == tag then return end
+    entry.written[key] = tag
+    try(function() mesh:setMaterialFloat4(m.index, j, Vector4f.new(rgb[1], rgb[2], rgb[3], 1.0)) end)
+end
+
+-- Glow slider times the weapon state's multiplier (entry.mul, set by the state updates).
 local function apply_tuning(entry, mesh)
     entry.glowSlots = entry.glowSlots or glow_slots(mesh, entry.kit)
     for _, s in ipairs(entry.glowSlots) do
-        try(function() mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
+        set_float(entry, mesh, s.name, "Emissive_Intensity", s.base * config.glow * ((entry.mul or {})[s.name] or 1))
     end
 end
 
@@ -353,6 +406,130 @@ local function state_slots(mesh, kit)
     return slots
 end
 
+-- Game values read by name from the weapon handling object. The names were found in the
+-- game's type database (strings in the exe), not yet confirmed per weapon: the first
+-- candidate that exists is used, and the menu shows which one (or lists similar fields).
+local GAUGE_SUBFIELDS = { "_Value", "_Current", "_Now", "_Point", "_Gauge", "Value" }
+local function read_number(obj, name)
+    local v = try(function() return obj:get_field(name) end)
+    if type(v) == "number" then return v end
+    if type(v) == "boolean" then return v and 1 or 0 end
+    if type(v) == "userdata" then
+        for _, sub in ipairs(GAUGE_SUBFIELDS) do
+            local w = try(function() return v:get_field(sub) end)
+            if type(w) == "number" then return w end
+        end
+    end
+    return nil
+end
+
+local resolved = { type = nil, fields = {} }     -- per handling type: key -> { name } or { missing, at }
+local stateInfo = {}                             -- what the menu shows
+local function handling_type(h)
+    return try(function() return h:get_type_definition():get_full_name() end) or "?"
+end
+
+local function resolve(h, key, candidates)
+    local td = handling_type(h)
+    if resolved.type ~= td then resolved = { type = td, fields = {} } end
+    local r = resolved.fields[key]
+    if r and (r.name or os.clock() < r.at) then return r.name end
+    for _, name in ipairs(candidates) do
+        if read_number(h, name) ~= nil then
+            resolved.fields[key] = { name = name }
+            return name
+        end
+    end
+    resolved.fields[key] = { missing = true, at = os.clock() + 3 }       -- look again later
+    return nil
+end
+
+-- Fields of the handling object whose names contain `pattern` (for the menu, when none of
+-- the candidates exist).
+local function similar_fields(h, pattern)
+    local out = {}
+    local td = try(function() return h:get_type_definition() end)
+    while td and #out < 12 do
+        for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
+            local n = try(function() return f:get_name() end) or ""
+            if n:find(pattern, 1, true) and #out < 12 then out[#out + 1] = n end
+        end
+        td = try(function() return td:get_parent_type() end)
+    end
+    return out
+end
+
+local function lerp(a, b, t) return a + (b - a) * t end
+local function lerp3(a, b, t) return { lerp(a[1], b[1], t), lerp(a[2], b[2], t), lerp(a[3], b[3], t) } end
+local function approach(cur, target, dt, up, down)
+    local rate = dt / (target > cur and up or down)
+    return cur + math.max(-rate, math.min(rate, target - cur))
+end
+
+-- Great sword charge (DESIGN.md: bright gold -> brighter gold -> white light; only at the
+-- third level a gold band of light runs along the temper line). mul scales the glow.
+local GOLD = { 1.0, 0.647, 0.149 }
+local CHARGE_LOOK = {
+    [0] = { mul = 1.0, color = GOLD },
+    [1] = { mul = 1.8, color = { 1.0, 0.56, 0.06 } },     -- more saturated, much stronger
+    [2] = { mul = 2.8, color = { 1.0, 0.60, 0.09 } },
+    [3] = { mul = 3.6, color = { 1.0, 0.94, 0.82 } },     -- white light
+}
+local BAND_PERIOD, BAND_WIDTH = 0.9, 0.14
+
+local function update_charge(entry, mesh, h, dt, now)
+    local spec = entry.kit.charge
+    local name = h and resolve(h, "charge", spec.fields)
+    local raw = name and read_number(h, name) or 0
+    local level = math.max(0, math.min(spec.levels, math.floor(raw + 0.5)))
+    stateInfo.charge = name and string.format("%s = %s (level %d)", name, tostring(raw), level)
+        or ("not found; fields with 'Charge': " .. table.concat(h and similar_fields(h, "Charge") or {}, ", "))
+    entry.chargeSmooth = approach(entry.chargeSmooth or 0, level, dt, 0.12, 0.35)
+    local s = entry.chargeSmooth
+    local lo = math.floor(s)
+    local hi, t = math.min(spec.levels, lo + 1), s - lo
+    local a, b = CHARGE_LOOK[lo], CHARGE_LOOK[hi]
+    local mul, color = lerp(a.mul, b.mul, t), lerp3(a.color, b.color, t)
+    entry.mul = { MiquellaBlade = mul, MiquellaGlow = 1 + (mul - 1) * 0.4, MiquellaTemper = mul }
+    set_color(entry, mesh, "MiquellaBlade", color)
+    -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).
+    local band = math.max(0, s - (spec.levels - 1))
+    set_float(entry, mesh, "MiquellaTemper", "Use_MoveEmit", band > 0.05 and 1.0 or 0.0)
+    if band > 0.05 then
+        set_float(entry, mesh, "MiquellaTemper", "MoveEmit", ((now / BAND_PERIOD) % 1) * 1.3 - 0.15)
+        set_float(entry, mesh, "MiquellaTemper", "MoveEmit_Width", BAND_WIDTH)
+        entry.mul.MiquellaTemper = mul * (1 + band)
+    end
+end
+
+-- Light bowgun rapid-fire gauge on the three drops over the barrel: each drop is one third
+-- of the gauge (dim when empty); in rapid-fire mode they burn brighter, deeper gold.
+local DOT_DIM, RAPID_MUL, RAPID_COLOR = 0.35, 1.8, { 1.0, 0.56, 0.06 }
+
+local function update_gauge(entry, mesh, h, dt)
+    local spec = entry.kit.gauge
+    local name = h and resolve(h, "gauge", spec.fields)
+    local modeName = h and resolve(h, "rapid", spec.mode)
+    local g = name and read_number(h, name)
+    local rapid = modeName and (read_number(h, modeName) or 0) > 0
+    local f = 1
+    if g then
+        entry.gaugeMax = math.max(entry.gaugeMax or 0, g, 1e-6)
+        f = math.max(0, math.min(1, g / entry.gaugeMax))
+    end
+    stateInfo.gauge = (name and string.format("%s = %.2f (max seen %.2f)", name, g or 0, entry.gaugeMax or 0)
+        or ("gauge not found; fields with 'Rapid': " .. table.concat(h and similar_fields(h, "Rapid") or {}, ", ")))
+        .. (modeName and string.format("; %s = %s", modeName, tostring(rapid)) or "")
+    entry.gaugeSmooth = approach(entry.gaugeSmooth or f, f, dt, 0.15, 0.15)
+    entry.rapidSmooth = approach(entry.rapidSmooth or 0, rapid and 1 or 0, dt, 0.1, 0.3)
+    entry.mul = {}
+    for i, mat in ipairs(spec.dots) do
+        local lit = math.max(0, math.min(1, entry.gaugeSmooth * #spec.dots - (i - 1)))
+        entry.mul[mat] = lerp(DOT_DIM, 1, lit) * lerp(1, RAPID_MUL, entry.rapidSmooth)
+        set_color(entry, mesh, mat, lerp3(GOLD, RAPID_COLOR, entry.rapidSmooth))
+    end
+end
+
 local function update_states(chr)
     local now = os.clock()
     local dt = math.min(now - lastClock, 0.1)
@@ -360,7 +537,17 @@ local function update_states(chr)
     local target = demon_target(chr)
     local rate = dt / (target > demonProgress and DEMON_IN or DEMON_OUT)
     demonProgress = demonProgress + math.max(-rate, math.min(rate, target - demonProgress))
+    local h = nil
     for _, entry in pairs(swapped) do
+        if entry.kit.charge or entry.kit.gauge then
+            local mesh = component(entry.go, MESH)
+            h = h or try(function() return chr:call("get_WeaponHandling") end)
+            if mesh then
+                if entry.kit.charge then update_charge(entry, mesh, h, dt, now) end
+                if entry.kit.gauge then update_gauge(entry, mesh, h, dt) end
+                apply_tuning(entry, mesh)
+            end
+        end
         if entry.kit.demon then
             local mesh = component(entry.go, MESH)
             if mesh then
@@ -451,7 +638,7 @@ local function float_joints(entry)
     f = f or { joints = {} }
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
-        local s = f.joints[i] or { name = j.name, pivot = j.pos, off = { 0, 0, 0 }, vel = { 0, 0, 0 },
+        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, off = { 0, 0, 0 }, vel = { 0, 0, 0 },
                                    phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -519,7 +706,7 @@ local function step_floaters()
         if f then
             floatInfo.found = floatInfo.found + f.found
             floatInfo.total = floatInfo.total + #f.joints
-            local mode = FLOAT_MODES[entry.kit.floaters.mode]
+            local default = entry.kit.floaters.mode
             local pos = try(function() return f.tf:call("get_Position") end)
             local rot = try(function() return f.tf:call("get_Rotation") end)
             if pos and rot then
@@ -527,7 +714,7 @@ local function step_floaters()
                 for _, s in ipairs(f.joints) do
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
-                    step_ring(s, mode, R, P, reset and 0 or dt, now, config.floatStrength)
+                    step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, config.floatStrength)
                 end
             end
         end
@@ -612,6 +799,10 @@ re.on_draw_ui(function()
         table.sort(phases)
         imgui.text(string.format("Rings found: %d/%d (set at %s)", floatInfo.found, floatInfo.total,
                                  #phases > 0 and table.concat(phases, ", ") or "-"))
+    end
+    for _, entry in pairs(swapped) do
+        if entry.kit.charge and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
+        if entry.kit.gauge and stateInfo.gauge then imgui.text("Gauge: " .. stateInfo.gauge) end
     end
     imgui.text("Weapon drawn: " .. tostring(isWeaponDrawn))
 

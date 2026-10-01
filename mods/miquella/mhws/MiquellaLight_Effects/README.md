@@ -23,3 +23,6 @@
 - 第五版：只有拿雙劍時才每幀搜尋，其他時候每 0.25 秒（buff 閃光這樣就夠）；選單第三行顯示腳本每幀花的毫秒數
 
 離線測試 `tests/effects_test.lua` 通過。不確定的地方：特效的染色是否也作用在玩家身體發光（PLE）上；`ValueType.new(via.Color)` 的 `rgba` 欄位寫法。
+- 第六版（2026-10-02，等實測）：**依手上的武器套規則**（`RULES`）。雙劍照舊；**大劍（`it00`）、輕弩（`it13`）的特效整個染金**（特效的染色 `set_Color`：白色部分變亮金 `#FFC766`、暖色變金，其他顏色不動；輕弩的地面煙塵 `jimen`／`land` 不染）。選單多一個「Great sword: hide the game's charge effects」：把大劍剩下的蓄力特效（`11_it00_00x`、`11_it00_01x`）也藏掉，只看刀身。拿著這三把之一才每幀搜尋。顏色參數的攔截仍只管雙劍
+- 搭配的改檔 pak（不進 repo，從使用者的遊戲檔產生）：`MiquellaLight_GreatSwordFX.pak`（大劍 18 檔：暖色 → 金、**身上發光 `PLE_Body`／`PLE_IMP` 改全黑透明 = 拿掉**，使用者要蓄力只在刀身表現）、`MiquellaLight_LightBowgunFX.pak`（輕弩 19 檔：暖色 → 金）。重做：
+  `recolor_efx.py --warm --no-silver --hide PLE_Body,PLE_IMP --skip-param Blood <解出的 11_it00_*.efx> <輸出>`（輕弩只要 `--warm --no-silver`），再 `make_patch_pak.py`

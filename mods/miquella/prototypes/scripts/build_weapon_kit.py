@@ -52,8 +52,9 @@ def great_sword():
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Blade_Core": "MiquellaTemper", "Membrane": "MiquellaGlow"},
         "by_name": {},
-        # The rings floating on the spine swing like loose rings (weapons script).
-        "floaters": {f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)},
+        # The rings floating on the spine swing like loose rings, the big ring around the
+        # blade hovers like the bowgun's (weapons script).
+        "floaters": {**{f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)}, "Blade_Halo": "MQ_BladeHalo"},
     }
 
 
@@ -136,6 +137,17 @@ def lower_resolution(objs):
                 mod.levels = mod.render_levels = min(mod.render_levels, 1)
 
 
+def length_uv(o):
+    """V runs from the blade's root (0) to its tip (1) along the prototype's +Z, so the
+    material's moving glow band (MoveEmit) can sweep along the temper line."""
+    zs = [v.co.z for v in o.data.vertices]
+    z0, z1 = min(zs), max(zs)
+    uv = o.data.uv_layers.active.data
+    for loop in o.data.loops:
+        co = o.data.vertices[loop.vertex_index].co
+        uv[loop.index].uv = (0.5 + 4.0 * co.y, (co.z - z0) / max(z1 - z0, 1e-6))
+
+
 def build_parts(spec, mesh_col):
     objs = [o for o in spec["objects"] if o.name in bpy.data.objects]
     # Unparent and bake transforms so every part shares one space.
@@ -180,6 +192,8 @@ def build_parts(spec, mesh_col):
         bpy.ops.mesh.delete_loose()
         bpy.ops.uv.smart_project(island_margin=0.02)
         bpy.ops.object.mode_set(mode="OBJECT")
+        if mat == "MiquellaTemper":
+            length_uv(o)
         before = tris(o)
         ratio = min(1.0, BUDGET.get(mat, GAUGE_BUDGET) / max(before, 1))
         if ratio < 1.0:

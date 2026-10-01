@@ -19,6 +19,9 @@
 local MOD = "MiquellaLight Scout"
 local OUT = "MiquellaLight/scout.json"
 local WATCH_OUT = "MiquellaLight/watch.json"
+-- While watching, the report is also saved every few seconds per weapon type
+-- (watch_cHunterWp00Handling.json ...), so nothing is lost and weapons don't overwrite each other.
+local WATCH_AUTOSAVE = 2.0
 local MAX_FIELDS = 600
 local MAX_LOG = 200
 local MESH = "via.render.Mesh"
@@ -209,8 +212,14 @@ local function start_watch()
     return "Watching " .. typeName .. " (" .. #watch.fields .. " fields). Do the action now."
 end
 
+local watch_report
 local function update_watch()
     if not watch then return end
+    if os.clock() >= (watch.nextSave or 0) then
+        watch.nextSave = os.clock() + WATCH_AUTOSAVE
+        local short = (watch.type or "unknown"):gsub("^app%.", "")
+        pcall(json.dump_file, "MiquellaLight/watch_" .. short .. ".json", watch_report())
+    end
     for _, w in ipairs(watch.fields) do
         local v = try(function() return w.field:get_data(w.owner) end)
         if v ~= nil and v ~= w.last then
@@ -227,7 +236,7 @@ local function update_watch()
     end
 end
 
-local function watch_report()
+watch_report = function()
     local changed = {}
     for _, w in ipairs(watch.fields) do
         if w.changes > 0 then

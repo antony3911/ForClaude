@@ -67,7 +67,7 @@ sdk = {
     get_managed_singleton = function(n)
         return { getMasterPlayer = function() return { get_Character = function() return { call = function(_, m)
             if m == "get_WeaponHandling" then
-                return { get_type_definition = function() return { get_full_name = function() return "app.cHunterWp02Handling" end } end }
+                return { get_type_definition = function() return { get_full_name = function() return heldType end } end }
             end
         end } end } end }
     end,
@@ -92,6 +92,7 @@ local savedCfg
 json = { load_file = function() return nil end, dump_file = function(p, t) savedCfg = { p, t } end }
 local clock = 0
 os.clock = function() return clock end
+heldType = "app.cHunterWp02Handling"
 
 dofile(arg[1])
 local function check(c, m) print((c and "PASS " or "FAIL ") .. m); if not c then os.exit(1) end end
@@ -191,4 +192,32 @@ check(hue_is_gold(fresh.params.Color.c), "new trail found by the per-frame searc
 out = {}; onDraw()
 check(tonumber(table.concat(out):match("(%d+) when found")) >= 1, "counted as recoloured when found")
 check(table.concat(out):match("Cost: [%d.]+ ms per frame %(dual blades: searching every frame%)"), "cost and search rate shown")
+-- Great sword in hand: its effects are tinted gold (white parts too), others left alone.
+heldType = "app.cHunterWp00Handling"
+clock = clock + 2
+local WHITE = hex(0xFF, 0xFF, 0xFF, 0x80)
+local gsGlow = effect("11_it00_020", "", WHITE, {})
+local gsCharge = effect("11_it00_002", "", WHITE, {})
+local other = effect("ef_dust", "", WHITE, {})
+playing = { gsGlow, gsCharge, other }
+beforeRender(); clock = clock + 0.05; beforeRender()
+check(hue_is_gold(gsGlow.tint) and (gsGlow.tint.rgba >> 24) == 0x80, "great sword: white effect tinted gold, alpha kept (" .. rgb(gsGlow.tint) .. ")")
+check(gsGlow.tint.rgba ~= hex(0xFF, 0xFF, 0xFF, 0x80) and rgb(gsGlow.tint) ~= "FFFFFF", "great sword: not left white")
+check(other.tint.rgba == WHITE, "great sword: effects of nobody's weapon untouched")
+out = {}; onDraw()
+check(table.concat(out):match("great sword: searching every frame"), "great sword: searched every frame while held")
+-- Hide the game's charge effects (the blade shows the charge).
+toggle["Great sword: hide the game's charge effects (blade glow only)"] = true; onDraw()
+clock = clock + 0.05; beforeRender()
+check(gsCharge.tint.rgba == 0, "great sword: charge effect hidden when asked")
+check(hue_is_gold(gsGlow.tint), "great sword: other great sword effects stay gold")
+-- Light bowgun: ground dust (jimen) is not tinted.
+heldType = "app.cHunterWp13Handling"
+clock = clock + 2
+local muzzle = effect("11_it13_102", "", WHITE, {})
+local dust = effect("11_it13_102_jimen", "", WHITE, {})
+playing = { muzzle, dust }
+beforeRender(); clock = clock + 0.05; beforeRender()
+check(hue_is_gold(muzzle.tint), "light bowgun: effect tinted gold")
+check(dust.tint.rgba == WHITE, "light bowgun: ground dust left as is")
 print("ALL PASS")

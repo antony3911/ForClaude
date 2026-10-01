@@ -273,16 +273,12 @@ def conduit_rings(glow_mat):
     return objs
 
 
-def stock_phials(mats, count, y0, y1, gap, size):
-    """Lit droplets floating in a row above the stock, clear of its silhouette, each in a
-    small halo that faces the side."""
+def barrel_phials(mats, ys, z, size):
+    """Three lit droplets floating in a row above the barrel, forward of the shooter (not
+    over the stock, which felt crowding), each in a small halo that faces the side."""
     import motifs
-    pts = []
-    for k in range(count):
-        y = y0 + (y1 - y0) * k / (count - 1)
-        ctr, rx, rz = body_section(y)
-        pts.append(Vector((0, y, ctr.z + rz + gap)))
-    return motifs.floating_phials("Stock_Phial", pts, (0, -0.15, 1), (1, 0, 0.25), mats, size=size)
+    pts = [Vector((0, y, z)) for y in ys]
+    return motifs.floating_phials("Barrel_Phial", pts, (0, -0.15, 1), (1, 0, 0.25), mats, size=size)
 
 
 def main():
@@ -301,7 +297,7 @@ def main():
     parts += energy_core(glow, ivory)
     parts += side_wings(ivory, rng)
     parts += conduit_rings(glow)
-    parts += stock_phials({"light": glow}, count=4, y0=-0.5, y1=-0.26, gap=0.065, size=0.018)
+    parts += barrel_phials({"light": glow}, ys=(0.2, 0.32, 0.44), z=CONDUIT_Z + 0.15, size=0.018)
 
     c.setup_render(samples=32, res=(900, 600), world_hex="#2E2E33", world_strength=0.5)
     c.add_light("key", "AREA", (1.0, -0.6, 1.0), 120, size=1.0, target=(0, 0.1, 0))

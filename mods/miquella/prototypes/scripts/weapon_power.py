@@ -236,6 +236,78 @@ def ls_strands(mats):
     return ls_parent(strands_around("LS_Strand", center, lambda t: 0.04 - 0.02 * t, 2, 3.5, g, 0.0025))
 
 
+# ---------------------------------------------------------------- charge blade (savage axe)
+
+def cb_edge():
+    """The axe edge's outer line (as charge_blade_axe builds it) and its outward normals."""
+    import arsenal
+    loop = arsenal.CB_AXE_OUTLINE
+    horn, beard = V(0.1, 0, 1.3), V(0.09, 0, 0.34)
+    centroid = sum(loop, V(0, 0, 0)) / len(loop)
+    i0 = min(range(len(loop)), key=lambda i: (loop[i] - horn).length)
+    i1 = min(range(len(loop)), key=lambda i: (loop[i] - beard).length)
+    seg = loop[i0:i1 + 1]
+    knots = [(0.0, 0.004), (0.12, 0.022), (0.4, 0.045), (0.62, 0.055), (0.82, 0.04), (0.94, 0.016), (1.0, 0.0)]
+    pts, outs = [], []
+    for i, p in enumerate(seg):
+        t = i / (len(seg) - 1)
+        out = p - centroid
+        out.y = 0
+        out.normalize()
+        pts.append(p + out * (0.022 + 0.02 * t ** 2 + m.interp1d(knots, t)))
+        outs.append(out)
+    return pts, outs, centroid
+
+
+def cb_base():
+    import arsenal
+    c.reset_scene()
+    mats = st.capture_build(arsenal.charge_blade_axe)
+    m.glow_mode(mats)
+    st.show(st.objs_named("Backdrop"), False)
+    edge = st.own_material(st.objs_named("Axe_Edge", exclude=("Temper", "Afterimage")), "CB_Axe_Edge")
+    st.set_blade(edge, *st.BRIGHT_BLADE)
+    return mats
+
+
+def cb_saw(mats):
+    """Teeth of light riding the edge, slanted one way, and motion arcs outside: the edge grinding."""
+    g = gold("CB_Saw")
+    pts, outs, _ = cb_edge()
+    objs = []
+    n = 22
+    for k in range(n):
+        i = int((k + 0.5) / n * (len(pts) - 1))
+        p, out = pts[i], outs[i]
+        tang = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        tip = p + out * 0.034 + tang * 0.022
+        objs += m.path_blade(f"CB_Tooth_{k}", [p - tang * 0.008, tip], (0, 1, 0),
+                             lambda t: 0.016 * (1 - t) + 0.001, lambda t: 0.004 * (1 - t) + 0.0006, g, samples=8, subsurf=0)
+    for j, (off, a, b) in enumerate(((0.06, 0.05, 0.6), (0.085, 0.35, 0.85), (0.06, 0.62, 0.97))):
+        i0, i1 = int(a * (len(pts) - 1)), int(b * (len(pts) - 1))
+        arc_pts = [pts[i] + outs[i] * off for i in range(i0, i1 + 1)]
+        radii = [max(0.05, (i - i0) / max(1, i1 - i0)) for i in range(i0, i1 + 1)]
+        objs.append(tube(f"CB_Arc_{j}", arc_pts, radii, g, 0.004))
+    return objs
+
+
+def cb_discharge(mats):
+    """The five phials on the back pour streams of light across the head into the edge."""
+    g = gold("CB_Stream")
+    pts, outs, centroid = cb_edge()
+    phials = sorted([o for o in bpy.data.objects if o.name.startswith("Phial_") and "Halo" not in o.name],
+                    key=lambda o: o.location.z)
+    objs = []
+    for k, ph in enumerate(phials):
+        target = pts[int((0.15 + 0.7 * k / max(1, len(phials) - 1)) * (len(pts) - 1))]
+        start = ph.matrix_world.translation.copy()
+        mid = start.lerp(target, 0.5) + V(0, -0.04, 0.05)
+        path = m.catmull([start, mid, target], 40)
+        objs.append(tube(f"CB_Stream_{k}", path, [0.3 + 0.7 * (i / 39) ** 0.7 for i in range(40)], g, 0.0045))
+        objs += m.halo(f"CB_Phial_Flare_{k}", start, 0.03, 0.0025, (1, 0, 0), g)
+    return objs
+
+
 WEAPONS = [
     ("大劍", gs_base, [("A 光絲纏繞", gs_strands), ("B 光環擴張＋光柱", gs_rings)],
      ((0.06, 0, 1.1), 3.3, ("front", 0, 4), (620, 1000))),
@@ -245,4 +317,6 @@ WEAPONS = [
      ((0, 0, 1.38), 2.45, ("three_quarter", 25, 8), (620, 1000))),
     ("太刀", ls_base, [("A 光環沿刀身", ls_rings), ("B 光絲纏繞", ls_strands)],
      ((0.0, 0, 0.55), 2.0, ("flat", 0, 4), (560, 1000))),
+    ("充能斧", cb_base, [("A 光齒迴轉", cb_saw), ("B 瓶能灌刃", cb_discharge)],
+     ((0.12, 0, 0.82), 1.9, ("front", 0, 4), (760, 900))),
 ]

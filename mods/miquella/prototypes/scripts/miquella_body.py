@@ -321,7 +321,10 @@ def fit_targets(J, G):
         T.update(chain_targets(J, G, [f"lowerarm01.{s}", f"lowerarm02.{s}"], [S + "Forearm", S + "Hand"]))
         T.update(chain_targets(J, G, [f"upperleg01.{s}", f"upperleg02.{s}"], [S + "Thigh", S + "Knee"]))
         T.update(chain_targets(J, G, [f"lowerleg01.{s}", f"lowerleg02.{s}"], [S + "Knee", S + "Foot"]))
-        T[f"foot.{s}"] = (G[S + "Foot"], G[S + "Instep"])
+        # The foot keeps MakeHuman's own angle and length, moved onto the game's ankle: aimed at
+        # the game's Instep it pointed down, sank 5 cm into the ground and was squashed to 63 %
+        # height to stand on it (user 2026-10-03: long, flat feet). shorten_feet sets the length.
+        T[f"foot.{s}"] = (G[S + "Foot"], G[S + "Foot"] + (J[f"foot.{s}____tail"] - J[f"foot.{s}____head"]))
         # Hand: the wrist points at the middle knuckle; metacarpals end at the knuckles.
         mh_w = J[f"wrist.{s}____head"]
         ratio = (J[f"wrist.{s}____tail"] - mh_w).length / (J[f"finger3-1.{s}____head"] - mh_w).length
@@ -1285,16 +1288,44 @@ def carve(obj, grooves):
 
 
 def ground_feet(obj, G):
-    """The game's ankle joint is lower than MakeHuman's: below the ankles the feet are squashed
-    so the soles stand on the ground (z 0) instead of sinking into it."""
+    """Below the ankles the feet are scaled in height so the soles stand on the ground (z 0):
+    since the feet keep MakeHuman's angle that is under a centimetre either way."""
     ankle = (G["L_Foot"].z + G["R_Foot"].z) / 2
     vs = [v for v in obj.data.vertices if v.co.z < ankle and abs(v.co.x) < 0.4]
     sole = min(v.co.z for v in vs)
-    if sole < 0:
+    if abs(sole) > 0.002:
         k = ankle / (ankle - sole)
         for v in vs:
             v.co.z = ankle + (v.co.z - ankle) * k
         log(f"  feet: sole {sole:+.3f} -> 0 (below the ankle at {ankle:.3f})")
+
+
+# Feet, in cm along the foot from the ankle joint (user 2026-10-03: "the feet are too long"). Aimed
+# at the game's Instep and squashed onto the ground they were 29 cm, longer than the hunter's boot
+# (28); at MakeHuman's own angle they are ~25.6 (heel -5.6, tip 20.0), scaled to ~24.5 here.
+FOOT = {"tip": 19.0, "heel": -5.5}
+
+
+def shorten_feet(obj, G):
+    """Scale each foot along its length (front and back of the ankle separately) to FOOT; full
+    below the ankle, fading out just above it."""
+    ankle = (G["L_Foot"].z + G["R_Foot"].z) / 2
+    e1, h1 = FOOT["tip"] / 100, FOOT["heel"] / 100
+    for S, s in (("L_", "L"), ("R_", "R")):
+        o = G[S + "Foot"]
+        d = G[S + "Toe"] - o
+        d.z = 0
+        d.normalize()
+        vs = [v for v in obj.data.vertices if v.co.z < ankle + 0.03 and (v.co.x > 0) == (s == "L")
+              and abs(v.co.x) < 0.4]
+        f = {v.index: (v.co - o).dot(d) for v in vs}
+        e0, h0 = max(f.values()), min(f.values())
+        for v in vs:
+            x = f[v.index]
+            g = x * (e1 / e0 if x > 0 else h1 / h0)
+            w = min(1.0, max(0.0, (ankle + 0.03 - v.co.z) / 0.06))
+            v.co += d * ((g - x) * w)
+        log(f"  {s} foot: heel {h0 * 100:.1f} -> {h1 * 100:.1f}, tip {e0 * 100:.1f} -> {e1 * 100:.1f} cm")
 
 
 def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
@@ -1311,6 +1342,7 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     pose_to(arm, targets)
     bake(obj, arm)
     ground_feet(obj, G)
+    shorten_feet(obj, G)
     if params.get("flat", False):     # not needed since the torso keeps its own anatomy
         flatten_belly(obj)
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]

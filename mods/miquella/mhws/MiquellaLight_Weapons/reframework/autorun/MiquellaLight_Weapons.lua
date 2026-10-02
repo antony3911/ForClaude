@@ -312,7 +312,8 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/ChargeBlade/wp_miquella_cb.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaGauge1 = 1.2,
                  MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2,
-                 MiquellaRimGlow = 1.2, MiquellaEdgeBlade = 1.2, MiquellaEdgeGlow = 1.2, MiquellaAxeGlow = 1.2 },
+                 MiquellaRimGlow = 1.2, MiquellaEdgeBlade = 1.2, MiquellaEdgeGlow = 1.2, MiquellaAxeGlow = 1.2,
+                 MiquellaSawAGlow = 1.2, MiquellaSawBGlow = 1.2, MiquellaSawCGlow = 1.2 },
         shield = "ChargeBlade_Shield",
         -- Sword: the phial ring is the sword's energy (bright gold when full); axe: the phials on
         -- its back are the loaded phials. Sword / axe enhanced light the blade (DESIGN).
@@ -320,8 +321,10 @@ local KITS = {
                      fullBright = true, when = "base" },
                    { key = "bottles", dots = PHIALS, fields = BOTTLE_FIELDS, count = true, when = "alt" } },
         boosts = { { key = "swordEnh", fields = { "_SwordEnhancedTimer" }, mats = { "MiquellaBlade", "MiquellaTemper" } },
+                   -- Savage axe (user's pick 2026-10-02, "A"): teeth of light outside the edge, their
+                   -- three sets lit in turn so they run from the horn to the beard.
                    { key = "axeEnhCB", fields = { "_AxeEnhancedTimer" }, mats = { "MiquellaBlade", "MiquellaEdgeBlade" },
-                     when = "alt" } },
+                     when = "alt", chase = { "MiquellaSawAGlow", "MiquellaSawBGlow", "MiquellaSawCGlow" }, chaseHz = 15 } },
         -- _Mode 0 sword & shield, 1 axe: the shield fades out while its light gathers on the sword
         -- as an oval and reshapes into the bardiche (user, 2026-10-02).
         mode = { fields = { "_Mode" }, names = { "sword & shield", "axe" }, morph = MORPH_CB },
@@ -1386,7 +1389,16 @@ local function update_gauges(entry, mesh, h, dt)
                 entry.mul[mat] = (entry.mul[mat] or 1) * lerp(1, BOOST_MUL, st.smooth)
                 set_color(entry, mesh, mat, lerp3(GOLD, BOOST_COLOR, st.smooth))
             end
+            -- Chasing sets: one lit at a time, in turn (a light running along them).
+            local step = b.chase and math.floor(os.clock() * (b.chaseHz or 10)) % #b.chase
+            for i, mat in ipairs(b.chase or {}) do
+                set_alpha(entry, mesh, mat, (i - 1 == step) and st.smooth or 0)
+                entry.mul[mat] = BOOST_MUL
+                set_color(entry, mesh, mat, BOOST_COLOR)
+            end
             info[#info + 1] = name and string.format("%s=%s", name, tostring(v)) or (b.key .. " not found")
+        else
+            for _, mat in ipairs(b.chase or {}) do set_alpha(entry, mesh, mat, 0) end
         end
     end
     stateInfo.gauges = stateInfo.gauges or {}

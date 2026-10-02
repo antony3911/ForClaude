@@ -34,7 +34,7 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_cb%.") then
       return { "MiquellaAxeGlow", "MiquellaAxeIvory", "MiquellaBlade", "MiquellaEdgeBlade", "MiquellaEdgeGlow",
                "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5", "MiquellaGlow",
-               "MiquellaIvory", "MiquellaRimGlow", "MiquellaTemper" }
+               "MiquellaIvory", "MiquellaRimGlow", "MiquellaTemper", "MiquellaSawAGlow", "MiquellaSawBGlow", "MiquellaSawCGlow" }
     end
     if self.mdfPath:match("wp_miquella_cb_shield") then
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5",
@@ -792,6 +792,27 @@ check(dissolve("MiquellaEdgeBlade") == 1 and dotOf(weaponMesh, 5) > 0.99, "charg
 extract._ActionEnterBinNum = 1
 frames(60, 1 / 60)
 check(dotOf(weaponMesh, 1) > 0.99 and dotOf(weaponMesh, 2) < 0.3, "charge blade: using phials dims them")
+-- Savage axe (user's pick "A"): the saw teeth's three sets lit one at a time, in turn.
+local saws = { "MiquellaSawAGlow", "MiquellaSawBGlow", "MiquellaSawCGlow" }
+local function sawLit()
+  local lit = {}
+  for i, n in ipairs(saws) do if dissolve(n) > 0.5 then lit[#lit + 1] = i end end
+  return lit
+end
+check(#sawLit() == 0, "charge blade: no saw teeth without the axe enhanced")
+extract._AxeEnhancedTimer = 40
+frames(210, 1 / 60)                  -- a field not found is looked for again after 3 s
+local seen, single = {}, true
+for _ = 1, 20 do
+  frames(1, 1 / 60)
+  local lit = sawLit()
+  if #lit ~= 1 then single = false else seen[lit[1]] = true end
+end
+check(single and seen[1] and seen[2] and seen[3], "charge blade: enhanced axe runs its saw teeth (one set at a time, all in turn)")
+extract._Mode = 0
+frames(90, 1 / 60)
+check(#sawLit() == 0, "charge blade: the saw teeth go with the axe")
+extract._AxeEnhancedTimer = 0
 extract._Mode = 0
 weaponMesh = newMesh("Art/Model/Item/it08/00/0001/it0800_0001_0.mesh")
 weaponGO = newGO("Wp08b", 12001, weaponMesh, nil)

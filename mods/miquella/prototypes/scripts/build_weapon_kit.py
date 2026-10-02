@@ -576,7 +576,8 @@ def charge_blade():
     import blades
     import motifs
     objs = charge_blade_scene(1.3, lambda: (arsenal.charge_blade_axe(),
-                                            arsenal.sword_phial_ring(motifs.materials(), 0.0, ring=False)))
+                                            arsenal.sword_phial_ring(motifs.materials(), 0.0, ring=False),
+                                            arsenal.charge_blade_saw(motifs.materials())))
     mw = bpy.data.objects["CB_Sword"].matrix_world
     to_file = upright(1.4, mw @ Vector((0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2)), turn=180)
     lin = to_file.to_3x3()
@@ -598,7 +599,10 @@ def charge_blade():
     names = [o.name for o in objs]
     sets = {"Rim": {"Axe_Rim", "Axe_Rim_Inner"},
             "Edge": {n for n in names if n.startswith("Axe_Edge")},
-            "Axe": {o.name for o in subtree("Axe_Sigil")} | {n for n in names if n.startswith(("Joint_", "Phial_Halo"))}}
+            "Axe": {o.name for o in subtree("Axe_Sigil")} | {n for n in names if n.startswith(("Joint_", "Phial_Halo"))},
+            # Savage axe (user's pick 2026-10-02, "A"): teeth of light lit a set at a time so they
+            # run along the edge (weapons script), hidden until the axe is enhanced.
+            **{f"Saw{x}": {n for n in names if n.startswith((f"Saw_{x}_", f"Saw_Arc_{x}_"))} for x in "ABC"}}
     # The sword shortens from 1.3 to 0.8 (the blade and its core lines, by height).
     g0, g1 = F((0, 0, blades.GUARD_Z)), F((0, 0, blades.GUARD_Z + 1.3))
     sword_parts = {o.name for o in subtree("CB_Sword") if o.name.split(".")[0] in ("Blade", "Core_-1", "Core_1")}
@@ -630,7 +634,7 @@ def charge_blade():
     for i, p in enumerate(loop):
         tree.insert(p, i)
     tree.balance()
-    follows_rim = sets["Rim"] | sets["Edge"]
+    follows_rim = sets["Rim"] | sets["Edge"] | sets["SawA"] | sets["SawB"] | sets["SawC"]
 
     def weights(o, co):
         if o.name in sword_parts:
@@ -878,7 +882,7 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
 
 # Parts of one mode only (switch axe, charge blade): Miquella<Set><Blade|Glow|Ivory>, so the
 # weapons script can fade each set by its Dissolve (temper lines go on the set's Glow).
-MODE_SETS = ("Axe", "Sword", "Fin", "Spike", "Rim", "Edge")
+MODE_SETS = ("Axe", "Sword", "Fin", "Spike", "Rim", "Edge", "SawA", "SawB", "SawC")
 SET_BUDGET = {"MiquellaBlade": 4000, "MiquellaGlow": 5000, "MiquellaIvory": 6000}
 
 
@@ -913,7 +917,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
 DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
 UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
-HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract")
+HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some

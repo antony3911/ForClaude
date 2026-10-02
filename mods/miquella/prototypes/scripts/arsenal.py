@@ -1157,6 +1157,55 @@ def lance_drill_parts(mats):
     return out, flare
 
 
+# The charge blade's savage axe (user's pick 2026-10-02 evening: "A, teeth of light"): teeth
+# ride outside the axe's cutting edge, slanted toward the beard, with motion arcs outside them.
+# The teeth go round three sets (A, B, C by index); lighting the sets in turn makes them run
+# along the edge; every set carries the arcs, so they stay lit.
+SAW_TEETH = 24
+
+
+def cb_edge_line():
+    """The axe edge's outer line, horn to beard, and its outward directions (as charge_blade_axe
+    builds the edge; needs CB_AXE_OUTLINE from it)."""
+    loop = CB_AXE_OUTLINE
+    horn, beard = V(0.1, 0, 1.3), V(0.09, 0, 0.34)
+    centroid = sum(loop, V(0, 0, 0)) / len(loop)
+    i0 = min(range(len(loop)), key=lambda i: (loop[i] - horn).length)
+    i1 = min(range(len(loop)), key=lambda i: (loop[i] - beard).length)
+    knots = [(0.0, 0.004), (0.12, 0.022), (0.4, 0.045), (0.62, 0.055), (0.82, 0.04), (0.94, 0.016), (1.0, 0.0)]
+    pts, outs = [], []
+    seg = loop[i0:i1 + 1]
+    for i, p in enumerate(seg):
+        t = i / (len(seg) - 1)
+        out = p - centroid
+        out.y = 0
+        out.normalize()
+        pts.append(p + out * (0.022 + 0.02 * t ** 2 + m.interp1d(knots, t)))
+        outs.append(out)
+    return pts, outs
+
+
+def charge_blade_saw(mats):
+    """Names Saw_<A|B|C>_<k> (teeth) and Saw_Arc_<A|B|C>_<j> (the arcs, one copy per set)."""
+    pts, outs = cb_edge_line()
+    objs = []
+    for k in range(SAW_TEETH):
+        i = int((k + 0.5) / SAW_TEETH * (len(pts) - 1))
+        p, out = pts[i], outs[i]
+        tang = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        tip = p + out * 0.034 + tang * 0.022
+        objs += m.path_blade(f"Saw_{'ABC'[k % 3]}_{k}", [p - tang * 0.008, tip], (0, 1, 0),
+                             lambda t: 0.016 * (1 - t) + 0.001, lambda t: 0.004 * (1 - t) + 0.0006, mats["light"],
+                             samples=8, subsurf=0)
+    for s in "ABC":
+        for j, (off, a, b) in enumerate(((0.06, 0.05, 0.6), (0.085, 0.35, 0.85), (0.06, 0.62, 0.97))):
+            i0, i1 = int(a * (len(pts) - 1)), int(b * (len(pts) - 1))
+            arc = [pts[i] + outs[i] * off for i in range(i0, i1 + 1)]
+            radii = [max(0.05, (i - i0) / max(1, i1 - i0)) for i in range(i0, i1 + 1)]
+            objs.append(c.curve_tube(f"Saw_Arc_{s}_{j}", arc, radii, mats["light"], bevel=0.004, resolution=3))
+    return objs
+
+
 # Strands of light wrapped round a blade (user's picks 2026-10-02 evening: the great sword's
 # "A" and the long sword's "B"): they grow from the guard toward the point a level at a time.
 # The helix is flattened across the blade's thickness so it hugs a flat blade.

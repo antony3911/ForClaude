@@ -62,7 +62,10 @@
 ```
 - **也可以不出國先學**：在台灣下班後上日語課、考 JLPT，把語言學校的時間縮短甚至省掉；**交流協會獎學金的申請本來就在台灣進行**
 - **和美國主線的關係**：學日語會分掉準備 TOEFL、GRE 和申請美國的時間。**建議先確定美國的申請進度，再決定要不要投入日語**；如果美國的申請順利，日語可以只當作興趣
-- 細節（學校選擇、N2 需要多久、語言學校 → 研究所的實際銜接）會在佇列 J3 補充
+- **N2 要多久**（2026-10 補充）：依語言學校整理的自我回報資料，**有漢字背景的華語使用者從零到 N2 約 1,150–1,800 小時**（平均約 1,475 小時；非漢字圈約 2,200 小時）；到 N1 平均約 2,150 小時。全職上語言學校大約 1 年可以到 N2；**下班自學每天 1 小時則要 2–3 年**
+- **日語授課的研究所通常期待 N1 程度**；英語學程則不要求 JLPT
+- **「研究生」制度**：很多人從語言學校升研究所時，先以「研究生」（非正規生、沒有學位）身分進研究室 1 年（最多 2 年），一邊做研究、一邊準備修士班的入學考試。申請研究生通常要先得到指導教授的同意
+- **比較有效率的路線**：如果你只想讀英語學程，**不一定要上語言學校**，直接申請東大、東京科學大學等的英語學程就好；語言學校適合「想用日語在日本工作」的人
 
 ---
 
@@ -95,5 +98,5 @@
 
 ## 來源
 - 商管：[台大 EMBA 報考資格](https://management.ntu.edu.tw/EMBA/enrollment/taipei)、[Embabank：台大 EMBA 年資門檻](https://embabank.com.tw/emba/ntu/requirements)、[MiM vs MBA](https://www.mimineurope.com/blog/mim-vs-mba)、[Collegedunia：MiM universities（QS 2026 排名）](https://collegedunia.com/study-abroad/mim-universities)、[Clear Admit：HEC Paris MBA](https://www.clearadmit.com/schools/hec-paris/)
-- 日本語言學校：[窩日本：日本留學一年費用](https://wow-japan.com/study-japan-cost-per-year/)、[日學館：日本語言學校學費](https://www.nichigakkan.com/%E6%97%A5%E6%9C%AC%E8%AA%9E%E8%A8%80%E5%AD%B8%E6%A0%A1%E4%B8%80%E5%B9%B4%E5%AD%B8%E8%B2%BB%E4%B8%8D%E5%88%B080%E8%90%AC%E6%97%A5%E5%B9%A3%E7%9B%B8%E7%95%B617%E8%90%AC%E5%8F%B0%E5%B9%A3/)、[交流協會：日本獎學金](https://www.koryu.or.jp/tw/business/scholarship/)
+- 日本語言學校：[Coto Academy：How Long It Takes for Chinese Speakers to Learn Japanese](https://cotoacademy.com/how-long-chinese-speakers-learn-japanese/)、[Coto Academy：Study Hours Needed to Pass JLPT](https://cotoacademy.com/study-hours-needed-pass-jlpt-comparison-levels/)、[J'STUDY：日本的研究生制度](https://magazine.acd.com.tw/blogdigest-202406/)、[UF JAPAN：日本的「研究生」](https://www.ufjapan.com.tw/blogview_24.html)、[窩日本：日本留學一年費用](https://wow-japan.com/study-japan-cost-per-year/)、[日學館：日本語言學校學費](https://www.nichigakkan.com/%E6%97%A5%E6%9C%AC%E8%AA%9E%E8%A8%80%E5%AD%B8%E6%A0%A1%E4%B8%80%E5%B9%B4%E5%AD%B8%E8%B2%BB%E4%B8%8D%E5%88%B080%E8%90%AC%E6%97%A5%E5%B9%A3%E7%9B%B8%E7%95%B617%E8%90%AC%E5%8F%B0%E5%B9%A3/)、[交流協會：日本獎學金](https://www.koryu.or.jp/tw/business/scholarship/)
 - 短期研究：[國科會補助博士生赴國外研究作業要點](https://www.nstc.gov.tw/sci/ch/detail/e2ae0e63-a26c-4f6b-82c5-f5201aa386e2)、[Fulbright Taiwan：Doctoral Dissertation Research Award](https://www.fulbright.org.tw/doctoral-dissertation-fulbright-research-grants/)

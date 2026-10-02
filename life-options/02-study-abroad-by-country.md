@@ -44,14 +44,15 @@
 **學位：有全英語的研究所，也有給台灣人的獎學金**
 - **東京大學工學系研究科的 Special English Graduate Programs**：給國際生的英語授課碩博士學程，錄取後直接進入碩士或博士班。2027 年入學的申請期間是 **2026/05/29–06/04**（每年大約在這個時間，要提早準備）
 - **東京科學大學（Science Tokyo，前身是東京工業大學）的 International Graduate Program（IGP）**：碩士、博士、一貫制博士都有全英語課程，**沒有日語要求**。**申請前要先找到願意指導你的教授，直接寫信聯絡**。以 2027 年 4 月入學為例：2026 年 7–10 月聯絡教授、9 月到隔年 1 月申請（依系所而定）
-- **京都大學**等校也有英語授課的電機相關研究所（細節待查，佇列 J1）
+- **京都大學、大阪大學、東北大學**也有英語授課的電機碩博士（第三方整理：一般要 TOEFL iBT 80 或 IELTS 6.5 以上、不要求 JLPT；以隔年 4 月入學為例，約前一年 7–9 月申請）。各校的專攻領域和你是否對口，要逐一看實驗室
 - **學費**：國立大學約 ¥54–64 萬／年（東大等校已調漲）
 
 **日本台灣交流協會獎學金（碩博士）：台灣人專屬的日本政府獎學金**
 - **待遇**：碩士每月約 **¥144,000**，另外提供**學費與往返機票**
 - **資格**：未滿 35 歲的中華民國國籍學生、大學畢業，以進入日本研究所的正規課程為目的；簡章要求申請者「積極學習日語」
 - **時程（以 2027 年 4 月入學為例）**：2026/02–03 報名日本留學試驗（EJU）→ **06/21 考 EJU** → 06/22–07/03 初試報名 → 8 月上旬初試結果 → **9–10 月在台北面試** → 10 月下旬公布
-- **要注意**：要考日本留學試驗，所以**至少要有一定的日語程度**；申請英語授課學程的人有沒有不同的規定，要看當年的簡章（未查證）
+- **讀英語學程也要考 EJU**（2026-10 查證）：EJU 的**日語科目是必考**，其他科目可以選英文考題；如果要讀英語授課的學程，可以申請**英文面試**，要附上日本指導教授同意以英語指導的同意書（還沒找到教授的話，可以附系所的英語課程大綱），以及 TOEFL／IELTS 等英文成績
+- 台灣人申請日本政府獎學金的管道就是交流協會（據我了解，不是一般國家使用的 MEXT 大使館推薦管道）
 - 你若在 2028 年或之後入學，時程大致相同，每年 2 月左右公布新簡章
 
 **產業與就業**（詳見 [01](01-work-first.md)）
@@ -123,6 +124,7 @@
 
 ## 來源
 
+- 日本（2026-10 補充）：[willstudy：交流協會碩博士長期獎學金攻略](https://www.willstudy.tw/koryu-scholarship-longterm/)、[交流協會：2026 年度碩博士獎學金簡章](https://www.koryu.or.jp/Portals/0/taipei/2025/0204/%E2%91%A02026%E9%95%B7%E6%9C%9F%E9%99%A2%E7%94%9F%E5%8B%9F%E9%9B%86%E8%A6%81%E9%A0%85(%E4%B8%AD%E6%96%87).pdf)、[GyanMirai：English-Taught Electrical Engineering in Japan 2027](https://www.gyanmirai.com/study-in-japan/find/electrical-engineering/english)
 - 日本：[東京大學工學系研究科：International Admission](https://www.t.u-tokyo.ac.jp/soee/admission/special.html)、[東京大學：Application Guidelines](https://www.t.u-tokyo.ac.jp/en/study-at-utokyo/soe/apply/guideline)、[Science Tokyo：International Graduate Programs](https://admissions.isct.ac.jp/en/013/graduate/programs/science-and-engineering)、[Science Tokyo：IGP FAQ](https://admissions.isct.ac.jp/en/013/graduate/programs/science-and-engineering/igp-faq)、[GyanMirai：Institute of Science Tokyo 2027](https://www.gyanmirai.com/study-in-japan/find/at/institute-of-science-tokyo)、[日本台灣交流協會：日本獎學金](https://www.koryu.or.jp/tw/business/scholarship/)、[交流協會：2027 年度碩博士獎學金簡章](https://www.koryu.or.jp/Portals/0/taipei/2026/0202/CH_guideline_2027.pdf)、[教育部留學資訊：2027 年度交流協會獎學金](https://twgps.moe.edu.tw/Post/21665)、[成大國際處：2027 年度交流協會獎學金甄選](https://oia.ncku.edu.tw/p/406-1032-293432,r3419.php?Lang=zh-tw)、[風傳媒：JASM 徵才](https://www.storm.mg/lifestyle/5035970)、[Glassdoor：Graduate Engineer Master（Japan）](https://www.glassdoor.com/Salaries/jap%C3%A3o-graduate-engineer-master-salary-SRCH_IL.0,5_IN123_KO6,30.htm)；高度專門職與 AI 晶片公司的來源見 [01](01-work-first.md#來源)
 - 英國：[The PIE News：Shorter Graduate Route from January 2027](https://thepienews.com/shorter-graduate-route-from-january-2027-uk-govt-confirms/)、[Cambridge MPhil in Advanced Computer Science](https://www.cst.cam.ac.uk/admissions/acs)、[Cambridge MPhil in MLMI](https://www.mlmi.eng.cam.ac.uk/)、[Imperial MSc Advanced Computing](https://www.imperial.ac.uk/study/courses/postgraduate-taught/advanced-computing/)、[FindAPhD：UKRI Studentships](https://www.findaphd.com/guides/phd-study-in-uk/research-council-studentships)、[AcademicJobs：UKRI Stipend 2026](https://www.academicjobs.com/higher-education-news/ukri-phd-stipend-increase-2026-new-21805-rates-academicjobs-3618)、[Tarve：Skilled Worker New Entrant 2026](https://tarve.co.uk/blog/skilled-worker-new-entrant-salary-2026)、[SemiconductorJobs.co.uk](https://semiconductorjobs.co.uk/career-advice/semiconductor-jobs-uk-2025-50-companies-hiring-now)
 - 加拿大：[UofT ECE：Funding Packages 2025-26](https://www.ece.utoronto.ca/graduates/financial-support/graduate-student-funding-2025-26/)、[UofT Engineering：Money Matters](https://gradstudies.engineering.utoronto.ca/prospective-students/money-matters/)、[Vaughn Betz](https://www.eecg.utoronto.ca/~vaughn/)、[Crossroads 3D-FPGA Research Center](https://www.crossroadsfpga.org/team.html)、[Canada.ca：PGWP](https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada/work/after-graduation/about.html)、[Study Permit Cap 2026](https://ircc.com/study-permit/canada-2026)

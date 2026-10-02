@@ -48,7 +48,7 @@ def great_sword():
     # Charge (user's pick 2026-10-02, "A"): strands of light round the blade, growing with the
     # charge (bands MiquellaGrow1-24 by when they appear, user 2026-10-03), sparks off the edge at
     # full charge (MiquellaCharge3).
-    strands, sparks = arsenal.great_sword_strands(mats, gt)
+    strands, sparks, chain = arsenal.great_sword_strands(mats, gt)
     objs = list(objs) + [o for os_ in strands.values() for o in os_] + sparks
     hand = Vector((0, 0, gt - 0.04))
     to_file = Matrix.Scale(k, 4) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hand)
@@ -62,6 +62,10 @@ def great_sword():
         # The rings floating on the spine swing like loose rings, the big ring around the
         # blade hovers like the bowgun's (weapons script).
         "floaters": {**{f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)}, "Blade_Halo": "MQ_BladeHalo"},
+        # The strands draw out smoothly on bones of their own, two a band (MQ_G<strand>_1-48, see
+        # grow_chain_setup).
+        "grow_chains": [{"prefix": "GS_Strand", "strand": k, "path": path, "bone": f"MQ_G{k}_", "parent": "Base"}
+                        for k, path in enumerate(chain)],
     }
 
 
@@ -166,7 +170,7 @@ def long_sword():
     objs, mats, tip = ls.build()
     # Two strands of light round the blade (user's pick 2026-10-02, "B"), growing with the Spirit
     # Charge before a Spirit Roundslash (user, 2026-10-03; bands MiquellaGrow1-24).
-    strands = arsenal.long_sword_strands({"light": mats[1]})
+    strands, chain = arsenal.long_sword_strands({"light": mats[1]})
     objs = list(objs) + [o for os_ in strands.values() for o in os_]
     hand = Vector((0, 0, -0.04))
     to_file = Matrix.Scale(k, 4) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hand)
@@ -177,6 +181,8 @@ def long_sword():
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Hamon": "MiquellaTemper"},
         "by_name": grow_materials(strands),
+        "grow_chains": [{"prefix": "LS_Strand", "strand": k, "path": path, "bone": f"MQ_G{k}_", "parent": "Base"}
+                        for k, path in enumerate(chain)],
         # The two rings in place of a tsuba hover like the bowgun's (weapons script).
         "floaters": {"Tsuba_Halo": "MQ_Tsuba0", "Tsuba_Halo_Inner": "MQ_Tsuba1"},
         # The temper line in 8 pieces root -> tip, a material each (MiquellaBand1-8): the weapons
@@ -192,6 +198,98 @@ def grow_materials(bands):
     """{part name: MiquellaGrow<band>} for parts that grow with the charge ({band: [parts]},
     arsenal's "growing with the charge")."""
     return {o.name: f"MiquellaGrow{b}" for b, os_ in bands.items() for o in os_}
+
+
+# Growth chains (user, 2026-10-03: the strands should stretch out like an animation; bands alone
+# still step). spec["grow_chains"]: chains of bones, children of `parent` (no rotation), that the
+# weapons script moves so the band now growing is drawn out of a point as the charge runs; a strand
+# piece (named <prefix>_<band>_<strand>) is weighted by its height between the chain's two bones
+# around it (the chain's root is the parent itself). Two kinds:
+# - turn chains (the lance's drill, round helices): {prefix, chain: arsenal.grow_chain, bone,
+#   parent}: a bone on the axis at each band boundary for all the strands; the script moves the
+#   bones ahead of the growth to its front and turns them back about the axis by the helix's angle;
+# - path chains (the great sword's and long sword's flattened helices, where turning would carry
+#   the tip off them): {prefix, strand, path: one of arsenal.strand_chains, bone, parent}: bones on
+#   the strand itself, several a band; the script only moves them, to the front point.
+def grow_chain_setup(spec):
+    """Adds the chains' bones (spec pivots, bone_parents) and their weights (weight_fn) to spec."""
+    import re
+    chains = spec.get("grow_chains")
+    if not chains:
+        return
+    to_file = spec["to_file"]
+    pivots, parents = spec.setdefault("pivots", {}), spec.setdefault("bone_parents", {})
+    bands = arsenal_bands()
+    rules = []                               # (piece name pattern, {band: [(z, bone) ... up the band]})
+    for ch in chains:
+        points = ([(j, centre) for j, u, centre, theta in ch["chain"]] if "chain" in ch
+                  else [(h, point) for h, tau, point in ch["path"]])
+        per = 1 if "chain" in ch else (len(points) - 1) // bands
+        names, zs = {}, {}
+        for i, (idx, point) in enumerate(points):
+            if i == 0:
+                names[idx] = ch["parent"]
+            else:
+                names[idx] = f"{ch['bone']}{idx}"
+                pivots[names[idx]] = tuple(point)
+                if ch["parent"] != "Base":
+                    parents[names[idx]] = ch["parent"]
+            zs[idx] = (to_file @ Vector(point)).z
+        first = points[0][0]
+        by_band = {}
+        for b in range(1, bands + 1):
+            ids = [i for i in range((b - 1) * per, b * per + 1) if i >= first and i in names]
+            if len(ids) >= 2:
+                by_band[b] = [(zs[i], names[i]) for i in ids]
+        strand = r"\d+" if "strand" not in ch else str(ch["strand"])
+        rules.append((re.compile(rf"^{re.escape(ch['prefix'])}_(\d+)_{strand}$"), by_band))
+    previous = spec.get("weight_fn")
+
+    def weights(o, co):
+        for pattern, by_band in rules:
+            hit = pattern.match(o.name.split(".")[0])
+            if hit and int(hit.group(1)) in by_band:
+                marks = by_band[int(hit.group(1))]
+                for (za, a), (zb, b) in zip(marks, marks[1:]):
+                    if co.z <= zb or (zb, b) == marks[-1]:
+                        w = min(1.0, max(0.0, (co.z - za) / max(zb - za, 1e-6)))
+                        return [(a, 1.0 - w), (b, w)] if w < 1.0 else [(b, 1.0)]
+        return previous(o, co) if previous else None
+    spec["weight_fn"] = weights
+
+
+def write_grow(kit, spec, pivots):
+    """The chains for the weapons script (a Lua table to paste into the kit's grow table): per
+    chain its parent, whether it turns, its root and its bones, each with its rest position in the
+    parent's space (file metres), the share of the charge (tau) at which the growth reaches it and,
+    for turn chains, the strands' turn angle there (degrees)."""
+    def lua_vec(v):
+        return "{ " + ", ".join(f"{c:.4f}" for c in v) + " }"
+    bands = arsenal_bands()
+    lines = ["chains = {"]
+    for ch in spec.get("grow_chains", []):
+        origin = Vector((0, 0, 0)) if ch["parent"] == "Base" else pivots[ch["parent"]]
+        if "chain" in ch:
+            entries = [(j, j / bands, centre, f", theta = {math.degrees(theta):.2f}") for j, u, centre, theta in ch["chain"]]
+        else:
+            entries = [(h, tau, point, "") for h, tau, point in ch["path"]]
+        rows = [(idx, tau, spec["to_file"] @ Vector(point) - origin, extra) for idx, tau, point, extra in entries]
+        (i0, t0, p0, x0), rest = rows[0], rows[1:]
+        lines.append(f'    {{ parent = "{ch["parent"]}", turn = {"true" if "chain" in ch else "false"}, '
+                     f'root = {{ pos = {lua_vec(p0)}, tau = {t0:.5f}{x0} }},')
+        lines.append("      joints = {")
+        for idx, tau, pos, extra in rest:
+            lines.append(f'        {{ name = "{ch["bone"]}{idx}", pos = {lua_vec(pos)}, tau = {tau:.5f}{extra} }},')
+        lines.append("      } },")
+    lines.append("},")
+    with open(os.path.join(kit, f"{spec['name']}_grow.lua"), "w") as f:
+        f.write("\n".join(lines) + "\n")
+    log(f"grow chains: {[(ch['bone'], len(ch.get('chain') or ch.get('path')) - 1) for ch in spec.get('grow_chains', [])]}")
+
+
+def arsenal_bands():
+    import arsenal
+    return arsenal.GROW_BANDS
 
 
 # ---- prototypes from arsenal.py, sword_shield.py and bowgun.py
@@ -411,12 +509,17 @@ def lance():
     # trails round the root and the point's longer blade at full charge (MiquellaCharge3,
     # MiquellaChargeTip); strands and trails on one bone on the axis (MQ_Drill) that the weapons
     # script turns.
-    bands, spin, flare = parts["drill"]
+    bands, spin, flare, chains = parts["drill"]
     by_name = {**grow_materials(bands), **{o.name: "MiquellaCharge3" for o in spin}}
     by_name.update({"Point_Flare_A": "MiquellaChargeTip", "Point_Flare_B": "MiquellaChargeTip"})
     floaters = {o.name: "MQ_Drill" for o in [o for os_ in bands.values() for o in os_] + spin}
+    # The strands draw out smoothly on chains of bones under the drill's (MQ_Grow1-24 for the main
+    # strands, MQ_GrowF9-24 for the fine ones, which start at level 1), so they turn with it.
+    grow = [{"prefix": "Drill_Main", "chain": chains["Main"], "bone": "MQ_Grow", "parent": "MQ_Drill"},
+            {"prefix": "Drill_Fine", "chain": chains["Fine"], "bone": "MQ_GrowF", "parent": "MQ_Drill"}]
     return placed("wp_miquella_ln", "Art/Model/MiquellaLight/Lance", [o for o in objs if o not in shield],
-                  to_file, {}, by_name=by_name, floaters=floaters, pivots={"MQ_Drill": arsenal.DRILL_PIVOT})
+                  to_file, {}, by_name=by_name, floaters=floaters, pivots={"MQ_Drill": arsenal.DRILL_PIVOT},
+                  grow_chains=grow)
 
 
 def lance_shield():
@@ -1434,6 +1537,7 @@ def main():
 
     c.reset_scene()
     spec = WEAPONS[weapon]()
+    grow_chain_setup(spec)
     enable_addon()
     from re_mesh_editor.modules.mesh.blender_re_mesh import exportREMeshFile
     mesh_col = bpy.data.collections.new(f"{spec['name']}.mesh")
@@ -1465,6 +1569,8 @@ def main():
                                  "preserveSharpEdges": False})
     log(f"export mesh: {ok} -> {path} ({os.path.getsize(path)} bytes)")
     names = [o.name.split("__", 1)[1] for o in subs]
+    if spec.get("grow_chains"):
+        write_grow(kit, spec, pivots)
     morph = spec.get("morph")
     hidden = set()
     if morph:

@@ -1118,6 +1118,23 @@ def reach_at(level, reach=STRAND_REACH):
     return r0 + (reach[k] - r0) * (level - k)
 
 
+def grow_chain(center_fn, turns, reach_of, tau0=0.0, bands=GROW_BANDS, sign=1.0):
+    """The bones that draw a growing strand out smoothly in the game (user, 2026-10-03: bands
+    alone still step, "it should stretch out like an animation"): one at each band boundary from
+    tau0 on, [(boundary j, reach u, the strands' centre there, their turn angle there)]. The weapons
+    script pulls the bone at the end of the band now growing to the growth's front (moved and turned
+    back along the helix), so that band is drawn out of a point as the charge runs.
+    reach_of(tau): the strands' reach at that share of the charge."""
+    out = []
+    for j in range(bands + 1):
+        tau = j / bands
+        if tau < tau0 - 1e-9:
+            continue
+        u = reach_of(tau)
+        out.append((j, u, center_fn(u), sign * 2 * math.pi * turns * u))
+    return out
+
+
 def band_spans(tau0=0.0, tau1=1.0, bands=GROW_BANDS):
     """[(band, s0, s1)]: the bands that share [tau0, tau1] of the charge, with their share of it
     (s 0..1 along that span)."""
@@ -1155,10 +1172,17 @@ def drill_strand(name, mat, u0, u1, k, n_str, phase, r_root, turns, bevel, end):
     return c.curve_tube(name, pts, radii, mat, bevel=bevel, resolution=3)
 
 
+def drill_reach(kind):
+    """reach_of(tau) for the drill's strands: the main ones over the whole charge, the fine ones from level 1."""
+    if kind == "Main":
+        return lambda tau: reach_at(3 * tau)
+    return lambda tau: reach_at(2 * (tau - 1 / 3) / (2 / 3), DRILL_FINE_REACH)
+
+
 def lance_drill_parts(mats, bands=GROW_BANDS):
-    """Returns ({band: [strand pieces]}, [spin trails], [point flare objects]); names
-    Drill_<Main|Fine>_<band>_<k>, Drill_Spin_<k> (round the root at full charge: the drill turning),
-    Point_Flare_A/B (a longer blade of light around the point at full charge)."""
+    """Returns ({band: [strand pieces]}, [spin trails], [point flare objects], {set: grow chain});
+    names Drill_<Main|Fine>_<band>_<k>, Drill_Spin_<k> (round the root at full charge: the drill
+    turning), Point_Flare_A/B (a longer blade of light around the point at full charge)."""
     out = {}
     sets = {"Main": (3, 0.0, 0.16, 2.2, 0.0042), "Fine": (3, math.pi / 3, 0.2, 2.2, 0.0024)}
     for kind, (n_str, phase, r_root, turns, bevel) in sets.items():
@@ -1187,7 +1211,10 @@ def lance_drill_parts(mats, bands=GROW_BANDS):
         flare += m.path_blade(name, [V(0, 0, LANCE_TIP - 0.38), V(0, 0, LANCE_TIP + 0.42)], normal,
                               lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
                               lambda t: 0.02 * (1 - t), mats["blade"])
-    return out, spin, flare
+    axis = lambda u: V(0, 0, DRILL_Z[0] + (DRILL_Z[1] - DRILL_Z[0]) * u)
+    chains = {kind: grow_chain(axis, sets[kind][3], drill_reach(kind), 0.0 if kind == "Main" else 1 / 3, bands, -1.0)
+              for kind in sets}
+    return out, spin, flare, chains
 
 
 # The charge blade's savage axe (user's pick 2026-10-02 evening: "A, teeth of light"): teeth
@@ -1394,6 +1421,13 @@ GS_WIDTH_KNOTS = [(0.0, 0.012), (0.1, 0.055), (0.24, 0.085), (0.42, 0.165), (0.6
                   (0.76, 0.2), (0.88, 0.11), (0.96, 0.038), (1.0, 0.0)]     # as great_sword's
 
 
+def strand_point(center_fn, radius_fn, k, n_str, turns, flat, u):
+    """Strand k's centre line at u (a helix round the blade, flattened across its thickness)."""
+    a = 2 * math.pi * k / n_str + 2 * math.pi * turns * u
+    r = radius_fn(u)
+    return center_fn(u) + V(r * math.cos(a), r * math.sin(a) * flat, 0)
+
+
 def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.55, bevel=0.0035, bands=GROW_BANDS):
     """{band: [strand pieces]}, names <prefix>_<band>_<k>; center_fn(u) / radius_fn(u) along the
     blade, u 0 at the guard and 1 at the point. Band b holds the stretch that grows in the b-th
@@ -1406,25 +1440,40 @@ def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.5
             pts, radii = [], []
             for i in range(n):
                 u = u0 + (u1 - u0) * i / (n - 1)
-                a = 2 * math.pi * k / n_str + 2 * math.pi * turns * u
-                r = radius_fn(u)
-                pts.append(center_fn(u) + V(r * math.cos(a), r * math.sin(a) * flat, 0))
+                pts.append(strand_point(center_fn, radius_fn, k, n_str, turns, flat, u))
                 radii.append((1 - 0.6 * u) * max(0.05, min(1.0, u * 12)))
             out.setdefault(b, []).append(c.curve_tube(f"{prefix}_{b}_{k}", pts, radii, mat, bevel=bevel, resolution=3))
+    return out
+
+
+def strand_chains(center_fn, radius_fn, n_str, turns, flat=0.55, bands=GROW_BANDS, per_band=2):
+    """The growth bones for flattened strands (the great sword's, the long sword's): turning a
+    shared bone about the blade would carry a growing tip off a flattened helix, so each strand has
+    its own bones, sitting ON it, per_band to a band: [[(h, tau, point)] per strand], h 0 at the root.
+    The weapons script moves the bones the growth has not reached to its front (no turning)."""
+    out = []
+    for k in range(n_str):
+        pts = []
+        for h in range(bands * per_band + 1):
+            tau = h / (bands * per_band)
+            pts.append((h, tau, strand_point(center_fn, radius_fn, k, n_str, turns, flat, reach_at(3 * tau))))
+        out.append(pts)
     return out
 
 
 def great_sword_strands(mats, gt=0.36):
     """Three strands round the great sword's blade (its centre line half a width off the spine,
     toward the edge) and, at full charge, sparks thrown off the edge. Returns ({band: [strand
-    pieces]}, [sparks]); names GS_Strand_*, GS_Spark_*."""
+    pieces]}, [sparks], per-strand grow chains); names GS_Strand_*, GS_Spark_*."""
     z0, length = gt + 0.1, 1.2
 
     def center(u):
         spine_x = -0.035 * math.sin(math.pi * u) + 0.075 * u ** 3
         return V(spine_x + 0.5 * m.interp1d(GS_WIDTH_KNOTS, u), 0, z0 + length * u)
 
-    out = wrap_strands("GS_Strand", center, lambda u: 0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + 0.035, mats["light"])
+    radius = lambda u: 0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + 0.035
+    out = wrap_strands("GS_Strand", center, radius, mats["light"])
+    chain = strand_chains(center, radius, 3, 3.2)
     rng = random.Random(5)
     sparks = []
     for k in range(9):
@@ -1432,11 +1481,12 @@ def great_sword_strands(mats, gt=0.36):
         p = center(u) + V(0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + rng.uniform(0.05, 0.14), rng.uniform(-0.03, 0.03),
                           rng.uniform(-0.03, 0.03))
         sparks += m.droplet(f"GS_Spark_{k}", p, rng.uniform(0.006, 0.01), (1, 0, 0.6), mats["light"], stretch=2.5)
-    return out, sparks
+    return out, sparks, chain
 
 
 def long_sword_strands(mats):
-    """Two strands round the long sword's blade, along its curve: {band: [pieces]}, names LS_Strand_*.
+    """Two strands round the long sword's blade, along its curve: ({band: [pieces]}, per-strand grow chains),
+    names LS_Strand_*.
     In the game they grow with the Spirit Charge that leads into the Spirit Roundslash (user,
     2026-10-03), not with the spirit gauge's colour."""
     import long_sword as ls
@@ -1444,8 +1494,9 @@ def long_sword_strands(mats):
     def center(u):
         s = 0.03 + 0.9 * u
         return ls.blade_center(s) + V(ls.blade_profile(s)[0] * 0.5, 0, 0)
-    return wrap_strands("LS_Strand", center, lambda u: 0.04 - 0.02 * u, mats["light"], n_str=2, turns=3.5,
-                        bevel=0.0025)
+    radius = lambda u: 0.04 - 0.02 * u
+    return (wrap_strands("LS_Strand", center, radius, mats["light"], n_str=2, turns=3.5, bevel=0.0025),
+            strand_chains(center, radius, 2, 3.5))
 
 
 # ------------------------------------------------------------------ insect glaive extracts (game version)

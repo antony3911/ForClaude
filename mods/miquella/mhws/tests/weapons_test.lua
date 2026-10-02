@@ -470,15 +470,29 @@ check(grown(24) == 0, "great sword: no strands without a charge")
 chargeT0 = fakeTime                  -- a charge: the timer counts, level 0
 frames(24, 1 / 60)                   -- 0.4 s: half the way to level 1
 local g1 = grown(24)
-check(g1 >= 3 and g1 <= 4, string.format("great sword: the strands grow during the first level (%d of 24 bands)", g1))
-frames(12, 1 / 60)
+check(g1 >= 3 and g1 <= 5, string.format("great sword: the strands grow during the first level (%d of 24 bands)", g1))
+-- The band growing is drawn out of a point by the strands' own bones (two a band, MQ_G<strand>_1-48):
+-- the ones ahead of the front gather there, the front climbs every frame, the ones behind rest.
+local function jp(n) local j = weaponGO.tf.joints[n]; return j and j.lp end
+frames(2, 1 / 60)                    -- 0.43 s: the front in band 5 (strand bones 9, 10)
+local a8, a9, a10 = jp("MQ_G0_8"), jp("MQ_G0_9"), jp("MQ_G0_10")
+check(a8 and a9 and a10 and a9.x == a10.x and a9.y == a10.y and a9.z == a10.z and math.abs(a8.z - a9.z) > 1e-3,
+      "great sword: the band growing has its bones gathered at the front, the one behind rests")
+local z8, zf, rose = a8.z, a10.z, true
+for _ = 1, 3 do
+  frames(1, 1 / 60)
+  if jp("MQ_G0_10").z <= zf then rose = false end
+  zf = jp("MQ_G0_10").z
+end
+check(rose and jp("MQ_G0_8").z == z8, string.format("great sword: the front climbs every frame (%.4f), the bones behind stay", zf))
+frames(7, 1 / 60)
 local g2 = grown(24)
-check(g2 > g1 and g2 <= 6, string.format("great sword: and keep growing smoothly (%d)", g2))
+check(g2 > g1 and g2 <= 7, string.format("great sword: and keep growing (%d)", g2))
 frames(6, 1 / 60)                    -- 0.7 s: the game's level comes early this time
 chargeLv = 1
 frames(15, 1 / 60)
 local g3 = grown(24)
-check(g3 >= 8 and g3 <= 10, string.format("great sword: level 1 = a third grown (%d)", g3))
+check(g3 >= 9 and g3 <= 11, string.format("great sword: level 1 = a third grown (%d)", g3))
 frames(54, 1 / 60)                   -- 1.85 s (level 2 at 1.55)
 check(grown(24) <= 17, string.format("great sword: still short of level 2's growth until the game says so (%d)", grown(24)))
 chargeLv = 2
@@ -486,6 +500,7 @@ frames(27, 1 / 60)                   -- 2.3 s
 chargeLv = 3
 frames(12, 1 / 60)
 check(grown(24) == 24 and weaponMesh.matEnabled["MiquellaCharge3"] == true, "great sword: full charge, the strands reach the point, sparks")
+check(jp("MQ_G2_48") and math.abs(jp("MQ_G2_48").z - 2.144) < 2e-3, "great sword: and every bone is back where it was built")
 local sg = weaponMesh.colors["MiquellaGrow24"]
 check(sg and sg.z < 0.3 and weaponMesh.floats["MiquellaGrow24.1"] / (1.2 * glow) > 3.0,
       "great sword: the strands stay bright gold on the white blade")
@@ -500,11 +515,11 @@ check(savedCfg.chargeTimes and savedCfg.chargeTimes.it00 and math.abs(savedCfg.c
 chargeT0 = fakeTime                  -- the next charge uses it: level 1's growth by 0.7 s
 frames(39, 1 / 60)
 local g4 = grown(24)
-check(g4 >= 7 and g4 <= 8, string.format("great sword: the next charge grows by the learned time (%d at 0.65 s)", g4))
+check(g4 >= 7 and g4 <= 9, string.format("great sword: the next charge grows by the learned time (%d at 0.65 s)", g4))
 chargeT0 = nil
 frames(40, 1 / 60)
 texts = {}; onDraw()
-check(anyText("^Growth: _ChargeLv"), "great sword: menu shows the growth")
+check(anyText("^Growth: _ChargeLv") and anyText("^Growth bones found: 144/144"), "great sword: menu shows the growth and its bones")
 comboAnswer = 1; onDraw()
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/Item/it00/00/0000/it0000_0000_0.mesh", "great sword: original restored")
@@ -1060,7 +1075,10 @@ check(grown(24) == 0, "long sword: no strands outside the Spirit Charge")
 hunterAction, chargeT0 = "app.Wp03Action.cKijinCharge", fakeTime
 frames(24, 1 / 60)                   -- 0.4 s
 local l1 = grown(24)
-check(l1 >= 3 and l1 <= 4, string.format("long sword: the Spirit Charge grows the strands (%d of 24)", l1))
+check(l1 >= 3 and l1 <= 5, string.format("long sword: the Spirit Charge grows the strands (%d of 24)", l1))
+frames(2, 1 / 60)                    -- 0.43 s: strand 1's bones 9 and 10 at the front
+check(jp("MQ_G1_9") and jp("MQ_G1_10") and jp("MQ_G1_9").z == jp("MQ_G1_10").z and jp("MQ_G1_10").z < 0.9,
+      "long sword: the strands draw out on their bones")
 frames(24, 1 / 60)
 extract._KijinChargeLv = 1
 frames(48, 1 / 60)                   -- 1.6 s
@@ -1069,6 +1087,7 @@ frames(78, 1 / 60)                   -- 2.9 s
 extract._KijinChargeLv = 3
 frames(12, 1 / 60)
 check(grown(24) == 24, "long sword: full Spirit Charge wraps the whole blade")
+check(jp("MQ_G1_48") and math.abs(jp("MQ_G1_48").z - 1.9883) < 2e-3, "long sword: its strands' bones all back in place at full")
 local lsc = weaponMesh.colors["MiquellaGrow24"]
 check(lsc and lsc.z < 0.3 and weaponMesh.floats["MiquellaGrow24.1"] / (1.2 * glow) > 3.0, "long sword: bright gold strands")
 hunterAction, chargeT0, extract._KijinChargeLv = "app.Wp03Action.cKijinSlashRound", nil, 0
@@ -1099,7 +1118,11 @@ check(a0 ~= nil and math.abs(drillAngle() - a0) < 1e-6 and grown(24) == 0, "lanc
 chargeT0 = fakeTime
 frames(24, 1 / 60)                   -- 0.4 s
 local n1 = grown(24)
-check(n1 >= 3 and n1 <= 4, string.format("lance: the drill grows from the start of the charge (%d of 24)", n1))
+check(n1 >= 3 and n1 <= 5, string.format("lance: the drill grows from the start of the charge (%d of 24)", n1))
+frames(2, 1 / 60)                    -- 0.43 s: the front in band 5: its end bone on the axis, moved down
+local g5 = weaponGO.tf.joints["MQ_Grow5"]
+check(g5 and g5.lp and g5.lr and math.abs(g5.lp.x) < 1e-6 and g5.lp.z < -0.6205 - 0.01 and math.abs(g5.lr.z) > 0.01,
+      "lance: the growing band's bone is pulled to the front and turned back along the drill")
 frames(24, 1 / 60)
 extract._FinishChargeLevel = 1
 frames(30, 1 / 60)

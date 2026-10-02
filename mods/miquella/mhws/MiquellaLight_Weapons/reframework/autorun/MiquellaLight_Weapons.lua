@@ -106,6 +106,320 @@ local MORPH_CB = {
     },
 }
 
+-- Growth chains (build_weapon_kit.py writes them: <kit>/<model>_grow.lua; paste them here after a
+-- rebuild): the bones that draw the strands out as they grow (grow_joints). turn = false: bones on
+-- each strand itself, moved to the growth's front (the great sword's and long sword's flattened
+-- helices); turn = true: bones on the axis for all the strands, also turned back by the helix's
+-- angle (the lance's round drill). pos: rest position in the parent's space (file metres); tau:
+-- the share of the charge at which the growth reaches it; theta: the helix's angle (degrees).
+local GROW_GS = {
+    { parent = "Base", turn = false, root = { pos = { -0.0752, 0.0000, 0.2240 }, tau = 0.00000 },
+      joints = {
+        { name = "MQ_G0_1", pos = { -0.0747, -0.0191, 0.2720 }, tau = 0.02083 },
+        { name = "MQ_G0_2", pos = { -0.0601, -0.0378, 0.3200 }, tau = 0.04167 },
+        { name = "MQ_G0_3", pos = { -0.0280, -0.0501, 0.3680 }, tau = 0.06250 },
+        { name = "MQ_G0_4", pos = { 0.0158, -0.0498, 0.4160 }, tau = 0.08333 },
+        { name = "MQ_G0_5", pos = { 0.0573, -0.0337, 0.4640 }, tau = 0.10417 },
+        { name = "MQ_G0_6", pos = { 0.0802, -0.0074, 0.5120 }, tau = 0.12500 },
+        { name = "MQ_G0_7", pos = { 0.0768, 0.0224, 0.5600 }, tau = 0.14583 },
+        { name = "MQ_G0_8", pos = { 0.0464, 0.0485, 0.6080 }, tau = 0.16667 },
+        { name = "MQ_G0_9", pos = { -0.0063, 0.0647, 0.6560 }, tau = 0.18750 },
+        { name = "MQ_G0_10", pos = { -0.0720, 0.0662, 0.7040 }, tau = 0.20833 },
+        { name = "MQ_G0_11", pos = { -0.1358, 0.0505, 0.7520 }, tau = 0.22917 },
+        { name = "MQ_G0_12", pos = { -0.1831, 0.0195, 0.8000 }, tau = 0.25000 },
+        { name = "MQ_G0_13", pos = { -0.2002, -0.0208, 0.8480 }, tau = 0.27083 },
+        { name = "MQ_G0_14", pos = { -0.1796, -0.0610, 0.8960 }, tau = 0.29167 },
+        { name = "MQ_G0_15", pos = { -0.1236, -0.0899, 0.9440 }, tau = 0.31250 },
+        { name = "MQ_G0_16", pos = { -0.0457, -0.0979, 0.9920 }, tau = 0.33333 },
+        { name = "MQ_G0_17", pos = { 0.0236, -0.0839, 1.0340 }, tau = 0.35417 },
+        { name = "MQ_G0_18", pos = { 0.0764, -0.0519, 1.0760 }, tau = 0.37500 },
+        { name = "MQ_G0_19", pos = { 0.0992, -0.0070, 1.1180 }, tau = 0.39583 },
+        { name = "MQ_G0_20", pos = { 0.0832, 0.0429, 1.1600 }, tau = 0.41667 },
+        { name = "MQ_G0_21", pos = { 0.0269, 0.0879, 1.2020 }, tau = 0.43750 },
+        { name = "MQ_G0_22", pos = { -0.0626, 0.1183, 1.2440 }, tau = 0.45833 },
+        { name = "MQ_G0_23", pos = { -0.1704, 0.1267, 1.2860 }, tau = 0.47917 },
+        { name = "MQ_G0_24", pos = { -0.2760, 0.1100, 1.3280 }, tau = 0.50000 },
+        { name = "MQ_G0_25", pos = { -0.3582, 0.0707, 1.3700 }, tau = 0.52083 },
+        { name = "MQ_G0_26", pos = { -0.4003, 0.0166, 1.4120 }, tau = 0.54167 },
+        { name = "MQ_G0_27", pos = { -0.3940, -0.0409, 1.4540 }, tau = 0.56250 },
+        { name = "MQ_G0_28", pos = { -0.3422, -0.0897, 1.4960 }, tau = 0.58333 },
+        { name = "MQ_G0_29", pos = { -0.2571, -0.1202, 1.5380 }, tau = 0.60417 },
+        { name = "MQ_G0_30", pos = { -0.1576, -0.1265, 1.5800 }, tau = 0.62500 },
+        { name = "MQ_G0_31", pos = { -0.0647, -0.1085, 1.6220 }, tau = 0.64583 },
+        { name = "MQ_G0_32", pos = { 0.0032, -0.0708, 1.6640 }, tau = 0.66667 },
+        { name = "MQ_G0_33", pos = { 0.0293, -0.0363, 1.6940 }, tau = 0.68750 },
+        { name = "MQ_G0_34", pos = { 0.0343, -0.0000, 1.7240 }, tau = 0.70833 },
+        { name = "MQ_G0_35", pos = { 0.0190, 0.0335, 1.7540 }, tau = 0.72917 },
+        { name = "MQ_G0_36", pos = { -0.0130, 0.0605, 1.7840 }, tau = 0.75000 },
+        { name = "MQ_G0_37", pos = { -0.0562, 0.0786, 1.8140 }, tau = 0.77083 },
+        { name = "MQ_G0_38", pos = { -0.1045, 0.0869, 1.8440 }, tau = 0.79167 },
+        { name = "MQ_G0_39", pos = { -0.1523, 0.0859, 1.8740 }, tau = 0.81250 },
+        { name = "MQ_G0_40", pos = { -0.1951, 0.0768, 1.9040 }, tau = 0.83333 },
+        { name = "MQ_G0_41", pos = { -0.2249, 0.0603, 1.9340 }, tau = 0.85417 },
+        { name = "MQ_G0_42", pos = { -0.2397, 0.0398, 1.9640 }, tau = 0.87500 },
+        { name = "MQ_G0_43", pos = { -0.2414, 0.0189, 1.9940 }, tau = 0.89583 },
+        { name = "MQ_G0_44", pos = { -0.2324, 0.0000, 2.0240 }, tau = 0.91667 },
+        { name = "MQ_G0_45", pos = { -0.2159, -0.0154, 2.0540 }, tau = 0.93750 },
+        { name = "MQ_G0_46", pos = { -0.1876, -0.0250, 2.0840 }, tau = 0.95833 },
+        { name = "MQ_G0_47", pos = { -0.1580, -0.0287, 2.1140 }, tau = 0.97917 },
+        { name = "MQ_G0_48", pos = { -0.1373, -0.0293, 2.1440 }, tau = 1.00000 },
+      } },
+    { parent = "Base", turn = false, root = { pos = { 0.0232, -0.0312, 0.2240 }, tau = 0.00000 },
+      joints = {
+        { name = "MQ_G1_1", pos = { 0.0500, -0.0205, 0.2720 }, tau = 0.02083 },
+        { name = "MQ_G1_2", pos = { 0.0647, -0.0019, 0.3200 }, tau = 0.04167 },
+        { name = "MQ_G1_3", pos = { 0.0595, 0.0223, 0.3680 }, tau = 0.06250 },
+        { name = "MQ_G1_4", pos = { 0.0303, 0.0452, 0.4160 }, tau = 0.08333 },
+        { name = "MQ_G1_5", pos = { -0.0163, 0.0571, 0.4640 }, tau = 0.10417 },
+        { name = "MQ_G1_6", pos = { -0.0684, 0.0546, 0.5120 }, tau = 0.12500 },
+        { name = "MQ_G1_7", pos = { -0.1130, 0.0379, 0.5600 }, tau = 0.14583 },
+        { name = "MQ_G1_8", pos = { -0.1395, 0.0105, 0.6080 }, tau = 0.16667 },
+        { name = "MQ_G1_9", pos = { -0.1419, -0.0217, 0.6560 }, tau = 0.18750 },
+        { name = "MQ_G1_10", pos = { -0.1176, -0.0517, 0.7040 }, tau = 0.20833 },
+        { name = "MQ_G1_11", pos = { -0.0686, -0.0718, 0.7520 }, tau = 0.22917 },
+        { name = "MQ_G1_12", pos = { -0.0063, -0.0757, 0.8000 }, tau = 0.25000 },
+        { name = "MQ_G1_13", pos = { 0.0539, -0.0598, 0.8480 }, tau = 0.27083 },
+        { name = "MQ_G1_14", pos = { 0.0938, -0.0258, 0.8960 }, tau = 0.29167 },
+        { name = "MQ_G1_15", pos = { 0.0977, 0.0197, 0.9440 }, tau = 0.31250 },
+        { name = "MQ_G1_16", pos = { 0.0575, 0.0651, 0.9920 }, tau = 0.33333 },
+        { name = "MQ_G1_17", pos = { -0.0106, 0.0948, 1.0340 }, tau = 0.35417 },
+        { name = "MQ_G1_18", pos = { -0.0995, 0.1078, 1.0760 }, tau = 0.37500 },
+        { name = "MQ_G1_19", pos = { -0.1949, 0.1004, 1.1180 }, tau = 0.39583 },
+        { name = "MQ_G1_20", pos = { -0.2796, 0.0723, 1.1600 }, tau = 0.41667 },
+        { name = "MQ_G1_21", pos = { -0.3367, 0.0275, 1.2020 }, tau = 0.43750 },
+        { name = "MQ_G1_22", pos = { -0.3538, -0.0259, 1.2440 }, tau = 0.45833 },
+        { name = "MQ_G1_23", pos = { -0.3262, -0.0772, 1.2860 }, tau = 0.47917 },
+        { name = "MQ_G1_24", pos = { -0.2589, -0.1154, 1.3280 }, tau = 0.50000 },
+        { name = "MQ_G1_25", pos = { -0.1659, -0.1317, 1.3700 }, tau = 0.52083 },
+        { name = "MQ_G1_26", pos = { -0.0679, -0.1222, 1.4120 }, tau = 0.54167 },
+        { name = "MQ_G1_27", pos = { 0.0133, -0.0885, 1.4540 }, tau = 0.56250 },
+        { name = "MQ_G1_28", pos = { 0.0598, -0.0379, 1.4960 }, tau = 0.58333 },
+        { name = "MQ_G1_29", pos = { 0.0619, 0.0189, 1.5380 }, tau = 0.60417 },
+        { name = "MQ_G1_30", pos = { 0.0199, 0.0701, 1.5800 }, tau = 0.62500 },
+        { name = "MQ_G1_31", pos = { -0.0566, 0.1059, 1.6220 }, tau = 0.64583 },
+        { name = "MQ_G1_32", pos = { -0.1511, 0.1198, 1.6640 }, tau = 0.66667 },
+        { name = "MQ_G1_33", pos = { -0.2183, 0.1149, 1.6940 }, tau = 0.68750 },
+        { name = "MQ_G1_34", pos = { -0.2746, 0.0981, 1.7240 }, tau = 0.70833 },
+        { name = "MQ_G1_35", pos = { -0.3147, 0.0725, 1.7540 }, tau = 0.72917 },
+        { name = "MQ_G1_36", pos = { -0.3352, 0.0418, 1.7840 }, tau = 0.75000 },
+        { name = "MQ_G1_37", pos = { -0.3357, 0.0102, 1.8140 }, tau = 0.77083 },
+        { name = "MQ_G1_38", pos = { -0.3185, -0.0190, 1.8440 }, tau = 0.79167 },
+        { name = "MQ_G1_39", pos = { -0.2875, -0.0429, 1.8740 }, tau = 0.81250 },
+        { name = "MQ_G1_40", pos = { -0.2479, -0.0600, 1.9040 }, tau = 0.83333 },
+        { name = "MQ_G1_41", pos = { -0.2004, -0.0680, 1.9340 }, tau = 0.85417 },
+        { name = "MQ_G1_42", pos = { -0.1530, -0.0673, 1.9640 }, tau = 0.87500 },
+        { name = "MQ_G1_43", pos = { -0.1125, -0.0598, 1.9940 }, tau = 0.89583 },
+        { name = "MQ_G1_44", pos = { -0.0821, -0.0477, 2.0240 }, tau = 0.91667 },
+        { name = "MQ_G1_45", pos = { -0.0629, -0.0332, 2.0540 }, tau = 0.93750 },
+        { name = "MQ_G1_46", pos = { -0.0543, -0.0173, 2.0840 }, tau = 0.95833 },
+        { name = "MQ_G1_47", pos = { -0.0561, -0.0037, 2.1140 }, tau = 0.97917 },
+        { name = "MQ_G1_48", pos = { -0.0652, 0.0064, 2.1440 }, tau = 1.00000 },
+      } },
+    { parent = "Base", turn = false, root = { pos = { 0.0232, 0.0312, 0.2240 }, tau = 0.00000 },
+      joints = {
+        { name = "MQ_G2_1", pos = { -0.0101, 0.0396, 0.2720 }, tau = 0.02083 },
+        { name = "MQ_G2_2", pos = { -0.0542, 0.0396, 0.3200 }, tau = 0.04167 },
+        { name = "MQ_G2_3", pos = { -0.0984, 0.0278, 0.3680 }, tau = 0.06250 },
+        { name = "MQ_G2_4", pos = { -0.1265, 0.0046, 0.4160 }, tau = 0.08333 },
+        { name = "MQ_G2_5", pos = { -0.1226, -0.0234, 0.4640 }, tau = 0.10417 },
+        { name = "MQ_G2_6", pos = { -0.0918, -0.0472, 0.5120 }, tau = 0.12500 },
+        { name = "MQ_G2_7", pos = { -0.0424, -0.0603, 0.5600 }, tau = 0.14583 },
+        { name = "MQ_G2_8", pos = { 0.0133, -0.0590, 0.6080 }, tau = 0.16667 },
+        { name = "MQ_G2_9", pos = { 0.0619, -0.0430, 0.6560 }, tau = 0.18750 },
+        { name = "MQ_G2_10", pos = { 0.0910, -0.0145, 0.7040 }, tau = 0.20833 },
+        { name = "MQ_G2_11", pos = { 0.0904, 0.0213, 0.7520 }, tau = 0.22917 },
+        { name = "MQ_G2_12", pos = { 0.0552, 0.0561, 0.8000 }, tau = 0.25000 },
+        { name = "MQ_G2_13", pos = { -0.0117, 0.0807, 0.8480 }, tau = 0.27083 },
+        { name = "MQ_G2_14", pos = { -0.0984, 0.0868, 0.8960 }, tau = 0.29167 },
+        { name = "MQ_G2_15", pos = { -0.1855, 0.0703, 0.9440 }, tau = 0.31250 },
+        { name = "MQ_G2_16", pos = { -0.2507, 0.0328, 0.9920 }, tau = 0.33333 },
+        { name = "MQ_G2_17", pos = { -0.2749, -0.0108, 1.0340 }, tau = 0.35417 },
+        { name = "MQ_G2_18", pos = { -0.2631, -0.0559, 1.0760 }, tau = 0.37500 },
+        { name = "MQ_G2_19", pos = { -0.2171, -0.0934, 1.1180 }, tau = 0.39583 },
+        { name = "MQ_G2_20", pos = { -0.1446, -0.1152, 1.1600 }, tau = 0.41667 },
+        { name = "MQ_G2_21", pos = { -0.0598, -0.1155, 1.2020 }, tau = 0.43750 },
+        { name = "MQ_G2_22", pos = { 0.0189, -0.0925, 1.2440 }, tau = 0.45833 },
+        { name = "MQ_G2_23", pos = { 0.0728, -0.0495, 1.2860 }, tau = 0.47917 },
+        { name = "MQ_G2_24", pos = { 0.0874, 0.0055, 1.3280 }, tau = 0.50000 },
+        { name = "MQ_G2_25", pos = { 0.0566, 0.0611, 1.3700 }, tau = 0.52083 },
+        { name = "MQ_G2_26", pos = { -0.0156, 0.1056, 1.4120 }, tau = 0.54167 },
+        { name = "MQ_G2_27", pos = { -0.1154, 0.1293, 1.4540 }, tau = 0.56250 },
+        { name = "MQ_G2_28", pos = { -0.2228, 0.1276, 1.4960 }, tau = 0.58333 },
+        { name = "MQ_G2_29", pos = { -0.3165, 0.1013, 1.5380 }, tau = 0.60417 },
+        { name = "MQ_G2_30", pos = { -0.3785, 0.0564, 1.5800 }, tau = 0.62500 },
+        { name = "MQ_G2_31", pos = { -0.3982, 0.0026, 1.6220 }, tau = 0.64583 },
+        { name = "MQ_G2_32", pos = { -0.3740, -0.0490, 1.6640 }, tau = 0.66667 },
+        { name = "MQ_G2_33", pos = { -0.3326, -0.0786, 1.6940 }, tau = 0.68750 },
+        { name = "MQ_G2_34", pos = { -0.2746, -0.0981, 1.7240 }, tau = 0.70833 },
+        { name = "MQ_G2_35", pos = { -0.2093, -0.1060, 1.7540 }, tau = 0.72917 },
+        { name = "MQ_G2_36", pos = { -0.1447, -0.1023, 1.7840 }, tau = 0.75000 },
+        { name = "MQ_G2_37", pos = { -0.0882, -0.0888, 1.8140 }, tau = 0.77083 },
+        { name = "MQ_G2_38", pos = { -0.0447, -0.0679, 1.8440 }, tau = 0.79167 },
+        { name = "MQ_G2_39", pos = { -0.0171, -0.0429, 1.8740 }, tau = 0.81250 },
+        { name = "MQ_G2_40", pos = { -0.0062, -0.0168, 1.9040 }, tau = 0.83333 },
+        { name = "MQ_G2_41", pos = { -0.0107, 0.0078, 1.9340 }, tau = 0.85417 },
+        { name = "MQ_G2_42", pos = { -0.0277, 0.0275, 1.9640 }, tau = 0.87500 },
+        { name = "MQ_G2_43", pos = { -0.0530, 0.0409, 1.9940 }, tau = 0.89583 },
+        { name = "MQ_G2_44", pos = { -0.0821, 0.0477, 2.0240 }, tau = 0.91667 },
+        { name = "MQ_G2_45", pos = { -0.1112, 0.0486, 2.0540 }, tau = 0.93750 },
+        { name = "MQ_G2_46", pos = { -0.1331, 0.0423, 2.0840 }, tau = 0.95833 },
+        { name = "MQ_G2_47", pos = { -0.1463, 0.0324, 2.1140 }, tau = 0.97917 },
+        { name = "MQ_G2_48", pos = { -0.1575, 0.0229, 2.1440 }, tau = 1.00000 },
+      } },
+}
+local GROW_LS = {
+    { parent = "Base", turn = false, root = { pos = { -0.1078, 0.0000, 0.1928 }, tau = 0.00000 },
+      joints = {
+        { name = "MQ_G0_1", pos = { -0.0952, -0.0216, 0.2377 }, tau = 0.02083 },
+        { name = "MQ_G0_2", pos = { -0.0642, -0.0363, 0.2826 }, tau = 0.04167 },
+        { name = "MQ_G0_3", pos = { -0.0241, -0.0401, 0.3275 }, tau = 0.06250 },
+        { name = "MQ_G0_4", pos = { 0.0135, -0.0321, 0.3724 }, tau = 0.08333 },
+        { name = "MQ_G0_5", pos = { 0.0378, -0.0150, 0.4173 }, tau = 0.10417 },
+        { name = "MQ_G0_6", pos = { 0.0423, 0.0060, 0.4622 }, tau = 0.12500 },
+        { name = "MQ_G0_7", pos = { 0.0267, 0.0248, 0.5071 }, tau = 0.14583 },
+        { name = "MQ_G0_8", pos = { -0.0038, 0.0358, 0.5519 }, tau = 0.16667 },
+        { name = "MQ_G0_9", pos = { -0.0395, 0.0361, 0.5968 }, tau = 0.18750 },
+        { name = "MQ_G0_10", pos = { -0.0696, 0.0259, 0.6417 }, tau = 0.20833 },
+        { name = "MQ_G0_11", pos = { -0.0850, 0.0084, 0.6866 }, tau = 0.22917 },
+        { name = "MQ_G0_12", pos = { -0.0814, -0.0110, 0.7315 }, tau = 0.25000 },
+        { name = "MQ_G0_13", pos = { -0.0599, -0.0266, 0.7764 }, tau = 0.27083 },
+        { name = "MQ_G0_14", pos = { -0.0270, -0.0341, 0.8213 }, tau = 0.29167 },
+        { name = "MQ_G0_15", pos = { 0.0079, -0.0314, 0.8662 }, tau = 0.31250 },
+        { name = "MQ_G0_16", pos = { 0.0350, -0.0197, 0.9110 }, tau = 0.33333 },
+        { name = "MQ_G0_17", pos = { 0.0465, -0.0048, 0.9503 }, tau = 0.35417 },
+        { name = "MQ_G0_18", pos = { 0.0444, 0.0107, 0.9896 }, tau = 0.37500 },
+        { name = "MQ_G0_19", pos = { 0.0300, 0.0233, 1.0289 }, tau = 0.39583 },
+        { name = "MQ_G0_20", pos = { 0.0071, 0.0304, 1.0682 }, tau = 0.41667 },
+        { name = "MQ_G0_21", pos = { -0.0186, 0.0305, 1.1074 }, tau = 0.43750 },
+        { name = "MQ_G0_22", pos = { -0.0409, 0.0237, 1.1467 }, tau = 0.45833 },
+        { name = "MQ_G0_23", pos = { -0.0545, 0.0118, 1.1860 }, tau = 0.47917 },
+        { name = "MQ_G0_24", pos = { -0.0563, -0.0023, 1.2253 }, tau = 0.50000 },
+        { name = "MQ_G0_25", pos = { -0.0459, -0.0156, 1.2645 }, tau = 0.52083 },
+        { name = "MQ_G0_26", pos = { -0.0256, -0.0249, 1.3038 }, tau = 0.54167 },
+        { name = "MQ_G0_27", pos = { 0.0001, -0.0284, 1.3431 }, tau = 0.56250 },
+        { name = "MQ_G0_28", pos = { 0.0256, -0.0254, 1.3824 }, tau = 0.58333 },
+        { name = "MQ_G0_29", pos = { 0.0456, -0.0168, 1.4216 }, tau = 0.60417 },
+        { name = "MQ_G0_30", pos = { 0.0562, -0.0048, 1.4609 }, tau = 0.62500 },
+        { name = "MQ_G0_31", pos = { 0.0557, 0.0080, 1.5002 }, tau = 0.64583 },
+        { name = "MQ_G0_32", pos = { 0.0450, 0.0185, 1.5395 }, tau = 0.66667 },
+        { name = "MQ_G0_33", pos = { 0.0328, 0.0233, 1.5675 }, tau = 0.68750 },
+        { name = "MQ_G0_34", pos = { 0.0187, 0.0253, 1.5956 }, tau = 0.70833 },
+        { name = "MQ_G0_35", pos = { 0.0044, 0.0244, 1.6236 }, tau = 0.72917 },
+        { name = "MQ_G0_36", pos = { -0.0082, 0.0206, 1.6517 }, tau = 0.75000 },
+        { name = "MQ_G0_37", pos = { -0.0176, 0.0146, 1.6797 }, tau = 0.77083 },
+        { name = "MQ_G0_38", pos = { -0.0224, 0.0070, 1.7078 }, tau = 0.79167 },
+        { name = "MQ_G0_39", pos = { -0.0223, -0.0012, 1.7359 }, tau = 0.81250 },
+        { name = "MQ_G0_40", pos = { -0.0171, -0.0090, 1.7639 }, tau = 0.83333 },
+        { name = "MQ_G0_41", pos = { -0.0074, -0.0156, 1.7920 }, tau = 0.85417 },
+        { name = "MQ_G0_42", pos = { 0.0057, -0.0202, 1.8200 }, tau = 0.87500 },
+        { name = "MQ_G0_43", pos = { 0.0207, -0.0223, 1.8481 }, tau = 0.89583 },
+        { name = "MQ_G0_44", pos = { 0.0361, -0.0218, 1.8761 }, tau = 0.91667 },
+        { name = "MQ_G0_45", pos = { 0.0502, -0.0188, 1.9042 }, tau = 0.93750 },
+        { name = "MQ_G0_46", pos = { 0.0615, -0.0137, 1.9322 }, tau = 0.95833 },
+        { name = "MQ_G0_47", pos = { 0.0690, -0.0072, 1.9603 }, tau = 0.97917 },
+        { name = "MQ_G0_48", pos = { 0.0731, -0.0000, 1.9883 }, tau = 1.00000 },
+      } },
+    { parent = "Base", turn = false, root = { pos = { 0.0442, -0.0000, 0.1928 }, tau = 0.00000 },
+      joints = {
+        { name = "MQ_G1_1", pos = { 0.0328, 0.0216, 0.2377 }, tau = 0.02083 },
+        { name = "MQ_G1_2", pos = { 0.0031, 0.0363, 0.2826 }, tau = 0.04167 },
+        { name = "MQ_G1_3", pos = { -0.0355, 0.0401, 0.3275 }, tau = 0.06250 },
+        { name = "MQ_G1_4", pos = { -0.0714, 0.0321, 0.3724 }, tau = 0.08333 },
+        { name = "MQ_G1_5", pos = { -0.0939, 0.0150, 0.4173 }, tau = 0.10417 },
+        { name = "MQ_G1_6", pos = { -0.0965, -0.0060, 0.4622 }, tau = 0.12500 },
+        { name = "MQ_G1_7", pos = { -0.0788, -0.0248, 0.5071 }, tau = 0.14583 },
+        { name = "MQ_G1_8", pos = { -0.0461, -0.0358, 0.5519 }, tau = 0.16667 },
+        { name = "MQ_G1_9", pos = { -0.0080, -0.0361, 0.5968 }, tau = 0.18750 },
+        { name = "MQ_G1_10", pos = { 0.0244, -0.0259, 0.6417 }, tau = 0.20833 },
+        { name = "MQ_G1_11", pos = { 0.0424, -0.0084, 0.6866 }, tau = 0.22917 },
+        { name = "MQ_G1_12", pos = { 0.0415, 0.0110, 0.7315 }, tau = 0.25000 },
+        { name = "MQ_G1_13", pos = { 0.0227, 0.0266, 0.7764 }, tau = 0.27083 },
+        { name = "MQ_G1_14", pos = { -0.0074, 0.0341, 0.8213 }, tau = 0.29167 },
+        { name = "MQ_G1_15", pos = { -0.0393, 0.0314, 0.8662 }, tau = 0.31250 },
+        { name = "MQ_G1_16", pos = { -0.0634, 0.0197, 0.9110 }, tau = 0.33333 },
+        { name = "MQ_G1_17", pos = { -0.0722, 0.0048, 0.9503 }, tau = 0.35417 },
+        { name = "MQ_G1_18", pos = { -0.0673, -0.0107, 0.9896 }, tau = 0.37500 },
+        { name = "MQ_G1_19", pos = { -0.0500, -0.0233, 1.0289 }, tau = 0.39583 },
+        { name = "MQ_G1_20", pos = { -0.0241, -0.0304, 1.0682 }, tau = 0.41667 },
+        { name = "MQ_G1_21", pos = { 0.0046, -0.0305, 1.1074 }, tau = 0.43750 },
+        { name = "MQ_G1_22", pos = { 0.0299, -0.0237, 1.1467 }, tau = 0.45833 },
+        { name = "MQ_G1_23", pos = { 0.0466, -0.0118, 1.1860 }, tau = 0.47917 },
+        { name = "MQ_G1_24", pos = { 0.0516, 0.0023, 1.2253 }, tau = 0.50000 },
+        { name = "MQ_G1_25", pos = { 0.0445, 0.0156, 1.2645 }, tau = 0.52083 },
+        { name = "MQ_G1_26", pos = { 0.0275, 0.0249, 1.3038 }, tau = 0.54167 },
+        { name = "MQ_G1_27", pos = { 0.0051, 0.0284, 1.3431 }, tau = 0.56250 },
+        { name = "MQ_G1_28", pos = { -0.0170, 0.0254, 1.3824 }, tau = 0.58333 },
+        { name = "MQ_G1_29", pos = { -0.0335, 0.0168, 1.4216 }, tau = 0.60417 },
+        { name = "MQ_G1_30", pos = { -0.0406, 0.0048, 1.4609 }, tau = 0.62500 },
+        { name = "MQ_G1_31", pos = { -0.0365, -0.0080, 1.5002 }, tau = 0.64583 },
+        { name = "MQ_G1_32", pos = { -0.0221, -0.0185, 1.5395 }, tau = 0.66667 },
+        { name = "MQ_G1_33", pos = { -0.0073, -0.0233, 1.5675 }, tau = 0.68750 },
+        { name = "MQ_G1_34", pos = { 0.0096, -0.0253, 1.5956 }, tau = 0.70833 },
+        { name = "MQ_G1_35", pos = { 0.0266, -0.0244, 1.6236 }, tau = 0.72917 },
+        { name = "MQ_G1_36", pos = { 0.0419, -0.0206, 1.6517 }, tau = 0.75000 },
+        { name = "MQ_G1_37", pos = { 0.0540, -0.0146, 1.6797 }, tau = 0.77083 },
+        { name = "MQ_G1_38", pos = { 0.0616, -0.0070, 1.7078 }, tau = 0.79167 },
+        { name = "MQ_G1_39", pos = { 0.0643, 0.0012, 1.7359 }, tau = 0.81250 },
+        { name = "MQ_G1_40", pos = { 0.0619, 0.0090, 1.7639 }, tau = 0.83333 },
+        { name = "MQ_G1_41", pos = { 0.0551, 0.0156, 1.7920 }, tau = 0.85417 },
+        { name = "MQ_G1_42", pos = { 0.0449, 0.0202, 1.8200 }, tau = 0.87500 },
+        { name = "MQ_G1_43", pos = { 0.0328, 0.0223, 1.8481 }, tau = 0.89583 },
+        { name = "MQ_G1_44", pos = { 0.0203, 0.0218, 1.8761 }, tau = 0.91667 },
+        { name = "MQ_G1_45", pos = { 0.0093, 0.0188, 1.9042 }, tau = 0.93750 },
+        { name = "MQ_G1_46", pos = { 0.0009, 0.0137, 1.9322 }, tau = 0.95833 },
+        { name = "MQ_G1_47", pos = { -0.0036, 0.0072, 1.9603 }, tau = 0.97917 },
+        { name = "MQ_G1_48", pos = { -0.0029, 0.0000, 1.9883 }, tau = 1.00000 },
+      } },
+}
+local GROW_LN = {
+    { parent = "MQ_Drill", turn = true, root = { pos = { 0.0000, 0.0000, -1.2410 }, tau = 0.00000, theta = -0.00 },
+      joints = {
+        { name = "MQ_Grow1", pos = { 0.0000, 0.0000, -1.1169 }, tau = 0.04167, theta = -39.60 },
+        { name = "MQ_Grow2", pos = { 0.0000, 0.0000, -0.9928 }, tau = 0.08333, theta = -79.20 },
+        { name = "MQ_Grow3", pos = { 0.0000, 0.0000, -0.8687 }, tau = 0.12500, theta = -118.80 },
+        { name = "MQ_Grow4", pos = { 0.0000, 0.0000, -0.7446 }, tau = 0.16667, theta = -158.40 },
+        { name = "MQ_Grow5", pos = { 0.0000, 0.0000, -0.6205 }, tau = 0.20833, theta = -198.00 },
+        { name = "MQ_Grow6", pos = { 0.0000, 0.0000, -0.4964 }, tau = 0.25000, theta = -237.60 },
+        { name = "MQ_Grow7", pos = { 0.0000, 0.0000, -0.3723 }, tau = 0.29167, theta = -277.20 },
+        { name = "MQ_Grow8", pos = { 0.0000, 0.0000, -0.2482 }, tau = 0.33333, theta = -316.80 },
+        { name = "MQ_Grow9", pos = { 0.0000, 0.0000, -0.1396 }, tau = 0.37500, theta = -351.45 },
+        { name = "MQ_Grow10", pos = { 0.0000, 0.0000, -0.0310 }, tau = 0.41667, theta = -386.10 },
+        { name = "MQ_Grow11", pos = { 0.0000, 0.0000, 0.0776 }, tau = 0.45833, theta = -420.75 },
+        { name = "MQ_Grow12", pos = { 0.0000, 0.0000, 0.1861 }, tau = 0.50000, theta = -455.40 },
+        { name = "MQ_Grow13", pos = { 0.0000, 0.0000, 0.2947 }, tau = 0.54167, theta = -490.05 },
+        { name = "MQ_Grow14", pos = { 0.0000, 0.0000, 0.4033 }, tau = 0.58333, theta = -524.70 },
+        { name = "MQ_Grow15", pos = { 0.0000, 0.0000, 0.5119 }, tau = 0.62500, theta = -559.35 },
+        { name = "MQ_Grow16", pos = { 0.0000, 0.0000, 0.6205 }, tau = 0.66667, theta = -594.00 },
+        { name = "MQ_Grow17", pos = { 0.0000, 0.0000, 0.6981 }, tau = 0.70833, theta = -618.75 },
+        { name = "MQ_Grow18", pos = { 0.0000, 0.0000, 0.7756 }, tau = 0.75000, theta = -643.50 },
+        { name = "MQ_Grow19", pos = { 0.0000, 0.0000, 0.8532 }, tau = 0.79167, theta = -668.25 },
+        { name = "MQ_Grow20", pos = { 0.0000, 0.0000, 0.9307 }, tau = 0.83333, theta = -693.00 },
+        { name = "MQ_Grow21", pos = { 0.0000, 0.0000, 1.0083 }, tau = 0.87500, theta = -717.75 },
+        { name = "MQ_Grow22", pos = { 0.0000, 0.0000, 1.0859 }, tau = 0.91667, theta = -742.50 },
+        { name = "MQ_Grow23", pos = { 0.0000, 0.0000, 1.1634 }, tau = 0.95833, theta = -767.25 },
+        { name = "MQ_Grow24", pos = { 0.0000, 0.0000, 1.2410 }, tau = 1.00000, theta = -792.00 },
+      } },
+    { parent = "MQ_Drill", turn = true, root = { pos = { 0.0000, 0.0000, -1.2410 }, tau = 0.33333, theta = -0.00 },
+      joints = {
+        { name = "MQ_GrowF9", pos = { 0.0000, 0.0000, -1.0859 }, tau = 0.37500, theta = -49.50 },
+        { name = "MQ_GrowF10", pos = { 0.0000, 0.0000, -0.9308 }, tau = 0.41667, theta = -99.00 },
+        { name = "MQ_GrowF11", pos = { 0.0000, 0.0000, -0.7756 }, tau = 0.45833, theta = -148.50 },
+        { name = "MQ_GrowF12", pos = { 0.0000, 0.0000, -0.6205 }, tau = 0.50000, theta = -198.00 },
+        { name = "MQ_GrowF13", pos = { 0.0000, 0.0000, -0.4654 }, tau = 0.54167, theta = -247.50 },
+        { name = "MQ_GrowF14", pos = { 0.0000, 0.0000, -0.3103 }, tau = 0.58333, theta = -297.00 },
+        { name = "MQ_GrowF15", pos = { 0.0000, 0.0000, -0.1551 }, tau = 0.62500, theta = -346.50 },
+        { name = "MQ_GrowF16", pos = { 0.0000, 0.0000, 0.0000 }, tau = 0.66667, theta = -396.00 },
+        { name = "MQ_GrowF17", pos = { 0.0000, 0.0000, 0.1086 }, tau = 0.70833, theta = -430.65 },
+        { name = "MQ_GrowF18", pos = { 0.0000, 0.0000, 0.2172 }, tau = 0.75000, theta = -465.30 },
+        { name = "MQ_GrowF19", pos = { 0.0000, 0.0000, 0.3258 }, tau = 0.79167, theta = -499.95 },
+        { name = "MQ_GrowF20", pos = { 0.0000, 0.0000, 0.4343 }, tau = 0.83333, theta = -534.60 },
+        { name = "MQ_GrowF21", pos = { 0.0000, 0.0000, 0.5429 }, tau = 0.87500, theta = -569.25 },
+        { name = "MQ_GrowF22", pos = { 0.0000, 0.0000, 0.6515 }, tau = 0.91667, theta = -603.90 },
+        { name = "MQ_GrowF23", pos = { 0.0000, 0.0000, 0.7601 }, tau = 0.95833, theta = -638.55 },
+        { name = "MQ_GrowF24", pos = { 0.0000, 0.0000, 0.8687 }, tau = 1.00000, theta = -673.20 },
+      } },
+}
+
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
@@ -143,7 +457,7 @@ local KITS = {
         -- game's _ChargeTimer reaches levels 1-3 at 0.8 / 1.55 / 2.3 s in a plain charge
         -- (wp00globalactionparam.user.3; its other charges differ: learned per _ChargeType).
         grow = { bands = 24, fields = CHARGE_FIELDS, timer = { "_ChargeTimer" }, kind = { "_ChargeType" },
-                 times = { 0.8, 1.55, 2.3 } },
+                 times = { 0.8, 1.55, 2.3 }, chains = GROW_GS },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -199,7 +513,7 @@ local KITS = {
         -- roundslash (cKijinSlashRound) and fade after it; bright gold, brighter as they grow.
         grow = { bands = 24, fields = { "_KijinChargeLv", "<RealKijinChargeLv>k__BackingField" },
                  timer = { "_KijinChargeTimer" }, times = { 0.8, 1.6, 2.9 }, action = "KijinCharge", hold = "KijinSlashRound",
-                 mul = { 1.6, 3.2 }, color = PART_GOLD },
+                 mul = { 1.6, 3.2 }, color = PART_GOLD, chains = GROW_LS },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -289,7 +603,7 @@ local KITS = {
         -- _FinishChargeTimer reaches levels 1-3 at 0.8 / 2.0 / 3.6 s (wp06globalactionparam.user.3;
         -- recorded 2026-10-02 it stopped at 3.60).
         grow = { bands = 24, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
-                 timer = { "_FinishChargeTimer" }, times = { 0.8, 2.0, 3.6 } },
+                 timer = { "_FinishChargeTimer" }, times = { 0.8, 2.0, 3.6 }, chains = GROW_LN },
         shield = "Lance_Shield",
     },
     Lance_Shield = {
@@ -1440,7 +1754,7 @@ end
 -- is that progress over the top level (the bow: two flowers a level's time, the rest one after
 -- another once at the top, over `post` seconds); the band at its front fades in. Let go, the grown
 -- parts fade where they stand (held while the kit's `hold` action runs).
-local GROW_RELEASE, GROW_UP, GROW_DOWN = 0.3, 0.12, 0.35
+local GROW_RELEASE, GROW_UP, GROW_DOWN, GROW_SNAP = 0.3, 0.12, 0.35, 6
 local growDirty = false              -- learned thresholds to save once the charge is over
 
 -- The charge timer's value when `level` is reached.
@@ -1554,9 +1868,12 @@ local function update_grow(entry, mesh, h, dt, now)
     entry.mul = entry.mul or {}
     local mul = spec.mul and lerp(spec.mul[1], spec.mul[2], shown) or entry.partMul or 1.8
     local color = spec.color or entry.partColor or PART_GOLD
+    -- (with bone chains a band is drawn out of a point, so it shows as soon as it starts; without,
+    -- it fades in over its share)
+    local snap = spec.chains and GROW_SNAP or 1
     for k = 1, spec.bands do
         local mat = "MiquellaGrow" .. k
-        set_alpha(entry, mesh, mat, math.max(0, math.min(1, shown * spec.bands - (k - 1))) * fade)
+        set_alpha(entry, mesh, mat, math.max(0, math.min(1, (shown * spec.bands - (k - 1)) * snap)) * fade)
         entry.mul[mat] = mul
         set_color(entry, mesh, mat, color)
     end
@@ -2042,6 +2359,7 @@ end
 
 local floatInfo = { found = 0, total = 0, phases = {} }
 local lastFloatClock = nil
+local growInfo = { found = 0, total = 0 }  -- growth chain bones found (menu)
 
 local function float_joints(entry)
     local spec = entry.kit.floaters
@@ -2227,6 +2545,73 @@ local function ring_on_arrow(s, line, blend)
     s.rot = qmul(qaxis(cross({ 0, 0, 1 }, line.d), angle * blend), s.rot)
 end
 
+-- Growth chains (user, 2026-10-03: the strands should stretch out like an animation; bands alone
+-- step): the kit's grow.chains (build_weapon_kit.py writes them: <kit>/<name>_grow.lua) put a bone
+-- at every band boundary of the strands, children of `parent` with no rotation; a band's pieces
+-- are weighted between the bones at its two ends. The band now growing has its end bone pulled
+-- back to the growth's front: moved there and turned back about the strands' axis by the helix's
+-- angle still to go, so the band is drawn out of a point as the charge runs. Bones behind the
+-- front rest where they were built (set once); those ahead do not matter (their bands are hidden).
+local function grow_joints(entry)
+    local spec = entry.kit.grow
+    if not (spec and spec.chains) then return nil end
+    local gj = entry.growJoints
+    if gj and gj.found == gj.total then return gj end
+    local tf = try(function() return entry.go:call("get_Transform") end)
+    if not tf then return gj end
+    gj = gj or { chains = {} }
+    gj.found, gj.total = 0, 0
+    for c, ch in ipairs(spec.chains) do
+        local jc = gj.chains[c] or { joints = {} }
+        gj.chains[c] = jc
+        for i, j in ipairs(ch.joints) do
+            local st = jc.joints[i] or { name = j.name }
+            st.joint = st.joint or try(function() return tf:call("getJointByName", j.name) end)
+            if st.joint then gj.found = gj.found + 1 end
+            gj.total = gj.total + 1
+            jc.joints[i] = st
+        end
+    end
+    entry.growJoints = gj
+    return gj
+end
+
+local function step_grow_joints(entry)
+    local spec, g = entry.kit.grow, entry.grow
+    local gj = g and grow_joints(entry)
+    if not gj then return end
+    local tau = g.shown or 0
+    local drawing = tau > 0 and (g.fade or 0) > 0
+    growInfo.found, growInfo.total = gj.found, gj.total
+    -- (the end of the band now growing: its bones ahead of the front gather at the front)
+    local bandEnd = math.ceil(tau * spec.bands - 1e-6) / spec.bands + 1e-6
+    for c, ch in ipairs(spec.chains) do
+        local jc = gj.chains[c]
+        local front, at, angle = nil, nil, nil  -- the first bone the growth has not reached; the front
+        if drawing then
+            for i, j in ipairs(ch.joints) do
+                if tau < j.tau then front = i; break end
+            end
+        end
+        if front then
+            local a, b = ch.joints[front - 1] or ch.root, ch.joints[front]
+            local f = math.max(0, math.min(1, (tau - a.tau) / (b.tau - a.tau)))
+            at = lerp3(a.pos, b.pos, f)
+            angle = ch.turn and lerp(a.theta, b.theta, f)
+        end
+        for i, j in ipairs(ch.joints) do
+            local st = jc.joints[i]
+            if front and i >= front and j.tau <= bandEnd then
+                st.pos = at
+                st.rot = ch.turn and qaxis({ 0, 0, 1 }, angle - j.theta) or { 0, 0, 0, 1 }
+                st.state, st.pending = "front", true
+            elseif st.state ~= "rest" then
+                st.pos, st.rot, st.state, st.pending = j.pos, { 0, 0, 0, 1 }, "rest", true
+            end
+        end
+    end
+end
+
 -- Run the springs once per frame (the first hook that fires), using the weapon's transform.
 local function step_floaters()
     local now = os.clock()
@@ -2237,6 +2622,7 @@ local function step_floaters()
     dt = math.min(dt, 0.1)
     floatInfo.found, floatInfo.total = 0, 0
     for _, entry in pairs(swapped) do
+        if config.enabled and entry.kit.grow and entry.kit.grow.chains then step_grow_joints(entry) end
         local f = rings_active(entry) and float_joints(entry)
         if f then
             if entry.kit.bow or entry.kit.gunlance then step_pack(entry, dt) end
@@ -2341,6 +2727,19 @@ end
 local function apply_floaters(phase)
     floatInfo.phases[phase] = true
     for _, entry in pairs(swapped) do apply_morph(entry) end
+    -- Growth chains: the front's bone in every pass, a bone back at rest once.
+    for _, entry in pairs(swapped) do
+        local gj = config.enabled and entry.growJoints
+        for _, jc in ipairs(gj and gj.chains or {}) do
+            for _, st in ipairs(jc.joints) do
+                if st.joint and st.pending then
+                    try(function() st.joint:call("set_LocalPosition", Vector3f.new(st.pos[1], st.pos[2], st.pos[3])) end)
+                    try(function() st.joint:call("set_LocalRotation", to_quat(st.rot)) end)
+                    if st.state == "rest" then st.pending = nil end
+                end
+            end
+        end
+    end
     for _, entry in pairs(swapped) do
         local f = entry.float
         if f and rings_active(entry) then
@@ -2377,6 +2776,7 @@ local function refresh(entry)
     if not mesh then return end
     set_model(entry.go, mesh, entry.kitMesh, entry.kitMdf or entry.kit.mdf2, nil)
     entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
+    entry.growJoints = nil
     entry.partsOn, entry.fadeOn, entry.morphJoints = nil, nil, nil
     apply_tuning(entry, mesh)
 end
@@ -2472,7 +2872,10 @@ re.on_draw_ui(function()
     end
     for _, entry in pairs(swapped) do
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
-        if entry.kit.grow and stateInfo.grow then imgui.text("Growth: " .. stateInfo.grow) end
+        if entry.kit.grow and stateInfo.grow then
+            imgui.text("Growth: " .. stateInfo.grow)
+            if entry.kit.grow.chains then imgui.text(string.format("Growth bones found: %d/%d", growInfo.found, growInfo.total)) end
+        end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
         if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
         if entry.kit.timing and stateInfo.timing then imgui.text("Perfect Rush: " .. stateInfo.timing) end

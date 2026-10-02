@@ -3,9 +3,11 @@
 The kit's growth bands (MiquellaGrow1..n, build_weapon_kit.py) fade in by the share of the charge
 the script computes from the game's charge timer: the level reached by the level thresholds plus
 the share of the way to the next, over the top level (the bow: two flowers a level's time from
-level 1, the rest one after another over `post` seconds at the top). Parts shown at full charge
-(sparks, spin trails, the lance point's blade) come in at the top level; the lance's drill turns
-on MQ_Drill, faster as it grows. Writes a strip of frames and an animated GIF in real time.
+level 1, the rest one after another over `post` seconds at the top). The growth chains' bones
+(<kit>/<model>_grow.lua) draw the band now growing out of a point as in the game. Parts shown at
+full charge (sparks, spin trails, the lance point's blade) come in at the top level; the lance's
+drill turns on MQ_Drill, faster as it grows. Writes a strip of frames and an animated GIF in real
+time.
 
 Usage: python preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <out stem>
 Requires bpy 4.5 (only reads the .blend).
@@ -35,6 +37,59 @@ WEAPONS = {
             "view": Matrix(((0, 0, -1, 0), (-1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))},
 }
 FPS, HOLD, RELEASE = 10, 0.6, 0.3
+SNAP, BANDS = 6, 24                          # (the weapons script's GROW_SNAP; the kits' growth bands)
+
+
+def read_chains(path):
+    """The growth chains from a kit's <model>_grow.lua (build_weapon_kit.write_grow)."""
+    import re
+    if not os.path.exists(path):
+        return []
+    num = r"(-?[\d.]+)"
+    vec = r"\{ " + num + ", " + num + ", " + num + r" \}"
+    head = re.compile(r'parent = "(\w+)", turn = (\w+), root = \{ pos = ' + vec + ", tau = " + num + "(?:, theta = " + num + ")?")
+    joint = re.compile(r'name = "(\w+)", pos = ' + vec + ", tau = " + num + "(?:, theta = " + num + ")?")
+    chains = []
+    for line in open(path):
+        hit = head.search(line)
+        if hit:
+            g = hit.groups()
+            chains.append({"parent": g[0], "turn": g[1] == "true", "joints": [],
+                           "root": {"pos": np.array([float(x) for x in g[2:5]]), "tau": float(g[5]),
+                                    "theta": float(g[6] or 0)}})
+            continue
+        hit = joint.search(line)
+        if hit and chains:
+            g = hit.groups()
+            chains[-1]["joints"].append({"name": g[0], "pos": np.array([float(x) for x in g[1:4]]),
+                                         "tau": float(g[4]), "theta": float(g[5] or 0)})
+    return chains
+
+
+def rot_z(deg):
+    a = math.radians(deg)
+    return np.array(((math.cos(a), -math.sin(a), 0), (math.sin(a), math.cos(a), 0), (0, 0, 1)))
+
+
+def chain_poses(chains, tau, drawing):
+    """{bone: (its position, its turn)} in its parent's space, as the weapons script's
+    step_grow_joints sets them."""
+    poses = {}
+    band_end = math.ceil(tau * BANDS - 1e-6) / BANDS + 1e-6
+    for ch in chains:
+        js = ch["joints"]
+        front = next((i for i, j in enumerate(js) if tau < j["tau"]), None) if drawing else None
+        if front is not None:
+            a, b = (js[front - 1] if front > 0 else ch["root"]), js[front]
+            f = max(0.0, min(1.0, (tau - a["tau"]) / (b["tau"] - a["tau"])))
+            at = a["pos"] + (b["pos"] - a["pos"]) * f
+            angle = a["theta"] + (b["theta"] - a["theta"]) * f
+        for i, j in enumerate(js):
+            if front is not None and i >= front and j["tau"] <= band_end:
+                poses[j["name"]] = (at, rot_z(angle - j["theta"]) if ch["turn"] else np.eye(3))
+            else:
+                poses[j["name"]] = (j["pos"], np.eye(3))
+    return poses
 
 
 def growth(w, t):
@@ -81,26 +136,40 @@ def main():
         p.mesh.materials.append(mats[p.game_mat][0])
     top_t = w["times"][-1] + w.get("post", 0.0)
     spin_angle = [0.0]
+    model = os.path.basename(blend).replace("_kit.blend", "")
+    chains = read_chains(os.path.join(os.path.dirname(blend), f"{model}_grow.lua"))
+    snap = SNAP if chains else 1
+    parent_of = {j["name"]: ch["parent"] for ch in chains for j in ch["joints"]}
+    rest_of = {j["name"]: j["pos"] for ch in chains for j in ch["joints"]}
+    print(f"growth chains: {len(chains)}, bones {len(rest_of)}", flush=True)
 
     def frame(t, path, dt=0.0, fade=1.0):
         tau, lp = growth(w, t)
         for name, (mat, factor) in mats.items():
             if name.startswith("MiquellaGrow"):
                 k = int(name[len("MiquellaGrow"):])
-                factor.default_value = max(0.0, min(1.0, tau * w["bands"] - (k - 1))) * fade
+                factor.default_value = max(0.0, min(1.0, (tau * w["bands"] - (k - 1)) * snap)) * fade
             elif name in w["full"]:
                 factor.default_value = max(0.0, min(1.0, (t - w["times"][-1]) / 0.12)) * fade
+        # The drill's turn (the lance), and the chains' bones under it or under Base.
+        spin, spin_pivot, poses = np.eye(3), np.zeros(3), {}
         if w.get("spin"):
             bone, pivot, dps = w["spin"]
             lv = min(len(dps) - 1, lp * fade)
             lo = int(lv)
             speed = dps[lo] + (dps[min(len(dps) - 1, lo + 1)] - dps[lo]) * (lv - lo)
             spin_angle[0] += speed * dt
-            a = math.radians(spin_angle[0])
-            rot = np.array(((math.cos(a), -math.sin(a), 0), (math.sin(a), math.cos(a), 0), (0, 0, 1)))
-            poses = {bone: (np.array(pivot), rot), bone + "@pivot": np.array(pivot)}
+            spin, spin_pivot = rot_z(spin_angle[0]), np.array(pivot)
+            poses = {bone: (spin_pivot, spin), bone + "@pivot": spin_pivot}
+        for name, (pos, rot) in chain_poses(chains, tau, fade > 0 and tau > 0).items():
+            if parent_of[name] == "Base":
+                poses[name], poses[name + "@pivot"] = (pos, rot), rest_of[name]
+            else:                                # under the drill: its turn on top
+                poses[name] = (spin_pivot + spin @ pos, spin @ rot)
+                poses[name + "@pivot"] = spin_pivot + rest_of[name]
+        if poses:
             for p in parts:
-                if bone in p.weights:
+                if any(b in poses for b in p.weights):
                     p.deform(poses)
         bpy.context.scene.render.filepath = path
         bpy.ops.render.render(write_still=True)

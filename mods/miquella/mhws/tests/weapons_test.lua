@@ -46,7 +46,10 @@ local function newMesh(meshPath)
                "MiquellaGlow", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_gl%.") then
-      return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory", "MiquellaFilament" }
+      return { "MiquellaBlade", "MiquellaBudLight", "MiquellaFireHalo", "MiquellaGauge1", "MiquellaGauge2",
+               "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5", "MiquellaGlow", "MiquellaIvory",
+               "MiquellaLeafLight", "MiquellaLilyLight", "MiquellaTemper", "MiquellaThroat1", "MiquellaThroat2",
+               "MiquellaThroat3" }
     end
     if self.mdfPath:match("wp_miquella_ig%.") then
       local list = { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
@@ -853,81 +856,111 @@ frames(2, 1 / 60)
 check(weaponGO.draw == false and insectGO.draw == true, "insect glaive: sheathed glaive hidden, kinsect stays")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = true } })
 frames(2, 1 / 60)
--- Gunlance: a reload winds the spring and lets it go; charged shelling winds it tighter per
--- level and holds until the shot, gold -> white gold; Wyvern's Fire winds it all the way.
+-- Gunlance, the lily (user's picks 2026-10-03): the charge opens the lily as an animation. Its
+-- bones and fades come from the kit's table (the same file the script's LILY_GL is pasted from):
+-- the ivory tepals are thrown back ("open"), the parts of light grow from their small pose to
+-- their full one ("glow"), Wyvern's Fire's rings come at the end of its wind-up ("wyvern").
+local bloom
+do
+  local f = io.open("../MiquellaLight_Gunlance_kit/wp_miquella_gl_bloom.lua", "r")
+  if f then local src = f:read("a"); f:close(); bloom = load("return " .. src)() end
+end
+check(bloom ~= nil and #bloom.joints == 126, "gunlance: the kit's bloom table (126 joints)")
+local function bj(name) for _, j in ipairs(bloom.joints) do if j.name == name then return j end end end
+local function near(lp, p, tol) return lp and math.abs(lp.x - p[1]) < tol and math.abs(lp.y - p[2]) < tol and math.abs(lp.z - p[3]) < tol end
+local function share(lp, a, b)            -- how far lp is from a toward b (0..1), along a -> b
+  local d = { b[1] - a[1], b[2] - a[2], b[3] - a[3] }
+  local dd = d[1] * d[1] + d[2] * d[2] + d[3] * d[3]
+  return ((lp.x - a[1]) * d[1] + (lp.y - a[2]) * d[2] + (lp.z - a[3]) * d[3]) / dd
+end
 weaponMesh = newMesh("Art/Model/Item/it07/00/0004/it0700_0004_0.mesh")
 weaponGO = newGO("Wp07", 9001, weaponMesh, nil)
 subGO = newGO("Wp07_Shield", 9002, newMesh("Art/Model/Item/it07/00/0004/it0700_0004_1.mesh"), nil)
 insectGO = nil
-extract = { _IsReload = false, _RyuugekiChargeTimer = 0 }
+extract = { _IsReload = false, _RyuugekiChargeTimer = 0, _RyuugekiGauge = 2.0, _ChargeShotBulletNum = 5 }
 frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "Gunlance" }; onDraw()
 frames(40, 1 / 60)
 check(weaponMesh.meshPath == "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh", "gunlance: model swapped")
-local top = weaponGO.tf.joints["MQ_SpringTop"]
-local REST_TOP = 1.6640
-check(top.lp and math.abs(top.lp.z - REST_TOP) < 1e-3, "gunlance: spring at rest")
-extract._IsReload = true
-local low = REST_TOP
-for _ = 1, 30 do frames(1, 1 / 60); low = math.min(low, top.lp.z) end
-check(low < REST_TOP - 0.35, string.format("gunlance: a reload winds the spring (top down to %.3f)", low))
-extract._IsReload = false
-frames(90, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: and lets it spring back")
+local J = weaponGO.tf.joints
+local tepal, light, leaf = bj("MQ_Tepal0_4"), bj("MQ_LL0_T"), bj("MQ_LF0_T")
+check(J["MQ_Tepal0_4"] and near(J["MQ_Tepal0_4"].lp, tepal.pivot, 1e-4), "gunlance: the lily at rest (tepals at their bind pose)")
+check(J["MQ_LL0_T"] and J["MQ_LL0_T"].lp == nil and dissolve("MiquellaLilyLight") < 1e-3 and dissolve("MiquellaLeafLight") < 1e-3,
+      "gunlance: no light at rest, its bones left alone")
+-- The shells: the five buds lit while loaded.
+extract._ChargeShotBulletNum = 3
+frames(30, 1 / 60)
+local g1, g5 = weaponMesh.floats["MiquellaGauge1.1"] or 0, weaponMesh.floats["MiquellaGauge5.1"] or 0
+check(g1 > 0 and g5 < 0.5 * g1, string.format("gunlance: three shells, two buds dim (%.2f vs %.2f)", g5, g1))
+extract._ChargeShotBulletNum = 5
+frames(30, 1 / 60)
+-- Charged shelling: its timer counts up while held; full at 1.8 s.
 glStart = fakeTime
-local thread = weaponGO.tf.joints["MQ_FilamentTop"]
-frames(20, 1 / 60)
-local z1 = top.lp.z
-frames(16, 1 / 60)                   -- 0.6 s of 1.2: the gold thread half drawn out
-local half = (thread.lp.z - 0.429) / (2.015 - 0.429)
-check(half > 0.4 and half < 0.6, string.format("gunlance: the gold thread grows with the charge (%.2f of its length at 0.6 s)", half))
-frames(54, 1 / 60)
-local z3 = top.lp.z
-check(z3 < z1 - 0.05, string.format("gunlance: charged shelling winds tighter per level (%.3f -> %.3f)", z1, z3))
-local gc = weaponMesh.colors["MiquellaCore"]
-check(gc and gc.y > 0.8 and gc.z > 0.5, "gunlance: full charge is white gold")
--- The gold thread (user's pick "G3"): drawn out to the muzzle at full charge, shown.
-check(thread.lp and math.abs(thread.lp.z - 2.015) < 0.02 and weaponMesh.matEnabled["MiquellaFilament"] == true,
-      string.format("gunlance: full charge draws the gold thread out to the muzzle (%.3f)", thread.lp and thread.lp.z or -1))
+frames(54, 1 / 60)                       -- 0.9 s: half way
+local f = share(J["MQ_LL0_T"].lp, light.base, light.pivot)
+check(f > 0.4 and f < 0.6, string.format("gunlance: the lily of light half grown at half the charge (%.2f)", f))
+local o = share(J["MQ_Tepal0_4"].lp, tepal.pivot, tepal.alt)
+check(o > 0.4 and o < 0.6, string.format("gunlance: the tepals half thrown back (%.2f)", o))
+check(dissolve("MiquellaLilyLight") > 0.99 and dissolve("MiquellaThroat3") < 1e-3 and dissolve("MiquellaThroat2") > 0.2,
+      "gunlance: the light shown, the throat's light growing")
+local f0 = f
+frames(6, 1 / 60)
+check(share(J["MQ_LL0_T"].lp, light.base, light.pivot) > f0 + 0.02, "gunlance: and it keeps growing, frame by frame")
+frames(60, 1 / 60)                       -- past full
+check(near(J["MQ_LL0_T"].lp, light.pivot, 2e-3) and near(J["MQ_LF0_T"].lp, leaf.pivot, 2e-3),
+      "gunlance: full charge, the lily and the leaves of light at full size")
+check(near(J["MQ_Tepal0_4"].lp, tepal.alt, 2e-3), "gunlance: the tepals thrown back")
+check(dissolve("MiquellaThroat3") > 0.99 and dissolve("MiquellaFireHalo") < 1e-3, "gunlance: the throat's light full; no Wyvern's Fire rings")
+-- The shot: the light keeps its size and fades where it stands; the ivory eases back.
 glStart = nil
-local far = 0
-for _ = 1, 60 do frames(1, 1 / 60); far = math.max(far, top.lp.z) end
-check(far > REST_TOP + 0.02, string.format("gunlance: the shot lets the spring fly back past its place (%.3f)", far))
-frames(40, 1 / 60)                   -- the charge light fades over a second
-check(thread.lp.z < 0.429 + (2.015 - 0.429) * 0.2 and weaponMesh.matEnabled["MiquellaFilament"] ~= true,
-      string.format("gunlance: after the shot the thread goes back into the core (%.3f)", thread.lp.z))
-extract._RyuugekiChargeTimer = 1.0
-frames(60, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire winds it all the way")
-extract._RyuugekiChargeTimer = 0
-frames(120, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the blast")
--- Wyvern's Fire: the hunter runs the game's cRyuugeki* actions through its wind-up; its gauge
--- drops by one at the blast. A shell fired lowers the count.
-extract._RyuugekiGauge, extract._ChargeShotBulletNum = 2.0, 5
-hunterAction = "app.Wp07Action.cIdle"
-frames(10, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: other actions leave the spring alone")
+frames(15, 1 / 60)                       -- 0.15 s still counting as charging, then let go
+frames(9, 1 / 60)
+local d1 = dissolve("MiquellaLilyLight")
+check(d1 < 0.95 and d1 > 0.05 and near(J["MQ_LL0_T"].lp, light.pivot, 2e-3),
+      string.format("gunlance: after the shot the light fades at full size (%.2f)", d1))
+frames(40, 1 / 60)
+check(dissolve("MiquellaLilyLight") < 1e-3 and near(J["MQ_Tepal0_4"].lp, tepal.pivot, 2e-3),
+      "gunlance: gone, the tepals back at rest")
+-- Wyvern's Fire: the hunter's cRyuugeki* actions are its wind-up (2.5 s until learned); its gauge
+-- drops at the blast, which teaches the script how long the wind-up really is.
 hunterAction = "app.Wp07Action.cRyuugekiStart"
-frames(60, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire's wind-up (cRyuugekiStart) winds the spring")
+frames(75, 1 / 60)                       -- 1.25 s
+f = share(J["MQ_LL0_T"].lp, light.base, light.pivot)
+check(f > 0.4 and f < 0.6 and dissolve("MiquellaFireHalo") < 1e-3, string.format("gunlance: Wyvern's Fire builds the lily (%.2f)", f))
 hunterAction = "app.Wp07Action.cRyuugekiShoot"
-frames(20, 1 / 60)
-check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: still wound into the shot until the blast")
+frames(90, 1 / 60)                       -- 2.75 s
+check(near(J["MQ_LL0_T"].lp, light.pivot, 2e-3) and dissolve("MiquellaFireHalo") > 0.99, "gunlance: full, Wyvern's Fire's rings shown")
 extract._RyuugekiGauge = 1.0
-frames(120, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: released at the blast (gauge used), though the action still runs")
+frames(2, 1 / 60)
+local learned = savedCfg and savedCfg.chargeTimes and savedCfg.chargeTimes["gunlance/wyvern"]
+check(learned and math.abs(learned.full - 2.77) < 0.05, string.format("gunlance: the blast teaches the wind-up's length (%s)",
+      learned and tostring(learned.full) or "none"))
+frames(40, 1 / 60)
+check(dissolve("MiquellaLilyLight") < 1e-3 and dissolve("MiquellaFireHalo") < 1e-3,
+      "gunlance: after the blast the light is gone, though the action still runs")
 hunterAction = "app.Wp07Action.cIdle"
 frames(30, 1 / 60)
+extract._RyuugekiGauge = 2.0
+hunterAction = "app.Wp07Action.cRyuugekiStart"
+frames(83, 1 / 60)                       -- 1.38 s of the learned 2.77
+f = share(J["MQ_LL0_T"].lp, light.base, light.pivot)
+check(f > 0.4 and f < 0.6, string.format("gunlance: the next Wyvern's Fire follows the learned wind-up (%.2f)", f))
+hunterAction = "app.Wp07Action.cIdle"
+frames(60, 1 / 60)
+-- A shell fired or a reload flexes the tepals a little.
 extract._ChargeShotBulletNum = 4
-frames(6, 1 / 60)
-check(top.lp.z < REST_TOP - 0.05, string.format("gunlance: a shell fired presses the spring (%.3f)", top.lp.z))
-frames(90, 1 / 60)
-check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: back after the shell")
+frames(5, 1 / 60)
+o = share(J["MQ_Tepal0_4"].lp, tepal.pivot, tepal.alt)
+check(o > 0.05 and o < 0.3, string.format("gunlance: a shell fired flexes the tepals (%.2f)", o))
+frames(60, 1 / 60)
+check(near(J["MQ_Tepal0_4"].lp, tepal.pivot, 2e-3), "gunlance: back after the shell")
 texts = {}; onDraw()
-local sawGl = false
-for _, t in ipairs(texts) do if t:match("^Gunlance: _IsReload") and t:match("action: app%.Wp07Action%.cIdle") then sawGl = true end end
-check(sawGl, "gunlance: menu shows the fields and the hunter's action")
+local sawGl, sawJoints = false, false
+for _, t in ipairs(texts) do
+  if t:match("^Gunlance: _IsReload") and t:match("lily: open") and t:match("action: app%.Wp07Action%.cIdle") then sawGl = true end
+  if t == "Lily joints found: 126/126" then sawJoints = true end
+end
+check(sawGl and sawJoints, "gunlance: menu shows the fields, the lily and its joints")
 hunterAction = nil
 -- Switch axe and charge blade: both modes are one model; the game's mode drives a morph (joints
 -- move, parts of one mode fade by Dissolve), never a model swap. Charge blade: the shield fades

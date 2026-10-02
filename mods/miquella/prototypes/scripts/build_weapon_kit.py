@@ -533,8 +533,56 @@ def lance_shield():
 
 
 def gunlance():
-    """Hand mid-grip; scaled 1.3: muzzle 2.04 m above the hand (originals: VFX_Fire 1.66, the
-    bayonet up to 2.27). Shells come out of our muzzle (VFX_Fire moved there)."""
+    """The lily gunlance (user's picks 2026-10-03, lily_rig.py): the lily at rest; the charge
+    parts (the lily of light at the muzzle, the leaves of light, the buds' lilies of light, the
+    throat's light, Wyvern's Fire's rings) at their full size, hidden; 126 bones draw them
+    between a small pose and that one, and throw the ivory tepals and stamens back, as the
+    charge builds (the table: <kit>/wp_miquella_gl_bloom.lua). Placed like the first gunlance:
+    hand mid-grip, scaled 1.3 (the lily's mouth 1.92 m above the hand). Shells come out of the
+    lily's mouth (VFX_Fire); the wyrmstake (our golden needle) starts on the axis (VFX_Pile)."""
+    import common as c
+    import lily_rig
+    import motifs
+    mats = motifs.materials()
+    mats["phial_lit"] = c.make_material("Phial_Lit", c.PALETTE["glow"], roughness=0.1,
+                                        emission=c.PALETTE["glow"], strength=3.0)
+    objs, rig = lily_rig.build(mats)
+    to_file = upright(1.3, (0, 0, 0.17))
+    inv = to_file.inverted()
+    found = {}
+
+    def weights(o, co):
+        name = o.name.split(".")[0]
+        if name not in found:
+            found[name] = rig.part_fn(name)
+        fn = found[name]
+        return None if fn is None else fn(inv @ co)
+
+    by_name = {}
+    for o in objs:
+        mat = lily_rig.material_of(o.name)
+        if mat:
+            by_name[o.name] = mat
+    joints = []
+    for name, d in rig.bones.items():
+        j = {"name": name, "pivot": to_file @ d["bind"], "drive": d["drive"], "win": d["win"]}
+        for side in ("base", "alt"):
+            if side in d:
+                j[side] = to_file @ d[side]
+        joints.append(j)
+    log(f"  lily: {len(objs)} parts, {len(joints)} bones")
+    return placed("wp_miquella_gl", "Art/Model/MiquellaLight/Gunlance", objs, to_file,
+                  {"VFX_Fire": to_file @ Vector((0, 0, 1.645)), "VFX_Pile": Vector((0, 0, 0.530)),
+                   "VFX_Heat": Vector((0, 0, 1.153))},
+                  pivots={n: tuple(d["bind"]) for n, d in rig.bones.items()}, weight_fn=weights, by_name=by_name,
+                  budget={"MiquellaIvory": 30000, "MiquellaGlow": 14000},
+                  bloom={"joints": joints, "fades": lily_rig.FADES})
+
+
+def gunlance_v1():
+    """The first gunlance (turned down 2026-10-03: "crude, hard to put effects on"), kept for its
+    shield and for reference. Hand mid-grip; scaled 1.3: muzzle 2.04 m above the hand (originals:
+    VFX_Fire 1.66, the bayonet up to 2.27). Shells come out of our muzzle (VFX_Fire moved there)."""
     import arsenal
     import motifs
     objs = capture(lambda: (arsenal.gunlance(), arsenal.gunlance_filament(motifs.materials())))
@@ -1079,7 +1127,7 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "sns_shield_aura": lambda: sns_shield_membrane("aura"),
            "sns_shield_bubble": lambda: sns_shield_membrane("bubble"),
            "sns_shield_volume": lambda: sns_shield_membrane("volume"), "sns_shield_film": sns_shield_film, "hammer": hammer, "hunting_horn": hunting_horn,
-           "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
+           "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_v1": gunlance_v1, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
            "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun,
@@ -1106,7 +1154,9 @@ GROW_MAX = 32                            # growth bands a kit may have (Miquella
 BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500,
           "MiquellaMembrane": 2000, "MiquellaCharge1": 8000, "MiquellaCharge2": 8000, "MiquellaCharge3": 8000,
           "MiquellaChargeTip": 2000, **{f"MiquellaGrow{b}": 3000 for b in range(1, GROW_MAX + 1)},
-          **{f"MiquellaExtractGrow{b}": 3000 for b in range(1, GROW_MAX + 1)}}
+          **{f"MiquellaExtractGrow{b}": 3000 for b in range(1, GROW_MAX + 1)},
+          "MiquellaLilyLight": 9000, "MiquellaLeafLight": 6000, "MiquellaBudLight": 6000, "MiquellaFireHalo": 1500,
+          "MiquellaThroat1": 500, "MiquellaThroat2": 600, "MiquellaThroat3": 800}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
@@ -1119,6 +1169,9 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
+              **{m: "MiquellaGlow" for m in ("MiquellaLilyLight", "MiquellaLeafLight", "MiquellaBudLight",
+                                             "MiquellaThroat1", "MiquellaThroat2", "MiquellaThroat3",
+                                             "MiquellaFireHalo")},
               **{f"MiquellaGrow{b}": "MiquellaGlow" for b in range(1, GROW_MAX + 1)},
               **{f"MiquellaExtractGrow{b}": "MiquellaGlow" for b in range(1, GROW_MAX + 1)},
               **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
@@ -1132,7 +1185,8 @@ DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
 UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary",
-                   "MiquellaTiming", "MiquellaBurst", "MiquellaGrow")
+                   "MiquellaTiming", "MiquellaBurst", "MiquellaGrow", "MiquellaLilyLight", "MiquellaLeafLight",
+                   "MiquellaBudLight", "MiquellaThroat", "MiquellaFireHalo")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some
@@ -1536,6 +1590,37 @@ def write_morph(kit, name, morph, names):
     log(f"morph: {len(data['joints'])} joints, fades {[(fd['set'], len(fd['mats'])) for fd in data['fades']]}")
 
 
+def write_bloom(kit, name, bloom, names):
+    """The lily gunlance's charge (lily_rig.py) for the weapons script (a Lua table for LILY_GL)
+    and preview_bloom.py (json): joints with their pivot (bind pose), their small pose (base)
+    or thrown pose (alt), what drives them and the window of that drive they move in (linear);
+    fades: a material's window of its drive."""
+    def pt(v):
+        return [round(c, 4) for c in v]
+    data = {"joints": [{"name": j["name"], "pivot": pt(j["pivot"]), "base": pt(j["base"]) if "base" in j else None,
+                        "alt": pt(j["alt"]) if "alt" in j else None, "drive": j["drive"], "win": list(j["win"])}
+                       for j in bloom["joints"]],
+            "fades": [{"mats": [mat], "drive": drive, "win": list(win)} for mat, drive, win in bloom["fades"]
+                      if mat in names]}
+    with open(os.path.join(kit, f"{name}_bloom.json"), "w") as f:
+        json.dump(data, f, indent=1)
+
+    def lua(v):
+        return "{ " + ", ".join(repr(x) for x in v) + " }"
+    lines = ["{", "    joints = {"]
+    for j in data["joints"]:
+        pose = f"base = {lua(j['base'])}" if j["base"] else f"alt = {lua(j['alt'])}"
+        lines.append(f'        {{ name = "{j["name"]}", pivot = {lua(j["pivot"])}, {pose}, drive = "{j["drive"]}", '
+                     f"win = {lua(j['win'])} }},")
+    lines += ["    },", "    fades = {"]
+    for fd in data["fades"]:
+        lines.append(f'        {{ mats = {{ "{fd["mats"][0]}" }}, drive = "{fd["drive"]}", win = {lua(fd["win"])} }},')
+    lines += ["    },", "}"]
+    with open(os.path.join(kit, f"{name}_bloom.lua"), "w") as f:
+        f.write(chr(10).join(lines) + chr(10))
+    log(f"bloom: {len(data['joints'])} joints, {len(data['fades'])} fades")
+
+
 # ------------------------------------------------------------------ main
 
 def enable_addon():
@@ -1587,6 +1672,8 @@ def main():
     names = [o.name.split("__", 1)[1] for o in subs]
     if spec.get("grow_chains"):
         write_grow(kit, spec, pivots)
+    if spec.get("bloom"):
+        write_bloom(kit, spec["name"], spec["bloom"], names)
     morph = spec.get("morph")
     hidden = set()
     if morph:

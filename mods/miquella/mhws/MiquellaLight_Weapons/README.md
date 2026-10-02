@@ -39,11 +39,11 @@
 
 | 設定 | 用在 | 作用 |
 |---|---|---|
-| `charge.parts = { 材質 = 段數 }` | 大劍火花、長槍旋轉弧和槍尖光刃、大錘、銃槍 | 零件材質在那一段淡入（`Dissolve`，消失時關掉材質） |
+| `charge.parts = { 材質 = 段數 }` | 大劍火花、長槍旋轉弧和槍尖光刃、大錘 | 零件材質在那一段淡入（`Dissolve`，消失時關掉材質） |
 | `charge.partColor` | 大劍（`PART_GOLD`） | 零件固定這個顏色（刀身三段變白時光絲還是亮金） |
 | `grow`（見下一節） | 大劍、長槍、太刀的光絲，弓的花 | 跟著遊戲的蓄力計時器連續長出來 |
 | `floaters.spin = { axis, dps = { 0段, 1段, 2段, 3段 }, grow }`＋關節 `spin = true` 或 `{ 軸 }` | 長槍 `MQ_Drill`、大錘 `MQ_Arm0～2` | 骨頭固定在原位、依蓄力段數（`entry.chargeSmooth` 內插；`grow = true` 時用長出來的程度 `entry.growLevel`，連續加速）每秒轉幾度；關節可以給自己的軸 |
-| 關節 `stretch = 根部高度` | 銃槍 `MQ_FilamentTop` | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟蓄力時間連續拉長（蓄力砲擊 1.2 秒拉滿、龍擊砲 0.9 秒） |
+| 關節 `stretch = 根部高度` | （第一版銃槍的金絲 `MQ_FilamentTop`；聖百合不用，機制還在） | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟蓄力時間連續拉長（蓄力砲擊 1.2 秒拉滿、龍擊砲 0.9 秒） |
 | `floaters.orbit.face = true`, `spin` | 操蟲棍精華 | 繞刀的零件一直朝外（建模時就朝外放），繞自己的朝向慢轉；不設就是原本的翻滾 |
 | `boosts[].chase = { 材質… }`, `chaseHz` | 充能斧斧強化 | 幾組材質輪流只亮一組（跑馬燈），不在那個型態時全部藏起來 |
 | 關節 `slide = true`＋`timing` 表 | 片手劍 `MQ_TimingRing` | 骨頭沿武器往上抬 `entry.slide`；`update_timing` 在完美突進動作（`cJustRush*`）時讓光環從刀尖降到護手，`_IsJustRush` 時爆開 |
@@ -68,6 +68,23 @@
 | 操蟲棍（三燈蓄力，2026-10-03 使用者選 D） | `<ChargeLv>`（0～2） | `_ChargeTimer` | 0.8／1.6（猜的，參數檔看不出，玩一次就會學到） | `prefix = "MiquellaExtractGrow"`（材質用精華三色貼圖，`color` 白色）、16 段、骨頭 `MQ_Braid1～32`（軸上）；只在 `cHoldAttackSuper` 開始長、上升螺旋斬 `cBatonUpSlashSuper` 揮完才淡出；`extracts.absorb`：三朵精華花隨著光絲長出來淡掉、之後再回來 |
 | 弓 | `<ChargeLv>`（平時 1） | `_ChargeTimer`（沒有就 `_OnceChargeTimer`） | 遊戲的 `_ActionParam._ChargeTimeLv2～4`（1／2／3） | `flowers = 7`：每段的時間開兩朵（一朵一朵），到最高段剩下的接連開完（`post` 0.6 秒），弓尖大花最後；最高段讀 `<MaxChargeLv>` |
 
-**注意：Lua 的主程式最多 200 個 local**（超過整個腳本載入失敗，遊戲裡也一樣；2026-10-03 加操蟲棍時撞到過）：現在 172 個，生長骨頭表放在 `GROW.GS／LS／LN／IG`、常數收在 `TRACE`、`ARROW`、`GL`、`DOTS`、`BOOST`、`EXTRACT`、`PACK` 表裡。新增東西優先放進現有的表。
+**注意：Lua 的主程式最多 200 個 local**（超過整個腳本載入失敗，遊戲裡也一樣；2026-10-03 加操蟲棍時撞到過）：現在 174 個，生長骨頭表放在 `GROW.GS／LS／LN／IG`、常數收在 `TRACE`、`ARROW`、`GL`、`DOTS`、`BOOST`、`EXTRACT`、`PACK` 表裡。新增東西優先放進現有的表。
 
 預覽：`prototypes/scripts/preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <輸出> [每秒格數]`（照遊戲的時間做 GIF 和一排格子），輸出在 `MiquellaTools\work\previews\grow\`。
+
+## 銃槍：聖百合的蓄力動畫（`LILY_GL`，2026-10-03，第一帳號）
+
+使用者把第一版銃槍（光肋＋彈簧＋金絲）打掉重練，選了聖百合＋光之百合＋光葉＋光花，蓄力要「動畫，不是分段模型」。模型和骨頭見 `MiquellaLight_Gunlance_kit/README.md`；腳本這邊：
+
+- **`LILY_GL`**（從 kit 的 `wp_miquella_gl_bloom.lua` 貼進來，126 根骨頭）：每根骨頭有綁定位置（`pivot`）和另一個姿勢（`base`＝光的零件的小姿勢、`alt`＝象牙往後翻的姿勢），`drive` 說它跟哪個進度走，`win` 是它在那個進度的哪一段**線性**移動；`fades` 是材質淡入的進度區間（smoothstep）
+- **三個進度**（`update_gunlance` 算、存在 `entry.lily`）：
+  - `glow`（光之百合、光葉、小光百合、花喉的光）：蓄力中跟著蓄力進度走；發射或放開後**大小不變、在原地淡出**（`glowFade` 0.3 秒，淡完才縮回小姿勢）
+  - `open`（象牙花瓣往後翻、花蕊伸出、花口光環下移）：跟著蓄力，結束後 `openBack` 0.35 秒慢慢回位；砲擊（彈數減少）和填彈時輕輕一彈（`shellFlex` 0.25、`reloadFlex` 0.15，持續 `flexTime` 0.12 秒）
+  - `wyvern`（龍擊砲的三圈光環）：只在龍擊砲蓄能時跟著走，光環在 75～95 % 淡入
+- **蓄力進度**：蓄力砲擊＝`_ChargeShotElapsedTimer` ÷ `chargeFull`（1.8 秒，計時器還在增加＝蓄力中，停止 0.15 秒後算放開）；龍擊砲＝獵人動作 `cRyuugeki*` 開始後經過的時間 ÷ 蓄能長度——**第一次發射（`_RyuugekiGauge` 掉一格）就記下實際的蓄能長度**，存在 `Weapons.json` 的 `chargeTimes["gunlance/wyvern"]`，之後照它走（沒記到前用 `wyvernFull` 2.5 秒）。學到時欄位記錄檔的 `events` 會有 `Wyvern's Fire wind-up x.xxx s (learned)`
+- **彈數**：`gauges`（`count`）讀 `_ChargeShotBulletNum`，五個花苞尖的光滴（`MiquellaGauge1～5`）有幾發亮幾顆，其他的暗
+- 發光：光的零件隨 `glow` 從 ×1 亮到 ×2，`MiquellaGlow` 隨 `open` 到 ×1.6、槍尖 `MiquellaBlade` 到 ×1.8（都還是金色，不變白）
+- 擺骨頭：`apply_lily`（跟變形動畫 `apply_morph` 同一批掛鉤）：在綁定姿勢的骨頭只設一次；光的零件完全看不到時不動它們的骨頭（平常不花效能）；找不到的骨頭每秒重找一次
+- 選單：`Gunlance:` 最後有 `lily: open 0.00, light 0.00 (Wyvern's Fire full at 2.50 s)`（學到後寫 `learned`）；`Lily joints found: n/126`（**0 就是遊戲沒替新骨頭建立關節**，要回報）
+- 舊的彈簧、金絲、`update_charge` 白金色那套，銃槍不再用（`GL.levelTime` 等常數留著沒用到）
+

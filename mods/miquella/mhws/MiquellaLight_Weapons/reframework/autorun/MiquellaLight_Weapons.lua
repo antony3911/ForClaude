@@ -499,6 +499,160 @@ GROW.IG = {
       } },
 }
 
+-- The lily gunlance's charge (user's picks 2026-10-03: the lily, the lily of light at the muzzle,
+-- leaves of light, the buds opening into lilies of light; "an animation, not stepped models").
+-- From <kit>/wp_miquella_gl_bloom.lua (build_weapon_kit.py gunlance, lily_rig.py): joints with
+-- their pivot (bind pose) and their small pose (base: the parts of light, modelled at full size)
+-- or their thrown pose (alt: the ivory tepals, stamens and mouth ring, modelled at rest), file
+-- space; drive: "open" the ivory lily (follows the charge, eases back after), "glow" the parts of
+-- light (keep their size while they fade after the shot), "wyvern" Wyvern's Fire's rings; a joint
+-- moves linearly across its window of its drive. Fades: a material's window (smoothstepped).
+local LILY_GL = {
+    joints = {
+        { name = "MQ_Tepal0_1", pivot = { 0.0377, 0.0, 1.6854 }, alt = { 0.0435, 0.0, 1.6789 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal0_2", pivot = { 0.0664, 0.0, 1.7898 }, alt = { 0.0897, 0.0, 1.7709 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal0_3", pivot = { 0.1282, 0.0, 1.8868 }, alt = { 0.1879, 0.0, 1.8131 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal0_4", pivot = { 0.2054, 0.0, 1.9006 }, alt = { 0.2418, 0.0, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen0", pivot = { 0.063, 0.0364, 2.0176 }, alt = { 0.1013, 0.0585, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal1_1", pivot = { 0.0173, 0.03, 1.6833 }, alt = { 0.0199, 0.0344, 1.6761 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal1_2", pivot = { 0.0303, 0.0525, 1.7866 }, alt = { 0.0404, 0.0701, 1.768 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal1_3", pivot = { 0.0585, 0.1014, 1.8847 }, alt = { 0.0872, 0.151, 1.8132 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal1_4", pivot = { 0.0955, 0.1654, 1.9006 }, alt = { 0.1124, 0.1947, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen1", pivot = { 0.0, 0.0728, 2.0176 }, alt = { 0.0, 0.117, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal2_1", pivot = { -0.0188, 0.0326, 1.6854 }, alt = { -0.0217, 0.0377, 1.6789 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal2_2", pivot = { -0.0332, 0.0575, 1.7898 }, alt = { -0.0449, 0.0777, 1.7709 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal2_3", pivot = { -0.0641, 0.111, 1.8868 }, alt = { -0.094, 0.1628, 1.8131 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal2_4", pivot = { -0.1027, 0.1779, 1.9006 }, alt = { -0.1209, 0.2094, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen2", pivot = { -0.063, 0.0364, 2.0176 }, alt = { -0.1013, 0.0585, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal3_1", pivot = { -0.0347, 0.0, 1.6833 }, alt = { -0.0397, 0.0, 1.6761 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal3_2", pivot = { -0.0606, 0.0, 1.7866 }, alt = { -0.0809, 0.0, 1.768 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal3_3", pivot = { -0.1171, 0.0, 1.8847 }, alt = { -0.1744, 0.0, 1.8132 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal3_4", pivot = { -0.191, 0.0, 1.9006 }, alt = { -0.2249, 0.0, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen3", pivot = { -0.063, -0.0364, 2.0176 }, alt = { -0.1013, -0.0585, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal4_1", pivot = { -0.0188, -0.0326, 1.6854 }, alt = { -0.0217, -0.0377, 1.6789 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal4_2", pivot = { -0.0332, -0.0575, 1.7898 }, alt = { -0.0449, -0.0777, 1.7709 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal4_3", pivot = { -0.0641, -0.111, 1.8868 }, alt = { -0.094, -0.1628, 1.8131 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal4_4", pivot = { -0.1027, -0.1779, 1.9006 }, alt = { -0.1209, -0.2094, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen4", pivot = { -0.0, -0.0728, 2.0176 }, alt = { -0.0, -0.117, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal5_1", pivot = { 0.0173, -0.03, 1.6833 }, alt = { 0.0199, -0.0344, 1.6761 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal5_2", pivot = { 0.0303, -0.0525, 1.7866 }, alt = { 0.0404, -0.0701, 1.768 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal5_3", pivot = { 0.0585, -0.1014, 1.8847 }, alt = { 0.0872, -0.151, 1.8132 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Tepal5_4", pivot = { 0.0955, -0.1654, 1.9006 }, alt = { 0.1124, -0.1947, 1.7472 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Stamen5", pivot = { 0.063, -0.0364, 2.0176 }, alt = { 0.1013, -0.0585, 2.0475 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_Mouth", pivot = { 0.0, 0.0, 1.9305 }, alt = { 0.0, 0.0, 1.8408 }, drive = "open", win = { 0.0, 1.0 } },
+        { name = "MQ_LL0_1L", pivot = { 0.1688, -0.0175, 1.9031 }, base = { 0.0722, -0.0114, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL0_1R", pivot = { 0.0692, 0.155, 1.9031 }, base = { 0.0263, 0.0682, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL0_2L", pivot = { 0.3469, 0.0956, 2.1963 }, base = { 0.125, 0.0239, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL0_2R", pivot = { 0.2563, 0.2526, 2.1963 }, base = { 0.0832, 0.0963, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL0_T", pivot = { 0.5445, 0.3143, 2.0675 }, base = { 0.221, 0.1276, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS0", pivot = { 0.2082, 0.0, 2.6727 }, base = { 0.0961, 0.0, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL1_1L", pivot = { 0.0996, 0.1374, 1.9031 }, base = { 0.046, 0.0569, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL1_1R", pivot = { -0.0996, 0.1374, 1.9031 }, base = { -0.046, 0.0569, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL1_2L", pivot = { 0.0906, 0.3483, 2.1963 }, base = { 0.0418, 0.1202, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL1_2R", pivot = { -0.0906, 0.3483, 2.1963 }, base = { -0.0418, 0.1202, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL1_T", pivot = { 0.0, 0.6287, 2.0675 }, base = { 0.0, 0.2552, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS1", pivot = { 0.1041, 0.1803, 2.6727 }, base = { 0.048, 0.0832, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL2_1L", pivot = { -0.0692, 0.155, 1.9031 }, base = { -0.0263, 0.0682, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL2_1R", pivot = { -0.1688, -0.0175, 1.9031 }, base = { -0.0722, -0.0114, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL2_2L", pivot = { -0.2563, 0.2526, 2.1963 }, base = { -0.0832, 0.0963, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL2_2R", pivot = { -0.3469, 0.0956, 2.1963 }, base = { -0.125, 0.0239, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL2_T", pivot = { -0.5445, 0.3143, 2.0675 }, base = { -0.221, 0.1276, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS2", pivot = { -0.1041, 0.1803, 2.6727 }, base = { -0.048, 0.0832, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL3_1L", pivot = { -0.1688, 0.0175, 1.9031 }, base = { -0.0722, 0.0114, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL3_1R", pivot = { -0.0692, -0.155, 1.9031 }, base = { -0.0263, -0.0682, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL3_2L", pivot = { -0.3469, -0.0956, 2.1963 }, base = { -0.125, -0.0239, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL3_2R", pivot = { -0.2563, -0.2526, 2.1963 }, base = { -0.0832, -0.0963, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL3_T", pivot = { -0.5445, -0.3143, 2.0675 }, base = { -0.221, -0.1276, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS3", pivot = { -0.2082, 0.0, 2.6727 }, base = { -0.0961, 0.0, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL4_1L", pivot = { -0.0996, -0.1374, 1.9031 }, base = { -0.046, -0.0569, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL4_1R", pivot = { 0.0996, -0.1374, 1.9031 }, base = { 0.046, -0.0569, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL4_2L", pivot = { -0.0906, -0.3483, 2.1963 }, base = { -0.0418, -0.1202, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL4_2R", pivot = { 0.0906, -0.3483, 2.1963 }, base = { 0.0418, -0.1202, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL4_T", pivot = { -0.0, -0.6287, 2.0675 }, base = { -0.0, -0.2552, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS4", pivot = { -0.1041, -0.1803, 2.6727 }, base = { -0.048, -0.0832, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL5_1L", pivot = { 0.0692, -0.155, 1.9031 }, base = { 0.0263, -0.0682, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL5_1R", pivot = { 0.1688, 0.0175, 1.9031 }, base = { 0.0722, 0.0114, 1.7164 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL5_2L", pivot = { 0.2563, -0.2526, 2.1963 }, base = { 0.0832, -0.0963, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL5_2R", pivot = { 0.3469, -0.0956, 2.1963 }, base = { 0.125, -0.0239, 1.8823 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LL5_T", pivot = { 0.5445, -0.3143, 2.0675 }, base = { 0.221, -0.1276, 1.9345 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLS5", pivot = { 0.1041, -0.1803, 2.6727 }, base = { 0.048, -0.0832, 2.0665 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH0", pivot = { 0.6511, 0.0, 2.1627 }, base = { 0.2586, 0.0, 1.9477 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH1", pivot = { 0.4604, 0.4579, 2.2108 }, base = { 0.1828, 0.1818, 1.9668 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH2", pivot = { 0.0, 0.6476, 2.2307 }, base = { 0.0, 0.2572, 1.9747 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH3", pivot = { -0.4604, 0.4579, 2.2108 }, base = { -0.1828, 0.1818, 1.9668 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH4", pivot = { -0.6511, 0.0, 2.1627 }, base = { -0.2586, 0.0, 1.9477 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH5", pivot = { -0.4604, -0.4579, 2.1146 }, base = { -0.1828, -0.1818, 1.9286 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH6", pivot = { -0.0, -0.6476, 2.0946 }, base = { -0.0, -0.2572, 1.9207 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LLH7", pivot = { 0.4604, -0.4579, 2.1146 }, base = { 0.1828, -0.1818, 1.9286 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF0_1L", pivot = { 0.1198, -0.0854, 0.7292 }, base = { 0.1365, -0.1144, 0.94 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF0_1R", pivot = { 0.1366, -0.0547, 0.7292 }, base = { 0.1701, -0.053, 0.94 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF0_T", pivot = { 0.2224, -0.1215, 0.9007 }, base = { 0.2394, -0.1308, 1.3325 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF1_1L", pivot = { -0.0807, 0.1165, 0.8696 }, base = { -0.0898, 0.153, 1.063 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF1_1R", pivot = { -0.1068, 0.0932, 0.8696 }, base = { -0.142, 0.1064, 1.063 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF1_T", pivot = { -0.162, 0.1814, 1.0254 }, base = { -0.1817, 0.2034, 1.4227 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF2_1L", pivot = { -0.092, -0.1005, 1.01 }, base = { -0.1281, -0.1215, 1.1858 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF2_1R", pivot = { -0.0634, -0.1206, 1.01 }, base = { -0.0709, -0.1618, 1.1858 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF2_T", pivot = { -0.134, -0.1907, 1.1502 }, base = { -0.1568, -0.2232, 1.5129 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF3_1L", pivot = { 0.0942, 0.0905, 1.1374 }, base = { 0.1343, 0.113, 1.2956 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF3_1R", pivot = { 0.0668, 0.1123, 1.1374 }, base = { 0.0795, 0.1565, 1.2956 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF3_T", pivot = { 0.1385, 0.1746, 1.2619 }, base = { 0.1695, 0.2136, 1.5902 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF4_1L", pivot = { 0.139, 0.0326, 0.3831 }, base = { 0.1452, 0.0045, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF4_1R", pivot = { 0.1025, 0.0993, 0.3831 }, base = { 0.0823, 0.1197, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF4_T", pivot = { 0.1755, 0.0959, 0.5753 }, base = { 0.1136, 0.0621, 0.8944 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF5_1L", pivot = { -0.0977, 0.104, 0.3831 }, base = { -0.0765, 0.1235, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF5_1R", pivot = { -0.1373, 0.0391, 0.3831 }, base = { -0.1448, 0.0114, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF5_T", pivot = { -0.1708, 0.104, 0.5753 }, base = { -0.1106, 0.0674, 0.8944 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF6_1L", pivot = { -0.0412, -0.1367, 0.3831 }, base = { -0.0687, -0.128, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF6_1R", pivot = { 0.0347, -0.1384, 0.3831 }, base = { 0.0626, -0.1311, 0.5455 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_LF6_T", pivot = { -0.0047, -0.1999, 0.5753 }, base = { -0.0031, -0.1294, 0.8944 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_0", pivot = { 0.2019, 0.0325, 1.2559 }, base = { 0.1526, 0.0332, 1.2712 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_1", pivot = { 0.1548, 0.1167, 1.2635 }, base = { 0.1307, 0.0726, 1.2748 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_2", pivot = { 0.0639, 0.1185, 1.2963 }, base = { 0.0882, 0.0734, 1.2901 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_3", pivot = { 0.0199, 0.0361, 1.3215 }, base = { 0.0676, 0.0349, 1.3019 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_4", pivot = { 0.067, -0.0481, 1.3139 }, base = { 0.0896, -0.0044, 1.2984 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL0_5", pivot = { 0.1579, -0.0499, 1.2811 }, base = { 0.1321, -0.0053, 1.283 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_0", pivot = { -0.0097, 0.0769, 1.3855 }, base = { -0.056, 0.0602, 1.3699 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_1", pivot = { -0.0752, 0.14, 1.3528 }, base = { -0.0866, 0.0897, 1.3546 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_2", pivot = { -0.1634, 0.1095, 1.3275 }, base = { -0.1278, 0.0755, 1.3428 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_3", pivot = { -0.1861, 0.0157, 1.3349 }, base = { -0.1384, 0.0317, 1.3462 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_4", pivot = { -0.1206, -0.0474, 1.3677 }, base = { -0.1078, 0.0022, 1.3616 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL1_5", pivot = { -0.0324, -0.0169, 1.393 }, base = { -0.0666, 0.0164, 1.3734 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_0", pivot = { 0.1183, -0.0397, 1.439 }, base = { 0.0752, -0.0674, 1.433 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_1", pivot = { 0.0328, -0.0022, 1.4644 }, base = { 0.0353, -0.0498, 1.4449 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_2", pivot = { -0.0475, -0.0556, 1.4572 }, base = { -0.0023, -0.0748, 1.4415 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_3", pivot = { -0.0424, -0.1464, 1.4245 }, base = { 0.0001, -0.1172, 1.4262 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_4", pivot = { 0.0431, -0.1839, 1.399 }, base = { 0.04, -0.1348, 1.4143 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL2_5", pivot = { 0.1234, -0.1305, 1.4063 }, base = { 0.0776, -0.1098, 1.4177 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_0", pivot = { 0.0902, 0.1571, 1.4706 }, base = { 0.059, 0.1189, 1.4858 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_1", pivot = { -0.005, 0.1725, 1.4776 }, base = { 0.0145, 0.1261, 1.4891 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_2", pivot = { -0.063, 0.1023, 1.5103 }, base = { -0.0126, 0.0934, 1.5044 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_3", pivot = { -0.0259, 0.0168, 1.5359 }, base = { 0.0048, 0.0534, 1.5163 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_4", pivot = { 0.0694, 0.0014, 1.5288 }, base = { 0.0493, 0.0462, 1.513 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL3_5", pivot = { 0.1274, 0.0715, 1.4961 }, base = { 0.0764, 0.079, 1.4978 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_0", pivot = { -0.0447, 0.0492, 1.6004 }, base = { -0.0604, 0.0027, 1.5846 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_1", pivot = { -0.1349, 0.0372, 1.5678 }, base = { -0.1026, -0.0029, 1.5694 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_2", pivot = { -0.1658, -0.0508, 1.5421 }, base = { -0.117, -0.044, 1.5574 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_3", pivot = { -0.1064, -0.1268, 1.549 }, base = { -0.0892, -0.0795, 1.5606 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_4", pivot = { -0.0161, -0.1148, 1.5816 }, base = { -0.047, -0.0739, 1.5758 }, drive = "glow", win = { 0.0, 1.0 } },
+        { name = "MQ_BL4_5", pivot = { 0.0148, -0.0268, 1.6073 }, base = { -0.0326, -0.0328, 1.5878 }, drive = "glow", win = { 0.0, 1.0 } },
+    },
+    fades = {
+        { mats = { "MiquellaLilyLight" }, drive = "glow", win = { 0.0, 0.12 } },
+        { mats = { "MiquellaBudLight" }, drive = "glow", win = { 0.0, 0.15 } },
+        { mats = { "MiquellaLeafLight" }, drive = "glow", win = { 0.04, 0.2 } },
+        { mats = { "MiquellaThroat1" }, drive = "glow", win = { 0.0, 0.1 } },
+        { mats = { "MiquellaThroat2" }, drive = "glow", win = { 0.3, 0.55 } },
+        { mats = { "MiquellaThroat3" }, drive = "glow", win = { 0.6, 0.85 } },
+        { mats = { "MiquellaFireHalo" }, drive = "wyvern", win = { 0.75, 0.95 } },
+    },
+}
+-- Charged shelling is full at chargeFull s of its timer, Wyvern's Fire at wyvernFull s of its
+-- wind-up (learned at the first blast, kept in the config's chargeTimes "gunlance/wyvern"); after
+-- the shot the light fades over glowFade s, the ivory eases back over openBack s; a shell fired or
+-- a reload flexes the tepals a little.
+LILY_GL.chargeFull, LILY_GL.wyvernFull, LILY_GL.glowFade, LILY_GL.openBack = 1.8, 2.5, 0.3, 0.35
+LILY_GL.follow, LILY_GL.shellFlex, LILY_GL.reloadFlex, LILY_GL.flexTime = 0.08, 0.25, 0.15, 0.12
+
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
@@ -692,32 +846,23 @@ local KITS = {
         glow = { MiquellaGlow = 1.2 },
     },
     Gunlance = {
-        label = "Miquella light gunlance",
+        label = "Miquella lily gunlance",
         mesh = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh",
         mdf2 = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCore = 1.2,
-                 MiquellaFilament = 1.2 },
-        -- MQ_SpringTop: the ivory spring's top; packing it moves it 0.636 toward the root
-        -- (the spring at 45 % of its length). MQ_FilamentTop: the gold thread's eye (user's pick
-        -- 2026-10-02, "G3"): drawn out from the core (stretch: its root's height) toward the
-        -- muzzle as the charge builds, while the spring packs the other way.
-        floaters = { mode = "hover", joints = {
-            { name = "MQ_Halo0", pos = { 0.0, 0.0, 1.0140 } },
-            { name = "MQ_Halo1", pos = { 0.0, 0.0, 1.4950 } },
-            { name = "MQ_SpringTop", pos = { 0.0, 0.0, 1.6640 }, pack = -0.636, mode = "fixed" },
-            { name = "MQ_FilamentTop", pos = { 0.0, 0.0, 2.0150 }, stretch = 0.4290, mode = "fixed" } } },
-        -- Reload, charged shelling and Wyvern's Fire wind the spring (user, 2026-10-02); charged
-        -- shelling's levels light it gold -> bright gold -> white gold. Fields guessed from the
-        -- game's type names (menu: "Gunlance:").
-        -- Recorded 2026-10-02: no Wyvern's Fire timer; its gauge (_RyuugekiGauge, 1..2) drops by
-        -- one when it is used -> wind the spring for the wind-up; a shell fired lowers
-        -- _ChargeShotBulletNum -> a short press.
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaLilyLight = 1.2,
+                 MiquellaLeafLight = 1.2, MiquellaBudLight = 1.2, MiquellaThroat1 = 1.2, MiquellaThroat2 = 1.2,
+                 MiquellaThroat3 = 1.2, MiquellaFireHalo = 1.2, MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2,
+                 MiquellaGauge3 = 1.2, MiquellaGauge4 = 1.2, MiquellaGauge5 = 1.2 },
+        -- The lily (user's pick 2026-10-03, the first gunlance turned down): the five buds under the
+        -- flower are the shells (lit while loaded); charged shelling and Wyvern's Fire open the lily
+        -- (LILY_GL). Fields recorded 2026-10-02: charged shelling counts _ChargeShotElapsedTimer up
+        -- (it keeps its value after the shot), a shell fired lowers _ChargeShotBulletNum, Wyvern's
+        -- Fire's gauge (_RyuugekiGauge, 1..2) drops at the blast, its wind-up is the hunter's
+        -- cRyuugeki* actions.
+        gauges = { { key = "shells", dots = PHIALS, fields = { "_ChargeShotBulletNum" }, count = true } },
         gunlance = { reload = { "_IsReload", "_IsContinueReload" }, chargeShot = { "_ChargeShotElapsedTimer" },
                      wyvern = { "_RyuugekiChargeTimer" }, wyvernGauge = { "_RyuugekiGauge" },
-                     shells = { "_ChargeShotBulletNum" },
-                     charge = { levels = 3, look = "whiteGold", colored = { "MiquellaBlade", "MiquellaGlow", "MiquellaCore" },
-                                weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 },
-                                parts = { MiquellaFilament = 1 } } },
+                     shells = { "_ChargeShotBulletNum" }, lily = LILY_GL },
         shield = "Gunlance_Shield",
     },
     Gunlance_Shield = {
@@ -1768,6 +1913,7 @@ end
 
 local function update_gunlance(entry, mesh, h, dt, now)
     local spec = entry.kit.gunlance
+    local L = spec.lily
     local reload, rn = first_number(h, spec.reload)
     local shot, sn = first_number(h, spec.chargeShot)
     local wyv, wn = first_number(h, spec.wyvern)
@@ -1776,10 +1922,19 @@ local function update_gunlance(entry, mesh, h, dt, now)
     if gauge and entry.lastWyvGauge and gauge < entry.lastWyvGauge - 0.5 then
         entry.blastAt = now
         gl_event(string.format("Wyvern's Fire gauge %.2f -> %.2f (the blast)", entry.lastWyvGauge, gauge))
+        -- How long its wind-up really is (from the action's start to the blast): kept for the next.
+        if entry.windSince then
+            local d = now - entry.windSince
+            if d > 0.8 and d < 6 then
+                config.chargeTimes["gunlance/wyvern"] = { full = math.floor(d * 1000 + 0.5) / 1000 }
+                save_config()
+                gl_event(string.format("Wyvern's Fire wind-up %.3f s (learned)", d))
+            end
+        end
     end
     entry.lastWyvGauge = gauge
     if shells and entry.lastShells and shells < entry.lastShells then
-        entry.shellUntil = now + GL.shellPulse
+        entry.shellUntil = now + L.flexTime
         gl_event(string.format("shells %s -> %s", tostring(entry.lastShells), tostring(shells)))
     end
     entry.lastShells = shells
@@ -1790,7 +1945,7 @@ local function update_gunlance(entry, mesh, h, dt, now)
     entry.wasWyvAction = wyvAction
     local reloading = (reload or 0) > 0
     if reloading and not entry.wasReloading then
-        entry.reloadUntil = now + GL.reloadPulse
+        entry.reloadUntil = now + L.flexTime
         gl_event("reload")
     end
     entry.wasReloading = reloading
@@ -1805,34 +1960,50 @@ local function update_gunlance(entry, mesh, h, dt, now)
     local winding = (wyv or 0) > 0 or (wyvAction and not entry.blastLatch and not reloading)
     entry.chargeSince = charging and (entry.chargeSince or now) or nil
     entry.windSince = winding and (entry.windSince or now) or nil
-    local level, pack = 0, 0
-    if entry.reloadUntil and now < entry.reloadUntil then level, pack = 1, 0.8 end
-    if entry.shellUntil and now < entry.shellUntil then level, pack = math.max(level, 1), math.max(pack, 0.5) end
-    if charging then
-        local lv = math.min(3, 1 + math.floor((shot or (now - entry.chargeSince)) / GL.chargeStep))
-        level, pack = math.max(level, lv), math.max(pack, 0.4 + 0.2 * lv)
-    end
+    -- The charge's progress: charged shelling by its timer, Wyvern's Fire by its wind-up's time.
+    local learned = config.chargeTimes["gunlance/wyvern"]
+    local wfull = learned and learned.full or L.wyvernFull
+    local target, source = 0, nil
+    if charging then target, source = math.min(1, (shot or (now - entry.chargeSince)) / L.chargeFull), "charge" end
     if winding then
-        level = math.max(level, math.min(3, 1 + math.floor((now - entry.windSince) / GL.levelTime)))
-        pack = 1.0
+        local w = math.min(1, (now - entry.windSince) / wfull)
+        if w >= target then target, source = w, "wyvern" end
     end
-    if not isWeaponDrawn then level, pack = 0, 0 end
-    entry.packTarget = pack
-    -- The gold thread (it shows from the first level): drawn out of the core along with the charge,
-    -- all the way at the full level (user, 2026-10-03: not a third per level); a reload or a shell
-    -- draws it out a third.
-    local pulse = (entry.reloadUntil and now < entry.reloadUntil) or (entry.shellUntil and now < entry.shellUntil)
-    local reach = pulse and 1 / 3 or 0
-    if charging then reach = math.max(reach, (shot or (now - entry.chargeSince)) / (2 * GL.chargeStep)) end
-    if winding then reach = math.max(reach, (now - entry.windSince) / (2 * GL.levelTime)) end
-    if not isWeaponDrawn then reach = 0 end
-    entry.stretch = approach(entry.stretch or 0, math.min(1, reach), dt, 0.08, 0.15)
+    local flex = 0
+    if entry.reloadUntil and now < entry.reloadUntil then flex = L.reloadFlex end
+    if entry.shellUntil and now < entry.shellUntil then flex = math.max(flex, L.shellFlex) end
+    if not isWeaponDrawn then target, flex = 0, 0 end
+    local st = entry.lily or { open = 0, glow = 0, wyv = 0, fade = 0 }
+    entry.lily = st
+    if target > 0 then
+        -- Building: the parts of light grow with it.
+        st.glow = approach(st.glow, target, dt, L.follow, L.follow)
+        st.wyv = source == "wyvern" and st.glow or approach(st.wyv, 0, dt, L.glowFade, L.glowFade)
+        st.fade = 1
+    else
+        -- Fired or let go: the light keeps its size and fades where it stands.
+        st.fade = approach(st.fade, 0, dt, L.glowFade, L.glowFade)
+        if st.fade <= 0 then st.glow, st.wyv = 0, 0 end
+    end
+    st.open = approach(st.open, math.max(target, flex), dt, L.follow, L.openBack)
+    entry.mul = entry.mul or {}
+    for _, fd in ipairs(L.fades) do
+        local v = fd.drive == "open" and st.open or (fd.drive == "wyvern" and st.wyv or st.glow)
+        local a = ramp(v, fd.win[1], fd.win[2])
+        a = a * a * (3 - 2 * a) * (fd.drive == "open" and 1 or st.fade)
+        for _, mat in ipairs(fd.mats) do
+            set_alpha(entry, mesh, mat, a)
+            entry.mul[mat] = lerp(1.0, 2.0, st.glow)
+        end
+    end
+    entry.mul.MiquellaGlow = lerp(1.0, 1.6, st.open)
+    entry.mul.MiquellaBlade = lerp(1.0, 1.8, st.open)
     local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
-    stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
-                                       show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
-                                       level, entry.pack or 0)
+    stateInfo.gunlance = string.format("%s %s %s %s shells=%s", show(rn, reload), show(sn, shot), show(wn, wyv),
+                                       show(gn, gauge and string.format("%.2f", gauge)), tostring(shells))
+        .. string.format("  lily: open %.2f, light %.2f%s (Wyvern's Fire full at %.2f s%s)", st.open, st.glow,
+                         st.fade < 1 and string.format(" fading %.2f", st.fade) or "", wfull, learned and ", learned" or "")
         .. "  action: " .. (actionNow ~= "" and actionNow or "not readable")
-    update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
 
 -- Growing with the charge (user, 2026-10-03: the spirals came a level's piece at a time, "abstract";
@@ -2815,9 +2986,56 @@ local function apply_morph(entry)
     end
 end
 
+-- The lily gunlance's joints at its drives (entry.lily, update_gunlance). A joint resting at its
+-- bind pose is set once; the parts of light while nothing of them shows are left alone.
+GL.lilyInfo = { found = 0, total = 0 }
+
+local function apply_lily(entry)
+    local L = entry.kit.gunlance and entry.kit.gunlance.lily
+    local st = entry.lily
+    if not (L and st and config.enabled) then return end
+    local js = entry.lilyJoints
+    if not js or (js.missing and os.clock() >= js.retryAt) then
+        local tf = try(function() return entry.go:call("get_Transform") end)
+        if not tf then return end
+        js = js or {}
+        js.missing = false
+        for i, j in ipairs(L.joints) do
+            js[i] = js[i] or {}
+            if not js[i].joint then
+                js[i].joint = try(function() return tf:call("getJointByName", j.name) end)
+                if not js[i].joint then js.missing = true end
+            end
+        end
+        js.retryAt = os.clock() + 1.0
+        entry.lilyJoints = js
+    end
+    local found = 0
+    local lit = st.fade > 0.001 and (st.glow > 0.001 or st.wyv > 0.001)
+    for i, j in ipairs(L.joints) do
+        local s = js[i]
+        if s.joint then
+            found = found + 1
+            if j.drive == "open" or lit then
+                local v = j.drive == "open" and st.open or (j.drive == "wyvern" and st.wyv or st.glow)
+                local e = ramp(v, j.win[1], j.win[2])
+                local atBind = (j.base ~= nil and e >= 1) or (j.alt ~= nil and e <= 0)
+                if not (atBind and s.atBind) then
+                    local pos = lerp3(j.base or j.pivot, j.alt or j.pivot, e)
+                    try(function() s.joint:call("set_LocalPosition", Vector3f.new(pos[1], pos[2], pos[3])) end)
+                    s.atBind = atBind
+                end
+            else
+                s.atBind = nil
+            end
+        end
+    end
+    GL.lilyInfo.found, GL.lilyInfo.total = found, #L.joints
+end
+
 local function apply_floaters(phase)
     floatInfo.phases[phase] = true
-    for _, entry in pairs(swapped) do apply_morph(entry) end
+    for _, entry in pairs(swapped) do apply_morph(entry); apply_lily(entry) end
     -- Growth chains: the front's bone in every pass, a bone back at rest once.
     for _, entry in pairs(swapped) do
         local gj = config.enabled and entry.growJoints
@@ -2868,7 +3086,7 @@ local function refresh(entry)
     set_model(entry.go, mesh, entry.kitMesh, entry.kitMdf or entry.kit.mdf2, nil)
     entry.vars, entry.written, entry.glowSlots, entry.stateSlots, entry.float = nil, nil, nil, nil, nil
     entry.growJoints = nil
-    entry.partsOn, entry.fadeOn, entry.morphJoints = nil, nil, nil
+    entry.partsOn, entry.fadeOn, entry.morphJoints, entry.lilyJoints, entry.lily = nil, nil, nil, nil, nil
     apply_tuning(entry, mesh)
 end
 
@@ -2968,7 +3186,12 @@ re.on_draw_ui(function()
             if entry.kit.grow.chains then imgui.text(string.format("Growth bones found: %d/%d", growInfo.found, growInfo.total)) end
         end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
-        if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
+        if entry.kit.gunlance and stateInfo.gunlance then
+            imgui.text("Gunlance: " .. stateInfo.gunlance)
+            if entry.kit.gunlance.lily and GL.lilyInfo.total > 0 then
+                imgui.text(string.format("Lily joints found: %d/%d", GL.lilyInfo.found, GL.lilyInfo.total))
+            end
+        end
         if entry.kit.timing and stateInfo.timing then imgui.text("Perfect Rush: " .. stateInfo.timing) end
         if stateInfo.gauges and stateInfo.gauges[entry.kit] then imgui.text("Gauges: " .. stateInfo.gauges[entry.kit]) end
         if entry.kit.mode and stateInfo.mode then

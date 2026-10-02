@@ -301,16 +301,18 @@ def design_a(mats, rng, fire):
 B_THROAT = 1.36
 
 
-def lily_profile(fire):
-    """(radius, height) along a tepal: up the trumpet, flaring, the tip rolled back."""
-    if fire:
-        return [(0.016, 1.36), (0.028, 1.44), (0.052, 1.51), (0.094, 1.553), (0.138, 1.566), (0.172, 1.546),
-                (0.186, 1.514)]
-    return [(0.016, 1.36), (0.026, 1.45), (0.045, 1.53), (0.075, 1.595), (0.112, 1.632), (0.142, 1.645),
+def lily_profile(fire, bloom=None):
+    """(radius, height) along a tepal: up the trumpet, flaring, the tip rolled back. bloom
+    goes from the flower at rest (0) to thrown back for Wyvern's Fire (1)."""
+    rest = [(0.016, 1.36), (0.026, 1.45), (0.045, 1.53), (0.075, 1.595), (0.112, 1.632), (0.142, 1.645),
             (0.158, 1.632)]
+    thrown = [(0.016, 1.36), (0.028, 1.44), (0.052, 1.51), (0.094, 1.553), (0.138, 1.566), (0.172, 1.546),
+              (0.186, 1.514)]
+    b = (1.0 if fire else 0.0) if bloom is None else bloom
+    return [(r0 + (r1 - r0) * b, z0 + (z1 - z0) * b) for (r0, z0), (r1, z1) in zip(rest, thrown)]
 
 
-def design_b(mats, rng, fire):
+def design_b(mats, rng, fire, bloom=None):
     """Lily: a braided ivory stem wound with a gold vine and four long lily leaves; under the
     flower a cluster of five buds holds the shells (light at their tips); the muzzle is a
     trumpet lily with light-rimmed tepals and six stamens round the spear point (the pistil)."""
@@ -359,7 +361,7 @@ def design_b(mats, rng, fire):
     for k in range(6):                   # the trumpet
         radial, circ = ring_frame(2 * math.pi * k / 6)
         sc, wmax = (0.93, 0.054) if k % 2 else (1.0, 0.062)
-        path = [V(0, 0, z) + radial * (r * sc) for r, z in lily_profile(fire)]
+        path = [V(0, 0, z) + radial * (r * sc) for r, z in lily_profile(fire, bloom)]
         petal, rims, mid = sheet(
             f"B_Tepal_{k}", path, circ,
             lambda t, wmax=wmax: wmax * math.sin(math.pi * min(t / 0.985, 1) ** 0.85) ** 0.6
@@ -370,13 +372,15 @@ def design_b(mats, rng, fire):
         objs += tube(f"B_Tepal_Mid_{k}", mid[2:-8], mats["light"], 0.0012, (1.0, 0.3))
     for k in range(6):                   # stamens
         radial, circ = ring_frame(2 * math.pi * (k + 0.5) / 6)
-        r_end, z_end = (0.09, 1.745) if fire else (0.056, 1.722)
+        b = (1.0 if fire else 0.0) if bloom is None else bloom
+        r_end, z_end = 0.056 + 0.034 * b, 1.722 + 0.023 * b
         fil = smooth_path([V(0, 0, 1.40) + radial * 0.008, V(0, 0, 1.53) + radial * 0.022,
                            V(0, 0, 1.65) + radial * (r_end * 0.75), V(0, 0, z_end) + radial * r_end], 30)
         objs += tube(f"B_Stamen_{k}", fil, mats["light"], 0.0016, (1.0, 0.6))
         objs += capsule(f"B_Anther_{k}", fil[-1] + radial * 0.002, 0.004, 0.017, circ, mats["phial_lit"])
     objs += leaf_point("B_Pistil", 1.44, TIP, 0.04, mats)
-    objs += m.halo("B_Mouth_Halo", (0, 0, 1.586 if fire else 1.655), 0.215 if fire else 0.19, 0.0038, (0, 0, 1),
+    b = (1.0 if fire else 0.0) if bloom is None else bloom
+    objs += m.halo("B_Mouth_Halo", (0, 0, 1.655 - 0.069 * b), 0.19 + 0.025 * b, 0.0038, (0, 0, 1),
                    mats["light"], tilt_deg=5, tilt_axis=(1, 0, 0))
     if fire:
         objs += charge_glow(mats, 1.60, orb=0.036, halos=((0.12, 0.10), (0.22, 0.13), (0.32, 0.16)))

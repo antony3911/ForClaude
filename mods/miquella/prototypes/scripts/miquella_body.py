@@ -46,6 +46,7 @@ COMMON_DETAILS = [
     ("stomach/stomach-pregnant-decr", 0.5),       # flat stomach
     ("hip/hip-scale-horiz-decr", 0.35),           # narrow (male) pelvis
     ("neck/neck-scale-horiz-decr", 0.5),          # slender neck
+    ("buttocks/buttocks-volume-incr", 0.75),      # round buttocks (user 2026-10-02: they read square)
 ]
 VARIANTS = {
     "A": {"label": "A 纖細中性", "gender": 0.62, "muscle": 0.28, "weight": 0.30, "details": []},
@@ -68,17 +69,28 @@ GROOVES = {
           ([(-0.112, 1.065), (-0.085, 1.005), (-0.052, 0.955)], 0.0032, 0.012)],
     # The groin (inguinal) fold where thigh and pelvis meet (user 2026-10-02: thigh and crotch are
     # separate forms, a V runs from the crotch up to the hip, shaded even under the underwear):
-    # from the inner thigh beside the crotch up and out past the front of the hip joint to the hip
-    # bone. A wide soft valley (a 6.5 mm one cut like a knife and left a spike), the two starting
-    # 6 cm apart (meeting in the middle left a lump between them). Side-facing surface too (the
-    # fold turns in between the legs). Every body shape has it (BASE_GROOVES).
-    "crease": [([(0.030, 0.815), (0.048, 0.852), (0.078, 0.912), (0.118, 0.985)], 0.0065, 0.015, 0.35),
-               ([(-0.030, 0.815), (-0.048, 0.852), (-0.078, 0.912), (-0.118, 0.985)], 0.0065, 0.015, 0.35)],
+    # from beside the crotch up and out past the front of the hip joint to the hip bone, a narrow
+    # soft line (user: a 15 mm wide valley is wider than real ones; 6.5 mm cut like a knife and
+    # left a spike). Side-facing surface too (the fold turns in between the legs).
+    "crease": [([(s * 0.020, 0.818), (s * 0.040, 0.852), (s * 0.074, 0.912), (s * 0.112, 0.982)],
+                0.0045, 0.010, 0.35) for s in (1, -1)],
+    # The first version of it (15 mm wide, starting 6 cm apart), for the before / after sheets.
+    "crease_wide": [([(s * 0.030, 0.815), (s * 0.048, 0.852), (s * 0.078, 0.912), (s * 0.118, 0.985)],
+                     0.0065, 0.015, 0.35) for s in (1, -1)],
+    # The fold under each buttock (user 2026-10-02: the buttocks read square): from beside the
+    # crotch down a little, then out and up along the bottom of the cheek, carved on the back.
+    "gluteal": [([(s * 0.022, 0.836), (s * 0.045, 0.823), (s * 0.072, 0.824), (s * 0.100, 0.838),
+                  (s * 0.128, 0.866)], 0.006, 0.012, 0.35, True) for s in (1, -1)],
 }
-BASE_GROOVES = ["crease"]
-GROIN_OPTIONS = [
-    ("1 沒有摺線", {"base_grooves": []}),
-    ("2 腹股溝摺線", {}),
+BASE_GROOVES = ["crease", "gluteal"]     # every body shape has these
+BUTT = "buttocks/buttocks-volume-incr"
+# Before / after the 2026-10-02 hips round (narrow groin line, cone thighs, round buttocks with
+# the fold under them, the cleft spanned by the underwear), and the buttocks rounder or less.
+SHAPE_OPTIONS = [
+    ("1 修改前", {"base_grooves": ["crease_wide"], "cleft": 0, "taper": 0, "soft": 0, "details": [(BUTT, 0.0)]}),
+    ("2 修改後", {}),
+    ("3 屁股少圓一點", {"details": [(BUTT, 0.4)]}),
+    ("4 屁股再圓一點", {"details": [(BUTT, 1.0)]}),
 ]
 BELLY_OPTIONS = [
     ("0 原本", {}),
@@ -473,20 +485,16 @@ SMOOTH_SPOTS = ("breast.L____tail", "breast.R____tail")
 SMOOTH_RADIUS, SMOOTH_STEPS = 0.035, 40
 
 
-def smooth_groin(obj, reach=0.035, steps=12):
-    """Linear skinning pinches small folds where the fitted thighs meet the pelvis: smooth the
-    surface within `reach` (front view) of the groin fold before anything is carved there."""
+def smooth_where(obj, weight_of, steps, keep_volume=False):
+    """Laplacian smoothing of the vertices `weight_of(co, normal)` gives a weight (0..1) to;
+    `keep_volume` alternates an inflating pass (Taubin) so bumps go but the form doesn't shrink."""
     me = obj.data
     me.update()
-    lines = [g[0] for g in GROOVES["crease"]]
     weight = {}
     for v in me.vertices:
-        if not 0.79 < v.co.z < 1.02 or v.normal.y > 0.5:
-            continue
-        d = min(seg_dist(v.co.x, v.co.z, a, b)[0] for pts in lines for a, b in zip(pts, pts[1:]))
-        if d < reach:
-            t = 1 - d / reach
-            weight[v.index] = t * t * (3 - 2 * t)
+        w = weight_of(v.co, v.normal)
+        if w > 0:
+            weight[v.index] = w
     nbr = {i: [] for i in weight}
     for e in me.edges:
         a, b = e.vertices
@@ -498,15 +506,151 @@ def smooth_groin(obj, reach=0.035, steps=12):
     for i in weight:
         for j in nbr[i]:
             co.setdefault(j, me.vertices[j].co.copy())
+    passes = (0.5, -0.53) if keep_volume else (0.5,)
     for _ in range(steps):
-        new = {}
-        for i, w in weight.items():
-            if nbr[i]:
-                avg = sum((co[j] for j in nbr[i]), Vector()) / len(nbr[i])
-                new[i] = co[i].lerp(avg, 0.5 * w)
-        co.update(new)
+        for k in passes:
+            new = {}
+            for i, w in weight.items():
+                if nbr[i]:
+                    avg = sum((co[j] for j in nbr[i]), Vector()) / len(nbr[i])
+                    new[i] = co[i] + (avg - co[i]) * (k * w)
+            co.update(new)
     for i in weight:
         me.vertices[i].co = co[i]
+    return len(weight)
+
+
+def smoothstep(e0, e1, x):
+    t = max(0.0, min(1.0, (x - e0) / (e1 - e0)))
+    return t * t * (3 - 2 * t)
+
+
+def smooth_groin(obj, reach=0.035, steps=12):
+    """Linear skinning pinches small folds where the fitted thighs meet the pelvis: smooth the
+    surface within `reach` (front view) of the groin fold before anything is carved there."""
+    lines = [g[0] for g in GROOVES["crease"]]
+
+    def weight_of(c, n):
+        if not 0.79 < c.z < 1.02 or n.y > 0.5:
+            return 0.0
+        d = min(seg_dist(c.x, c.z, a, b)[0] for pts in lines for a, b in zip(pts, pts[1:]))
+        return smoothstep(0.0, 1.0, 1 - d / reach)
+    smooth_where(obj, weight_of, steps)
+
+
+# The cleft between the buttocks (user 2026-10-02 asked how the back is designed): the underwear is
+# only a material on the skin, so MakeHuman's deep cleft showed through it. Cloth spans the cleft:
+# at each height it is filled out to a line from one cheek's crest to the other's, sagging `sag`
+# in the middle, fading out above the waistband and toward the crotch. Only the cleft moves
+# (smoothing it shallow instead pulled the cheeks in and left a hard vertical line on each).
+CLEFT = {"z": (0.845, 0.875, 0.95, 0.985), "sag": 0.004, "amount": 1.0}
+
+
+def bridge_cleft(obj, amount=1):
+    me = obj.data
+    z0, z1, z2, z3 = CLEFT["z"]
+    used = {i for p in me.polygons for i in p.vertices}
+    back = [v for v in me.vertices if v.index in used and v.co.y > 0.0 and z0 - 0.01 < v.co.z < z3 + 0.01
+            and abs(v.co.x) < 0.12]
+    zs = [z0 + i * 0.005 for i in range(int((z3 - z0) / 0.005) + 1)]
+    crest = []
+    for zc in zs:       # the mesh is ~1 cm apart here: the crest within 1 cm of each height
+        sl = [v.co for v in back if abs(v.co.z - zc) < 0.01 and 0.02 < abs(v.co.x) < 0.10]
+        top = max(sl, key=lambda c: c.y)
+        crest.append((abs(top.x), top.y))
+    moved = {}
+    for v in back:
+        z = v.co.z
+        w = smoothstep(z0, z1, z) * (1 - smoothstep(z2, z3, z)) * amount
+        if w <= 0:
+            continue
+        xc, yc = crest[min(range(len(zs)), key=lambda i: abs(zs[i] - z))]
+        t = abs(v.co.x) / xc
+        if t >= 1:
+            continue
+        lift = yc - CLEFT["sag"] * (1 - t * t) - v.co.y
+        if lift > 0:
+            v.co.y += lift * w
+            moved[v.index] = 1.0
+    # Relax the filled wall (its vertices were pressed together sideways).
+    me.update()
+    nbr = {i: [] for i in moved}
+    for e in me.edges:
+        a, b = e.vertices
+        if a in nbr:
+            nbr[a].append(b)
+        if b in nbr:
+            nbr[b].append(a)
+    for _ in range(12):     # a deeper cleft (rounder buttocks) needs more, or a seam shows
+        for i in moved:
+            if nbr[i]:
+                avg = sum((me.vertices[j].co for j in nbr[i]), Vector()) / len(nbr[i])
+                me.vertices[i].co = me.vertices[i].co.lerp(avg, 0.5)
+    log(f"  filled the cleft: {len(moved)} vertices")
+
+
+# The buttocks under a robe that is fitted down to the thighs (user 2026-10-02: a firm, sculpted
+# shape would look odd): MakeHuman's muscle shapes there are smoothed away, keeping the volume.
+SOFT_BUTT = {"x": 0.17, "z": (0.80, 0.83, 0.97, 1.01), "steps": 25}
+
+
+def soften_buttocks(obj, steps):
+    z0, z1, z2, z3 = SOFT_BUTT["z"]
+
+    def weight_of(c, n):
+        if c.y < 0.0 or n.y < -0.2:
+            return 0.0
+        return (smoothstep(z0, z1, c.z) * (1 - smoothstep(z2, z3, c.z))
+                * (1 - smoothstep(SOFT_BUTT["x"] - 0.04, SOFT_BUTT["x"], abs(c.x))))
+    n = smooth_where(obj, weight_of, steps, keep_volume=True)
+    log(f"  softened the buttocks: {n} vertices, {steps} steps")
+
+
+# The thighs in profile (user 2026-10-02, with a reference drawing of slim legs from the side):
+# a cone narrowing straight from under the buttock to the knee, not an arc. MakeHuman's thigh keeps
+# its depth to mid-thigh and then curves in. Per leg, each height's front-most and back-most points
+# are moved onto straight lines between the ends, and the rest of the slice is scaled with them.
+THIGH_TAPER = (0.53, 0.80)        # knee, under the buttock (z, m)
+
+
+def taper_thighs(obj, G, amount=1.0):
+    me = obj.data
+    lo, hi = THIGH_TAPER
+    # MakeHuman's helper geometry (tights, skirt...) is still here as loose vertices: skip it.
+    used = {i for p in me.polygons for i in p.vertices}
+    for s in (1, -1):
+        S = "L_" if s > 0 else "R_"
+        top, knee = G[S + "Thigh"], G[S + "Knee"]
+
+        def axis_x(z):
+            t = (top.z - z) / (top.z - knee.z)
+            return top.x + (knee.x - top.x) * t
+        leg = [v for v in me.vertices if lo - 0.02 < v.co.z < hi + 0.02 and s * v.co.x > 0.02
+               and abs(v.co.x - axis_x(v.co.z)) < 0.12 and v.index in used]
+        zs = [lo + i * 0.01 for i in range(int(round((hi - lo) / 0.01)) + 1)]
+        front, back = [], []
+        for zc in zs:
+            sl = [v.co.y for v in leg if abs(v.co.z - zc) < 0.008]
+            front.append(min(sl))
+            back.append(max(sl))
+
+        def at(vals, z):
+            t = max(0.0, min(len(zs) - 1.0, (z - lo) / 0.01))
+            i = min(int(t), len(zs) - 2)
+            return vals[i] + (vals[i + 1] - vals[i]) * (t - i)
+
+        def line(vals, z):
+            t = (z - lo) / (hi - lo)
+            return vals[0] + (vals[-1] - vals[0]) * t
+        for v in leg:
+            z = v.co.z
+            if not lo <= z <= hi:
+                continue
+            f, b = at(front, z), at(back, z)
+            ft = f + (line(front, z) - f) * amount
+            bt = b + (line(back, z) - b) * amount
+            if b - f > 1e-4:
+                v.co.y = ft + (v.co.y - f) * (bt - ft) / (b - f)
 
 
 def smooth_spots(obj, points):
@@ -681,7 +825,8 @@ def carve(obj, grooves):
         for g in grooves:
             pts, depth, width = g[:3]
             facing = g[3] if len(g) > 3 else -0.25
-            if v.normal.y > facing:     # front-facing surface only (front is -Y)
+            back = len(g) > 4 and g[4]
+            if (-v.normal.y if back else v.normal.y) > facing:     # front-facing only (front is -Y), or back
                 continue
             lens = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)]
             total, acc, best = sum(lens), 0.0, (9.9, 0.0)
@@ -735,9 +880,16 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]
     smooth_spots(obj, spots)
     smooth_groin(obj)
+    if params.get("soft", SOFT_BUTT["steps"]):
+        soften_buttocks(obj, params.get("soft", SOFT_BUTT["steps"]))
+    if params.get("taper", 1.0):
+        taper_thighs(obj, G, params.get("taper", 1.0))
     grooves = list(params.get("base_grooves", BASE_GROOVES)) + list(params.get("grooves", []))
     if grooves:
         subdivide(obj)
+    if params.get("cleft", CLEFT["amount"]):    # needs the subdivided mesh (2 cm apart before)
+        bridge_cleft(obj, params.get("cleft", CLEFT["amount"]))
+    if grooves:
         carve(obj, [g for key in grooves for g in GROOVES[key]])
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" or o is arm]:
         bpy.data.objects.remove(o, do_unlink=True)
@@ -985,8 +1137,14 @@ def preview(data, game_body, out, face=None, extra=()):
     return shots
 
 
-def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10, scale=0.52, prefix="belly"):
-    """Options on one body shape, close-ups (front, three-quarter, side) in a row."""
+VIEWS = (("front", 0), ("quarter", 30), ("side", 90))
+BACK_VIEWS = (("back", 180), ("backquarter", 150), ("side", 90))
+
+
+def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10, scale=0.52, prefix="belly",
+                views=VIEWS):
+    """Options (on one body shape unless an option names its own `base`), close-ups from each of
+    `views` in a row."""
     options = options or BELLY_OPTIONS
     import common as c
     c.reset_scene()
@@ -998,9 +1156,9 @@ def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10,
     cloth = c.make_material("Underwear", "#B8A27E", roughness=0.85)
     gap = 0.9
     for k, (label, opt) in enumerate(options):
-        params = dict(VARIANTS[base_key])
+        params = dict(VARIANTS[opt.get("base", base_key)])
         params["details"] = list(params["details"]) + list(opt.get("details", []))
-        for key in ("weight", "muscle", "grooves", "base_grooves", "flat", "underwear"):
+        for key in ("weight", "muscle", "grooves", "base_grooves", "flat", "underwear", "cleft", "taper", "soft"):
             if key in opt:
                 params[key] = opt[key]
         body = make_body(data, base, params, G, f"Belly_{k}", skin, cloth)
@@ -1010,7 +1168,7 @@ def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10,
     c.setup_render(samples=32, res=(600, 700), world_hex="#141418", world_strength=0.25)
     shots = []
     n = len(options)
-    for view, az in (("front", 0), ("quarter", 30), ("side", 90)):
+    for view, az in views:
         for o in [o for o in bpy.data.objects if o.type == "LIGHT"]:
             bpy.data.objects.remove(o, do_unlink=True)
         for k in range(n):
@@ -1033,9 +1191,10 @@ def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10,
             bpy.context.scene.collection.objects.link(cam)
             cam.location = (x0 + math.sin(ang) * 2.0, -math.cos(ang) * 2.0, center_z)
             cam.rotation_euler = (math.radians(90), 0, ang)
-            if view == "side":
-                # Clip off the near arm (it hangs in front of the belly in profile).
-                cam_data.clip_start, cam_data.clip_end = 2.0 - 0.2, 3.0
+            if view in ("side", "profile"):
+                # Clip off the near arm (it hangs in front of the belly in profile); for the whole
+                # leg ("profile") clip further out so the near thigh stays whole.
+                cam_data.clip_start, cam_data.clip_end = 2.0 - (0.2 if view == "side" else 0.27), 3.0
             bpy.context.scene.camera = cam
             for o in bpy.data.objects:
                 if o.type == "MESH":
@@ -1049,10 +1208,24 @@ def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10,
 
 def main():
     cmd = sys.argv[1]
-    if cmd == "groin":
+    if cmd == "back":
+        # The back of the three shapes: hips close-ups (back, back three-quarter, side) and whole bodies.
         data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
         os.makedirs(out, exist_ok=True)
-        preview_abs(data, game_body, out, options=GROIN_OPTIONS, center_z=0.90, scale=0.40, prefix="groin")
+        shapes = [(VARIANTS[k]["label"], {"base": k}) for k in VARIANTS]
+        preview_abs(data, game_body, out, options=shapes, center_z=0.90, scale=0.44, prefix="back",
+                    views=BACK_VIEWS)
+        preview_abs(data, game_body, out, options=shapes, center_z=0.92, scale=1.95, prefix="back_full",
+                    views=(("back", 180),))
+    if cmd == "hips":
+        # Before / after sheets of the hips: front, back, and the legs in profile.
+        data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
+        os.makedirs(out, exist_ok=True)
+        preview_abs(data, game_body, out, options=SHAPE_OPTIONS, center_z=0.90, scale=0.40, prefix="hips_front")
+        preview_abs(data, game_body, out, options=SHAPE_OPTIONS, center_z=0.90, scale=0.40, prefix="hips_back",
+                    views=BACK_VIEWS)
+        preview_abs(data, game_body, out, options=SHAPE_OPTIONS, center_z=0.74, scale=0.72, prefix="hips_legs",
+                    views=(("profile", 90), ("back", 180)))
     if cmd == "abs":
         data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
         os.makedirs(out, exist_ok=True)

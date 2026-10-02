@@ -9,7 +9,14 @@
 
 ## 0. 兩個帳號之間的留言
 
-**第一帳號 → 下一個 session（2026-10-02 20:50，最新）**：使用者看了身體，指出①側面像啤酒肚、②**胯下結構錯**（大腿和骨盆是分開的兩塊，要有從胯下往腿根延伸的 V 形摺線，穿內褲反而更明顯）。上一個 session 找到根本原因但沒記錄就用完了，這個 session 接著做完，**已重新裝進遊戲（遊戲關著直接裝）**：
+**第一帳號 → 下一個 session（2026-10-02 21:30，最新）**：使用者連續看圖給意見，臀腿這一輪改完、**已裝進遊戲**，使用者選了「修改後」（`SHAPE_OPTIONS` 第 2 款＝現在的預設）：
+- **腹股溝**：使用者說 15 mm 的凹谷太寬（給了人體參考圖）→ 收窄成 10 mm、深 4.5 mm，起點靠中間（±2 cm）
+- **大腿**：使用者給了側面腿的參考圖：大腿要從臀下往膝蓋**直直收成錐形**，不是弧形 → `taper_thighs`（每條腿每個高度的前後緣移到臀下 z 0.80～膝上 0.53 的直線上，整個切面跟著縮放）。**注意**：這時網格裡還有 MakeHuman 的輔助幾何（褲襪、裙子，沒有面的散點，`cut_and_paint` 才刪），量體型要排除（`used` 集合），不然會量錯、把腿弄皺
+- **屁股**：使用者說背面看起來是方的、每邊有一條硬豎線、太結實很怪；長袍到大腿才開始下擺，屁股處是貼身的，所以形狀要自然 → ①豎線是我第一版「撐平臀縫」的局部平滑邊界造成的，改成 `bridge_cleft` **只從裡面填**（每個高度從左右臀峰拉一條線、中間凹 4 mm，細分後才做）；②`soften_buttocks`：保留體積的平滑（Taubin）磨掉 MakeHuman 的肌肉起伏；③臀部體積 `buttocks-volume-incr` 0.75（`COMMON_DETAILS`，使用者喜歡圓一點的）；④每邊屁股下緣一道往外上揚的弧形摺線（`GROOVES["gluteal"]`，刻在背面）
+- 預覽：`python miquella_body.py hips ...` → `MiquellaTools\work\previews\hips\hips_{front,back,legs}_options.png`（1 修改前／2 修改後／3 屁股少圓／4 屁股再圓）；三款全身 `bodyody_variants_{front,side}.png`
+- **等使用者**：挑體型 A／B／C、腹部線條；遊戲裡實測
+
+**第一帳號 → 下一個 session（2026-10-02 20:50）**：使用者看了身體，指出①側面像啤酒肚、②**胯下結構錯**（大腿和骨盆是分開的兩塊，要有從胯下往腿根延伸的 V 形摺線，穿內褲反而更明顯）。上一個 session 找到根本原因但沒記錄就用完了，這個 session 接著做完，**已重新裝進遊戲（遊戲關著直接裝）**：
 - **根本原因**：`fit_targets` 把 MakeHuman 的脊椎、骨盆拉到遊戲的 `Hip`／`Spine_0`（比髖關節高 11 cm）→ 胯下被拉高到髖關節高度、大腿和骨盆糊成一塊，也擠出啤酒肚。**改成軀幹只整體對齊**，只有四肢、脖子、手腳照遊戲關節拉。胯下降到 0.823 m（比大腿關節低 9 cm）。`flatten_belly` 不再用（`flat` 預設關）
 - **腹股溝摺線**＝三款共用的基本構造（`BASE_GROOVES = ["crease"]`）：細分一次後沿 V 線刻寬而柔的凹谷（深 6.5 mm、寬 15 mm）；兩條線從胯下兩側大腿內側（相隔 6 cm）往上往外到髖骨。**試過不行的**：窄的 6.5 mm 像刀割、四分之三視角有尖刺；不細分也有尖刺和稜角；兩條線在正中間交會會擠出鼓包。`smooth_groin` 先抹平髖接處的皺摺。三角褲款（沿 V 線的褲口）邊緣鋸齒、剪太高，**先拿掉**，只留四角褲
 - 每款身體約 3.8 萬點（細分後）。預覽：`MiquellaTools\work\previews\groin\groin_options.png`（沒摺線／有摺線）、`bodyody_variants_front.png`、`bellyelly_options.png`（已用修正後的身體重畫）
@@ -108,7 +115,7 @@
 |---|---|---|
 | 頭冠（光環） | 基礎造型 v10：髮帶散成細枝 → 捲成一束 → 三叉往後掃，整個發亮金光；**遊戲版（2026-10-02 深夜）已裝進遊戲、等實測**：腳本生成物件掛到獵人 `Head` 骨頭（不覆蓋遊戲檔） | `prototypes/circlet/`、`mhws/MiquellaLight_Character*/` |
 | 角色概念（人台） | 長袍、編髮、頭冠戴在頭髮上；v4 頭髮改成遊戲用的髮片做法 | `prototypes/character_concept/` |
-| 身體 | 三款 A／B／C（MakeHuman CC0）掛在獵人骨架上，**已裝進遊戲、等實測和挑選**；骨架對齊修正（啤酒肚、胯下）、腹股溝摺線（2026-10-02） | `prototypes/scripts/miquella_body.py`、`mhws/MiquellaLight_Character_kit/` |
+| 身體 | 三款 A／B／C（MakeHuman CC0）掛在獵人骨架上，**已裝進遊戲、等實測和挑選**；骨架對齊修正（啤酒肚、胯下）、腹股溝摺線、錐形大腿、圓潤的屁股（2026-10-02） | `prototypes/scripts/miquella_body.py`、`mhws/MiquellaLight_Character_kit/` |
 | 長袍、頭髮 | 還沒做 | — |
 
 ### 武器造型（全部定案，除非使用者再改）
@@ -371,6 +378,7 @@
 - **身體（2026-10-02 深夜，使用者：「那身體你先做吧」）做完、已裝進遊戲，等實測**：MakeHuman 基礎人體（CC0）調成纖細中性、對齊遊戲骨架、切掉頭接遊戲的臉、內褲材質；**三款 A 纖細中性／B 少年感／C 柔和**（預覽 `MiquellaTools\work\previews\body\body_variants_sheet.png` 已傳給使用者，**等他挑**），三款都進了 pak，遊戲選單 `Body shape` 可切。做法、指令在 `mhws/MiquellaLight_Character_kit/README.md`，程式 `prototypes/scripts/miquella_body.py`。腳本：身體物件 SameJointsConstraint 跟著獵人、打開時藏獵人的防具和內衣（ch02／ch03），臉和頭髮保留。`character_test.lua` 21 項。**請使用者測**：選單「MiquellaLight: Character」看身體有沒有出現、原本的衣服有沒有消失、動作時關節變形、脖子接縫；三款切換比較。**權重只用主要骨頭**，膝肘肩如果折得難看 → 改用遊戲 `*_HJ_*` 輔助骨頭（例：從內衣用最近表面轉移權重、排除 `_CT`／`_CH_` 擺動骨頭）。膚色現在是雙劍的象牙材質（之後做膚色貼圖或抄遊戲的皮膚材質）
 - **小腹（使用者 2026-10-02：「像中年老男人的啤酒肚」，側面下腹凸出）**：真正原因是骨架對齊把脊椎、骨盆拉到遊戲的 `Hip`（見下一條），修正後側面就平了；`flatten_belly`（正面輪廓壓成直線）反而推出怪凸起，**不用了**（`flat` 預設 False）。**腹部線條還等使用者挑**：`belly_options.png`（0 原本／1 收小腹 `stomach-pregnant-decr`／2＋緊實／3＋馬甲線／4＋人魚線／5 兩種，已用修正後的身體重畫），`python miquella_body.py abs ...`；挑好後把選的 `details`／`grooves` 併進 `VARIANTS`（或 `COMMON_DETAILS`）再跑 `kit`
 - **胯下（使用者 2026-10-02：大腿和胯下是兩塊分開的結構，要有 V 形摺線，穿內褲反而更明顯）——做完、已裝進遊戲**：①`fit_targets` 不再把 MakeHuman 的 `spine01～05`、`pelvis` 拉到遊戲的 `Hip`／`Spine_0`（它們比髖關節高 11 cm，把胯下拉到髖關節高度、大腿和骨盆糊在一起）；軀幹只整體縮放平移，`obj["fit"]` 改成每根骨頭最後的位置（`bone_map` 用）；②`smooth_groin` 抹平髖接處的線性蒙皮皺摺；③`GROOVES["crease"]` 腹股溝摺線（三款共用 `BASE_GROOVES`，`base_grooves: []` 可關掉）：(0.030,0.815)→(0.048,0.852)→(0.078,0.912)→(0.118,0.985)，深 6.5 mm、寬 15 mm、側面也刻（`facing` 0.35）。比較圖 `python miquella_body.py groin ...` → `previews\groin\groin_options.png`。之後的長袍、內褲都不能把這條線蓋平
+- **臀腿（使用者 2026-10-02 晚，給了參考圖；選了「修改後」）——做完、已裝進遊戲**：腹股溝收窄（10 mm）；`taper_thighs` 錐形大腿（`THIGH_TAPER` 0.53～0.80）；`soften_buttocks`（Taubin，`SOFT_BUTT`）；`bridge_cleft` 從裡面填平臀縫（`CLEFT`，細分後）；`buttocks-volume-incr` 0.75；`GROOVES["gluteal"]` 臀下弧線（`carve` 的第 5 個欄位 True＝刻在背面）。`BASE_GROOVES = ["crease", "gluteal"]`。參數 `cleft`／`taper`／`soft`／`base_grooves` 設 0 或空可關掉（`SHAPE_OPTIONS` 的「修改前」就是全關）。之後的長袍在臀部是貼身的，要照這個形狀
 - **下一步（頭冠驗證後）**：①~~匯入內衣四件、量體型~~（做了，研究筆記第 18 節）；②~~自己做身體~~（上一條）（纖細、平滑）＋長袍（上半身貼身、下擺擺動）原型，**放在遊戲的身體旁邊並排**給使用者挑體型；③頭髮（擺動鏈）。長袍下擺的擺動要學內衣身體的 `chain2`。內衣身體的模型有「群組」（0～14，穿防具時遊戲藏掉被蓋住的部分），掛上去時要把原本的內衣／防具藏起來（`set_DrawSelf(false)` 或關材質）
 
 **不需要遊戲、隨時可做**：調整任何預覽、做新的設計提案、整理文件

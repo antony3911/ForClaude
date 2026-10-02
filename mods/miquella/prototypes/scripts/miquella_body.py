@@ -1526,6 +1526,17 @@ def split_for_export(obj, mesh_col):
     return [o for _, o in out]
 
 
+def position_colors(me):
+    """The game's character meshes carry their bind-pose position in the vertex colour (raw byte
+    / 255, file space in metres): R = x / 2 + 0.5, G = up / 2, B = forward / 2 + 0.5, A = 1 (fitted
+    on the innerwear and face, error 0.001). Its shaders read it (Use_VertexColor_Offset: wet and
+    sand height lines...): without it our skin came out dark and sandy yellow (2026-10-03)."""
+    layer = me.vertex_colors.new(name="Col")
+    for lp in me.loops:
+        co = me.vertices[lp.vertex_index].co           # Blender space: z up, -y forward
+        layer.data[lp.index].color = (co.x / 2 + 0.5, co.z / 2, -co.y / 2 + 0.5, 1.0)
+
+
 def prepare_for_export(me):
     """RE Mesh Editor reworks a mesh that has quads (bmesh triangulation) or vertices with more
     than one UV (split along the UV islands, normals carried over from a copy by nearest surface)
@@ -1643,6 +1654,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         subs = split_for_export(body, mesh_col)
         for o in subs:
             prepare_for_export(o.data)
+            position_colors(o.data)
             o.modifiers.clear()
             o.modifiers.new("Armature", "ARMATURE").object = arm
             o.parent = arm

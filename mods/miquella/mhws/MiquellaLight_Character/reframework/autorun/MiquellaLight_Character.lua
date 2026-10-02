@@ -73,6 +73,7 @@ end
 if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
+config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
 local function piece_on(p)
@@ -220,6 +221,31 @@ local function material_var(mesh, matName, varName)
     return nil
 end
 
+-- Skin debug (2026-10-03: the body came out dark brown with the face pale): every material of
+-- the face and of our body with its colour / UV / skin variables, written once per model to
+-- reframework/data/MiquellaLight/skin_debug.json.
+local SKIN_DEBUG = "MiquellaLight/skin_debug.json"
+local function material_dump(mesh)
+    local out = {}
+    local n = try(function() return mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do
+        local m = { name = try(function() return mesh:getMaterialName(i) end) or "?", vars = {} }
+        local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+        for j = 0, vars - 1 do
+            local v = try(function() return mesh:getMaterialVariableName(i, j) end) or "?"
+            local lv = v:lower()
+            if lv:find("color") or lv:find("uv") or lv:find("skin") or lv:find("sss") then
+                local f4 = try(function() return mesh:getMaterialFloat4(i, j) end)
+                local f1 = try(function() return mesh:getMaterialFloat(i, j) end)
+                m.vars[v] = f4 and string.format("%.3f %.3f %.3f %.3f", f4.x, f4.y, f4.z, f4.w)
+                    or (f1 and string.format("%.3f", f1)) or "?"
+            end
+        end
+        out[#out + 1] = m
+    end
+    return out
+end
+
 local function apply_tint(p)
     if not (p.tint and p.st.mesh) then return end
     local mesh = p.st.mesh
@@ -241,6 +267,11 @@ local function apply_tint(p)
             mesh:setMaterialFloat4(u.mat, u.var, Vector4f.new(uv.x, uv.y, uv.z, uv.w))
             return string.format("%.2f, %.2f", uv.x, uv.y)
         end)
+    end
+    if not p.st.skinDumped and face then
+        p.st.skinDumped = true
+        json.dump_file(SKIN_DEBUG, { face = material_dump(face), body = material_dump(mesh),
+                                     faceSlot = p.st.faceSlot, uvSlot = p.st.uvSlot, faceUV = p.st.faceUV or "nil" })
     end
 end
 

@@ -1368,6 +1368,48 @@ def extract_orb(kind, center, radius, mat, seed=7):
     return objs
 
 
+# The extracts as three flowers (user's pick 2026-10-02 evening, style 2): scarlet rot's flower,
+# a frost lily, the frenzied flame's flower with a burning eye, each in a thin gold halo.
+# orb_styles builds them facing -Y; here each is turned to face out from the blade at its slot.
+FLOWER_KINDS = {"Red": "rot", "White": "frost", "Orange": "frenzy"}
+
+
+def extract_flower(kind, center, radius, slot_deg):
+    """Objects of one extract's flower (Red / White / Orange), facing outward at slot_deg round
+    the blade. Their materials are orb_styles' <rot|frost|frenzy>_<Main|Dark|Hot> and Light."""
+    import orb_styles as ob
+    lm = {"light": c.make_material("Light", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"],
+                                   strength=2.5)}
+    before = set(bpy.data.objects)
+    # Lighter parts for the game: six-sided petal sections, no subdivision, low spheres.
+    blade, sphere = m.path_blade, ob.sphere
+
+    def light_blade(*a, **k):
+        k.update(n_sec=6, subsurf=0, samples=min(k.get("samples", 90), 12))
+        return blade(*a, **k)
+
+    def light_sphere(name, center, r, mat, scale=(1, 1, 1)):
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=1, location=center)
+        o = bpy.context.active_object
+        o.name, o.scale = name, scale
+        o.data.materials.append(mat)
+        return o
+    m.path_blade, ob.sphere = light_blade, light_sphere
+    try:
+        ob.style_flowers(V(0, 0, 0), FLOWER_KINDS[kind], radius, lm)
+    finally:
+        m.path_blade, ob.sphere = blade, sphere
+    made = [o for o in bpy.data.objects if o not in before]
+    pivot = c.link(bpy.data.objects.new(f"Flower_{kind}_Pivot", None))
+    for o in made:
+        o.parent = pivot
+        o.name = f"Orb_{kind}_{o.name}"
+    pivot.rotation_euler = (0, 0, math.radians(slot_deg + 90))      # -Y turned to face out
+    pivot.location = Vector(center)
+    bpy.context.view_layer.update()
+    return made
+
+
 def extracts_preview():
     mats = extract_materials()
     lm = m.materials()

@@ -345,8 +345,11 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh",
         mdf2 = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
-        -- The extract orbs (rot, frost, frenzied flame) circle the top blade (orbit: their slot).
-        floaters = { mode = "hover", orbit = { center = { 0.0, 0.0, 1.4160 }, radius = 0.1408, hz = 0.4 },
+        -- The extracts (rot, frost, frenzied flame) circle the top blade (orbit: their slot); they
+        -- are flowers (user's pick 2026-10-02, style 2), so they keep facing out while circling
+        -- and turn slowly about their own centre (face, spin degrees a second).
+        floaters = { mode = "hover", orbit = { center = { 0.0, 0.0, 1.4160 }, radius = 0.1408, hz = 0.4,
+                                               face = true, spin = 25 },
                      joints = {
             { name = "MQ_TopHalo", pos = { 0.0, 0.0, 1.2560 } },
             { name = "MQ_BottomHalo", pos = { 0.0, 0.0, -1.2880 } },
@@ -1711,7 +1714,14 @@ local function orbit_ring(s, spec, t)
     local c = spec.center
     s.pos = { c[1] + spec.radius * math.cos(a), c[2] + spec.radius * math.sin(a),
               c[3] + 0.03 * math.sin(2 * math.pi * 0.7 * t + s.orbit * 2.1) }
-    s.rot = qaxis({ 0.3, 1.0, 0.2 }, (t * 70 + s.orbit * 120) % 360)
+    if spec.face then
+        -- Built facing out at their slot: turned with the orbit, spinning about that outward line.
+        local bind = 2 * math.pi * s.orbit / 3 + math.pi / 2
+        local out = { math.cos(bind), math.sin(bind), 0 }
+        s.rot = qmul(qaxis({ 0, 0, 1 }, math.deg(a - bind) % 360), qaxis(out, (t * (spec.spin or 0)) % 360))
+    else
+        s.rot = qaxis({ 0.3, 1.0, 0.2 }, (t * 70 + s.orbit * 120) % 360)
+    end
 end
 
 -- The bow's drawn arrow (user, 2026-10-02: the arrow left the rings around the middle one;

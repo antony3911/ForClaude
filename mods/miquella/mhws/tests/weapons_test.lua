@@ -629,6 +629,16 @@ frames(30, 1 / 60)
 local moved = math.sqrt((o.lp.x - p1[1]) ^ 2 + (o.lp.y - p1[2]) ^ 2)
 local r = math.sqrt(o.lp.x ^ 2 + o.lp.y ^ 2)
 check(moved > 0.05 and math.abs(r - 0.1408) < 1e-3, string.format("insect glaive: the orb circles the blade (moved %.3f, r %.4f)", moved, r))
+-- The flowers (user's pick, style 2) keep facing out from the blade while they circle: the
+-- joint's turn carries the slot's outward line (built along +Y for the red one) onto the radius.
+local function qrotv(q, v)
+  local x, y, z, w = q.x, q.y, q.z, q.w
+  local tx, ty, tz = 2 * (y * v[3] - z * v[2]), 2 * (z * v[1] - x * v[3]), 2 * (x * v[2] - y * v[1])
+  return { v[1] + w * tx + (y * tz - z * ty), v[2] + w * ty + (z * tx - x * tz), v[3] + w * tz + (x * ty - y * tx) }
+end
+local face = qrotv(o.lr, { 0, 1, 0 })
+local dot = (face[1] * o.lp.x + face[2] * o.lp.y) / r
+check(dot > 0.99 and math.abs(face[3]) < 1e-3, string.format("insect glaive: the flower keeps facing out (%.3f)", dot))
 extract._ExtractTimerWhite, extract._ExtractTimerOrange, extract._ExtractTimerTripple = 30, 30, 30
 frames(40, 1 / 60)
 check(orb("White") and orb("Orange"), "insect glaive: all three orbs")

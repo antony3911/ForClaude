@@ -682,33 +682,49 @@ def insect_glaive():
     finally:
         arsenal.kinsect = real
     to_file = upright(1.6, (0, 0, (0.52 + 0.95) / 2))
-    # The three extract orbs (hidden until their extract is lit; the weapons script moves their
-    # bones around the top blade), one material each on a three-band texture.
+    # The three extracts (hidden until lit; the weapons script moves their bones around the top
+    # blade): flowers (user's pick 2026-10-02, style 2), one material each; their parts take
+    # their colours from the extract texture's bands (petals, dark heart, bright heart, gold halo).
     floaters = {"Top_Halo": "MQ_TopHalo", "Bottom_Halo": "MQ_BottomHalo"}
     by_name, pivots = {}, {}
-    mats = arsenal.extract_materials()
     for i, kind in enumerate(("Red", "White", "Orange")):
-        a = math.radians(90 + 120 * i)
+        deg = 90 + 120 * i
+        a = math.radians(deg)
         center = Vector((IG_ORBIT[1] * math.cos(a), IG_ORBIT[1] * math.sin(a), IG_ORBIT[0]))
         pivots[f"MQ_Orb{kind}"] = center
-        for o in arsenal.extract_orb(kind, center, IG_ORB_RADIUS, mats[kind]):
+        for o in arsenal.extract_flower(kind, center, IG_FLOWER_RADIUS, deg):
+            if o.type not in ("MESH", "CURVE"):
+                continue
             floaters[o.name] = f"MQ_Orb{kind}"
             by_name[o.name] = f"MiquellaExtract{kind}"
             objs.append(o)
+
+    def band_of(o):
+        names = [sl.material.name.split(".")[0] for sl in o.material_slots if sl.material]
+        return next((EXTRACT_PART_BANDS[n] for n in names if n in EXTRACT_PART_BANDS), None)
     return placed("wp_miquella_ig", "Art/Model/MiquellaLight/InsectGlaive", objs, to_file,
                   {"VFX_Attack": to_file @ Vector((0, 0, 1.45 + 0.42))},
                   floaters=floaters, by_name=by_name, pivots=pivots, uv_band=EXTRACT_BANDS,
-                  textures=extract_textures)
+                  uv_band_count=len(EXTRACT_TEXTURE), uv_band_of=band_of, textures=extract_textures,
+                  budget={f"MiquellaExtract{k}": 4000 for k in ("Red", "White", "Orange")})
 
 
 # Orbit of the extract orbs in the prototype's space (centre height, radius): around the middle
 # of the top blade; ~0.035 m orbs (user: small balls).
 IG_ORBIT = (1.62, 0.088)
 IG_ORB_RADIUS = 0.022
+IG_FLOWER_RADIUS = 0.026
 EXTRACT_TEX_REL = "Art/Model/MiquellaLight/InsectGlaive/tex"
-EXTRACT_BANDS = {"MiquellaExtractRed": 0, "MiquellaExtractWhite": 1, "MiquellaExtractOrange": 2}
-# albedo, roughness, emissive colour (RGB 0-255): rot pink mould, frosted ice, glowing ember.
-EXTRACT_TEXTURE = [("#D88AA0", 0.85, (40, 10, 18)), ("#CFE6FA", 0.25, (24, 34, 46)), ("#FF8A1A", 0.5, (255, 140, 30))]
+# Band per part (orb_styles' materials): petals, dark heart, bright heart for each extract, and
+# the halos' gold. A material's own band (EXTRACT_BANDS) is for parts not listed.
+EXTRACT_PART_BANDS = {"rot_Main": 0, "rot_Dark": 1, "rot_Hot": 2, "frost_Main": 3, "frost_Dark": 4, "frost_Hot": 5,
+                      "frenzy_Main": 6, "frenzy_Dark": 7, "frenzy_Hot": 8, "Light": 9}
+EXTRACT_BANDS = {"MiquellaExtractRed": 0, "MiquellaExtractWhite": 3, "MiquellaExtractOrange": 6}
+# albedo, roughness, emissive colour (RGB 0-255), per band (orb_styles.ESSENCE's colours).
+EXTRACT_TEXTURE = [("#8E0A1E", 0.5, (150, 18, 40)), ("#2E040C", 0.7, (0, 0, 0)), ("#D0203A", 0.3, (235, 55, 80)),
+                   ("#D8EEFF", 0.25, (70, 95, 120)), ("#5C86B0", 0.4, (12, 22, 34)), ("#BFE2FF", 0.2, (200, 232, 255)),
+                   ("#FF9A00", 0.4, (255, 150, 20)), ("#2A1000", 0.6, (0, 0, 0)), ("#FFB21A", 0.3, (255, 200, 70)),
+                   ("#FFA526", 0.2, (255, 165, 38))]
 
 
 def extract_textures(kit):
@@ -716,20 +732,22 @@ def extract_textures(kit):
     from build_device_kit import convert_textures, save_rgba
     import numpy as np
     tex_dir = os.path.join(kit, "natives", "STM", *EXTRACT_TEX_REL.split("/"))
-    if os.path.exists(os.path.join(tex_dir, f"MiquellaExtract_ALBD.tex.241106027")):
+    marker = os.path.join(kit, "texture_sources", f"bands_{len(EXTRACT_TEXTURE)}")
+    if os.path.exists(os.path.join(tex_dir, f"MiquellaExtract_ALBD.tex.241106027")) and os.path.exists(marker):
         return
     src = os.path.join(kit, "texture_sources")
     os.makedirs(src, exist_ok=True)
-    n = 64
+    n, nb = 80, len(EXTRACT_TEXTURE)
     albd, nrro, emi = (np.zeros((n, n, 4), np.uint8) for _ in range(3))
     for i, (color, rough, glow) in enumerate(EXTRACT_TEXTURE):
-        cols = slice(i * n // 3, (i + 1) * n // 3 if i < 2 else n)
+        cols = slice(i * n // nb, (i + 1) * n // nb if i < nb - 1 else n)
         albd[:, cols] = [int(color[k:k + 2], 16) for k in (1, 3, 5)] + [255]
         nrro[:, cols] = [int(rough * 255), 128, 255, 128]
         emi[:, cols] = list(glow) + [255]
     for name, arr in (("ALBD", albd), ("NRRO", nrro), ("EMI", emi)):
         save_rgba(os.path.join(src, f"MiquellaExtract_{name}.png"), arr)
     convert_textures(src, os.path.join(kit, "dds"), tex_dir)
+    open(marker, "w").write("the extract texture's band layout")
 
 
 def kinsect():
@@ -1059,6 +1077,11 @@ def build_parts(spec, mesh_col):
         bpy.ops.object.convert(target="MESH")
         members = [o for o in bpy.context.selected_objects]
         for m in members:
+            band = spec.get("uv_band_of") and spec["uv_band_of"](m)
+            if band is not None and len(m.data.vertices):
+                attr = m.data.attributes.new("mq_band", "INT", "POINT")
+                for d in attr.data:
+                    d.value = band
             to_file = spec["to_file"] @ m.matrix_world
             weights = spec.get("weight_fn")
             if weights and len(m.data.vertices) and weights(m, to_file @ m.data.vertices[0].co) is not None:
@@ -1092,9 +1115,13 @@ def build_parts(spec, mesh_col):
             length_uv(o)
         bands = {**UV_BANDS, **spec.get("uv_band", {})}
         if mat in bands:
-            u = (bands[mat] + 0.5) / 3
-            for d in o.data.uv_layers.active.data:
-                d.uv = (u, 0.5)
+            count = spec.get("uv_band_count", 3)
+            attr = o.data.attributes.get("mq_band")
+            uv = o.data.uv_layers.active.data
+            for poly in o.data.polygons:
+                for li, vi in zip(poly.loop_indices, poly.vertices):
+                    b = attr.data[vi].value if attr else bands[mat]
+                    uv[li].uv = ((b + 0.5) / count, 0.5)
         before = tris(o)
         budget = {**BUDGET, **spec.get("budget", {})}
         limit = budget.get(mat) or (SET_BUDGET.get(base_material(mat)) if mat != base_material(mat) else None)

@@ -47,6 +47,9 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_ig%.") then
       return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_sns%.") then
+      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaTiming", "MiquellaBurst" }
+    end
     if self.mdfPath:match("wp_miquella_ln%.") then
       return { "MiquellaBlade", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaChargeTip",
                "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
@@ -489,6 +492,25 @@ comboPick = { slot = "SubWeapon", name = "SwordShield_ShieldD" }; onDraw()
 frames(30, 1 / 60)
 check(shieldMesh.meshPath == "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns_shield_film.mesh", "sword & shield: film D picked for every shield")
 check(savedCfg.assignShield.it01 == "SwordShield_ShieldD", "sword & shield: shield choice saved per type")
+-- Perfect Rush (user's pick "S2"): in the game's cJustRush actions the ring rides down the blade
+-- to the guard; a Perfect (_IsJustRush) bursts at the guard and fades.
+local ringJ = weaponGO.tf.joints["MQ_TimingRing"]
+local function shown(n) return weaponMesh.matEnabled[n] == true, weaponMesh.floats[n .. ".2"] or 0 end
+check(not shown("MiquellaTiming") and not shown("MiquellaBurst"), "sword & shield: no timing ring outside Perfect Rush")
+hunterAction = "app.Wp01Action.cJustRushCombo0"
+frames(6, 1 / 60)
+local zHigh = ringJ.lp.z
+check(shown("MiquellaTiming") and zHigh > 0.7, string.format("sword & shield: Perfect Rush shows the ring high on the blade (%.3f)", zHigh))
+frames(30, 1 / 60)
+check(math.abs(ringJ.lp.z - 0.15) < 0.01, string.format("sword & shield: the ring comes down to the guard (%.3f)", ringJ.lp.z))
+extract._IsJustRush = true
+frames(3, 1 / 60)
+check(shown("MiquellaBurst"), "sword & shield: a Perfect bursts at the guard")
+frames(30, 1 / 60)
+check(not shown("MiquellaBurst"), "sword & shield: the burst fades")
+hunterAction, extract._IsJustRush = nil, nil
+frames(30, 1 / 60)
+check(not shown("MiquellaTiming"), "sword & shield: the ring goes after the rush")
 -- Long sword: the scabbard (_1) keeps its game look.
 weaponMesh = newMesh("Art/Model/Item/it03/00/0001/it0300_0001_0.mesh")
 weaponGO = newGO("Wp03", 5001, weaponMesh, nil)

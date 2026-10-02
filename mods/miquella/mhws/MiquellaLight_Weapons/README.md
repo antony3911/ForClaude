@@ -46,5 +46,6 @@
 | 關節 `stretch = 根部高度` | 銃槍 `MQ_FilamentTop` | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟段數 |
 | `floaters.orbit.face = true`, `spin` | 操蟲棍精華 | 繞刀的零件一直朝外（建模時就朝外放），繞自己的朝向慢轉；不設就是原本的翻滾 |
 | `boosts[].chase = { 材質… }`, `chaseHz` | 充能斧斧強化 | 幾組材質輪流只亮一組（跑馬燈），不在那個型態時全部藏起來 |
+| 關節 `slide = true`＋`timing` 表 | 片手劍 `MQ_TimingRing` | 骨頭沿武器往上抬 `entry.slide`；`update_timing` 在完美突進動作（`cJustRush*`）時讓光環從刀尖降到護手，`_IsJustRush` 時爆開 |
 
 骨頭和零件在 `build_weapon_kit.py` 做：`floaters`（物件名 → 骨頭）＋`pivots`（骨頭位置）；一個材質分多種顏色用 `uv_band_of`／`uv_band_count`（操蟲棍精華，頂點屬性 `mq_band`）；只屬於一個型態的零件用 `sets`（充能斧 `SawA／B／C`）。預設隱藏的材質前綴在 `HIDDEN_AT_START`。

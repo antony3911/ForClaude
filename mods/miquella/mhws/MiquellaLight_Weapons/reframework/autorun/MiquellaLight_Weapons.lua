@@ -192,7 +192,17 @@ local KITS = {
         label = "Miquella light blade (sword & shield)",
         mesh = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns.mesh",
         mdf2 = "Art/Model/MiquellaLight/SwordShield/wp_miquella_sns.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaTiming = 1.2, MiquellaBurst = 1.2 },
+        -- Perfect Rush (user's pick 2026-10-02, "S2"): in the game's cJustRush* actions a ring
+        -- rides down the blade to the guard (MQ_TimingRing, built at the guard: slide lifts it by
+        -- entry.slide) as each timed blow comes; a Perfect bursts into rings and rays. The window
+        -- is the game's canJustRushCombo0-2 when they answer, else the ring falls in `fall` s;
+        -- a Perfect is _IsJustRush turning true. Guessed from the game's type names: the events
+        -- are logged (fields_app_cHunterWp01Handling.json, events / actions) to tune.
+        floaters = { mode = "fixed", joints = { { name = "MQ_TimingRing", pos = { 0.0, 0.0, 0.1500 }, slide = true } } },
+        timing = { actions = "JustRush", ring = "MiquellaTiming", burst = "MiquellaBurst", rise = 0.80, fall = 0.45,
+                   checks = { "canJustRushCombo0", "canJustRushCombo1", "canJustRushCombo2" },
+                   success = { "_IsJustRush" } },
         shield = "SwordShield_Shield",
     },
     SwordShield_Shield = {
@@ -1442,6 +1452,55 @@ local function update_gauges(entry, mesh, h, dt)
     stateInfo.gauges[entry.kit] = table.concat(info, "  ")
 end
 
+-- Sword & shield Perfect Rush (user's pick 2026-10-02, "S2"): see the kit's timing table.
+local TIMING_BURST = 0.35
+
+local function update_timing(entry, mesh, h, dt, now)
+    local spec = entry.kit.timing
+    local inRush = isWeaponDrawn and actionNow:find(spec.actions, 1, true) ~= nil
+    if actionNow ~= entry.timingAction then
+        entry.timingAction = actionNow
+        if inRush then
+            entry.timingStart = now
+            gl_event("Perfect Rush action " .. actionNow)
+        end
+    end
+    -- The game's own check for the window, when it answers (true / false); nil = not known.
+    local window = nil
+    if inRush and h then
+        for _, m in ipairs(spec.checks) do
+            local v = try(function() return h:call(m) end)
+            if type(v) == "boolean" then window = window or v end
+        end
+    end
+    if window ~= entry.timingWindow then
+        entry.timingWindow = window
+        if window ~= nil then gl_event("Perfect Rush window " .. tostring(window)) end
+    end
+    local p = 0
+    if inRush then
+        local t = (now - (entry.timingStart or now)) / spec.fall
+        if window == nil then p = math.min(1, t) else p = window and 1 or math.min(0.9, t) end
+    end
+    entry.slide = spec.rise * (1 - p)
+    local ok = h and first_number(h, spec.success)
+    local okOn = (ok or 0) > 0
+    if okOn and not entry.timingOk then
+        entry.burstAt = now
+        gl_event("Perfect!")
+    end
+    entry.timingOk = okOn
+    entry.mul = entry.mul or {}
+    entry.ringA = approach(entry.ringA or 0, inRush and 1 or 0, dt, 0.06, 0.2)
+    set_alpha(entry, mesh, spec.ring, entry.ringA)
+    entry.mul[spec.ring] = p >= 1 and 3.0 or 1.4
+    local b = entry.burstAt and math.max(0, 1 - (now - entry.burstAt) / TIMING_BURST) or 0
+    set_alpha(entry, mesh, spec.burst, b)
+    entry.mul[spec.burst] = 3.0
+    stateInfo.timing = string.format("in rush: %s  window: %s  ring %.2f  %s = %s",
+        tostring(inRush), tostring(window), p, spec.success[1], tostring(ok))
+end
+
 -- Field recorder: 4 times a second, every number / true-false field of the weapon handling
 -- (its type and parents); per field the lowest, highest and last value and how often it
 -- changed; saved every 5 s, one file per handling type.
@@ -1535,7 +1594,7 @@ local function update_states(chr)
     end
     for _, entry in pairs(swapped) do
         if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
-            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts then
+            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts or entry.kit.timing then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
@@ -1546,6 +1605,7 @@ local function update_states(chr)
                 if entry.kit.gunlance then update_gunlance(entry, mesh, h, dt, now) end
                 if entry.kit.mode then update_mode(entry, mesh, h, dt) end
                 if entry.kit.gauges or entry.kit.boosts then update_gauges(entry, mesh, h, dt) end
+                if entry.kit.timing then update_timing(entry, mesh, h, dt, now) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -1643,7 +1703,7 @@ local function float_joints(entry)
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
         local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, flap = j.flap,
-                                   spin = j.spin, stretch = j.stretch, off = { 0, 0, 0 },
+                                   spin = j.spin, stretch = j.stretch, slide = j.slide, off = { 0, 0, 0 },
                                    vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -1718,7 +1778,7 @@ end
 -- Rings move when floating is on, or when they pack (the bow) or orbit (the extract orbs),
 -- which work without it.
 local function rings_active(entry)
-    return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil
+    return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil or entry.kit.timing ~= nil
                                or (entry.kit.floaters and (entry.kit.floaters.orbit or entry.kit.floaters.flap
                                                            or entry.kit.floaters.spin)) ~= nil)
 end
@@ -1863,6 +1923,8 @@ local function step_floaters()
                         if s.stretch then
                             s.pos[3] = s.stretch + (s.pivot[3] - s.stretch) * math.max(0.15, entry.stretch or 0)
                         end
+                        -- Lifted along the weapon (the sword's timing ring).
+                        if s.slide then s.pos[3] = s.pos[3] + (entry.slide or 0) end
                         if blend > 0.001 then ring_on_arrow(s, entry.arrowLine, blend) end
                     end
                 end
@@ -2060,6 +2122,7 @@ re.on_draw_ui(function()
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
         if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
+        if entry.kit.timing and stateInfo.timing then imgui.text("Perfect Rush: " .. stateInfo.timing) end
         if stateInfo.gauges and stateInfo.gauges[entry.kit] then imgui.text("Gauges: " .. stateInfo.gauges[entry.kit]) end
         if entry.kit.mode and stateInfo.mode then
             imgui.text("Mode: " .. stateInfo.mode)

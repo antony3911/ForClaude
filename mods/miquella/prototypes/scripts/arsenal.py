@@ -1256,6 +1256,28 @@ def bow_blossoms(mats):
     return out
 
 
+# The sword & shield's Perfect Rush (user's pick 2026-10-02 evening, "S2"): a ring of light rides
+# down the blade to the guard as each timed blow comes (on its bone, MQ_TimingRing, built at the
+# guard: the weapons script lifts it to the point and lets it fall), and a Perfect bursts into
+# rings and rays at the guard. In the prototype's space (the sword's guard at GUARD_Z 0.16).
+SNS_TIMING_Z = 0.2
+
+
+def sns_timing_parts(mats):
+    """Names Timing_Ring, Timing_Ring_Inner (on the bone), Burst_Ring_<k>, Burst_Ray_<k>."""
+    ring = [light_ring("Timing_Ring", (0, 0, SNS_TIMING_Z), 0.06, (0, 0, 1), mats["light"], 0.004),
+            light_ring("Timing_Ring_Inner", (0, 0, SNS_TIMING_Z + 0.012), 0.045, (0, 0, 1), mats["light"], 0.0022)]
+    burst = []
+    for k, (z, r) in enumerate(((0.2, 0.1), (0.3, 0.14), (0.42, 0.18))):
+        burst.append(light_ring(f"Burst_Ring_{k}", (0, 0, z), r, (0, 0, 1), mats["light"], 0.004 - 0.001 * k))
+    for k in range(12):
+        a = 2 * math.pi * k / 12
+        d = V(math.cos(a), math.sin(a), 0.25)
+        burst.append(c.curve_tube(f"Burst_Ray_{k}", [V(0, 0, 0.2) + d * 0.08, V(0, 0, 0.2) + d * 0.2], [1.0, 0.1],
+                                  mats["light"], bevel=0.0025, resolution=2))
+    return ring, burst
+
+
 # The hammer's charge (user's pick 2026-10-02 evening, "H4"): an armillary sphere round the
 # caged sun, a great ring more each level, beads of light set along them. Each ring rides its
 # own bone at the head's centre (MQ_Arm0-2) that the weapons script turns about a different

@@ -258,12 +258,19 @@ def sns_sword():
     blade = blades.blade_material("Blade_Light", 0.35)
     core = c.make_material("Blade_Core", c.PALETTE["blade_core"], roughness=0.1,
                            emission=c.PALETTE["blade_core"], strength=0.8)
+    import arsenal
     blades.BLADE_LEN = 0.72
     blades.build_sword("Sword", ivory, drop, blade, core, seed=4)
+    # Perfect Rush (user's pick 2026-10-02, "S2"): the timing ring on its bone, the burst.
+    ring, burst = arsenal.sns_timing_parts({"light": drop})
     to_file = upright(1.25, (0, 0, (blades.GRIP_BOTTOM + blades.GUARD_Z) / 2))
     tip = Vector((0, 0, blades.GUARD_Z + blades.BLADE_LEN))
-    return placed("wp_miquella_sns", "Art/Model/MiquellaLight/SwordShield", subtree("Sword"), to_file,
-                  {"VFX_Attack": to_file @ tip})
+    log(f"  timing ring at file z {(to_file @ Vector((0, 0, arsenal.SNS_TIMING_Z))).z:+.4f}, "
+        f"point at {(to_file @ tip).z:+.4f}")
+    return placed("wp_miquella_sns", "Art/Model/MiquellaLight/SwordShield", subtree("Sword") + ring + burst, to_file,
+                  {"VFX_Attack": to_file @ tip},
+                  floaters={o.name: "MQ_TimingRing" for o in ring}, pivots={"MQ_TimingRing": (0, 0, arsenal.SNS_TIMING_Z)},
+                  by_name={**{o.name: "MiquellaTiming" for o in ring}, **{o.name: "MiquellaBurst" for o in burst}})
 
 
 def sns_shield():
@@ -958,6 +965,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
               **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
+              "MiquellaTiming": "MiquellaGlow", "MiquellaBurst": "MiquellaGlow",
               **{f"MiquellaBand{k + 1}": "MiquellaGlow" for k in range(LS_BANDS)},
               **{f"MiquellaBlade{k + 1}": "MiquellaBlade" for k in range(LS_BANDS)},
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
@@ -965,7 +973,8 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
 DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
 UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
-HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary")
+HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary",
+                   "MiquellaTiming", "MiquellaBurst")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some

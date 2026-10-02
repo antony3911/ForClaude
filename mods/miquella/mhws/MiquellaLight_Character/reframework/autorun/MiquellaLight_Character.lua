@@ -1,33 +1,45 @@
 -- MiquellaLight: Character (Monster Hunter Wilds, REFramework)
 --
--- Miquella's circlet ("halo") on the hunter's head WITHOUT overwriting any game file: the
--- script makes a GameObject of its own with a mesh (our model, from the patch pak
--- MiquellaLight_Character.pak) and puts it on the hunter's Head joint, the way EMV Engine
--- (alphazolam) and MDF-XL spawn and attach objects. The body, robe and hair are to go on the
--- same way later (see the research notes, section 15).
---
--- Two ways to follow the head: the object's transform parented to the hunter with the Head
--- joint as its parent joint (the engine moves it), or, if that does not hold, our script
--- copying the joint's position and rotation every frame before rendering. "Auto" tries the
--- first and falls back to the second when the circlet is not at the head a second later.
+-- Miquella on the hunter WITHOUT overwriting any game file: the script makes GameObjects of its
+-- own with our meshes (patch pak MiquellaLight_Character.pak) and puts them on the hunter, the
+-- way EMV Engine (alphazolam) and MDF-XL spawn and attach objects (research notes, section 15):
+-- - the circlet ("halo") on the Head joint: its transform parented to the hunter with Head as
+--   the parent joint, or, if that does not hold, our script copying the joint every frame
+--   before rendering ("Auto" tries the first and falls back to the second a second later);
+-- - the body (three shapes, A / B / C) on the whole skeleton: parented to the hunter with
+--   SameJointsConstraint, so its bones (named like the hunter's) follow the hunter's. While it
+--   shows, the hunter's own armor and innerwear (models under character/ch02 and ch03) are
+--   hidden; the face (ch00) and hair (ch01) stay.
 --
 -- STATUS: untested (2026-10-02). Every game call is wrapped in pcall. Visual only.
 
 local CONFIG_PATH = "MiquellaLight/Character.json"
 local MESH = "via.render.Mesh"
-local OBJECT_NAME = "MiquellaLight_Circlet"
--- The model is in the Head joint's space (bind pose): +Y up, +Z the face's front, +X the
--- hunter's left (build_weapon_kit.py circlet). glow: materials and their mdf2 Emissive_Intensity.
-local CIRCLET = {
-    mesh = "Art/Model/MiquellaLight/Character/mq_circlet.mesh",
-    mdf2 = "Art/Model/MiquellaLight/Character/mq_circlet.mdf2",
-    joint = "Head",
-    glow = { MiquellaHalo = 0.8, MiquellaGlow = 1.2 },
+local DIR = "Art/Model/MiquellaLight/Character/"
+-- glow: materials and their mdf2 Emissive_Intensity (the Glow slider scales them).
+local PIECES = {
+    {
+        key = "circlet", name = "MiquellaLight_Circlet", attach = "joint", joint = "Head",
+        -- In the Head joint's space (bind pose): +Y up, +Z the face's front (build_weapon_kit.py circlet).
+        mesh = function() return DIR .. "mq_circlet.mesh" end, mdf2 = DIR .. "mq_circlet.mdf2",
+        glow = { MiquellaHalo = 0.8, MiquellaGlow = 1.2 },
+    },
+    {
+        key = "body", name = "MiquellaLight_Body", attach = "skeleton",
+        -- On the hunter's skeleton in its bind pose (miquella_body.py kit).
+        mesh = nil, mdf2 = DIR .. "mq_body.mdf2",
+    },
 }
+local BODY_SHAPES = { "A slender", "B youthful", "C soft" }
+local BODY_MESHES = { DIR .. "mq_body_a.mesh", DIR .. "mq_body_b.mesh", DIR .. "mq_body_c.mesh" }
+PIECES[2].mesh = nil   -- set below, once config is read
 local CHECK_AFTER = 1.0      -- s after attaching: is the circlet at the head?
 local OFF_HEAD = 0.30        -- m from the Head joint: the parent joint did not hold
 local REFRESH_AT = { 1.0, 3.0 }   -- s after spawning: set the model again (a resource made that frame may not be loaded)
 local MODES = { "Auto", "Head joint", "Follow every frame" }
+local OUTFIT_PATHS = { "character/ch02/", "character/ch03/" }   -- armor and innerwear (lower case)
+local OUTFIT_SCAN = 0.5      -- s between looks for the hunter's outfit objects
+local SCAN_DEPTH = 6
 
 local config = {
     enabled = true,
@@ -36,13 +48,23 @@ local config = {
     size = 1.0,
     offset = { 0.0, 0.0, 0.0 },   -- cm: left, up, forward (the head's own axes)
     mode = 1,
+    body = true,
+    bodyShape = 1,
+    hideOutfit = true,
 }
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
     for k, v in pairs(saved) do config[k] = v end
 end
 if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
+if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
+PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
+local function piece_on(p)
+    if not config.enabled then return false end
+    if p.key == "circlet" then return config.circlet end
+    return config.body
+end
 
 local function try(fn, ...)
     local ok, result = pcall(fn, ...)
@@ -66,8 +88,15 @@ local function holder(typeName, path)
     return holders[key] or nil
 end
 -- Load now, so the first spawn has them ready.
-holder("via.render.MeshResource", CIRCLET.mesh)
-holder("via.render.MeshMaterialResource", CIRCLET.mdf2)
+for _, p in ipairs(PIECES) do holder("via.render.MeshMaterialResource", p.mdf2) end
+holder("via.render.MeshResource", PIECES[1].mesh())
+for _, m in ipairs(BODY_MESHES) do holder("via.render.MeshResource", m) end
+
+local function resource_path(res)
+    local s = res and try(function() return res:ToString() end)
+    if not s then return nil end
+    return (s:gsub("^Resource%[", ""):gsub("%]$", ""))
+end
 
 -- ------------------------------------------------------------------ hunter
 
@@ -81,6 +110,10 @@ end
 local function hunter_transform(chr)
     local go = try(function() return chr:call("get_GameObject") end)
     return go and try(function() return go:call("get_Transform") end), go
+end
+
+local function address(obj)
+    return try(function() return obj:get_address() end) or obj
 end
 
 -- ------------------------------------------------------------------ math (Vector3f / Quaternion fields only)
@@ -100,27 +133,28 @@ local function distance(a, b)
     return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 
--- ------------------------------------------------------------------ the circlet object
+-- ------------------------------------------------------------------ our objects
 
-local st = { info = "waiting for the hunter" }
+local st = { hxf = nil, info = "waiting for the hunter" }
+for _, p in ipairs(PIECES) do p.st = {} end
 
-local function find_leftover()
+local function find_leftover(name)
     -- After "Reset scripts" the old object is still in the scene: take it over.
     local sm = sdk.get_native_singleton("via.SceneManager")
     local scene = sm and try(function()
         return sdk.call_native_func(sm, sdk.find_type_definition("via.SceneManager"), "get_CurrentScene()")
     end)
-    return scene and try(function() return scene:call("findGameObject(System.String)", OBJECT_NAME) end)
+    return scene and try(function() return scene:call("findGameObject(System.String)", name) end)
 end
 
-local function create_object()
+local function create_object(name)
     local td = sdk.find_type_definition("via.GameObject")
     local go = nil
     local m1 = td and try(function() return td:get_method("create(System.String)") end)
-    if m1 then go = try(function() return m1:call(nil, OBJECT_NAME) end) end
+    if m1 then go = try(function() return m1:call(nil, name) end) end
     if not go then
         local m2 = td and try(function() return td:get_method("create(System.String, via.Folder)") end)
-        if m2 then go = try(function() return m2:call(nil, OBJECT_NAME, nil) end) end
+        if m2 then go = try(function() return m2:call(nil, name, nil) end) end
     end
     if not go then return nil end
     go = try(function() return go:add_ref() end) or go
@@ -128,11 +162,12 @@ local function create_object()
     return go
 end
 
-local function glow_slots(mesh)
+local function glow_slots(p)
     local slots = {}
+    local mesh = p.st.mesh
     local n = try(function() return mesh:get_MaterialNum() end) or 0
     for i = 0, n - 1 do
-        local base = CIRCLET.glow[try(function() return mesh:getMaterialName(i) end) or ""]
+        local base = p.glow and p.glow[try(function() return mesh:getMaterialName(i) end) or ""]
         if base then
             local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
             for j = 0, vars - 1 do
@@ -145,38 +180,40 @@ local function glow_slots(mesh)
     return slots
 end
 
-local function apply_glow()
-    if not st.mesh then return end
-    st.glowSlots = st.glowSlots or glow_slots(st.mesh)
-    for _, s in ipairs(st.glowSlots) do
-        try(function() st.mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
+local function apply_glow(p)
+    if not (p.glow and p.st.mesh) then return end
+    p.st.glowSlots = p.st.glowSlots or glow_slots(p)
+    for _, s in ipairs(p.st.glowSlots) do
+        try(function() p.st.mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
     end
 end
 
-local function set_model()
-    local m = holder("via.render.MeshResource", CIRCLET.mesh)
-    local d = holder("via.render.MeshMaterialResource", CIRCLET.mdf2)
+local function set_model(p)
+    local path = p.mesh()
+    local m = holder("via.render.MeshResource", path)
+    local d = holder("via.render.MeshMaterialResource", p.mdf2)
     if not (m and d) then
-        st.loadError = "could not load " .. CIRCLET.mesh .. " (is MiquellaLight_Character.pak installed?)"
+        p.st.loadError = "could not load " .. path .. " (is MiquellaLight_Character.pak installed?)"
         return false
     end
-    st.loadError = nil
-    try(function() st.mesh:setMesh(m) end)
-    try(function() st.mesh:set_Material(d) end)
-    local n = try(function() return st.mesh:get_MaterialNum() end) or 0
-    for i = 0, n - 1 do try(function() st.mesh:setMaterialsEnable(i, true) end) end
-    try(function() st.mesh:set_Enabled(true) end)
-    st.glowSlots = nil
-    apply_glow()
+    p.st.loadError = nil
+    try(function() p.st.mesh:setMesh(m) end)
+    try(function() p.st.mesh:set_Material(d) end)
+    local n = try(function() return p.st.mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do try(function() p.st.mesh:setMaterialsEnable(i, true) end) end
+    try(function() p.st.mesh:set_Enabled(true) end)
+    p.st.meshPath = path
+    p.st.glowSlots = nil
+    apply_glow(p)
     return true
 end
 
-local function spawn()
-    local go = find_leftover()
+local function spawn(p)
+    local go = find_leftover(p.name)
     local reused = go ~= nil
-    go = go or create_object()
+    go = go or create_object(p.name)
     if not go then
-        st.info = "could not create a GameObject (via.GameObject.create)"
+        p.st.info = "could not create a GameObject (via.GameObject.create)"
         return false
     end
     local mesh = try(function() return go:call("getComponent(System.Type)", sdk.typeof(MESH)) end)
@@ -188,16 +225,16 @@ local function spawn()
         end
     end
     if not mesh then
-        st.info = "could not add a mesh component"
+        p.st.info = "could not add a mesh component"
         return false
     end
-    st.go, st.mesh = go, mesh
-    st.xf = try(function() return go:call("get_Transform") end)
-    st.spawnedAt, st.refreshed = os.clock(), 0
-    st.parentAddr, st.follow = nil, nil
-    set_model()
-    st.info = reused and "took over the circlet left by the last script run" or "circlet made"
-    return st.xf ~= nil
+    p.st.go, p.st.mesh = go, mesh
+    p.st.xf = try(function() return go:call("get_Transform") end)
+    p.st.spawnedAt, p.st.refreshed = os.clock(), 0
+    p.st.parentAddr, p.st.follow = nil, nil
+    set_model(p)
+    p.st.info = reused and "took over the object left by the last script run" or "made"
+    return p.st.xf ~= nil
 end
 
 local function local_offset()
@@ -205,37 +242,141 @@ local function local_offset()
     return { o[1] / 100, o[2] / 100, o[3] / 100 }
 end
 
-local function attach(hxf, now)
-    try(function() st.xf:call("set_Parent", hxf) end)
-    local jointOk = try(function() st.xf:call("set_ParentJoint", CIRCLET.joint); return true end)
-    local o = local_offset()
-    try(function() st.xf:call("set_LocalPosition", Vector3f.new(o[1], o[2], o[3])) end)
-    try(function() st.xf:call("set_LocalRotation", Quaternion.new(0, 0, 0, 1)) end)
-    st.parentAddr = try(function() return hxf:get_address() end) or hxf
-    st.attachAt, st.checked = now, false
-    st.jointCall = jointOk and "set_ParentJoint ok" or "set_ParentJoint failed"
+local function attach(p, hxf, now)
+    local xf = p.st.xf
+    try(function() xf:call("set_Parent", hxf) end)
+    if p.attach == "joint" then
+        local ok = try(function() xf:call("set_ParentJoint", p.joint); return true end)
+        local o = local_offset()
+        try(function() xf:call("set_LocalPosition", Vector3f.new(o[1], o[2], o[3])) end)
+        p.st.jointCall = ok and "set_ParentJoint ok" or "set_ParentJoint failed"
+    else
+        local ok = try(function() xf:call("set_SameJointsConstraint", true); return true end)
+        try(function() xf:call("set_LocalPosition", Vector3f.new(0, 0, 0)) end)
+        p.st.jointCall = ok and "SameJointsConstraint on" or "SameJointsConstraint failed"
+    end
+    try(function() xf:call("set_LocalRotation", Quaternion.new(0, 0, 0, 1)) end)
+    p.st.parentAddr = address(hxf)
+    p.st.attachAt, p.st.checked = now, false
 end
 
-local function head_joint(hxf)
-    return hxf and try(function() return hxf:call("getJointByName", CIRCLET.joint) end)
+local function head_joint(hxf, name)
+    return hxf and try(function() return hxf:call("getJointByName", name) end)
 end
 
--- Follow mode: our object at the Head joint's world position and rotation, plus the offset.
+-- Follow mode (joint pieces): our object at the joint's world position and rotation, plus the offset.
 local function follow()
-    if not (st.follow and st.xf and st.hxf) then return end
-    local j = head_joint(st.hxf)
-    local p = j and try(function() return j:call("get_Position") end)
-    local q = j and try(function() return j:call("get_Rotation") end)
-    if not (p and q) then return end
-    local x, y, z = rotate(q, local_offset())
-    try(function() st.xf:call("set_Position", Vector3f.new(p.x + x, p.y + y, p.z + z)) end)
-    try(function() st.xf:call("set_Rotation", q) end)
+    for _, p in ipairs(PIECES) do
+        local s = p.st
+        if p.attach == "joint" and s.follow and s.xf and st.hxf then
+            local j = head_joint(st.hxf, p.joint)
+            local pos = j and try(function() return j:call("get_Position") end)
+            local q = j and try(function() return j:call("get_Rotation") end)
+            if pos and q then
+                local x, y, z = rotate(q, local_offset())
+                try(function() s.xf:call("set_Position", Vector3f.new(pos.x + x, pos.y + y, pos.z + z)) end)
+                try(function() s.xf:call("set_Rotation", q) end)
+            end
+        end
+    end
 end
 
-local function wanted_follow()
-    if config.mode == 2 then return false end
-    if config.mode == 3 then return true end
-    return st.autoFollow == true
+-- ------------------------------------------------------------------ the hunter's outfit
+
+local outfit = { list = {}, nextScan = 0, hidden = false }
+
+local function mesh_path(go)
+    local mesh = try(function() return go:call("getComponent(System.Type)", sdk.typeof(MESH)) end)
+    local s = mesh and resource_path(try(function() return mesh:getMesh() end))
+    return s and s:lower()
+end
+
+local function is_outfit(path)
+    if not path then return false end
+    for _, pat in ipairs(OUTFIT_PATHS) do
+        if path:find(pat, 1, true) then return true end
+    end
+    return false
+end
+
+local function scan_outfit(xf, out, depth)
+    if depth > SCAN_DEPTH then return end
+    local child = try(function() return xf:call("get_Child") end)
+    while child do
+        local go = try(function() return child:call("get_GameObject") end)
+        if go and is_outfit(mesh_path(go)) then out[#out + 1] = go end
+        scan_outfit(child, out, depth + 1)
+        child = try(function() return child:call("get_Next") end)
+    end
+end
+
+local function update_outfit(hxf, now)
+    local hide = config.enabled and config.body and config.hideOutfit and PIECES[2].st.go ~= nil
+    if hide and now >= outfit.nextScan then
+        outfit.nextScan = now + OUTFIT_SCAN
+        local found = {}
+        scan_outfit(hxf, found, 1)
+        outfit.list = found
+    end
+    if hide then
+        for _, go in ipairs(outfit.list) do try(function() go:call("set_DrawSelf", false) end) end
+        outfit.hidden = true
+    elseif outfit.hidden then
+        for _, go in ipairs(outfit.list) do try(function() go:call("set_DrawSelf", true) end) end
+        outfit.hidden, outfit.list = false, {}
+    end
+end
+
+-- ------------------------------------------------------------------ frame
+
+local function update_piece(p, hxf, hgo, now)
+    local s = p.st
+    local show = piece_on(p)
+    -- The game destroys objects on area changes: make it again.
+    if s.go and not try(function() return s.go:call("get_Valid") end) then
+        s.go, s.mesh, s.xf = nil, nil, nil
+    end
+    if not s.go then
+        if not show then return end
+        if not spawn(p) then return end
+    end
+    for i, t in ipairs(REFRESH_AT) do
+        if s.refreshed < i and now - s.spawnedAt >= t then
+            s.refreshed = i
+            set_model(p)
+        end
+    end
+    if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked
+    if s.parentAddr ~= address(hxf) then attach(p, hxf, now) end
+    if p.attach == "joint" then
+        -- Auto: a second after attaching, is it at the joint? If not, follow it ourselves.
+        if config.mode == 1 and not s.checked and now - s.attachAt >= CHECK_AFTER then
+            s.checked = true
+            local j = head_joint(hxf, p.joint)
+            local d = distance(try(function() return s.xf:call("get_Position") end),
+                               j and try(function() return j:call("get_Position") end))
+            s.lastDistance = d
+            s.autoFollow = d == nil or d > OFF_HEAD
+        end
+        s.follow = config.mode == 3 or (config.mode == 1 and s.autoFollow == true)
+        if s.follow then follow() end
+        local k = config.size
+        try(function() s.xf:call("set_LocalScale", Vector3f.new(k, k, k)) end)
+        local j = head_joint(hxf, p.joint)
+        local d = distance(try(function() return s.xf:call("get_Position") end),
+                           j and try(function() return j:call("get_Position") end))
+        s.info = string.format("on: %s  (%s)  %s cm from the %s joint", s.follow and "following every frame"
+            or p.joint .. " joint", s.jointCall or "?", d and string.format("%.1f", d * 100) or "?", p.joint)
+    else
+        s.info = string.format("on the skeleton (%s), %s", s.jointCall or "?", BODY_SHAPES[config.bodyShape])
+    end
+    -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
+    local hunterShown = try(function() return hgo:call("get_DrawSelf") end)
+    try(function() s.go:call("set_DrawSelf", show and hunterShown ~= false) end)
+    if p.glow and now >= (s.glowAt or 0) then
+        s.glowAt = now + 2
+        apply_glow(p)
+    end
 end
 
 local function update(now)
@@ -246,49 +387,9 @@ local function update(now)
     end
     local hxf, hgo = hunter_transform(chr)
     if not hxf then return end
-    st.hxf = hxf
-    local show = config.enabled and config.circlet
-    -- The game destroys objects on area changes: make it again.
-    if st.go and not try(function() return st.go:call("get_Valid") end) then
-        st.go, st.mesh, st.xf = nil, nil, nil
-    end
-    if not st.go then
-        if not show then return end
-        if not spawn() then return end
-    end
-    for i, t in ipairs(REFRESH_AT) do
-        if st.refreshed < i and now - st.spawnedAt >= t then
-            st.refreshed = i
-            set_model()
-        end
-    end
-    local addr = try(function() return hxf:get_address() end) or hxf
-    if st.parentAddr ~= addr then attach(hxf, now) end
-    -- Auto: a second after attaching, is the circlet at the head? If not, follow it ourselves.
-    if config.mode == 1 and not st.checked and now - st.attachAt >= CHECK_AFTER then
-        st.checked = true
-        local j = head_joint(hxf)
-        local d = distance(try(function() return st.xf:call("get_Position") end),
-                           j and try(function() return j:call("get_Position") end))
-        st.lastDistance = d
-        st.autoFollow = d == nil or d > OFF_HEAD
-    end
-    st.follow = wanted_follow()
-    if st.follow then follow() end
-    local s = config.size
-    try(function() st.xf:call("set_LocalScale", Vector3f.new(s, s, s)) end)
-    -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
-    local hunterShown = try(function() return hgo:call("get_DrawSelf") end)
-    try(function() st.go:call("set_DrawSelf", show and hunterShown ~= false) end)
-    if now >= (st.glowAt or 0) then
-        st.glowAt = now + 2
-        apply_glow()
-    end
-    local j = head_joint(hxf)
-    local d = distance(try(function() return st.xf:call("get_Position") end),
-                       j and try(function() return j:call("get_Position") end))
-    st.info = string.format("circlet on: %s  (%s)  %s cm from the Head joint", st.follow and "following every frame"
-        or "Head joint", st.jointCall or "?", d and string.format("%.1f", d * 100) or "?")
+    st.hxf, st.info = hxf, nil
+    for _, p in ipairs(PIECES) do update_piece(p, hxf, hgo, now) end
+    update_outfit(hxf, now)
 end
 
 re.on_frame(function()
@@ -302,9 +403,13 @@ if re.on_pre_application_entry then
         followHooked = pcall(re.on_pre_application_entry, phase, follow) or followHooked
     end
 end
+if not followHooked then re.on_frame(follow) end
 
 re.on_script_reset(function()
-    if st.go then try(function() st.go:call("set_DrawSelf", false) end) end
+    for _, p in ipairs(PIECES) do
+        if p.st.go then try(function() p.st.go:call("set_DrawSelf", false) end) end
+    end
+    for _, go in ipairs(outfit.list) do try(function() go:call("set_DrawSelf", true) end) end
 end)
 
 -- ------------------------------------------------------------------ menu
@@ -313,35 +418,42 @@ re.on_draw_ui(function()
     if not imgui.tree_node("MiquellaLight: Character") then return end
     local changed, c = false, false
     c, config.enabled = imgui.checkbox("Enabled", config.enabled); changed = changed or c
+    if st.info then imgui.text(st.info) end
+    -- Body
+    c, config.body = imgui.checkbox("Body", config.body); changed = changed or c
+    c, config.bodyShape = imgui.combo("Body shape", config.bodyShape, BODY_SHAPES); changed = changed or c
+    c, config.hideOutfit = imgui.checkbox("Hide the hunter's armor and innerwear", config.hideOutfit)
+    changed = changed or c
+    local b = PIECES[2].st
+    if b.loadError then imgui.text(b.loadError) end
+    if b.info then imgui.text("Body: " .. b.info .. string.format("  (outfit objects hidden: %d)", #outfit.list)) end
+    -- Circlet
     c, config.circlet = imgui.checkbox("Circlet (halo)", config.circlet); changed = changed or c
     c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0); changed = changed or c
-    if c then apply_glow() end
+    if c then apply_glow(PIECES[1]) end
     c, config.size = imgui.slider_float("Size", config.size, 0.8, 1.3); changed = changed or c
     local labels = { "Left / right (cm)", "Up / down (cm)", "Forward / back (cm)" }
     for i = 1, 3 do
         c, config.offset[i] = imgui.slider_float(labels[i], config.offset[i], -4.0, 4.0)
-        if c then st.parentAddr = nil end
+        if c then PIECES[1].st.parentAddr = nil end
         changed = changed or c
     end
     c, config.mode = imgui.combo("Attach", config.mode, MODES)
-    if c then st.parentAddr, st.autoFollow = nil, nil end
+    if c then PIECES[1].st.parentAddr, PIECES[1].st.autoFollow = nil, nil end
     changed = changed or c
     if imgui.button("Reset position") then
-        config.offset, config.size, st.parentAddr = { 0.0, 0.0, 0.0 }, 1.0, nil
+        config.offset, config.size, PIECES[1].st.parentAddr = { 0.0, 0.0, 0.0 }, 1.0, nil
         changed = true
     end
-    if st.loadError then imgui.text(st.loadError) end
-    imgui.text(st.info or "")
-    if config.mode == 1 and st.checked then
+    local s = PIECES[1].st
+    if s.loadError then imgui.text(s.loadError) end
+    if s.info then imgui.text("Circlet: " .. s.info) end
+    if config.mode == 1 and s.checked then
         imgui.text(string.format("Auto: %s cm off a second after attaching -> %s",
-            st.lastDistance and string.format("%.1f", st.lastDistance * 100) or "?",
-            st.autoFollow and "following every frame" or "Head joint holds"))
+            s.lastDistance and string.format("%.1f", s.lastDistance * 100) or "?",
+            s.autoFollow and "following every frame" or "Head joint holds"))
     end
     if not followHooked then imgui.text("(follow mode runs in on_frame: may lag a frame)") end
     if changed then save_config() end
     imgui.tree_pop()
 end)
-
-if not followHooked then
-    re.on_frame(follow)
-end

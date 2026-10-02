@@ -13,6 +13,9 @@ Usage (bpy 4.5 with RE Mesh Editor in the user add-ons):
   python miquella_body.py preview <MakeHuman data dir> <game ch02_002_0002 .mesh> <out dir> [game face .mesh [other innerwear .mesh ...]]
       the variants side by side (and the game's hunter body / face if given: such a render has
       game models in it and stays out of the repo)
+  python miquella_body.py kit <MakeHuman data dir> <game ch02_002_0002 .mesh> <game face .mesh> <kit dir> <dual blades .mdf2>
+      every variant as Art/Model/MiquellaLight/Character/mq_body_<a|b|c>.mesh (+ mq_body.mdf2), on
+      the game's skeleton (from the given body mesh), weighted to its main bones
 Variants: VARIANTS below.
 """
 import json
@@ -488,20 +491,200 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None):
     log(f"{obj.name}: {len(me.vertices)} verts, {len(me.polygons)} faces after the cut")
 
 
+def ground_feet(obj, G):
+    """The game's ankle joint is lower than MakeHuman's: below the ankles the feet are squashed
+    so the soles stand on the ground (z 0) instead of sinking into it."""
+    ankle = (G["L_Foot"].z + G["R_Foot"].z) / 2
+    vs = [v for v in obj.data.vertices if v.co.z < ankle and abs(v.co.x) < 0.4]
+    sole = min(v.co.z for v in vs)
+    if sole < 0:
+        k = ankle / (ankle - sole)
+        for v in vs:
+            v.co.z = ankle + (v.co.z - ankle) * k
+        log(f"  feet: sole {sole:+.3f} -> 0 (below the ankle at {ankle:.3f})")
+
+
 def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     verts, uvs, faces, skel, weights = base
     v = aligned(skel, [mh_to_blender(p) for p in shaped(data, verts, params)], G)
     J = joint_positions(skel, v)
     obj = build_mesh(name, v, uvs, faces, weights)
     arm = build_rig(skel, J)
-    pose_to(arm, fit_targets(J, G))
+    targets = fit_targets(J, G)
+    obj["fit"] = {b: [list(t) if h is None else list(h), list(t)] for b, (h, t) in targets.items()}
+    pose_to(arm, targets)
     bake(obj, arm)
+    ground_feet(obj, G)
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]
     smooth_spots(obj, spots)
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" or o is arm]:
         bpy.data.objects.remove(o, do_unlink=True)
     cut_and_paint(obj, G, skin, cloth, face_pts)
     return obj
+
+
+# ------------------------------------------------------------------ game kit
+
+def segment_bone(z, chain, G):
+    """The game bone of a chain whose segment holds height z (the last one covers above)."""
+    out = chain[0]
+    for name in chain:
+        if G[name].z <= z + 1e-4:
+            out = name
+    return out
+
+
+def bone_map(skel, fit, G):
+    """MakeHuman bone -> game bone (main bones only: the game's *_HJ_* helpers are left out)."""
+    m = {"root": "Hip", "head": "Head"}
+
+    def mid(b):
+        return (Vector(fit[b][0]) + Vector(fit[b][1])) / 2
+    for b in ("spine05", "spine04", "spine03", "spine02", "spine01"):
+        m[b] = segment_bone(mid(b).z, ["Spine_0", "Spine_1", "Spine_2"], G)
+    for b in ("neck01", "neck02", "neck03"):
+        m[b] = segment_bone(mid(b).z, ["Neck_0", "Neck_1"], G)
+    for s, S in (("L", "L_"), ("R", "R_")):
+        m.update({f"pelvis.{s}": "Hip", f"breast.{s}": "Spine_2",
+                  f"clavicle.{s}": S + "Shoulder", f"shoulder01.{s}": S + "Shoulder",
+                  f"upperarm01.{s}": S + "UpperArm", f"upperarm02.{s}": S + "UpperArm",
+                  f"lowerarm01.{s}": S + "Forearm", f"lowerarm02.{s}": S + "Forearm",
+                  f"wrist.{s}": S + "Hand", f"metacarpal1.{s}": S + "Hand", f"metacarpal2.{s}": S + "Hand",
+                  f"metacarpal3.{s}": S + "Palm", f"metacarpal4.{s}": S + "Palm",
+                  f"upperleg01.{s}": S + "Thigh", f"upperleg02.{s}": S + "Thigh",
+                  f"lowerleg01.{s}": S + "Shin", f"lowerleg02.{s}": S + "Shin", f"foot.{s}": S + "Foot"})
+        for k, (game, f) in enumerate([("Thumb", ""), ("Index", "F"), ("Middle", "F"), ("Ring", "F"), ("Pinky", "F")]):
+            for i in (1, 2, 3):
+                m[f"finger{k + 1}-{i}.{s}"] = f"{S}{game}{f}{i}"
+        for b in skel["bones"]:
+            if b.startswith("toe") and b.endswith("." + s):
+                m[b] = S + "Toe"
+    # Anything else (face, tongue, eyes...): its nearest mapped ancestor's.
+    for b in skel["bones"]:
+        a = b
+        while a not in m and skel["bones"][a].get("parent"):
+            a = skel["bones"][a]["parent"]
+        m.setdefault(b, m.get(a, "Head"))
+    return m
+
+
+MAX_WEIGHTS = 6
+
+
+def game_weights(obj, skel, G):
+    """MakeHuman's vertex groups -> game bone groups (summed, the top MAX_WEIGHTS, normalized)."""
+    fit = obj["fit"].to_dict()
+    m = bone_map(skel, fit, G)
+    names = {g.index: g.name for g in obj.vertex_groups}
+    per_vertex = []
+    for v in obj.data.vertices:
+        acc = {}
+        for ge in v.groups:
+            if ge.weight > 0:
+                gb = m.get(names[ge.group], "Hip")
+                acc[gb] = acc.get(gb, 0.0) + ge.weight
+        top = sorted(acc.items(), key=lambda kv: -kv[1])[:MAX_WEIGHTS]
+        total = sum(w for _, w in top) or 1.0
+        per_vertex.append([(b, w / total) for b, w in top] or [("Hip", 1.0)])
+    obj.vertex_groups.clear()
+    groups = {}
+    for i, ws in enumerate(per_vertex):
+        for b, w in ws:
+            if b not in groups:
+                groups[b] = obj.vertex_groups.new(name=b)
+            groups[b].add([i], w, "REPLACE")
+    log(f"  weights on {len(groups)} game bones")
+
+
+MESH_EXT, MDF_EXT = ".241111606", ".45"
+REL = "Art/Model/MiquellaLight/Character"
+# Our material -> (game material name, dual blades material it is copied from).
+GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("MiquellaCloth", "MiquellaGrip")}
+
+
+def split_for_export(obj, mesh_col):
+    """One object per material, named the way RE Mesh Editor reads them (Group_0_Sub_i__Material)."""
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.mesh.separate(type="MATERIAL")
+    out = []
+    for o in list(bpy.context.selected_objects):
+        used = {p.material_index for p in o.data.polygons}
+        mat = o.data.materials[used.pop()].name.split(".")[0] if len(used) == 1 else None
+        if mat not in GAME_MATERIALS:
+            bpy.data.objects.remove(o, do_unlink=True)
+            continue
+        out.append((GAME_MATERIALS[mat][0], o))
+    out.sort(key=lambda t: t[0])
+    for i, (game_mat, o) in enumerate(out):
+        o.name = f"Group_0_Sub_{i}__{game_mat}"
+        o.data.materials.clear()
+        o.data.materials.append(bpy.data.materials.get(game_mat) or bpy.data.materials.new(game_mat))
+        for col in list(o.users_collection):
+            col.objects.unlink(o)
+        mesh_col.objects.link(o)
+    return [o for _, o in out]
+
+
+def write_mdf(path, template_mdf):
+    import copy
+    from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
+    template = readMDF(template_mdf)
+    by_name = {m.materialName: m for m in template.materialList}
+    mats = []
+    for game_mat, source in GAME_MATERIALS.values():
+        new = copy.deepcopy(by_name[source])
+        new.materialName = game_mat
+        mats.append(new)
+    template.materialList = mats
+    writeMDF(template, path)
+    log(f"mdf: {[m.materialName for m in readMDF(path).materialList]}")
+
+
+def kit(data, game_body, face, kit_dir, template_mdf):
+    import common as c
+    c.reset_scene()
+    enable_addon()
+    from re_mesh_editor.modules.mesh.blender_re_mesh import exportREMeshFile
+    arm, _ = import_game(game_body, keep_meshes=False)
+    G = game_joints(arm)
+    _, face_objs = import_game(face, keep_meshes=True)
+    face_pts = [o.matrix_world @ v.co for o in face_objs for v in o.data.vertices]
+    for o in list(bpy.data.objects):
+        if o.type == "ARMATURE" and o is not arm or o in face_objs:
+            bpy.data.objects.remove(o, do_unlink=True)
+    base = load_base(data)
+    skin = bpy.data.materials.new("Skin")
+    cloth = bpy.data.materials.new("Underwear")
+    natives = os.path.join(kit_dir, "natives", "STM", *REL.split("/"))
+    os.makedirs(natives, exist_ok=True)
+    for key, params in VARIANTS.items():
+        name = f"mq_body_{key.lower()}"
+        body = make_body(data, base, params, G, name, skin, cloth, face_pts)
+        game_weights(body, base[3], G)
+        mesh_col = bpy.data.collections.new(f"{name}.mesh")
+        bpy.context.scene.collection.children.link(mesh_col)
+        for col in list(arm.users_collection):
+            col.objects.unlink(arm)
+        mesh_col.objects.link(arm)
+        subs = split_for_export(body, mesh_col)
+        for o in subs:
+            o.modifiers.clear()
+            o.modifiers.new("Armature", "ARMATURE").object = arm
+            o.parent = arm
+        path = os.path.join(natives, f"{name}.mesh{MESH_EXT}")
+        ok = exportREMeshFile(path, {"targetCollection": mesh_col.name, "selectedOnly": False,
+                                     "exportAllLODs": False, "exportBlendShapes": False, "rotate90": True,
+                                     "useBlenderMaterialName": False, "preserveBoneMatrices": True,
+                                     "exportBoundingBoxes": False, "autoSolveRepeatedUVs": True,
+                                     "preserveSharpEdges": False})
+        log(f"export {name}: {ok} ({os.path.getsize(path)} bytes), {[o.name for o in subs]}, "
+            f"{sum(len(o.data.vertices) for o in subs)} verts")
+        for o in subs:
+            bpy.data.objects.remove(o, do_unlink=True)
+    write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, "mq_body_kit.blend"))
 
 
 # ------------------------------------------------------------------ preview
@@ -582,6 +765,9 @@ def preview(data, game_body, out, face=None, extra=()):
 
 def main():
     cmd = sys.argv[1]
+    if cmd == "kit":
+        data, game_body, face, kit_dir, template = (os.path.abspath(a) for a in sys.argv[2:7])
+        kit(data, game_body, face, kit_dir, template)
     if cmd == "preview":
         data, game_body, out = sys.argv[2:5]
         face = sys.argv[5] if len(sys.argv) > 5 else None

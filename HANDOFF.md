@@ -9,7 +9,8 @@
 
 ## 0. 兩個帳號之間的留言
 
-**第一帳號 → 下一個 session（2026-10-02 深夜，最新）**：使用者還沒實測（去打 LoL，說「你再去想些事做」）。這段做了兩件事，都已裝進遊戲（遊戲關著直接裝）：
+**第一帳號 → 下一個 session（2026-10-02 深夜，最新）**：使用者還沒實測（去打 LoL，說「你再去想些事做」，之後說「那身體你先做吧」）。這段做了三件事，都已裝進遊戲（遊戲關著直接裝）：
+- **米凱拉的身體**（三款，等使用者挑；第 9 節「角色」）：MakeHuman CC0 人體 → `MiquellaLight_Character.pak` 的 `mq_body_a／b／c`，腳本掛到獵人骨架上並藏原本的衣服
 - **片手劍時機光環的校正追蹤**：完美突進期間每幀記下所有欄位的變化，存在欄位記錄檔的 `trace`（第 9 節⑧）。使用者打幾次完美突進後讀 `fields_app_cHunterWp01Handling.json` 的 `trace` 校正
 - **角色第一步：頭冠進遊戲**（第 9 節「角色」）：新腳本 `MiquellaLight_Character.lua`＋`MiquellaLight_Character.pak`，用 `via.GameObject.create` 生成物件、掛到獵人 `Head` 骨頭（EMV Engine 的做法，不覆蓋遊戲檔）。**這個方法驗證成功後，身體、長袍、頭髮都照做**。也解出了男性內衣 `ch02_002_000{1,2,4,5}`、骨架 `ch02_000_9000.fbxskel`、臉 `ch00_000／001_0000`、髮型 `ch01_000_0001`（在 `MiquellaTools\extracted`）
 - 測試：`weapons_test.lua` 189 項、`character_test.lua` 四種模式全過
@@ -360,7 +361,8 @@
 - **頭冠遊戲版（做完、已裝進遊戲，等實測）**：`build_weapon_kit.py circlet`（原型 `circlet.py` v10，放大 (1.22, 1.10, 1.12) 戴在遊戲的頭上，檔案空間＝`Head` 骨頭空間，材質 `MiquellaHalo`＝象牙底整個發金光）→ `MiquellaLight_Character_kit`、`MiquellaLight_Character.pak`；腳本 `mhws/MiquellaLight_Character/`（README 有做法和選單）。**請使用者測**：選單「MiquellaLight: Character」，看頭冠有沒有出現、在不在額頭、跟不跟頭動；狀態列寫 `Head joint` 或 `following every frame`、離 `Head` 幾公分；位置不對用選單的上下／前後滑桿調，告訴 Claude 數值寫回模型。戴頭盔會穿模（先關頭盔顯示）。預覽 `MiquellaTools\work\previews\circlet\circlet_on_game_head.png`（含遊戲的頭，不進 repo）
 - **如果生成物件不行**（狀態列寫 could not create）：退回覆蓋檔案的做法（把頭冠併進某款髮型 `ch01_000_00xx`，或放進內衣身體）
 - **發現（2026-10-02 深夜）**：荒野的內衣是**整套衣服**（襯衫、皮帶、褲子、靴子），皮膚只有手、脖子、臉 → **沒有裸身模型可改，身體要自己做**（研究筆記第 18 節，有骨頭位置和 A 字綁定姿勢）
-- **下一步（頭冠驗證後）**：①~~匯入內衣四件、量體型~~（做了，研究筆記第 18 節）；②照第 2 節的角色方向自己做身體（纖細、平滑）＋長袍（上半身貼身、下擺擺動）原型，**放在遊戲的身體旁邊並排**給使用者挑體型；③頭髮（擺動鏈）。長袍下擺的擺動要學內衣身體的 `chain2`。內衣身體的模型有「群組」（0～14，穿防具時遊戲藏掉被蓋住的部分），掛上去時要把原本的內衣／防具藏起來（`set_DrawSelf(false)` 或關材質）
+- **身體（2026-10-02 深夜，使用者：「那身體你先做吧」）做完、已裝進遊戲，等實測**：MakeHuman 基礎人體（CC0）調成纖細中性、對齊遊戲骨架、切掉頭接遊戲的臉、內褲材質；**三款 A 纖細中性／B 少年感／C 柔和**（預覽 `MiquellaTools\work\previews\body\body_variants_sheet.png` 已傳給使用者，**等他挑**），三款都進了 pak，遊戲選單 `Body shape` 可切。做法、指令在 `mhws/MiquellaLight_Character_kit/README.md`，程式 `prototypes/scripts/miquella_body.py`。腳本：身體物件 SameJointsConstraint 跟著獵人、打開時藏獵人的防具和內衣（ch02／ch03），臉和頭髮保留。`character_test.lua` 21 項。**請使用者測**：選單「MiquellaLight: Character」看身體有沒有出現、原本的衣服有沒有消失、動作時關節變形、脖子接縫；三款切換比較。**權重只用主要骨頭**，膝肘肩如果折得難看 → 改用遊戲 `*_HJ_*` 輔助骨頭（例：從內衣用最近表面轉移權重、排除 `_CT`／`_CH_` 擺動骨頭）。膚色現在是雙劍的象牙材質（之後做膚色貼圖或抄遊戲的皮膚材質）
+- **下一步（頭冠驗證後）**：①~~匯入內衣四件、量體型~~（做了，研究筆記第 18 節）；②~~自己做身體~~（上一條）（纖細、平滑）＋長袍（上半身貼身、下擺擺動）原型，**放在遊戲的身體旁邊並排**給使用者挑體型；③頭髮（擺動鏈）。長袍下擺的擺動要學內衣身體的 `chain2`。內衣身體的模型有「群組」（0～14，穿防具時遊戲藏掉被蓋住的部分），掛上去時要把原本的內衣／防具藏起來（`set_DrawSelf(false)` 或關材質）
 
 **不需要遊戲、隨時可做**：調整任何預覽、做新的設計提案、整理文件
 

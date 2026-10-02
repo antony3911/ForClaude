@@ -25,16 +25,19 @@ OPTS = {"clearScene": False, "createCollections": True, "loadMaterials": False,
 
 # Thin braids: (azimuth from the back, + = character's left (+X), start z, end z, width,
 # azimuth factor at the end (hair narrows toward the back lower down)).
-BACK = [(-88, 1.612, 1.38, 0.0095, 0.85, 1), (-80, 1.605, 1.22, 0.011, 0.75, 0),
-        (-64, 1.60, 1.30, 0.010, 0.75, 1), (-45, 1.585, 1.13, 0.012, 0.7, 0),
-        (-37, 1.58, 1.25, 0.0095, 0.75, 1), (-18, 1.56, 1.17, 0.011, 0.85, 0),
-        (16, 1.555, 1.21, 0.0105, 0.85, 1), (33, 1.575, 1.12, 0.012, 0.75, 0),
-        (50, 1.59, 1.24, 0.010, 0.7, 1), (57, 1.595, 1.15, 0.011, 0.7, 0),
-        (78, 1.605, 1.30, 0.0105, 0.75, 0), (96, 1.615, 1.36, 0.009, 0.85, 1)]
+BACK = [(-88, 1.612, 1.38, 0.0095, 0.85, 1), (-80, 1.565, 1.22, 0.011, 0.75, 0),
+        (-64, 1.60, 1.30, 0.010, 0.75, 1), (-45, 1.525, 1.13, 0.012, 0.7, 0),
+        (-37, 1.585, 1.25, 0.0095, 0.75, 1), (-18, 1.495, 1.17, 0.011, 0.85, 0),
+        (16, 1.52, 1.21, 0.0105, 0.85, 1), (33, 1.575, 1.12, 0.012, 0.75, 0),
+        (50, 1.535, 1.24, 0.010, 0.7, 1), (57, 1.595, 1.15, 0.011, 0.7, 0),
+        (78, 1.555, 1.30, 0.0105, 0.75, 0), (96, 1.615, 1.36, 0.009, 0.85, 1)]
+# Start heights are staggered: some come out from under the side twists, some from the waves lower.
 FRONT = [  # side (+1 left / -1 right), start azimuth, x on shoulder, end z, width
     # as thick as the two side twists that merge into the main braid (~3 cm)
     (1, 122, 0.112, 1.17, 0.030), (-1, 120, 0.115, 1.15, 0.030)]
 THIN_SCALE = 1.5   # user 2026-10-03: the thin braids were too thin
+ROOT_LEN, ROOT_LEN_FRONT = 0.04, 0.06   # braids gathered from the hair above their start
+SINK = 1.2   # how deep (x width) the root tips go under the loose hair
 FRONT_REPLACES = {0, 11}   # indices in BACK dropped in variant A
 
 
@@ -154,8 +157,12 @@ def frames(pts, outs):
     return T, B, N
 
 
-def braid(name, pts, outs, W, color, tail_len=None, seed=0, tie=True, tail=True, ramp_in=True):
-    """Three-strand braid along pts (top -> bottom, ~1 mm apart); flat side faces outs."""
+def braid(name, pts, outs, W, color, tail_len=None, seed=0, tie=True, tail=True, ramp_in=True,
+          root_len=0.0):
+    """Three-strand braid along pts (top -> bottom, ~1 mm apart); flat side faces outs.
+    The first root_len of the path is the root: the three strands fan out upward as flat locks
+    that thin out and sink into the loose hair, so the braid is gathered from the hair instead
+    of starting from nothing."""
     rnd = random.Random(seed)
     T, B, N = frames(pts, outs)
     s = [0.0]
@@ -167,16 +174,30 @@ def braid(name, pts, outs, W, color, tail_len=None, seed=0, tie=True, tail=True,
     ph0 = rnd.uniform(0, 2 * math.pi)
     K = 12
     bld = Builder()
+    t0s = [ph0 + 2 * math.pi * i / 3 for i in range(3)]
+    order = sorted(range(3), key=lambda i: math.sin(t0s[i]))
+    spread = min(0.8 * W, 0.014)
+    e0 = 0.4 if ramp_in else 1.0
     for i in range(3):
-        centers = []
+        side = (order.index(i) - 1) * (1.0 + rnd.uniform(-0.2, 0.2))
+        centers, roots = [], []
         for j, sj in enumerate(s):
+            if sj < root_len:
+                u = (root_len - sj) / root_len          # 1 at the top of the root
+                t0 = t0s[i]
+                centers.append(pts[j] + N[j] * (amp * e0 * math.sin(t0) + spread * side * u ** 1.2)
+                               + B[j] * (dep * e0 * math.sin(2 * t0) * (1 - u) - SINK * W * u ** 1.2))
+                roots.append(u)
+                continue
+            sb = sj - root_len
             env = 1.0
             if ramp_in:
-                env *= 0.6 + 0.4 * min(1.0, sj / (0.7 * P))
+                env *= 0.4 + 0.6 * min(1.0, sb / (1.2 * P))
             env *= 0.35 + 0.65 * min(1.0, (L - sj) / (0.6 * P))
-            t = 2 * math.pi * sj / P + 2 * math.pi * i / 3 + ph0
+            t = 2 * math.pi * sb / P + t0s[i]
             centers.append(pts[j] + N[j] * (amp * env * math.sin(t))
                            + B[j] * (dep * env * math.sin(2 * t)))
+            roots.append(0.0)
         rings = []
         for j, c in enumerate(centers):
             a, b = centers[max(0, j - 1)], centers[min(len(centers) - 1, j + 1)]
@@ -185,11 +206,16 @@ def braid(name, pts, outs, W, color, tail_len=None, seed=0, tie=True, tail=True,
             mm = bb.cross(ti)
             sj = s[j]
             thin = 0.55 + 0.45 * min(1.0, (L - sj) / (0.5 * P))
+            u = roots[j]
+            fw, ft = 1 - 0.75 * u, 1 - 0.75 * u     # root locks: taper to a point as they sink
+            if ramp_in and u == 0.0:                # the braid tightens and thickens over 1.2 periods
+                g = 0.7 + 0.3 * min(1.0, max(0.0, sj - root_len) / (1.2 * P))
+                fw, ft = g, g
             ring = []
             for k in range(K):
                 th = 2 * math.pi * k / K
                 f = (1 + 0.07 * math.sin(7 * th + i)) * thin
-                ring.append(c + mm * (maj * math.cos(th) * f) + bb * (mnr * math.sin(th) * f))
+                ring.append(c + mm * (maj * math.cos(th) * f * fw) + bb * (mnr * math.sin(th) * f * ft))
             rings.append(ring)
         bld.ring_tube(rings)
     objs = [bld.obj(name, color)]
@@ -367,6 +393,29 @@ def main():
                 return loc, d
         raise RuntimeError(f"no hair near {ph} {z}")
 
+    def root_above(phi_deg, z0, w, length):
+        """Hair-surface points from z0 + length down to just above z0 (top -> bottom)."""
+        out, r_prev, z = [], None, z0 + 0.004
+        while z <= z0 + length:
+            loc, d = hair_hit(phi_deg, z)
+            if loc is None:
+                break
+            r = (loc - Vector((0, 0.02, z))).length
+            if r_prev is not None and r > r_prev + 0.002:
+                r = r_prev + 0.002
+            r_prev = r
+            out.append((Vector((0, 0.02, z)) + d * (r + w * 0.25), d))
+            z += 0.004
+        return out[::-1]
+
+    def root_length(pts, z0):
+        acc = 0.0
+        for a, b in zip(pts, pts[1:]):
+            if b.z <= z0:
+                return acc
+            acc += (b - a).length
+        return acc
+
     out_objs = []
     # --- main braid lengthened: same width, from inside the original lobes down to z 1.20
     W = w_lo * 0.92
@@ -398,14 +447,15 @@ def main():
     back = [b for i, b in enumerate(BACK) if not (VARIANT == "A" and i in FRONT_REPLACES)]
     for n, (phi, z0, z1, w, fac, tuck) in enumerate(back):
         w *= THIN_SCALE
-        ctrl, outs = [], []
+        root = root_above(phi, z0, w, ROOT_LEN)
+        ctrl, outs = [p for p, d in root], [d for p, d in root]
         z = z0
         while z > z1:
             u = (z0 - z) / max(1e-6, z0 - z1)
             ph = phi * (1 - (1 - fac) * u) + 3.0 * math.sin(z * 38 + n)
             loc, d = hair_hit(ph, z)
             if loc is None:
-                if ctrl:
+                if len(ctrl) > len(root):
                     break
                 z -= 0.004
                 continue
@@ -415,13 +465,14 @@ def main():
             ctrl.append(loc + d * (w * off))
             outs.append(d)
             z -= 0.004
-        if len(ctrl) < 10:
+        if len(ctrl) < len(root) + 10:
             print("skip braid", n, flush=True)
             continue
         ctrl = smooth(ctrl, n=4, iters=5)
         pts = resample(ctrl, 0.001)
         outs = [outs[min(len(outs) - 1, int(i * len(outs) / len(pts)))] for i in range(len(pts))]
-        out_objs += braid(f"b{n}", pts, outs, w, HAIR_COL, seed=10 + n)
+        out_objs += braid(f"b{n}", pts, outs, w, HAIR_COL, seed=10 + n,
+                          root_len=root_length(pts, z0) if root else 0.0)
 
     if VARIANT == "A":
         for n, (side, phi, xs, z1, w) in enumerate(FRONT):
@@ -438,7 +489,8 @@ def main():
             c2 = front_at((sh.z - 0.07 + z1) / 2, side * (xs - 0.022))
             c3 = front_at(z1, side * (xs - 0.026))
             ctrl = [a0 + d0 * (w * 0.25), a1 + d1 * (w * 0.4), sh, c1, c2, c3]
-            pts = catmull(ctrl, per=60)
+            root = root_above(side * phi, 1.615, w, ROOT_LEN_FRONT)
+            pts = [p for p, d in root] + catmull(ctrl, per=60)
             # keep clear of body and face
             for it in range(3):
                 q = []
@@ -456,7 +508,8 @@ def main():
                 outs.append(nrm if p.z < sh.z + 0.02 else hd)
             outs = smooth(outs, n=10, iters=3)
             outs = [o.normalized() for o in outs]
-            out_objs += braid(f"f{n}", pts, outs, w, HAIR_COL, seed=40 + n)
+            out_objs += braid(f"f{n}", pts, outs, w, HAIR_COL, seed=40 + n,
+                              root_len=root_length(pts, 1.615) if root else 0.0)
 
     bpy.ops.wm.save_as_mainfile(filepath=f"{OUT}/hair_mq_{VARIANT}.blend")
     render(out_objs, [hair, acc, scalp, tail512] + face + body)

@@ -381,7 +381,8 @@ local KITS = {
         mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mesh",
         mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
-                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 },
+                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2,
+                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
         -- The rings ahead of the arrow hover; while drawing they pack toward the bow like a
         -- spring being wound (pack: metres along +Z when fully packed, build_weapon_kit.py log).
         floaters = { mode = "hover", joints = {
@@ -395,8 +396,11 @@ local KITS = {
         -- Charge level (bright gold -> white gold) and drawing; the ring pairs Gauge1-3 light
         -- one pair per level. Field names guessed from the game's type names, as for the great sword.
         -- (recorded 2026-10-02: the level rests at 1; drawing = the string held by the hand)
+        -- The vine on the limbs opens flowers of light, two more a level, the tips' at full
+        -- charge (user's pick 2026-10-02, "A"): parts = material -> level.
         bow = { levels = 3, rings = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3" },
-                fields = { "<ChargeLv>k__BackingField" }, draw = { "_IsBowStringConstToHand" } },
+                fields = { "<ChargeLv>k__BackingField" }, draw = { "_IsBowStringConstToHand" },
+                parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 } },
         shield = "Bow_Quiver",
     },
     -- The bow's quiver (_1), two designs to pick from in the game (2026-10-02).
@@ -1149,6 +1153,20 @@ local function update_bow(entry, mesh, h, dt)
         local lit = math.max(0, math.min(1, s - (i - 1)))
         entry.mul[mat] = lerp(lerp(1, DOT_DIM, entry.drawSmooth), mul, lit)
         set_color(entry, mesh, mat, lerp3(GOLD, color, lit))
+    end
+    -- Flowers opening level by level (Dissolve fade; switched off while gone).
+    entry.vars = entry.vars or material_vars(mesh)
+    entry.partsOn = entry.partsOn or {}
+    for mat, lv in pairs(spec.parts or {}) do
+        local alpha = math.max(0, math.min(1, s - (lv - 1)))
+        local m = entry.vars[mat]
+        if m and entry.partsOn[mat] ~= (alpha > 0.001) then
+            entry.partsOn[mat] = alpha > 0.001
+            try(function() mesh:setMaterialsEnable(m.index, alpha > 0.001) end)
+        end
+        set_float(entry, mesh, mat, "Dissolve", alpha)
+        entry.mul[mat] = mul
+        set_color(entry, mesh, mat, color)
     end
     entry.packTarget = drawing and (PACK_DRAWN + (1 - PACK_DRAWN) * math.min(level, spec.levels) / spec.levels) or 0
 end

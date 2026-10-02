@@ -782,7 +782,9 @@ def bow():
     while drawing, weapons script) and light up in pairs per charge level (Gauge1-3)."""
     import arsenal
     import motifs
-    objs = capture(lambda: arsenal.build_bow(motifs.materials(), with_arrow=False))
+    parts = {}
+    objs = capture(lambda: (arsenal.build_bow(motifs.materials(), with_arrow=False),
+                            parts.update(bloom=arsenal.bow_blossoms(motifs.materials()))))
     to_file = Matrix.Scale(BOW_SCALE, 4) @ BOW_AXES @ Matrix.Translation((0.14, 0, 0))
     half = BOW_SCALE * 0.69
 
@@ -794,6 +796,9 @@ def bow():
     floaters = {f"Arrow_Rail_{i}": f"MQ_Ring{i}" for i in range(arsenal.BOW_RAIL_N)}
     floaters["Rest_Halo"] = "MQ_RestHalo"
     by_name = {f"Arrow_Rail_{i}": f"MiquellaGauge{i // 2 + 1}" for i in range(arsenal.BOW_RAIL_N)}
+    # Charge (user's pick 2026-10-02, "A"): flowers of light open along the limbs' vine, two more a
+    # level (MiquellaCharge1-3), the tips' larger flowers at full charge.
+    by_name.update({o.name: f"MiquellaCharge{lv}" for lv, os_ in parts["bloom"].items() for o in os_})
     for x in arsenal.bow_rail_x(1.0)[:2]:
         log(f"  packed ring at file z {(to_file @ Vector((x, 0, 0))).z:+.4f}")
     return placed("wp_miquella_bow", "Art/Model/MiquellaLight/Bow", objs, to_file, {},

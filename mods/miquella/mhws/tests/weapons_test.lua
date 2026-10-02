@@ -18,7 +18,8 @@ local function newMesh(meshPath)
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory" }
     end
     if self.mdfPath:match("wp_miquella_bow%.") then
-      return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper",
+               "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3" }
     end
     if self.mdfPath:match("wp_miquella_ls%.") then
       return { "MiquellaGlow", "MiquellaIvory", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3",
@@ -527,15 +528,20 @@ local REST, PACKED = 1.0080, 1.0080 - 0.5490
 check(front.lp and math.abs(front.lp.z - REST) < 0.01, string.format("bow: rings spread at rest (front ring z %.3f)", front.lp.z))
 local function gauge(i) return weaponMesh.floats["MiquellaGauge" .. i .. ".1"] / (1.2 * glow) end
 check(math.abs(gauge(3) - 1) < 1e-3, "bow: rings at normal glow when not drawn")
+check(weaponMesh.matEnabled["MiquellaCharge1"] ~= true, "bow: no flowers when not drawn")
 bowDraw, chargeLv = true, 1
 frames(60, 1 / 60)
 local z1 = front.lp.z
 check(z1 < REST - 0.2 and z1 > PACKED + 0.05, string.format("bow: drawing packs the rings part way (%.3f)", z1))
 check(math.abs(gauge(1) - 1.8) < 0.05 and gauge(3) < 0.4, string.format("bow: level 1 lights the first pair (%.2f %.2f %.2f)", gauge(1), gauge(2), gauge(3)))
+check(weaponMesh.matEnabled["MiquellaCharge1"] == true and weaponMesh.matEnabled["MiquellaCharge2"] ~= true,
+      "bow: level 1 opens the first flowers by the grip")
 chargeLv = 3
 frames(60, 1 / 60)
 check(math.abs(front.lp.z - PACKED) < 0.01, string.format("bow: level 3 packs them tight (%.3f)", front.lp.z))
 check(gauge(3) > 3.3, "bow: level 3 lights every ring")
+check(weaponMesh.matEnabled["MiquellaCharge3"] == true and (weaponMesh.floats["MiquellaCharge3.2"] or 0) > 0.99,
+      "bow: level 3 opens the flowers out to the tips")
 local col = weaponMesh.colors["MiquellaGauge3"]
 check(col and col.z > 0.5 and col.y > 0.8, "bow: level 3 turns them white gold")
 texts = {}; onDraw()

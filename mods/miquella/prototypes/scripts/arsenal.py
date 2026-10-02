@@ -1206,6 +1206,56 @@ def charge_blade_saw(mats):
     return objs
 
 
+# The bow's charge (user's pick 2026-10-02 evening: "A, the vine in bloom"): the gold vine on
+# each limb opens flowers of light from the grip toward the tips, two more per level; at full
+# charge a larger flower at each tip. (limb, place along it) per level; the tips' flowers last.
+BLOSSOM_STOPS = {1: (0.12, 0.3), 2: (0.48, 0.64), 3: (0.8, 0.93)}
+
+
+def bow_limb_path(s, grip_x=-0.14):
+    """A limb's centre line as build_bow lays it (s = 1 upper, -1 lower), 100 points grip -> tip."""
+    limb = [V(grip_x + 0.01, 0, s * 0.12), V(grip_x - 0.05, 0, s * 0.33), V(grip_x + 0.0, 0, s * 0.53),
+            V(grip_x + 0.12, 0, s * 0.65), V(grip_x + 0.2, 0, s * 0.69)]
+    return m.resample(m.catmull(limb, 40), 100)
+
+
+def light_blossom(name, center, normal, size, mat, petals=5, twist=0.0):
+    """A small flower of light (pointed petals and a droplet heart), light enough for the game."""
+    n = Vector(normal).normalized()
+    u = n.orthogonal().normalized()
+    w = n.cross(u)
+    objs = []
+    for k in range(petals):
+        a = twist + 2 * math.pi * k / petals
+        d = u * math.cos(a) + w * math.sin(a)
+        p0, p1, p2 = center + d * size * 0.15, center + d * size * 0.7 + n * size * 0.18, center + d * size + n * size * 0.1
+        objs += m.path_blade(f"{name}_P{k}", [p0, p1, p2], n.cross(d),
+                             lambda t: size * 0.55 * math.sin(math.pi * min(1, t * 1.05)) ** 0.8 + 0.0004,
+                             lambda t: size * 0.06 + 0.0004, mat, n_sec=6, samples=8, subsurf=0)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=size * 0.2, subdivisions=1, location=center + n * size * 0.08)
+    heart = bpy.context.active_object
+    heart.name = f"{name}_Heart"
+    heart.data.materials.append(mat)
+    return objs + [heart]
+
+
+def bow_blossoms(mats):
+    """{level: [flower parts]}, names Blossom_<level>_<side>_<i>..."""
+    out = {1: [], 2: [], 3: []}
+    for s in (1, -1):
+        path = bow_limb_path(s)
+        for lv, stops in BLOSSOM_STOPS.items():
+            for i, u in enumerate(stops):
+                p = path[int(u * (len(path) - 1))]
+                size = 0.06 - 0.02 * u
+                out[lv] += light_blossom(f"Blossom_{lv}_{s}_{i}", p + V(-0.012, -0.035, 0), (-0.25, -1, 0.15 * s), size,
+                                         mats["light"], twist=i * 0.7 + lv)
+        tip = path[-1]
+        out[3] += light_blossom(f"Blossom_Tip_{s}", tip + V(0.0, -0.045, s * 0.03), (-0.2, -1, 0.2 * s), 0.1,
+                                mats["light"], petals=7)
+    return out
+
+
 # Strands of light wrapped round a blade (user's picks 2026-10-02 evening: the great sword's
 # "A" and the long sword's "B"): they grow from the guard toward the point a level at a time.
 # The helix is flattened across the blade's thickness so it hugs a flat blade.

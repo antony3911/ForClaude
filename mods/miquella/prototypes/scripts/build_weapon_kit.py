@@ -922,6 +922,31 @@ def heavy_bowgun():
     }
 
 
+# The circlet ("halo", character groundwork 2026-10-02): circlet.py's v10 in the Head joint's
+# space. Measured on the game's head (ch00_000_0000 face, ch01_000_0001 hair; bind pose, Head
+# joint at (0, 1.573, -0.010) with no rotation to speak of): at the brow (y 1.69) the bare head
+# is +-0.074 wide and -0.096..+0.101 deep, with hair +-0.09 and -0.117..+0.105. The prototype's
+# band (+-0.075 x +-0.094 around a 0.074 / 0.094 / 0.112 head) is scaled to sit on the hair at
+# the temples, its front on the brow at y 1.70, z +0.103 (world).
+CIRCLET_SCALE = (1.22, 1.10, 1.12)       # file x (width), y (height), z (depth)
+CIRCLET_AT = (0.0, 0.0918, 0.008)        # the prototype's head center, from the Head joint
+PROTO_TO_FILE = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))   # Z up, -Y front -> Y up, +Z front
+
+
+def circlet():
+    """The circlet for the hunter's head: one rigid mesh (every vertex on Base of the borrowed
+    weapon skeleton); the character script parents its object to the hunter's Head joint, so
+    file space is the Head joint's space (+Y up, +Z the face's front, +X the hunter's left)."""
+    import circlet as proto
+    proto.build(glow_strength=1.3)
+    bpy.context.view_layer.update()
+    objs = [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")]
+    to_file = Matrix.Translation(CIRCLET_AT) @ Matrix.Diagonal((*CIRCLET_SCALE, 1.0)) @ PROTO_TO_FILE
+    return placed("mq_circlet", "Art/Model/MiquellaLight/Character", objs, to_file, {},
+                  materials={"Circlet_PaleGold": "MiquellaHalo", "Circlet_Droplet": "MiquellaGlow"},
+                  budget={"MiquellaHalo": 14000, "MiquellaGlow": 1500})
+
+
 WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword": long_sword,
            "sns_sword": sns_sword, "sns_shield": sns_shield,
            "sns_shield_aura": lambda: sns_shield_membrane("aura"),
@@ -930,7 +955,8 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "lance": lance, "lance_shield": lance_shield, "gunlance": gunlance, "gunlance_shield": gunlance_shield,
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
-           "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun}
+           "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun,
+           "circlet": circlet}
 
 
 # Parts of one mode only (switch axe, charge blade): Miquella<Set><Blade|Glow|Ivory>, so the
@@ -966,6 +992,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
               **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
               "MiquellaTiming": "MiquellaGlow", "MiquellaBurst": "MiquellaGlow",
+              "MiquellaHalo": "MiquellaIvory",
               **{f"MiquellaBand{k + 1}": "MiquellaGlow" for k in range(LS_BANDS)},
               **{f"MiquellaBlade{k + 1}": "MiquellaBlade" for k in range(LS_BANDS)},
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
@@ -982,6 +1009,7 @@ HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "Miquella
 # these game materials (read from the local extraction, see HANDOFF) with gold settings.
 EXTRACTED = "C:/Users/anton/MiquellaTools/extracted/natives/stm"
 GLOW_EMI = "Art/Model/MiquellaLight/DualBlades/tex/MiquellaGlow_EMI.tex"
+HALO_EMISSIVE, HALO_INTENSITY = (1.0, 0.72, 0.30, 1.0), 0.8
 MEMBRANES = {
     # A: the aura effect on a player's equipment (two-sided, colour gradient, opacity).
     "aura": ("art/vfx/mesh/pl/equip/11_ch00_069_0006.mdf2.45", None, {
@@ -1297,6 +1325,17 @@ def build_mdf(path, template_mdf, names, membrane=None, hidden=()):
                     for kind in ("ALBD", "NRRO", "EMI"):
                         if t.texturePath.upper().endswith(f"_{kind}.TEX"):
                             t.texturePath = f"{DEVICE_TEX_REL}/MiquellaDevice_{kind}.tex"
+            if name == "MiquellaHalo":
+                # The circlet: ivory that glows gold all over (circlet v10, the user: the whole
+                # circlet glows, its twigs too); the character script's Glow slider scales it.
+                for p in new.propertyList:
+                    if p.propName == "Emissive_Color":
+                        p.propValue = list(HALO_EMISSIVE)
+                    elif p.propName == "Emissive_Intensity":
+                        p.propValue = [HALO_INTENSITY]
+                for t in new.textureList:
+                    if t.textureType == "EmissiveMap":
+                        t.texturePath = GLOW_EMI
             if name.startswith("MiquellaFilm"):
                 for p in new.propertyList:
                     if p.propName == "Dissolve":

@@ -9,6 +9,7 @@ end
 local fakeTime = 0
 os.clock = function() return fakeTime end
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
+Vector4f = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
 Quaternion = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
 
 local function resource(path) return { ToString = function() return "Resource[" .. path .. "]" end } end
@@ -89,15 +90,21 @@ local function newObject(name)
     elseif m == "set_DrawSelf" then self.drawSelf = a
     elseif m == "getComponent(System.Type)" then return self.comps[a.name]
     elseif m == "createComponent(System.Type)" then
-      local mesh = { floats = {}, enabled = {} }
+      local mesh = { floats = {}, float4 = {}, enabled = {} }
       function mesh:add_ref() return self end
       function mesh:call() end
       function mesh:setMesh(r) self.meshRes = r end
       function mesh:set_Material(r) self.mdfRes = r end
       function mesh:get_MaterialNum() return self.mdfRes and 2 or 0 end
-      function mesh:getMaterialName(i) return ({ "MiquellaGlow", "MiquellaHalo" })[i + 1] end
+      local function body(m) return m.mdfRes and m.mdfRes.path:find("mq_body", 1, true) end
+      function mesh:getMaterialName(i)
+        return (body(self) and { "MiquellaCloth", "MiquellaSkin" } or { "MiquellaGlow", "MiquellaHalo" })[i + 1]
+      end
       function mesh:getMaterialVariableNum() return 2 end
-      function mesh:getMaterialVariableName(i, j) return ({ "Dissolve", "Emissive_Intensity" })[j + 1] end
+      function mesh:getMaterialVariableName(i, j)
+        return (body(self) and { "ColorParam", "Emissive_Intensity" } or { "Dissolve", "Emissive_Intensity" })[j + 1]
+      end
+      function mesh:setMaterialFloat4(i, j, v) self.float4[i .. "." .. j] = v end
       function mesh:setMaterialFloat(i, j, v) self.floats[i .. "." .. j] = v end
       function mesh:setMaterialsEnable(i, v) self.enabled[i] = v end
       function mesh:set_Enabled(v) self.on = v end
@@ -203,6 +210,9 @@ else
     "body: on the hunter's skeleton (SameJointsConstraint), shown")
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
+  local tint = bmesh.float4["1.0"]
+  check(tint and math.abs(tint.x - 1.0) < 1e-6 and math.abs(tint.y - 0.90) < 1e-6 and bmesh.float4["0.0"] == nil,
+        "body: skin tone tint on MiquellaSkin's ColorParam only")
   check(face.drawSelf == true and hair.drawSelf == true and weapon.drawSelf == true, "body: face, hair and weapon stay")
   comboAnswer["Body shape"] = 3; menu(); frames(2, 1 / 60)
   check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_c.mesh" and count("MiquellaLight_Body") == 1,

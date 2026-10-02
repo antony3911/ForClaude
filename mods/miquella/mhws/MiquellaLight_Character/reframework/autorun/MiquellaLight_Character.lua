@@ -28,8 +28,21 @@ local PIECES = {
         key = "body", name = "MiquellaLight_Body", attach = "skeleton",
         -- On the hunter's skeleton in its bind pose (miquella_body.py kit).
         mesh = nil, mdf2 = DIR .. "mq_body.mdf2",
+        tint = "MiquellaSkin",
     },
 }
+-- Skin tone of the body until it gets a real skin material: a ColorParam tint over the ivory
+-- texture (sRGB 0.94, 0.91, 0.82). User 2026-10-03: ivory could not be told from the clothes.
+local SKIN_TONES = {
+    { "Fair", { 1.00, 0.90, 0.90 } },
+    { "Pale", { 1.00, 0.97, 0.99 } },
+    { "Medium", { 0.94, 0.76, 0.69 } },
+    { "Tan", { 0.81, 0.60, 0.50 } },
+    { "Deep", { 0.56, 0.39, 0.30 } },
+    { "Ivory (no tint)", { 1.0, 1.0, 1.0 } },
+}
+local SKIN_NAMES = {}
+for i, t in ipairs(SKIN_TONES) do SKIN_NAMES[i] = t[1] end
 local BODY_SHAPES = { "A slender", "B youthful", "C soft" }
 local BODY_MESHES = { DIR .. "mq_body_a.mesh", DIR .. "mq_body_b.mesh", DIR .. "mq_body_c.mesh" }
 PIECES[2].mesh = nil   -- set below, once config is read
@@ -51,6 +64,7 @@ local config = {
     body = true,
     bodyShape = 1,
     hideOutfit = true,
+    skinTone = 1,
 }
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
@@ -58,6 +72,7 @@ if type(saved) == "table" then
 end
 if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
+if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
 local function piece_on(p)
@@ -188,6 +203,31 @@ local function apply_glow(p)
     end
 end
 
+local function apply_tint(p)
+    if not (p.tint and p.st.mesh) then return end
+    local mesh = p.st.mesh
+    if not p.st.tintSlot then
+        local n = try(function() return mesh:get_MaterialNum() end) or 0
+        for i = 0, n - 1 do
+            if try(function() return mesh:getMaterialName(i) end) == p.tint then
+                local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+                for j = 0, vars - 1 do
+                    if try(function() return mesh:getMaterialVariableName(i, j) end) == "ColorParam" then
+                        p.st.tintSlot = { mat = i, var = j }
+                    end
+                end
+            end
+        end
+    end
+    local slot, c = p.st.tintSlot, SKIN_TONES[config.skinTone][2]
+    if slot then
+        p.st.tinted = try(function()
+            mesh:setMaterialFloat4(slot.mat, slot.var, Vector4f.new(c[1], c[2], c[3], 1.0))
+            return true
+        end)
+    end
+end
+
 local function set_model(p)
     local path = p.mesh()
     local m = holder("via.render.MeshResource", path)
@@ -204,7 +244,10 @@ local function set_model(p)
     try(function() p.st.mesh:set_Enabled(true) end)
     p.st.meshPath = path
     p.st.glowSlots = nil
+    p.st.renderMatched = nil
+    p.st.tintSlot = nil
     apply_glow(p)
+    apply_tint(p)
     return true
 end
 
@@ -329,6 +372,40 @@ end
 
 -- ------------------------------------------------------------------ frame
 
+-- Render settings copied from the hunter's own face mesh onto ours. A created via.render.Mesh
+-- has StencilValue 0 where the hunter's meshes have 1: ours got the sun but no ambient light,
+-- black in the shade (2026-10-03, found with MiquellaLight_MeshDiff.lua).
+local MATCH_RENDER = { "StencilValue", "ShadowCastMode" }
+
+local function face_mesh(hxf)
+    local child = try(function() return hxf:call("get_Child") end)
+    while child do
+        local go = try(function() return child:call("get_GameObject") end)
+        local path = go and mesh_path(go)
+        if path and path:find("character/ch00/", 1, true) then
+            return try(function() return go:call("getComponent(System.Type)", sdk.typeof(MESH)) end)
+        end
+        child = try(function() return child:call("get_Next") end)
+    end
+    return nil
+end
+
+local function match_render(p, hxf)
+    local face = face_mesh(hxf)
+    if not face then return end
+    local got = {}
+    for _, name in ipairs(MATCH_RENDER) do
+        local v = try(function() return face:call("get_" .. name) end)
+        if v ~= nil then
+            try(function() p.st.mesh:call("set_" .. name, v) end)
+            local now = try(function() return p.st.mesh:call("get_" .. name) end)
+            table.insert(got, name .. " " .. tostring(now))
+        end
+    end
+    p.st.render = table.concat(got, ", ")
+    p.st.renderMatched = true
+end
+
 local function update_piece(p, hxf, hgo, now)
     local s = p.st
     local show = piece_on(p)
@@ -348,6 +425,10 @@ local function update_piece(p, hxf, hgo, now)
     end
     if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked
     if s.parentAddr ~= address(hxf) then attach(p, hxf, now) end
+    if not s.renderMatched and now >= (s.renderAt or 0) then
+        s.renderAt = now + 1
+        match_render(p, hxf)
+    end
     if p.attach == "joint" then
         -- Auto: a second after attaching, is it at the joint? If not, follow it ourselves.
         if config.mode == 1 and not s.checked and now - s.attachAt >= CHECK_AFTER then
@@ -368,14 +449,17 @@ local function update_piece(p, hxf, hgo, now)
         s.info = string.format("on: %s  (%s)  %s cm from the %s joint", s.follow and "following every frame"
             or p.joint .. " joint", s.jointCall or "?", d and string.format("%.1f", d * 100) or "?", p.joint)
     else
-        s.info = string.format("on the skeleton (%s), %s", s.jointCall or "?", BODY_SHAPES[config.bodyShape])
+        s.info = string.format("on the skeleton (%s), %s; render: %s; skin %s", s.jointCall or "?",
+            BODY_SHAPES[config.bodyShape], s.render or "not matched yet",
+            s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
     end
     -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
     local hunterShown = try(function() return hgo:call("get_DrawSelf") end)
     try(function() s.go:call("set_DrawSelf", show and hunterShown ~= false) end)
-    if p.glow and now >= (s.glowAt or 0) then
+    if (p.glow or p.tint) and now >= (s.glowAt or 0) then
         s.glowAt = now + 2
         apply_glow(p)
+        apply_tint(p)
     end
 end
 
@@ -422,6 +506,11 @@ re.on_draw_ui(function()
     -- Body
     c, config.body = imgui.checkbox("Body", config.body); changed = changed or c
     c, config.bodyShape = imgui.combo("Body shape", config.bodyShape, BODY_SHAPES); changed = changed or c
+    c, config.skinTone = imgui.combo("Skin tone", config.skinTone, SKIN_NAMES)
+    if c then
+        changed = true
+        apply_tint(PIECES[2])
+    end
     c, config.hideOutfit = imgui.checkbox("Hide the hunter's armor and innerwear", config.hideOutfit)
     changed = changed or c
     local b = PIECES[2].st

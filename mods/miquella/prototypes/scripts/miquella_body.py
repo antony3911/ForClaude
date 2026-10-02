@@ -45,8 +45,9 @@ COMMON_DETAILS = [
     ("breast/nipple-size-decr", 1.0),
     ("stomach/stomach-pregnant-decr", 0.5),       # flat stomach
     ("hip/hip-scale-horiz-decr", 0.35),           # narrow (male) pelvis
-    ("neck/neck-scale-horiz-decr", 0.5),          # slender neck
+    # (no slender neck: it has to meet the game face's neck, which is a man's)
     ("buttocks/buttocks-volume-incr", 0.75),      # round buttocks (user 2026-10-02: they read square)
+    ("measure/measure-waist-circ-decr", 0.6),     # a waist, curving out to the hips (LINE_OPTIONS)
 ]
 VARIANTS = {
     "A": {"label": "A 纖細中性", "gender": 0.62, "muscle": 0.28, "weight": 0.30, "details": []},
@@ -82,7 +83,20 @@ GROOVES = {
     "gluteal": [([(s * 0.022, 0.836), (s * 0.045, 0.823), (s * 0.072, 0.824), (s * 0.100, 0.838),
                   (s * 0.128, 0.866)], 0.006, 0.012, 0.35, True) for s in (1, -1)],
 }
-BASE_GROOVES = ["crease", "gluteal"]     # every body shape has these
+# The spine's groove down the back (slim and toned), carved on the back.
+GROOVES["spine"] = [([(0.0, 1.33), (0.0, 1.17), (0.0, 1.02)], 0.003, 0.010, -0.25, True)]
+BASE_GROOVES = ["crease", "gluteal", "vertical", "spine"]     # every body shape has these
+# Lines of a slim young man keeping a slender, softly feminine figure (user 2026-10-02: "add the
+# ones you think of; a friend says 馬甲線"): a narrower waist (waist to hips curve), 馬甲線, the
+# spine's groove. Compared side by side (preview lines); all three went in (user: "add them").
+# Not 人魚線 ("v"): the groin fold already draws that V.
+WAIST = "measure/measure-waist-circ-decr"
+LINE_OPTIONS = [      # option 4 is what every shape now has (COMMON_DETAILS, BASE_GROOVES)
+    ("1 現在", {"base_grooves": ["crease", "gluteal"], "details": [(WAIST, 0.0)]}),
+    ("2 收腰", {"base_grooves": ["crease", "gluteal"]}),
+    ("3 收腰＋馬甲線", {"base_grooves": ["crease", "gluteal", "vertical"]}),
+    ("4 收腰＋馬甲線＋背溝", {}),
+]
 BUTT = "buttocks/buttocks-volume-incr"
 # Before / after the 2026-10-02 hips round (narrow groin line, cone thighs, round buttocks with
 # the fold under them, the cleft spanned by the underwear), and the buttocks rounder or less.
@@ -275,6 +289,10 @@ def extend(a, b, ratio):
     return b + (b - a) * ratio
 
 
+NECK_SHIFT = (Vector((0, 0.015, 0)), Vector((0, 0.025, 0)))     # at Neck_0, at Neck_1 and Head
+UPPER_BACK_SHARE = 0.35
+
+
 def fit_targets(J, G):
     """Where each mapped MakeHuman bone's head and tail go, from the game's joints."""
     # The torso keeps MakeHuman's own anatomy (only moved and scaled by `aligned`): the game's
@@ -282,9 +300,21 @@ def fit_targets(J, G):
     # pelvis onto them lifted the crotch to hip-joint height and merged thighs and pelvis (user,
     # 2026-10-02: the groin had no structure). Limbs, neck, hands and feet are fitted.
     T = {}
-    T.update(chain_targets(J, G, ["neck01", "neck02", "neck03"], ["Neck_0", "Neck_1", "Head"]))
+    # The neck goes NECK_SHIFT behind the game's neck joints: placed on them, MakeHuman's neck
+    # stood 2.3 cm in front of the game face's neck (whose rim it has to meet), and the two bent
+    # into an S at the seam (user 2026-10-02: "the neck is twisted").
+    neck_pts = [G["Neck_0"] + NECK_SHIFT[0], G["Neck_1"] + NECK_SHIFT[1], G["Head"] + NECK_SHIFT[1]]
+    T.update(chain_targets(J, G, ["neck01", "neck02", "neck03"], neck_pts))
+    # The upper back turns to meet that neck base (the lower spine and pelvis stay MakeHuman's):
+    # left alone, MakeHuman's upper spine leans forward where the game's leans back, the neck
+    # came off it 3 cm behind and the nape stood out like a spur under the face's rim (user
+    # 2026-10-02). The turn is shared, UPPER_BACK_SHARE by spine02 and the rest by spine01.
+    off = neck_pts[0] - J["spine01____tail"]
+    mid = J["spine02____tail"] + off * UPPER_BACK_SHARE
+    T["spine02"] = (None, mid)
+    T["spine01"] = (mid, neck_pts[0])
     head_len = (J["head____tail"] - J["head____head"]).length
-    T["head"] = (G["Head"], G["Head"] + Vector((0, 0, head_len)))
+    T["head"] = (neck_pts[2], neck_pts[2] + Vector((0, 0, head_len)))
     for s, S in (("L", "L_"), ("R", "R_")):
         T.update(chain_targets(J, G, [f"clavicle.{s}", f"shoulder01.{s}"], [S + "Shoulder", S + "UpperArm"]))
         T.update(chain_targets(J, G, [f"upperarm01.{s}", f"upperarm02.{s}"], [S + "UpperArm", S + "Forearm"]))
@@ -385,18 +415,65 @@ def bake(obj, arm):
 
 # ------------------------------------------------------------------ cut, materials
 
-# The game's face mesh covers the neck from a slanted edge (front 1.43, nape 1.51, measured on
-# ch00_000_0000): per 15-degree sector around the neck axis (Neck_0 -> Neck_1) our neck goes up
-# NECK_OVERLAP past that edge, inside the face's neck (NECK_INSIDE of its radius), and meets
-# its radius at the edge over NECK_BLEND below it, so no step and no gap shows.
-NECK_OVERLAP, NECK_INSIDE, NECK_BLEND, NECK_SECTORS = 0.035, 0.95, 0.03, 24
+# The game's face mesh (ch00_000_0000) covers the neck down to an open rim (front 1.43, nape 1.52)
+# and lines the inside of that rim with a narrow band (its Group_7, left out when measuring). On
+# the hunter a collar hides the rim. Our neck goes up inside the face's neck, hugging its surface
+# (NECK_IN0 inside at the rim, NECK_IN1 a hug higher up) and is cut NECK_OVERLAP past the rim, out
+# of sight; below the rim it carries on along the face's surface (NECK_OUT0 outside it, over the
+# lining's hem) and blends into the body over NECK_BLEND. So the surface runs on unbroken across
+# the rim, whichever of the two is drawn there. Near the rim the body also takes the face's skin
+# weights (`face_neck_weights`), so the two move together. Tried before (user 2026-10-02: "the
+# neck is twisted"): 95 % inside left the rim standing off the nape; covering the rim from
+# outside left a sawtooth line or a collar-like ring; wrapping the whole neck up to the jaw
+# crumpled MakeHuman's head into the nape.
+NECK_SECTORS, NECK_BIN, NECK_Z0, NECK_Z1 = 48, 0.0025, 1.40, 1.70
+NECK_IN0, NECK_IN1, NECK_HUG, NECK_OUT0 = 0.0005, 0.002, 0.02, 0.0004
+NECK_OVERLAP, NECK_BLEND = 0.02, 0.05
 NECK_CUT = 1.47          # without the face mesh: a level cut
 UNDERWEAR = (0.78, 0.99, 0.30)   # boxer-brief band: lowest, highest, |x| limit (the hands hang beside it)
 
 
+def face_outer(face_objs):
+    """The face's outer surface: everything but the band lining the inside of its neck rim."""
+    return [o for o in face_objs if not o.name.startswith("Group_7_")]
+
+
+def face_geometry(face_objs):
+    """What fitting the neck needs from the face: its outer surface's points and its neck rim
+    (the open boundary's vertices below the jaw)."""
+    import bmesh
+    pts, loops = [], []
+    for o in face_outer(face_objs):
+        pts += [o.matrix_world @ v.co for v in o.data.vertices]
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        # The face is split along its UV seams (front and back of the neck): welded, those don't
+        # count as edges.
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        seen = set()
+        for e in bm.edges:              # boundary loops (neck rim, mouth, eyes...)
+            if not e.is_boundary or e in seen:
+                continue
+            stack, verts = [e], set()
+            while stack:
+                x = stack.pop()
+                if x in seen:
+                    continue
+                seen.add(x)
+                verts.update(x.verts)
+                stack += [y for v in x.verts for y in v.link_edges if y.is_boundary and y not in seen]
+            loops.append([o.matrix_world @ v.co for v in verts])
+        bm.free()
+    rim = min(loops, key=lambda L: min(p.z for p in L))     # the lowest loop: the neck rim
+    return {"pts": pts, "rim": rim}
+
+
 def neck_center(G, z):
+    """On the line through Neck_0 and Neck_1, held at Neck_0 below it: the neck leans forward,
+    and carried on down that line the center ended up behind the upper back, which then counted
+    as the front of the neck and was pulled in (a pit between the shoulder blades)."""
     a, b = G["Neck_0"], G["Neck_1"]
-    return a + (b - a) * ((z - a.z) / (b.z - a.z))
+    return a + (b - a) * max(0.0, (z - a.z) / (b.z - a.z))
 
 
 def polar(G, p):
@@ -406,61 +483,102 @@ def polar(G, p):
 
 
 class FaceNeck:
-    """The face mesh's neck: lowest point and outer radius per sector and 5 mm height bin."""
-    def __init__(self, G, pts):
-        self.G = G
-        self.edge = [9.9] * NECK_SECTORS
-        self.r = {}
-        step = 360.0 / NECK_SECTORS
+    """The face's neck around the neck axis: per sector its rim (lowest point) and its radius per
+    height, from the innermost face point in each bin (at the nape a bin also holds the skull's
+    underside; the outermost pushed the body out there into a spur, user 2026-10-02): `smooth`
+    (gaps filled, smoothed: the face's slope at its rim) and `inner` (the least around: hugging
+    it from inside never pokes through)."""
+    def __init__(self, G, pts, rim=()):
+        S, K = NECK_SECTORS, int(round((NECK_Z1 - NECK_Z0) / NECK_BIN)) + 1
+        # The rim's height around, point by point (its notches are narrower than a sector).
+        self.rim = sorted((polar(G, p)[0], p.z, polar(G, p)[1]) for p in rim if polar(G, p)[1] < 0.12)
+        step = 360.0 / S
+        self.edge = [9.9] * S
+        hi_r = [[None] * K for _ in range(S)]       # outermost face point per bin
+        lo_r = [[None] * K for _ in range(S)]       # innermost (under the skull the bin holds both)
         for p in pts:
-            if p.z > 1.60:
+            if not NECK_Z0 <= p.z <= NECK_Z1:
                 continue
             ang, r, _ = polar(G, p)
-            s = int(ang // step) % NECK_SECTORS
+            s = int(ang // step) % S
+            k = int(round((p.z - NECK_Z0) / NECK_BIN))
             self.edge[s] = min(self.edge[s], p.z)
-            key = (s, round(p.z / 0.005))
-            self.r[key] = max(self.r.get(key, 0.0), r)
+            hi_r[s][k] = r if hi_r[s][k] is None else max(hi_r[s][k], r)
+            lo_r[s][k] = r if lo_r[s][k] is None else min(lo_r[s][k], r)
+        for grid in (hi_r, lo_r):
+            for s in range(S):      # fill gaps up the sector, and below the rim with the rim's
+                known = [k for k in range(K) if grid[s][k] is not None]
+                for k in range(known[0], known[-1] + 1):
+                    if grid[s][k] is None:
+                        lo = max(j for j in known if j < k)
+                        hi = min(j for j in known if j > k)
+                        grid[s][k] = grid[s][lo] + (grid[s][hi] - grid[s][lo]) * (k - lo) / (hi - lo)
+                for k in range(known[-1] + 1, K):
+                    grid[s][k] = grid[s][known[-1]]
+                for k in range(known[0]):
+                    grid[s][k] = grid[s][known[0]]
+        self.inner = [[min(lo_r[(s + ds) % S][min(max(k + dk, 0), K - 1)] for ds in (-1, 0, 1) for dk in (-1, 0, 1))
+                       for k in range(K)] for s in range(S)]
+        sm = lo_r
+        for _ in range(2):          # smooth (1, 2, 1) around and up
+            sm = [[(sm[(s - 1) % S][k] + 2 * sm[s][k] + sm[(s + 1) % S][k]) / 4 for k in range(K)] for s in range(S)]
+            sm = [[(sm[s][max(k - 1, 0)] + 2 * sm[s][k] + sm[s][min(k + 1, K - 1)]) / 4 for k in range(K)]
+                  for s in range(S)]
+        self.smooth, self.K = sm, K
+        self.edge = [(self.edge[(s - 1) % S] + 2 * self.edge[s] + self.edge[(s + 1) % S]) / 4 for s in range(S)]
 
-    def _sector(self, s, z, what):
-        if what == "edge":
-            return self.edge[s]
-        zb = round(z / 0.005)
-        for d in (0, 1, -1, 2, -2):
-            if (s, zb + d) in self.r:
-                return self.r[(s, zb + d)]
-        return None
+    def _rim(self, ang):
+        """The rim's height and radius at `ang`, between its two nearest points."""
+        import bisect
+        R = self.rim
+        i = bisect.bisect_left(R, (ang, -9.9, 0.0))
+        a0, z0, r0 = R[i - 1] if i > 0 else (R[-1][0] - 360.0, R[-1][1], R[-1][2])
+        a1, z1, r1 = R[i] if i < len(R) else (R[0][0] + 360.0, R[0][1], R[0][2])
+        t = (ang - a0) / max(a1 - a0, 1e-6)
+        return z0 + (z1 - z0) * t, r0 + (r1 - r0) * t
+
+    def rim_r(self, ang):
+        """The face's radius at its rim (from the rim's points; else the smoothed surface)."""
+        return self._rim(ang)[1] if self.rim else self.at(ang, self.at(ang, 0, "edge"), "smooth")
+
+    def _r(self, grid, s, z):
+        f = max(0.0, min(self.K - 1.0, (z - NECK_Z0) / NECK_BIN))
+        k = min(int(f), self.K - 2)
+        return grid[s][k] + (grid[s][k + 1] - grid[s][k]) * (f - k)
 
     def at(self, ang, z, what):
-        """Between the two nearest sector centers."""
+        """Between the two nearest sector centers; `what` is "edge", "smooth" or "inner"."""
         step = 360.0 / NECK_SECTORS
         f = ang / step - 0.5
         s0 = int(math.floor(f)) % NECK_SECTORS
         s1 = (s0 + 1) % NECK_SECTORS
         t = f - math.floor(f)
-        a, b = self._sector(s0, z, what), self._sector(s1, z, what)
-        if a is None or b is None:
-            return a if b is None else b
+        if what == "edge":
+            if self.rim:
+                return self._rim(ang)[0]
+            a, b = self.edge[s0], self.edge[s1]
+        else:
+            grid = self.smooth if what == "smooth" else self.inner
+            a, b = self._r(grid, s0, z), self._r(grid, s1, z)
         return a + (b - a) * t
 
 
 def fit_neck(me, G, neck):
     for v in me.vertices:
-        if v.co.z < 1.36 or v.co.z > 1.60:
+        if v.co.z < 1.36 or v.co.z > NECK_Z1:
             continue
         ang, r, c = polar(G, v.co)
-        edge = neck.at(ang, 0, "edge")
-        if v.co.z >= edge:
-            rf = neck.at(ang, v.co.z, "r")
-            if rf is None:
-                continue
-            nr = min(r, NECK_INSIDE * rf)
-        elif v.co.z > edge - NECK_BLEND:
-            rf = neck.at(ang, edge + 0.004, "r")
-            if rf is None:
-                continue
-            t = (v.co.z - (edge - NECK_BLEND)) / NECK_BLEND
+        edge, z = neck.at(ang, 0, "edge"), v.co.z
+        if z >= edge:
+            u = min(1.0, (z - edge) / NECK_HUG)
+            nr = neck.at(ang, z, "inner") - (NECK_IN0 + (NECK_IN1 - NECK_IN0) * u * u * (3 - 2 * u))
+        elif z > edge - NECK_BLEND:
+            r0 = neck.rim_r(ang)
+            up = (neck.at(ang, edge + 0.012, "smooth") - neck.at(ang, edge + 0.002, "smooth")) / 0.01
+            target = r0 + max(-0.3, min(1.2, -up)) * (edge - z) + NECK_OUT0   # carried on down
+            t = (z - (edge - NECK_BLEND)) / NECK_BLEND
             t = t * t * (3 - 2 * t)
-            nr = r + (NECK_INSIDE * rf - r) * t
+            nr = r + (target - r) * t
         else:
             continue
         if r > 1e-6:
@@ -469,14 +587,83 @@ def fit_neck(me, G, neck):
             v.co.y = c.y + (v.co.y - c.y) * k
 
 
+def relax_neck(me, G, neck, steps=8):
+    """Squeezing MakeHuman's neck onto the face's folds it in places: smooth the fitted band along
+    the surface (keeping its volume), the part inside the face pushed back to its hug after each
+    step."""
+    me.update()
+    band = {}
+    for v in me.vertices:
+        if v.co.z < 1.36 or v.co.z > NECK_Z1:
+            continue
+        ang, _, _ = polar(G, v.co)
+        edge = neck.at(ang, 0, "edge")
+        if edge - NECK_BLEND < v.co.z < edge + NECK_OVERLAP + 0.01:
+            band[v.index] = smoothstep(edge - NECK_BLEND, edge - NECK_BLEND + 0.015, v.co.z)
+    nbr = {i: [] for i in band}
+    for e in me.edges:
+        a, b = e.vertices
+        if a in nbr:
+            nbr[a].append(b)
+        if b in nbr:
+            nbr[b].append(a)
+    for _ in range(steps):
+        for k in (0.5, -0.53):
+            new = {}
+            for i, w in band.items():
+                if nbr[i]:
+                    avg = sum((me.vertices[j].co for j in nbr[i]), Vector()) / len(nbr[i])
+                    new[i] = me.vertices[i].co + (avg - me.vertices[i].co) * (k * w)
+            for i, co in new.items():
+                me.vertices[i].co = co
+        for i in band:
+            v = me.vertices[i]
+            ang, r, c = polar(G, v.co)
+            edge = neck.at(ang, 0, "edge")
+            if v.co.z >= edge and r > 1e-6:
+                u = min(1.0, (v.co.z - edge) / NECK_HUG)
+                nr = neck.at(ang, v.co.z, "inner") - (NECK_IN0 + (NECK_IN1 - NECK_IN0) * u * u * (3 - 2 * u))
+                k = min(1.0, nr / r)
+                v.co.x = c.x + (v.co.x - c.x) * k
+                v.co.y = c.y + (v.co.y - c.y) * k
+
+
 def cut_height(G, neck, p):
-    """Past the face's edge by NECK_OVERLAP; the edge's highest point within two sectors, so a
-    dip in it (the nape's middle) leaves no notch."""
+    """NECK_OVERLAP past the face's rim, inside the face's neck."""
     if neck is None:
         return NECK_CUT
     ang, _, _ = polar(G, p)
-    step = 360.0 / NECK_SECTORS
-    return max(neck.at((ang + d * step) % 360.0, 0, "edge") for d in (-2, -1, 0, 1, 2)) + NECK_OVERLAP
+    return neck.at(ang, 0, "edge") + NECK_OVERLAP
+
+
+def face_neck_weights(face_objs, arm):
+    """The face's skin weights around its neck (KD tree, weights per vertex), bone names the
+    body's skeleton has (else the name without its _HJ_ helper suffix)."""
+    from mathutils import kdtree
+    pts = []
+    for o in face_outer(face_objs):
+        names = {g.index: g.name for g in o.vertex_groups}
+        for v in o.data.vertices:
+            p = o.matrix_world @ v.co
+            if p.z > 1.62:                 # the rim and a little above it, the nape included
+                continue
+            ws = {}
+            for ge in v.groups:
+                if ge.weight <= 0:
+                    continue
+                b = names[ge.group]
+                if b not in arm.data.bones:
+                    b = b.split("_HJ_")[0]
+                if b in arm.data.bones:
+                    ws[b] = ws.get(b, 0.0) + ge.weight
+            if ws:
+                pts.append((p, ws))
+    tree = kdtree.KDTree(len(pts))
+    for i, (p, _) in enumerate(pts):
+        tree.insert(p, i)
+    tree.balance()
+    log(f"  face neck weights: {len(pts)} vertices, bones {sorted({b for _, ws in pts for b in ws})}")
+    return tree, [ws for _, ws in pts]
 
 
 # Smooth body, no anatomical detail (design rule): the chest is smoothed flat around MakeHuman's
@@ -703,9 +890,10 @@ def in_brief(c, n):
 
 def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
     me = obj.data
-    neck = FaceNeck(G, face_pts) if face_pts else None
+    neck = FaceNeck(G, face_pts["pts"], face_pts["rim"]) if face_pts else None
     if neck:
         fit_neck(me, G, neck)
+        relax_neck(me, G, neck)
     import bmesh
     bm = bmesh.new()
     bm.from_mesh(me)
@@ -970,6 +1158,47 @@ def game_weights(obj, skel, G):
     log(f"  weights on {len(groups)} game bones")
 
 
+# Near the face's rim the body takes the face's weights (the rim is skinned to the game's helper
+# joints, Neck_0_HJ_00, Spine_2_HJ_00, the traps and shoulders'): fully from NECK_W[1] below the
+# rim up, fading out by NECK_W[0] below it, so the seam doesn't open when the head moves.
+NECK_W = (0.035, 0.005)
+
+
+def blend_face_weights(obj, G, neck, tree, face_ws):
+    me = obj.data
+    groups = {g.name: g for g in obj.vertex_groups}
+    names = {g.index: g.name for g in obj.vertex_groups}
+    n = 0
+    for v in me.vertices:
+        if v.co.z < 1.36 or v.co.z > NECK_Z1:
+            continue
+        ang, _, _ = polar(G, v.co)
+        edge = neck.at(ang, 0, "edge")
+        w = smoothstep(edge - NECK_W[0], edge - NECK_W[1], v.co.z)
+        if w <= 0:
+            continue
+        near = tree.find_n(v.co, 4)
+        inv = [(1.0 / max(d, 1e-4), i) for _, i, d in near]
+        tot = sum(k for k, _ in inv)
+        acc = {}
+        for k, i in inv:
+            for b, x in face_ws[i].items():
+                acc[b] = acc.get(b, 0.0) + w * x * k / tot
+        for ge in v.groups:
+            acc[names[ge.group]] = acc.get(names[ge.group], 0.0) + (1 - w) * ge.weight
+        top = sorted(acc.items(), key=lambda kv: -kv[1])[:MAX_WEIGHTS]
+        total = sum(x for _, x in top) or 1.0
+        for ge in list(v.groups):
+            groups[names[ge.group]].remove([v.index])
+        for b, x in top:
+            if b not in groups:
+                groups[b] = obj.vertex_groups.new(name=b)
+                names[groups[b].index] = b
+            groups[b].add([v.index], x / total, "REPLACE")
+        n += 1
+    log(f"  face weights blended into {n} neck vertices")
+
+
 MESH_EXT, MDF_EXT = ".241111606", ".45"
 REL = "Art/Model/MiquellaLight/Character"
 # Our material -> (game material name, dual blades material it is copied from).
@@ -1024,7 +1253,9 @@ def kit(data, game_body, face, kit_dir, template_mdf):
     arm, _ = import_game(game_body, keep_meshes=False)
     G = game_joints(arm)
     _, face_objs = import_game(face, keep_meshes=True)
-    face_pts = [o.matrix_world @ v.co for o in face_objs for v in o.data.vertices]
+    face_pts = face_geometry(face_objs)
+    neck = FaceNeck(G, face_pts["pts"], face_pts["rim"])
+    tree, face_ws = face_neck_weights(face_objs, arm)
     for o in list(bpy.data.objects):
         if o.type == "ARMATURE" and o is not arm or o in face_objs:
             bpy.data.objects.remove(o, do_unlink=True)
@@ -1037,6 +1268,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         name = f"mq_body_{key.lower()}"
         body = make_body(data, base, params, G, name, skin, cloth, face_pts)
         game_weights(body, base[3], G)
+        blend_face_weights(body, G, neck, tree, face_ws)
         mesh_col = bpy.data.collections.new(f"{name}.mesh")
         bpy.context.scene.collection.children.link(mesh_col)
         for col in list(arm.users_collection):
@@ -1090,7 +1322,7 @@ def preview(data, game_body, out, face=None, extra=()):
         for o in face_objs:
             o.data.materials.clear()
             o.data.materials.append(faces_mat)
-    face_pts = [o.matrix_world @ v.co for o in face_objs for v in o.data.vertices]
+    face_pts = face_geometry(face_objs) if face_objs else None
     gap = 1.5
     for k, (key, params) in enumerate(VARIANTS.items()):
         body = make_body(data, base, params, G, f"Body_{key}", skin, cloth, face_pts)
@@ -1217,6 +1449,11 @@ def main():
                     views=BACK_VIEWS)
         preview_abs(data, game_body, out, options=shapes, center_z=0.92, scale=1.95, prefix="back_full",
                     views=(("back", 180),))
+    if cmd == "lines":
+        data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
+        os.makedirs(out, exist_ok=True)
+        preview_abs(data, game_body, out, options=LINE_OPTIONS, center_z=1.13, scale=0.62, prefix="lines",
+                    views=(("front", 0), ("quarter", 35), ("back", 180)))
     if cmd == "hips":
         # Before / after sheets of the hips: front, back, and the legs in profile.
         data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])

@@ -2596,10 +2596,11 @@ local function grow_joints(entry)
     local spec = entry.kit.grow
     if not (spec and spec.chains) then return nil end
     local gj = entry.growJoints
-    if gj and gj.found == gj.total then return gj end
+    if gj and (gj.found == gj.total or os.clock() < gj.retryAt) then return gj end
     local tf = try(function() return entry.go:call("get_Transform") end)
     if not tf then return gj end
     gj = gj or { chains = {} }
+    gj.retryAt = os.clock() + 1.0               -- (bones not found: look again once a second)
     gj.found, gj.total = 0, 0
     for c, ch in ipairs(spec.chains) do
         local jc = gj.chains[c] or { joints = {} }

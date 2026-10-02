@@ -5,7 +5,7 @@
 | 檔案 | 內容 |
 |---|---|
 | `natives/STM/Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh.241111606` | 模型，4.5 萬面，全部綁 `Base` |
-| `.../wp_miquella_gs.mdf2.45` | 材質：`MiquellaBlade`、`MiquellaGlow`、`MiquellaIvory`、`MiquellaTemper`（刃紋，獨立出來給三段蓄力的光流用） |
+| `.../wp_miquella_gs.mdf2.45` | 材質：`MiquellaBlade`、`MiquellaGlow`、`MiquellaIvory`、`MiquellaTemper`（刃紋，獨立出來給三段蓄力的光流用）、`MiquellaGrow1～24`（三條纏繞刀身的光絲，依出現的時間切段：換裝腳本跟著蓄力時間讓它們從護手長到刀尖，一段 40 %、二段 75 %、三段到頂，2026-10-03）、`MiquellaCharge3`（三段時刃口飛出的火花） |
 | `wp_miquella_gs_kit.blend` | 匯出前的場景 |
 
 貼圖沿用雙劍的（`Art/Model/MiquellaLight/DualBlades/tex/`），pak 裡自帶一份。

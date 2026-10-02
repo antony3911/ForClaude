@@ -1101,45 +1101,78 @@ def lance_charge_parts(mats):
     return rings, flare
 
 
+# ------------------------------------------------------------------ growing with the charge
+# (user, 2026-10-03: the spirals came a level's piece at a time, "abstract"; "a spiral should grow
+# slowly, that is what makes it look good"; the bow's flowers opened two at once.) Growing parts are
+# cut into bands by WHEN they appear: tau 0..1 over the whole charge, band b (1..n) holds what grows
+# in the b-th share of it. The game kits put band b on its own material (MiquellaGrow<b>) and the
+# weapons script fades the bands in as the game's charge timer runs, so the parts grow with it.
+GROW_BANDS = 24
+STRAND_REACH = (0.4, 0.75, 1.0)          # how far a strand reaches (0 root .. 1 end) at levels 1, 2, 3
+
+
+def reach_at(level, reach=STRAND_REACH):
+    """Reach (0..1) at a charge level (0 .. len(reach)), straight in between."""
+    k = min(int(level), len(reach) - 1)
+    r0 = 0.0 if k == 0 else reach[k - 1]
+    return r0 + (reach[k] - r0) * (level - k)
+
+
+def band_spans(tau0=0.0, tau1=1.0, bands=GROW_BANDS):
+    """[(band, s0, s1)]: the bands that share [tau0, tau1] of the charge, with their share of it
+    (s 0..1 along that span)."""
+    out = []
+    for b in range(1, bands + 1):
+        a, z = max(tau0, (b - 1) / bands), min(tau1, b / bands)
+        if z > a + 1e-9:
+            out.append((b, (a - tau0) / (tau1 - tau0), (z - tau0) / (tau1 - tau0)))
+    return out
+
+
 # The lance's charge, second design (user's pick, 2026-10-02 evening: "A, the spiral drill"):
 # strands of light spiral from the vamplate's rim in toward the point, against the shaft's own
-# helix, growing a level at a time; all turn about the lance's axis on one bone (MQ_Drill),
-# faster each level, so the full charge reads as a drill of light.
+# helix, growing with the charge; all turn about the lance's axis on one bone (MQ_Drill), faster
+# as it builds, so the full charge reads as a drill of light.
 DRILL_Z = (0.47, 1.93)                       # strands from the vamplate's rim to near the point
 DRILL_PIVOT = (0, 0, 1.2)                    # MQ_Drill, on the axis
-# (level, strand set, reach from, reach to): the main three strands grow over three levels,
-# three finer ones over the last two.
-DRILL_PIECES = [(1, "Main", 0.0, 0.4), (2, "Main", 0.4, 0.75), (3, "Main", 0.75, 1.0),
-                (2, "Fine", 0.0, 0.5), (3, "Fine", 0.5, 0.85)]
+# The main three strands reach STRAND_REACH at levels 1-3; three finer ones join at level 1 and
+# reach these at levels 2 and 3.
+DRILL_FINE_REACH = (0.5, 0.85)
 
 
-def drill_strand(name, mat, u0, u1, k, n_str, phase, r_root, turns, bevel, end_taper):
-    """One strand's piece between reach u0 and u1 (0 at the vamplate, 1 at the point)."""
+def drill_strand(name, mat, u0, u1, k, n_str, phase, r_root, turns, bevel, end):
+    """One strand's piece between reach u0 and u1 (0 at the vamplate, 1 at the point); the strand
+    ends at reach `end`, thinning over its last stretch."""
     z0, z1 = DRILL_Z
     pts, radii = [], []
-    n = max(12, int(260 * (u1 - u0)))
+    n = max(6, int(260 * (u1 - u0)) + 2)
     for i in range(n):
-        t = i / (n - 1)
-        u = u0 + (u1 - u0) * t
+        u = u0 + (u1 - u0) * i / (n - 1)
         r = r_root * (1 - u) ** 1.2 + 0.012
         a = phase + 2 * math.pi * k / n_str - 2 * math.pi * turns * u
         pts.append(V(r * math.cos(a), r * math.sin(a), z0 + (z1 - z0) * u))
-        radii.append((1 - 0.65 * u) * ((1 - 0.85 * m.smoothstep((t - 0.82) / 0.18)) if end_taper else 1.0))
+        radii.append((1 - 0.65 * u) * (1 - 0.85 * m.smoothstep((u - (end - 0.045)) / 0.045)))
     return c.curve_tube(name, pts, radii, mat, bevel=bevel, resolution=3)
 
 
-def lance_drill_parts(mats):
-    """Returns ({level: [objects]}, [point flare objects]); names Drill_<set>_<level>_<k>,
-    Drill_Spin_<k>, Point_Flare_A/B (a longer blade of light around the point at full charge)."""
-    out = {1: [], 2: [], 3: []}
+def lance_drill_parts(mats, bands=GROW_BANDS):
+    """Returns ({band: [strand pieces]}, [spin trails], [point flare objects]); names
+    Drill_<Main|Fine>_<band>_<k>, Drill_Spin_<k> (round the root at full charge: the drill turning),
+    Point_Flare_A/B (a longer blade of light around the point at full charge)."""
+    out = {}
     sets = {"Main": (3, 0.0, 0.16, 2.2, 0.0042), "Fine": (3, math.pi / 3, 0.2, 2.2, 0.0024)}
-    for level, kind, u0, u1 in DRILL_PIECES:
-        n_str, phase, r_root, turns, bevel = sets[kind]
-        last = (kind == "Main" and u1 == 1.0) or (kind == "Fine" and u1 == 0.85)
-        for k in range(n_str):
-            out[level].append(drill_strand(f"Drill_{kind}_{level}_{k}", mats["light"], u0, u1, k, n_str, phase,
-                                           r_root, turns, bevel, last))
-    # Spin trails around the root at full charge: the drill turning.
+    for kind, (n_str, phase, r_root, turns, bevel) in sets.items():
+        main = kind == "Main"
+        for b, s0, s1 in band_spans(0.0 if main else 1 / 3, 1.0, bands):
+            if main:
+                u0, u1, end = reach_at(3 * s0), reach_at(3 * s1), 1.0
+            else:
+                u0, u1, end = (reach_at(2 * s0, DRILL_FINE_REACH), reach_at(2 * s1, DRILL_FINE_REACH),
+                               DRILL_FINE_REACH[-1])
+            for k in range(n_str):
+                out.setdefault(b, []).append(drill_strand(f"Drill_{kind}_{b}_{k}", mats["light"], u0, u1, k, n_str,
+                                                          phase, r_root, turns, bevel, end))
+    spin = []
     for k in range(3):
         a0 = 2 * math.pi * k / 3
         pts, radii = [], []
@@ -1148,13 +1181,13 @@ def lance_drill_parts(mats):
             a = a0 + math.radians(100) * t
             pts.append(V(0.205 * math.cos(a), 0.205 * math.sin(a), 0.52 + 0.04 * t))
             radii.append(max(0.05, t ** 0.8))
-        out[3].append(c.curve_tube(f"Drill_Spin_{k}", pts, radii, mats["light"], bevel=0.003, resolution=3))
+        spin.append(c.curve_tube(f"Drill_Spin_{k}", pts, radii, mats["light"], bevel=0.003, resolution=3))
     flare = []
     for name, normal in (("Point_Flare_A", (0, 1, 0)), ("Point_Flare_B", (1, 0, 0))):
         flare += m.path_blade(name, [V(0, 0, LANCE_TIP - 0.38), V(0, 0, LANCE_TIP + 0.42)], normal,
                               lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
                               lambda t: 0.02 * (1 - t), mats["blade"])
-    return out, flare
+    return out, spin, flare
 
 
 # The charge blade's savage axe (user's pick 2026-10-02 evening: "A, teeth of light"): teeth
@@ -1208,8 +1241,13 @@ def charge_blade_saw(mats):
 
 # The bow's charge (user's pick 2026-10-02 evening: "A, the vine in bloom"): the gold vine on
 # each limb opens flowers of light from the grip toward the tips, two more per level; at full
-# charge a larger flower at each tip. (limb, place along it) per level; the tips' flowers last.
-BLOSSOM_STOPS = {1: (0.12, 0.3), 2: (0.48, 0.64), 3: (0.8, 0.93)}
+# charge a larger flower at each tip. Places along a limb (grip 0 .. tip 1) in the order they
+# open, both limbs together; the tips' flowers last. They open ONE AT A TIME (user, 2026-10-03:
+# two at once had no flow): each flower is three bands of the bloom (its heart, every other petal,
+# the rest), slot s (0..6, the tips 6) on bands 3s+1 .. 3s+3 (MiquellaGrow1..21); the weapons
+# script times them by the game's charge timer (two flowers a level's time, the tips' at full).
+BLOSSOM_PLACES = (0.12, 0.3, 0.48, 0.64, 0.8, 0.93)
+BLOOM_BANDS = 3 * (len(BLOSSOM_PLACES) + 1)
 
 
 def bow_limb_path(s, grip_x=-0.14):
@@ -1219,40 +1257,49 @@ def bow_limb_path(s, grip_x=-0.14):
     return m.resample(m.catmull(limb, 40), 100)
 
 
-def light_blossom(name, center, normal, size, mat, petals=5, twist=0.0):
-    """A small flower of light (pointed petals and a droplet heart), light enough for the game."""
+def light_blossom(name, center, normal, size, mat, petals=5, twist=0.0, split=False):
+    """A small flower of light (pointed petals and a droplet heart), light enough for the game.
+    split: return ([[objects of petal k]], heart) instead of one list."""
     n = Vector(normal).normalized()
     u = n.orthogonal().normalized()
     w = n.cross(u)
-    objs = []
+    parts = []
     for k in range(petals):
         a = twist + 2 * math.pi * k / petals
         d = u * math.cos(a) + w * math.sin(a)
         p0, p1, p2 = center + d * size * 0.15, center + d * size * 0.7 + n * size * 0.18, center + d * size + n * size * 0.1
-        objs += m.path_blade(f"{name}_P{k}", [p0, p1, p2], n.cross(d),
-                             lambda t: size * 0.55 * math.sin(math.pi * min(1, t * 1.05)) ** 0.8 + 0.0004,
-                             lambda t: size * 0.06 + 0.0004, mat, n_sec=6, samples=8, subsurf=0)
+        parts.append(m.path_blade(f"{name}_P{k}", [p0, p1, p2], n.cross(d),
+                                  lambda t: size * 0.55 * math.sin(math.pi * min(1, t * 1.05)) ** 0.8 + 0.0004,
+                                  lambda t: size * 0.06 + 0.0004, mat, n_sec=6, samples=8, subsurf=0))
     bpy.ops.mesh.primitive_ico_sphere_add(radius=size * 0.2, subdivisions=1, location=center + n * size * 0.08)
     heart = bpy.context.active_object
     heart.name = f"{name}_Heart"
     heart.data.materials.append(mat)
-    return objs + [heart]
+    if split:
+        return parts, heart
+    return [o for p in parts for o in p] + [heart]
 
 
 def bow_blossoms(mats):
-    """{level: [flower parts]}, names Blossom_<level>_<side>_<i>..."""
-    out = {1: [], 2: [], 3: []}
+    """{band: [flower parts]} (bands 1..BLOOM_BANDS, see BLOSSOM_PLACES), names
+    Blossom_<slot>_<side>_P<k> / _Heart, Blossom_Tip_<side>_..."""
+    out = {}
+
+    def add(slot, flower):
+        petals, heart = flower
+        out.setdefault(3 * slot + 1, []).append(heart)
+        for k, p in enumerate(petals):
+            out.setdefault(3 * slot + 2 + k % 2, []).extend(p)
     for s in (1, -1):
         path = bow_limb_path(s)
-        for lv, stops in BLOSSOM_STOPS.items():
-            for i, u in enumerate(stops):
-                p = path[int(u * (len(path) - 1))]
-                size = 0.06 - 0.02 * u
-                out[lv] += light_blossom(f"Blossom_{lv}_{s}_{i}", p + V(-0.012, -0.035, 0), (-0.25, -1, 0.15 * s), size,
-                                         mats["light"], twist=i * 0.7 + lv)
+        for slot, u in enumerate(BLOSSOM_PLACES):
+            p = path[int(u * (len(path) - 1))]
+            size = 0.06 - 0.02 * u
+            add(slot, light_blossom(f"Blossom_{slot}_{s}", p + V(-0.012, -0.035, 0), (-0.25, -1, 0.15 * s), size,
+                                    mats["light"], twist=slot % 2 * 0.7 + slot // 2 + 1, split=True))
         tip = path[-1]
-        out[3] += light_blossom(f"Blossom_Tip_{s}", tip + V(0.0, -0.045, s * 0.03), (-0.2, -1, 0.2 * s), 0.1,
-                                mats["light"], petals=7)
+        add(len(BLOSSOM_PLACES), light_blossom(f"Blossom_Tip_{s}", tip + V(0.0, -0.045, s * 0.03), (-0.2, -1, 0.2 * s),
+                                               0.1, mats["light"], petals=7, split=True))
     return out
 
 
@@ -1340,20 +1387,22 @@ def gunlance_filament(mats):
 
 
 # Strands of light wrapped round a blade (user's picks 2026-10-02 evening: the great sword's
-# "A" and the long sword's "B"): they grow from the guard toward the point a level at a time.
-# The helix is flattened across the blade's thickness so it hugs a flat blade.
-STRAND_PIECES = [(1, 0.0, 0.4), (2, 0.4, 0.75), (3, 0.75, 1.0)]
+# "A" and the long sword's "B"): they grow from the guard toward the point with the charge
+# (reaching STRAND_REACH at levels 1-3, see "growing with the charge"). The helix is flattened
+# across the blade's thickness so it hugs a flat blade.
 GS_WIDTH_KNOTS = [(0.0, 0.012), (0.1, 0.055), (0.24, 0.085), (0.42, 0.165), (0.6, 0.23),
                   (0.76, 0.2), (0.88, 0.11), (0.96, 0.038), (1.0, 0.0)]     # as great_sword's
 
 
-def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.55, bevel=0.0035):
-    """{level: [strand pieces]}, names <prefix>_<level>_<k>; center_fn(u) / radius_fn(u) along
-    the blade, u 0 at the guard and 1 at the point."""
-    out = {1: [], 2: [], 3: []}
-    for level, u0, u1 in STRAND_PIECES:
+def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.55, bevel=0.0035, bands=GROW_BANDS):
+    """{band: [strand pieces]}, names <prefix>_<band>_<k>; center_fn(u) / radius_fn(u) along the
+    blade, u 0 at the guard and 1 at the point. Band b holds the stretch that grows in the b-th
+    share of the charge."""
+    out = {}
+    for b, s0, s1 in band_spans(bands=bands):
+        u0, u1 = reach_at(3 * s0), reach_at(3 * s1)
         for k in range(n_str):
-            n = max(12, int(260 * (u1 - u0)))
+            n = max(6, int(260 * (u1 - u0)) + 2)
             pts, radii = [], []
             for i in range(n):
                 u = u0 + (u1 - u0) * i / (n - 1)
@@ -1361,13 +1410,14 @@ def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.5
                 r = radius_fn(u)
                 pts.append(center_fn(u) + V(r * math.cos(a), r * math.sin(a) * flat, 0))
                 radii.append((1 - 0.6 * u) * max(0.05, min(1.0, u * 12)))
-            out[level].append(c.curve_tube(f"{prefix}_{level}_{k}", pts, radii, mat, bevel=bevel, resolution=3))
+            out.setdefault(b, []).append(c.curve_tube(f"{prefix}_{b}_{k}", pts, radii, mat, bevel=bevel, resolution=3))
     return out
 
 
 def great_sword_strands(mats, gt=0.36):
     """Three strands round the great sword's blade (its centre line half a width off the spine,
-    toward the edge) and, at full charge, sparks thrown off the edge. Names GS_Strand_*, GS_Spark_*."""
+    toward the edge) and, at full charge, sparks thrown off the edge. Returns ({band: [strand
+    pieces]}, [sparks]); names GS_Strand_*, GS_Spark_*."""
     z0, length = gt + 0.1, 1.2
 
     def center(u):
@@ -1376,16 +1426,19 @@ def great_sword_strands(mats, gt=0.36):
 
     out = wrap_strands("GS_Strand", center, lambda u: 0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + 0.035, mats["light"])
     rng = random.Random(5)
+    sparks = []
     for k in range(9):
         u = rng.uniform(0.25, 0.9)
         p = center(u) + V(0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + rng.uniform(0.05, 0.14), rng.uniform(-0.03, 0.03),
                           rng.uniform(-0.03, 0.03))
-        out[3] += m.droplet(f"GS_Spark_{k}", p, rng.uniform(0.006, 0.01), (1, 0, 0.6), mats["light"], stretch=2.5)
-    return out
+        sparks += m.droplet(f"GS_Spark_{k}", p, rng.uniform(0.006, 0.01), (1, 0, 0.6), mats["light"], stretch=2.5)
+    return out, sparks
 
 
 def long_sword_strands(mats):
-    """Two strands round the long sword's blade, along its curve. Names LS_Strand_*."""
+    """Two strands round the long sword's blade, along its curve: {band: [pieces]}, names LS_Strand_*.
+    In the game they grow with the Spirit Charge that leads into the Spirit Roundslash (user,
+    2026-10-03), not with the spirit gauge's colour."""
     import long_sword as ls
 
     def center(u):

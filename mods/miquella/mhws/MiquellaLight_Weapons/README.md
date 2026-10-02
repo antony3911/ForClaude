@@ -39,13 +39,31 @@
 
 | 設定 | 用在 | 作用 |
 |---|---|---|
-| `charge.parts = { 材質 = 段數 }` | 長槍、大劍、太刀、大錘、銃槍 | 零件材質在那一段淡入（`Dissolve`，消失時關掉材質） |
-| `charge.partColor` | 大劍、太刀（`PART_GOLD`） | 零件固定這個顏色（刀身三段變白時光絲還是亮金） |
-| `bow.parts` | 弓 | 同上，用拉弓的段數（藤蔓開花） |
-| `floaters.spin = { axis, dps = { 0段, 1段, 2段, 3段 } }`＋關節 `spin = true` 或 `{ 軸 }` | 長槍 `MQ_Drill`、大錘 `MQ_Arm0～2` | 骨頭固定在原位、依蓄力段數（`entry.chargeSmooth` 內插）每秒轉幾度；關節可以給自己的軸 |
-| 關節 `stretch = 根部高度` | 銃槍 `MQ_FilamentTop` | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟段數 |
+| `charge.parts = { 材質 = 段數 }` | 大劍火花、長槍旋轉弧和槍尖光刃、大錘、銃槍 | 零件材質在那一段淡入（`Dissolve`，消失時關掉材質） |
+| `charge.partColor` | 大劍（`PART_GOLD`） | 零件固定這個顏色（刀身三段變白時光絲還是亮金） |
+| `grow`（見下一節） | 大劍、長槍、太刀的光絲，弓的花 | 跟著遊戲的蓄力計時器連續長出來 |
+| `floaters.spin = { axis, dps = { 0段, 1段, 2段, 3段 }, grow }`＋關節 `spin = true` 或 `{ 軸 }` | 長槍 `MQ_Drill`、大錘 `MQ_Arm0～2` | 骨頭固定在原位、依蓄力段數（`entry.chargeSmooth` 內插；`grow = true` 時用長出來的程度 `entry.growLevel`，連續加速）每秒轉幾度；關節可以給自己的軸 |
+| 關節 `stretch = 根部高度` | 銃槍 `MQ_FilamentTop` | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟蓄力時間連續拉長（蓄力砲擊 1.2 秒拉滿、龍擊砲 0.9 秒） |
 | `floaters.orbit.face = true`, `spin` | 操蟲棍精華 | 繞刀的零件一直朝外（建模時就朝外放），繞自己的朝向慢轉；不設就是原本的翻滾 |
 | `boosts[].chase = { 材質… }`, `chaseHz` | 充能斧斧強化 | 幾組材質輪流只亮一組（跑馬燈），不在那個型態時全部藏起來 |
 | 關節 `slide = true`＋`timing` 表 | 片手劍 `MQ_TimingRing` | 骨頭沿武器往上抬 `entry.slide`；`update_timing` 在完美突進動作（`cJustRush*`）時讓光環從刀尖降到護手，`_IsJustRush` 時爆開 |
 
 骨頭和零件在 `build_weapon_kit.py` 做：`floaters`（物件名 → 骨頭）＋`pivots`（骨頭位置）；一個材質分多種顏色用 `uv_band_of`／`uv_band_count`（操蟲棍精華，頂點屬性 `mq_band`）；只屬於一個型態的零件用 `sets`（充能斧 `SawA／B／C`）。預設隱藏的材質前綴在 `HIDDEN_AT_START`。
+
+## 跟著蓄力連續長出來（`grow`，2026-10-03，第一帳號）
+
+使用者：螺旋一段一段出現很抽象，「螺旋就應該是慢慢長大的才會帥」；弓每段同時開兩朵花沒有連續性。做法：
+
+- **模型**：會長的零件依「什麼時候出現」切成很多段，每段一個材質 `MiquellaGrow1～n`（`arsenal.py` 的「growing with the charge」：`band_spans`、`reach_at`；光絲每段到的位置照舊：一段 40 %、二段 75 %、三段到頂；弓每朵花三段：花心、一半花瓣、另一半）。大劍、長槍、太刀各 24 段，弓 21 段（7 朵 × 3）
+- **腳本** `update_grow`：讀遊戲的蓄力段數＋**蓄力計時器**，算出「段數＋往下一段走了多少」（計時器 ÷ 段數門檻；下一段到之前最多走到 98 %，不會比遊戲早），換成長出來的比例，前緣那段用 `Dissolve` 淡入。放開蓄力，長出來的部分在原地 0.3 秒淡出（`hold` 的動作進行中先不淡出：太刀的大迴旋斬）
+- **段數門檻**（計時器到哪個值升段）：優先用**玩的時候實際量到的**（段數一變就記下當時的計時器值，存在 `Weapons.json` 的 `chargeTimes`，像 `it00/0`＝大劍、蓄力種類 0；跟表差太多的不記），其次遊戲自己的參數（弓的 `_ActionParam._ChargeTimeLv2～4`），最後是 `times`（從遊戲參數檔 `wpXXglobalactionparam.user.3` 解出來的）。每次學到新值會記進欄位記錄檔的 `events`（`charge it00: level 1 at _ChargeTimer 0.800`）
+- 選單 `Growth:` 顯示段數欄位、計時器、下一段的門檻（`learned`＝量到的）和長出來的百分比
+
+| 武器 | 段數欄位 | 計時器 | 門檻（秒） | 其他 |
+|---|---|---|---|---|
+| 大劍 | `_ChargeLevel`（`CHARGE_FIELDS`） | `_ChargeTimer` | 0.8／1.55／2.3（一般蓄力；其他蓄力種類不同，依 `_ChargeType` 各自學） | 三段時的火花照舊 `MiquellaCharge3` |
+| 長槍 | `_FinishChargeLevel` | `_FinishChargeTimer` | 0.8／2.0／3.6 | 細光絲從一段開始長；光鑽轉速跟著長的程度（`spin.grow`） |
+| 太刀 | `_KijinChargeLv`（氣刃蓄力） | `_KijinChargeTimer` | 0.8／1.6／2.9 | 只在 `cKijinCharge*` 動作裡開始長（`action`），大迴旋斬 `cKijinSlashRound` 揮完才淡出（`hold`）；亮金、越長越亮（`mul`） |
+| 弓 | `<ChargeLv>`（平時 1） | `_ChargeTimer`（沒有就 `_OnceChargeTimer`） | 遊戲的 `_ActionParam._ChargeTimeLv2～4`（1／2／3） | `flowers = 7`：每段的時間開兩朵（一朵一朵），到最高段剩下的接連開完（`post` 0.6 秒），弓尖大花最後；最高段讀 `<MaxChargeLv>` |
+
+預覽：`prototypes/scripts/preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <輸出>`（照遊戲的時間做 GIF 和一排格子），輸出在 `MiquellaTools\work\previews\grow\`。

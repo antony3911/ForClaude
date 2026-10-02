@@ -67,16 +67,19 @@ def wyrmstake():
 
 
 def wyvernblast():
-    """The closed bud (petals at 8 degrees) placed like the original mine: its dome is
-    symmetric about Y (x, z +-0.25) from y -0.13 to +0.24, so +Y is up and the ground at
-    -0.13. Ours: prototype +Z up -> +Y, scaled 5 (0.39 high like the original)."""
+    """The closed bud (petals at 8 degrees), +Y up like the original mine (its dome symmetric
+    about Y, x and z +-0.25). Ours: prototype +Z up -> +Y, scaled 5 (0.39 high like the original).
+    The ground is at the effect's origin, not at the dome's bottom (-0.13) as first assumed: the
+    original's landed disc lies at y -0.05..+0.06, and with the bud's base at -0.13 the user saw
+    more than 80 % of the open flower under the ground, only the top of its light (2026-10-03).
+    So the base sits at +0.02: the open flower's lowest petal tips just above the ground."""
     import devices
     import motifs as m
     mats = m.materials()
     closed = devices.bud(mats, Vector((0, 0, 0)), 8, "Closed")
     opened = devices.bud(mats, Vector((0, 0, 0)), 62, "Open")
     axes = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))     # z -> y, y -> -z
-    to_file = Matrix.Translation((0, -0.13, 0)) @ Matrix.Scale(5.0, 4) @ axes
+    to_file = Matrix.Translation((0, 0.02, 0)) @ Matrix.Scale(5.0, 4) @ axes
     # The game's effect (11_it13_106) shows groups 0+1 while the shell flies and 0+2 once it has
     # landed (its mesh elements' group ranges): 0 the light inside, 1 the closed bud, 2 the open
     # flower on its scroll roots, so the bud opens as it lands (user, 2026-10-02: it never opened).

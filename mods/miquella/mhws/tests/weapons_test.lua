@@ -1,6 +1,11 @@
 -- Minimal stand-ins for the REFramework API, enough to drive MiquellaLight_Weapons.lua.
 local failPaths = {}
 local function resource(path) return { ToString = function() return "Resource[" .. path .. "]" end } end
+-- A kit's growth bands (parts that grow with the charge): MiquellaGrow1..n.
+local function withGrow(list, n)
+  for k = 1, n do list[#list + 1] = "MiquellaGrow" .. k end
+  return list
+end
 local function newMesh(meshPath)
   local m = { meshPath = meshPath, mdfPath = meshPath:gsub("%.mesh$", ".mdf2"), enabled = true }
   function m:getMesh() return resource(self.meshPath) end
@@ -18,14 +23,13 @@ local function newMesh(meshPath)
       return { "MiquellaBlade", "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory" }
     end
     if self.mdfPath:match("wp_miquella_bow%.") then
-      return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper",
-               "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3" }
+      return withGrow({ "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }, 21)
     end
     if self.mdfPath:match("wp_miquella_ls%.") then
-      return { "MiquellaGlow", "MiquellaIvory", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3",
+      return withGrow({ "MiquellaGlow", "MiquellaIvory",
                "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4",
                "MiquellaBlade5", "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8", "MiquellaBand1", "MiquellaBand2",
-               "MiquellaBand3", "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }
+               "MiquellaBand3", "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }, 24)
     end
     if self.mdfPath:match("wp_miquella_sa%.") then
       return { "MiquellaAxeBlade", "MiquellaAxeGlow", "MiquellaFinBlade", "MiquellaFinGlow", "MiquellaGauge1",
@@ -51,16 +55,15 @@ local function newMesh(meshPath)
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaTiming", "MiquellaBurst" }
     end
     if self.mdfPath:match("wp_miquella_ln%.") then
-      return { "MiquellaBlade", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaChargeTip",
-               "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      return withGrow({ "MiquellaBlade", "MiquellaCharge3", "MiquellaChargeTip", "MiquellaGlow", "MiquellaIvory",
+                        "MiquellaTemper" }, 24)
     end
     if self.mdfPath:match("wp_miquella_hm%.") then
       return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory",
                "MiquellaArmillary1", "MiquellaArmillary2", "MiquellaArmillary3" }
     end
     if self.mdfPath:match("wp_miquella_gs") then
-      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaCharge1", "MiquellaCharge2",
-               "MiquellaCharge3" }
+      return withGrow({ "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaCharge3" }, 24)
     end
     return { "lambert" }
   end
@@ -127,6 +130,7 @@ local extract = {}               -- field -> value (insect glaive timers)
 local insectGO = nil             -- the kinsect GameObject behind _Insect
 local hunterAction = nil         -- type name of the hunter's current (base) action
 local handlingFields = {}        -- field names the handling lists (the field recorder and rush trace read them)
+local chargeT0 = nil             -- the game's charge timer (great sword, lance, long sword, bow) counts from here
 function chr:call(m)
   if m == "get_BaseActionController" then
     return { call = function(_, cm)
@@ -152,6 +156,9 @@ function chr:call(m)
       if n == "_ChargeShotElapsedTimer" then
         if glStart then glKeep = os.clock() - glStart end
         return glKeep
+      end
+      if n == "_ChargeTimer" or n == "_FinishChargeTimer" or n == "_KijinChargeTimer" then
+        return chargeT0 and (os.clock() - chargeT0) or 0
       end
       if n == "_RapidAmmoGauge" then return rapidGauge end
       if n == "_IsRapidMode" then return rapidMode end
@@ -432,8 +439,7 @@ chargeLv = 2
 frames(30, 1 / 60)
 check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow * 2.8) < 1e-6, "great sword: level 2 glows 2.8x")
 check(weaponMesh.floats["MiquellaTemper.3"] == 0.0, "great sword: no band before level 3")
-check(weaponMesh.matEnabled["MiquellaCharge2"] == true and weaponMesh.matEnabled["MiquellaCharge3"] ~= true,
-      "great sword: level 2 shows the strands up to the second piece")
+check(weaponMesh.matEnabled["MiquellaCharge3"] ~= true, "great sword: no sparks before level 3")
 chargeLv = 3
 frames(30, 1 / 60)
 local c = weaponMesh.colors["MiquellaBlade"]
@@ -449,6 +455,56 @@ chargeLv = 0
 frames(90, 1 / 60)                   -- 0.35 s per level on the way down
 check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow) < 1e-6 and weaponMesh.floats["MiquellaTemper.3"] == 0.0,
       "great sword: releasing the charge fades back")
+-- The strands grow with the charge (user, 2026-10-03): the game's _ChargeTimer against the level
+-- thresholds (0.8 / 1.55 / 2.3 s), not a level's piece at a time; where the game's level really
+-- changes is learned for the next charges.
+local function grown(n)              -- growth bands fully shown, and the front band's share
+  local full, front = 0, 0
+  for k = 1, n do
+    local on, d = weaponMesh.matEnabled["MiquellaGrow" .. k] == true, weaponMesh.floats["MiquellaGrow" .. k .. ".2"] or 0
+    if on and d >= 0.999 then full = full + 1 elseif on and d > 0.001 then front = d end
+  end
+  return full, front
+end
+check(grown(24) == 0, "great sword: no strands without a charge")
+chargeT0 = fakeTime                  -- a charge: the timer counts, level 0
+frames(24, 1 / 60)                   -- 0.4 s: half the way to level 1
+local g1 = grown(24)
+check(g1 >= 3 and g1 <= 4, string.format("great sword: the strands grow during the first level (%d of 24 bands)", g1))
+frames(12, 1 / 60)
+local g2 = grown(24)
+check(g2 > g1 and g2 <= 6, string.format("great sword: and keep growing smoothly (%d)", g2))
+frames(6, 1 / 60)                    -- 0.7 s: the game's level comes early this time
+chargeLv = 1
+frames(15, 1 / 60)
+local g3 = grown(24)
+check(g3 >= 8 and g3 <= 10, string.format("great sword: level 1 = a third grown (%d)", g3))
+frames(54, 1 / 60)                   -- 1.85 s (level 2 at 1.55)
+check(grown(24) <= 17, string.format("great sword: still short of level 2's growth until the game says so (%d)", grown(24)))
+chargeLv = 2
+frames(27, 1 / 60)                   -- 2.3 s
+chargeLv = 3
+frames(12, 1 / 60)
+check(grown(24) == 24 and weaponMesh.matEnabled["MiquellaCharge3"] == true, "great sword: full charge, the strands reach the point, sparks")
+local sg = weaponMesh.colors["MiquellaGrow24"]
+check(sg and sg.z < 0.3 and weaponMesh.floats["MiquellaGrow24.1"] / (1.2 * glow) > 3.0,
+      "great sword: the strands stay bright gold on the white blade")
+chargeLv, chargeT0 = 0, nil
+frames(6, 1 / 60)
+local gf, gfront = grown(24)
+check(gf == 0 and gfront > 0.2, "great sword: let go, the strands fade where they stand")
+frames(20, 1 / 60)
+check(grown(24) == 0 and select(2, grown(24)) == 0, "great sword: and are gone")
+check(savedCfg.chargeTimes and savedCfg.chargeTimes.it00 and math.abs(savedCfg.chargeTimes.it00["1"] - 0.7) < 0.03,
+      "great sword: the level the game reached early is learned and saved")
+chargeT0 = fakeTime                  -- the next charge uses it: level 1's growth by 0.7 s
+frames(39, 1 / 60)
+local g4 = grown(24)
+check(g4 >= 7 and g4 <= 8, string.format("great sword: the next charge grows by the learned time (%d at 0.65 s)", g4))
+chargeT0 = nil
+frames(40, 1 / 60)
+texts = {}; onDraw()
+check(anyText("^Growth: _ChargeLv"), "great sword: menu shows the growth")
 comboAnswer = 1; onDraw()
 frames(20)
 check(weaponMesh.meshPath == "Art/Model/Item/it00/00/0000/it0000_0000_0.mesh", "great sword: original restored")
@@ -578,20 +634,38 @@ local REST, PACKED = 1.0080, 1.0080 - 0.5490
 check(front.lp and math.abs(front.lp.z - REST) < 0.01, string.format("bow: rings spread at rest (front ring z %.3f)", front.lp.z))
 local function gauge(i) return weaponMesh.floats["MiquellaGauge" .. i .. ".1"] / (1.2 * glow) end
 check(math.abs(gauge(3) - 1) < 1e-3, "bow: rings at normal glow when not drawn")
-check(weaponMesh.matEnabled["MiquellaCharge1"] ~= true, "bow: no flowers when not drawn")
-bowDraw, chargeLv = true, 1
-frames(60, 1 / 60)
+check(grown(21) == 0, "bow: no flowers when not drawn")
+-- The game's own level times (_ActionParam._ChargeTimeLv2 / 3: 1 and 2 s of _ChargeTimer); the
+-- flowers open one at a time, each its heart then half its petals then the rest, two in a level's
+-- time; at the top level the rest, the tips' last (user, 2026-10-03).
+extract._ActionParam = { get_field = function(_, k)
+  return ({ _ChargeTimeLv2 = 1.0, _ChargeTimeLv3 = 2.0, _ChargeTimeLv4 = 3.0 })[k]
+end }
+bowDraw, chargeLv, chargeT0 = true, 1, fakeTime
+frames(15, 1 / 60)                   -- 0.25 s
+local f1, f1front = grown(21)
+check(f1 == 1 and f1front > 0.2, string.format("bow: the first flower opens first, heart then petals (%d, %.2f)", f1, f1front))
+frames(15, 1 / 60)                   -- 0.5 s: half a level's time
+check(grown(21) == 3, string.format("bow: the first flower open at half the level, the second not yet (%d)", grown(21)))
+frames(30, 1 / 60)                   -- 1.0 s
 local z1 = front.lp.z
 check(z1 < REST - 0.2 and z1 > PACKED + 0.05, string.format("bow: drawing packs the rings part way (%.3f)", z1))
 check(math.abs(gauge(1) - 1.8) < 0.05 and gauge(3) < 0.4, string.format("bow: level 1 lights the first pair (%.2f %.2f %.2f)", gauge(1), gauge(2), gauge(3)))
-check(weaponMesh.matEnabled["MiquellaCharge1"] == true and weaponMesh.matEnabled["MiquellaCharge2"] ~= true,
-      "bow: level 1 opens the first flowers by the grip")
+check(grown(21) >= 5 and grown(21) <= 6, string.format("bow: the second flower opening as level 2 comes (%d)", grown(21)))
+chargeLv = 2
+frames(30, 1 / 60)                   -- 1.5 s
+check(grown(21) >= 8 and grown(21) <= 9, string.format("bow: level 2: the third flower (%d)", grown(21)))
+frames(30, 1 / 60)                   -- 2.0 s
 chargeLv = 3
-frames(60, 1 / 60)
+frames(6, 1 / 60)
+local f3 = grown(21)
+check(f3 >= 12 and f3 <= 14, string.format("bow: level 3: four flowers, the rest opening (%d)", f3))
+frames(40, 1 / 60)
 check(math.abs(front.lp.z - PACKED) < 0.01, string.format("bow: level 3 packs them tight (%.3f)", front.lp.z))
 check(gauge(3) > 3.3, "bow: level 3 lights every ring")
-check(weaponMesh.matEnabled["MiquellaCharge3"] == true and (weaponMesh.floats["MiquellaCharge3.2"] or 0) > 0.99,
-      "bow: level 3 opens the flowers out to the tips")
+check(grown(21) == 21, "bow: and every flower is open, the tips' last")
+local fc = weaponMesh.colors["MiquellaGrow21"]
+check(fc and fc.z > 0.5, "bow: the flowers take the level's white gold")
 local col = weaponMesh.colors["MiquellaGauge3"]
 check(col and col.z > 0.5 and col.y > 0.8, "bow: level 3 turns them white gold")
 texts = {}; onDraw()
@@ -616,13 +690,14 @@ check(math.abs(front.lp.x - want) < 0.015 and math.abs(front.lp.y) < 0.015 and m
 texts = {}; onDraw()
 check(anyText("^Arrow: found"), "bow: menu says the arrow was found")
 sdk.call_native_func = nil
-bowDraw, chargeLv = false, 0
+bowDraw, chargeLv, chargeT0 = false, 0, nil
 local far = 0
 for _ = 1, 90 do frames(1, 1 / 60); far = math.max(far, front.lp.z) end
 check(far > REST + 0.03, string.format("bow: loosing springs the rings past their places (%.3f)", far))
 frames(120, 1 / 60)
 check(math.abs(front.lp.z - REST) < 0.01, "bow: and they settle back")
 check(math.abs(gauge(3) - 1) < 1e-3, "bow: glow back to normal")
+check(grown(21) == 0, "bow: the flowers close after the shot")
 -- Hammer: the charge cones fade in a level at a time beyond both faces, bright gold -> white.
 weaponMesh = newMesh("Art/Model/Item/it04/00/0001/it0400_0001_0.mesh")
 weaponGO = newGO("Wp04", 7001, weaponMesh, nil)
@@ -663,7 +738,17 @@ weaponMesh = newMesh("Art/Model/Item/it10/00/0003/it1000_0003_0.mesh")
 weaponGO = newGO("Wp10", 8001, weaponMesh, nil)
 local kinsectMesh = newMesh("Art/Model/Item/it10/03/0002/it1003_0002_0.mesh")
 insectGO = newGO("Wp10Insect", 8002, kinsectMesh, nil)
-extract = { _ExtractTimerRed = 0, _ExtractTimerWhite = 0, _ExtractTimerOrange = 0, _ExtractTimerTripple = 0 }
+-- The game's ExtractTimer: an array of app.cValueHolderF (red, white, orange), TrippleUpTimer one more.
+local extractValues = { 0, 0, 0 }
+local function holderOf(get) return { get_field = function(_, k) if k == "_Value" then return get() end end } end
+local triple = 0
+extract = { ExtractTimer = { get_elements = function()
+              return { holderOf(function() return extractValues[1] end), holderOf(function() return extractValues[2] end),
+                       holderOf(function() return extractValues[3] end) }
+            end },
+            TrippleUpTimer = holderOf(function() return triple end),
+            -- (the extracts' durations: not timers)
+            _ActionParam = { get_field = function(_, k) return ({ _ExtractTimerRed = 90, _ExtractTimerWhite = 120 })[k] end } }
 chargeLv = 0
 frames(20, 1 / 60)
 comboPick = { slot = "Weapon", name = "InsectGlaive" }; onDraw()
@@ -678,9 +763,9 @@ check(wl and wr and wl.lr and wr.lr and math.abs(wl.lr.z + wr.lr.z) < 1e-6 and m
       and math.abs(wl.lr.z) < 0.35, "insect glaive: kinsect wings flap slowly, mirrored")
 local function orb(n) return weaponMesh.matEnabled["MiquellaExtract" .. n] == true end
 check(not orb("Red") and not orb("White") and not orb("Orange"), "insect glaive: no orbs without extracts")
-extract._ExtractTimerRed = 30
+extractValues[1] = 30
 frames(30, 1 / 60)
-check(orb("Red") and not orb("White"), "insect glaive: red extract shows the rot orb")
+check(orb("Red") and not orb("White"), "insect glaive: red extract (ExtractTimer[0]) shows the rot orb")
 local o = weaponGO.tf.joints["MQ_OrbRed"]
 local p1 = { o.lp.x, o.lp.y }
 frames(30, 1 / 60)
@@ -697,17 +782,19 @@ end
 local face = qrotv(o.lr, { 0, 1, 0 })
 local dot = (face[1] * o.lp.x + face[2] * o.lp.y) / r
 check(dot > 0.99 and math.abs(face[3]) < 1e-3, string.format("insect glaive: the flower keeps facing out (%.3f)", dot))
-extract._ExtractTimerWhite, extract._ExtractTimerOrange, extract._ExtractTimerTripple = 30, 30, 30
+extractValues[2], extractValues[3], triple = 30, 30, 30
 frames(40, 1 / 60)
 check(orb("White") and orb("Orange"), "insect glaive: all three orbs")
+texts = {}; onDraw()
+check(anyText("^Extracts: ExtractTimer %[30 30 30%]") and anyText("TrippleUpTimer=30"), "insect glaive: menu shows the timers")
 check(weaponMesh.floats["MiquellaBlade.1"] / (1.2 * glow) > 1.7, "insect glaive: three extracts brighten the blade")
-extract._ExtractTimerTripple = 0
+triple = 0
 chargeLv = 2
 frames(60, 1 / 60)
 local ic = weaponMesh.colors["MiquellaBlade"]
 check(ic and ic.y > 0.8 and ic.z > 0.5 and ic.z < 0.7, "insect glaive: level 2 (full) charge is white gold")
 chargeLv = 0
-extract._ExtractTimerRed = 0
+extractValues[1] = 0
 frames(60, 1 / 60)
 check(not orb("Red") and orb("White"), "insect glaive: an extract running out hides its orb")
 hookPre({ nil, { ToString = function() return "MasterPlayer" end, _IsWeaponOn = false } })
@@ -737,15 +824,18 @@ extract._IsReload = false
 frames(90, 1 / 60)
 check(math.abs(top.lp.z - REST_TOP) < 0.01, "gunlance: and lets it spring back")
 glStart = fakeTime
+local thread = weaponGO.tf.joints["MQ_FilamentTop"]
 frames(20, 1 / 60)
 local z1 = top.lp.z
-frames(70, 1 / 60)
+frames(16, 1 / 60)                   -- 0.6 s of 1.2: the gold thread half drawn out
+local half = (thread.lp.z - 0.429) / (2.015 - 0.429)
+check(half > 0.4 and half < 0.6, string.format("gunlance: the gold thread grows with the charge (%.2f of its length at 0.6 s)", half))
+frames(54, 1 / 60)
 local z3 = top.lp.z
 check(z3 < z1 - 0.05, string.format("gunlance: charged shelling winds tighter per level (%.3f -> %.3f)", z1, z3))
 local gc = weaponMesh.colors["MiquellaCore"]
 check(gc and gc.y > 0.8 and gc.z > 0.5, "gunlance: full charge is white gold")
 -- The gold thread (user's pick "G3"): drawn out to the muzzle at full charge, shown.
-local thread = weaponGO.tf.joints["MQ_FilamentTop"]
 check(thread.lp and math.abs(thread.lp.z - 2.015) < 0.02 and weaponMesh.matEnabled["MiquellaFilament"] == true,
       string.format("gunlance: full charge draws the gold thread out to the muzzle (%.3f)", thread.lp and thread.lp.z or -1))
 glStart = nil
@@ -930,6 +1020,11 @@ local function bandRange(prefix)
   return lo, hi
 end
 local blo, bhi = bandRange()
+for _ = 1, 48 do                     -- (wait for the pulse to be on the blade: it runs once in 0.8 s)
+  if bhi > 1.8 * 2.5 then break end
+  frames(1, 1 / 60)
+  blo, bhi = bandRange()
+end
 check(bhi > 1.8 * 2.5 and blo < 1.8,
       string.format("long sword: yellow = bright gold, the band runs along the pieces (%.2f .. %.2f)", blo, bhi))
 local dlo, dhi = bandRange("MiquellaBlade")
@@ -949,13 +1044,40 @@ extract["<AuraLevel>k__BackingField"] = 4
 frames(60, 1 / 60)
 local lc = weaponMesh.colors["MiquellaBlade1"]
 check(lc and lc.z > 0.8, "long sword: red = white light")
-local lsc = weaponMesh.colors["MiquellaCharge3"]
-check(weaponMesh.matEnabled["MiquellaCharge3"] == true and lsc and lsc.z < 0.3, "long sword: red wraps the whole blade in gold strands")
+check(grown(24) == 0, "long sword: the spirit gauge's colour no longer brings the strands")
 extract["<AuraLevel>k__BackingField"] = 2
 frames(90, 1 / 60)
 blo, bhi = bandRange()
 dlo, dhi = bandRange("MiquellaBlade")
 check(math.abs(dlo - 1.0) < 0.01 and dhi - dlo < 0.01 and bhi - blo < 0.01, "long sword: white = gold, no band")
+-- The Spirit Charge before a Spirit Roundslash (user, 2026-10-03): the strands grow with it (levels
+-- at 0.8 / 1.6 / 2.9 s of _KijinChargeTimer), stay through the roundslash, fade after it.
+extract._KijinChargeLv = 0
+hunterAction = "app.Wp03Action.cKijinSlash1"
+chargeT0 = fakeTime                  -- the timer may run on a held Spirit Blade: nothing grows there
+frames(30, 1 / 60)
+check(grown(24) == 0, "long sword: no strands outside the Spirit Charge")
+hunterAction, chargeT0 = "app.Wp03Action.cKijinCharge", fakeTime
+frames(24, 1 / 60)                   -- 0.4 s
+local l1 = grown(24)
+check(l1 >= 3 and l1 <= 4, string.format("long sword: the Spirit Charge grows the strands (%d of 24)", l1))
+frames(24, 1 / 60)
+extract._KijinChargeLv = 1
+frames(48, 1 / 60)                   -- 1.6 s
+extract._KijinChargeLv = 2
+frames(78, 1 / 60)                   -- 2.9 s
+extract._KijinChargeLv = 3
+frames(12, 1 / 60)
+check(grown(24) == 24, "long sword: full Spirit Charge wraps the whole blade")
+local lsc = weaponMesh.colors["MiquellaGrow24"]
+check(lsc and lsc.z < 0.3 and weaponMesh.floats["MiquellaGrow24.1"] / (1.2 * glow) > 3.0, "long sword: bright gold strands")
+hunterAction, chargeT0, extract._KijinChargeLv = "app.Wp03Action.cKijinSlashRound", nil, 0
+frames(40, 1 / 60)
+check(grown(24) == 24, "long sword: they stay through the Spirit Roundslash")
+hunterAction = "app.Wp03Action.cIdle"
+frames(30, 1 / 60)
+check(grown(24) == 0 and select(2, grown(24)) == 0, "long sword: and fade after it")
+hunterAction = nil
 -- Lance (user's pick "A, the spiral drill"): the strands' bone turns about the lance's axis
 -- while charging, faster each level, and stays on its pivot.
 weaponMesh = newMesh("Art/Model/Item/it06/00/0001/it0600_0001_0.mesh")
@@ -972,15 +1094,28 @@ local function drillAngle()
 end
 local a0 = drillAngle()
 frames(30, 1 / 60)
-check(a0 ~= nil and math.abs(drillAngle() - a0) < 1e-6, "lance: the drill rests without a charge")
+check(a0 ~= nil and math.abs(drillAngle() - a0) < 1e-6 and grown(24) == 0, "lance: the drill rests without a charge")
+-- The strands grow with _FinishChargeTimer (levels at 0.8 / 2.0 / 3.6 s), the drill turning faster.
+chargeT0 = fakeTime
+frames(24, 1 / 60)                   -- 0.4 s
+local n1 = grown(24)
+check(n1 >= 3 and n1 <= 4, string.format("lance: the drill grows from the start of the charge (%d of 24)", n1))
+frames(24, 1 / 60)
 extract._FinishChargeLevel = 1
-frames(60, 1 / 60)
+frames(30, 1 / 60)
 local a1 = drillAngle(); frames(30, 1 / 60); local d1 = (drillAngle() - a1) % 360
+frames(12, 1 / 60)
+extract._FinishChargeLevel = 2
+frames(96, 1 / 60)
 extract._FinishChargeLevel = 3
-frames(90, 1 / 60)
+frames(30, 1 / 60)
 local a3 = drillAngle(); frames(30, 1 / 60); local d3 = (drillAngle() - a3) % 360
 check(d1 > 20 and d3 > d1 * 2, string.format("lance: the drill turns while charging, faster at full (%.0f -> %.0f deg in 0.5 s)", d1, d3))
 local dj = weaponGO.tf.joints["MQ_Drill"]
 check(dj.lp and math.abs(dj.lp.z - 1.751) < 1e-3 and math.abs(dj.lp.x) < 1e-6, "lance: the drill stays on its pivot")
-check(weaponMesh.matEnabled["MiquellaCharge3"] == true, "lance: full charge shows the last strands")
+check(grown(24) == 24 and weaponMesh.matEnabled["MiquellaCharge3"] == true and weaponMesh.matEnabled["MiquellaChargeTip"] == true,
+      "lance: full charge: every strand, the spin trails and the point's blade")
+extract._FinishChargeLevel, chargeT0 = 0, nil
+frames(30, 1 / 60)
+check(grown(24) == 0, "lance: the strands go after the thrust")
 print("ALL PASS")

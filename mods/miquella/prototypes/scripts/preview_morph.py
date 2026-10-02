@@ -198,11 +198,12 @@ def main():
     print("WROTE", f"{stem}_strip.png", f"{stem}.gif", flush=True)
 
 
-try:
-    main()
-except Exception:
-    import traceback
-    traceback.print_exc()
-finally:
-    sys.stdout.flush()
-    os._exit(0)
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+    finally:
+        sys.stdout.flush()
+        os._exit(0)

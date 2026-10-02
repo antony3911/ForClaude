@@ -27,4 +27,4 @@ C:\Users\anton\MiquellaTools\bpy45\Scripts\python preview_kit.py <本資料夾>\
 
 ## 蓄力：光旋（2026-10-02，使用者選 A）
 
-光絲從護手邊緣往槍尖螺旋收攏（跟槍身的雙螺旋反向），依段數分在 `MiquellaCharge1～3`（一段：三條主絲長到 40 %；二段：主絲到 75 %＋三條細絲；三段：主絲到槍尖、細絲到 85 %、根部三道旋轉弧），`MiquellaChargeTip` 是滿蓄力時更長的槍尖光刃（到 3.79 m）。全部光絲綁在軸上的骨頭 `MQ_Drill`（檔案座標 z 1.751），換裝腳本依蓄力段數讓它繞 +Z 轉（0／90／200／420 度每秒），看起來像旋轉的光鑽。原型 `arsenal.lance_drill_parts`，預覽 `prototypes/action_states/lance_power.png`、`lance_A_spin.gif`。
+光絲從護手邊緣往槍尖螺旋收攏（跟槍身的雙螺旋反向），**跟著蓄力時間連續長**（2026-10-03 使用者：一段一段出現很抽象）：三條主絲一段到 40 %、二段 75 %、三段到槍尖，三條細絲從一段開始長、二段 50 %、三段 85 %；依出現的時間切成 24 段 `MiquellaGrow1～24`（換裝腳本的 `grow`，`_FinishChargeTimer` 0.8／2.0／3.6 秒升段）。根部三道旋轉弧是 `MiquellaCharge3`（滿蓄力），`MiquellaChargeTip` 是滿蓄力時更長的槍尖光刃（到 3.79 m）。光絲和旋轉弧綁在軸上的骨頭 `MQ_Drill`（檔案座標 z 1.751），換裝腳本讓它繞 +Z 轉，越長越快（0／90／200／420 度每秒），看起來像旋轉的光鑽。原型 `arsenal.lance_drill_parts`，預覽 `prototypes/action_states/lance_power.png`、`lance_A_spin.gif`；遊戲版的長法 `MiquellaTools\work\previews\grow\lance.gif`。

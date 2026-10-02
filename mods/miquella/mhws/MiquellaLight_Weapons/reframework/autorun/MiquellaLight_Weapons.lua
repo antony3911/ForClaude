@@ -31,6 +31,13 @@ local BOTTLE_FIELDS = { "_ActionEnterBinNum", "_BottleNum" }
 local PART_GOLD = { 1.0, 0.62, 0.12 }
 -- Charge level fields (candidates from the game's type names; the first found is used).
 local CHARGE_FIELDS ={ "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
+-- Parts that grow with the charge (spirals, the bow's flowers; user 2026-10-03) are cut into bands
+-- by when they appear, a material each: MiquellaGrow1..n (build_weapon_kit.py). They glow like the
+-- rest (the Glow slider).
+local function with_grow(glow, n)
+    for k = 1, n do glow["MiquellaGrow" .. k] = 1.2 end
+    return glow
+end
 
 -- Mode morphs (switch axe, charge blade; user 2026-10-02: swapping models flashed, the weapon
 -- should change shape): both modes are one model. Written by build_weapon_kit.py
@@ -120,8 +127,7 @@ local KITS = {
         label = "Miquella light blade (great sword)",
         mesh = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh",
         mdf2 = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
-                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
+        glow = with_grow({ MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCharge3 = 1.2 }, 24),
         -- Rings on the spine: bone pivots in the model's space (build_weapon_kit.py log).
         floaters = { mode = "swing", joints = {
             { name = "MQ_Ring0", pos = { 0.0456, 0.0, 1.2189 } },
@@ -129,11 +135,15 @@ local KITS = {
             { name = "MQ_Ring2", pos = { -0.0217, 0.0, 1.7585 } },
             -- The big ring around the blade near the hilt hovers like the bowgun's rings.
             { name = "MQ_BladeHalo", pos = { -0.0240, 0.0, 0.6833 }, mode = "hover" } } },
-        -- Charge level 0-3 (candidates from the game's type names; the first found is used).
-        -- Strands of light round the blade grow a level at a time, sparks at full (user's pick
-        -- 2026-10-02, "A"); they stay bright gold while the blade turns white.
-        charge = { levels = 3, fields = CHARGE_FIELDS, band = true,
-                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 }, partColor = PART_GOLD },
+        -- Charge level 0-3 (candidates from the game's type names; the first found is used; it is
+        -- _ChargeLevel). Sparks off the edge at full charge (MiquellaCharge3).
+        charge = { levels = 3, fields = CHARGE_FIELDS, band = true, parts = { MiquellaCharge3 = 3 }, partColor = PART_GOLD },
+        -- Strands of light round the blade (user's pick 2026-10-02, "A") grow with the charge (user,
+        -- 2026-10-03: not a level's piece at a time), bright gold while the blade turns white. The
+        -- game's _ChargeTimer reaches levels 1-3 at 0.8 / 1.55 / 2.3 s in a plain charge
+        -- (wp00globalactionparam.user.3; its other charges differ: learned per _ChargeType).
+        grow = { bands = 24, fields = CHARGE_FIELDS, timer = { "_ChargeTimer" }, kind = { "_ChargeType" },
+                 times = { 0.8, 1.55, 2.3 } },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -157,11 +167,11 @@ local KITS = {
         label = "Miquella light blade (long sword)",
         mesh = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mesh",
         mdf2 = "Art/Model/MiquellaLight/LongSword/wp_miquella_ls.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaBand1 = 1.2, MiquellaBand2 = 1.2,
-                 MiquellaBand3 = 1.2, MiquellaBand4 = 1.2, MiquellaBand5 = 1.2, MiquellaBand6 = 1.2, MiquellaBand7 = 1.2,
-                 MiquellaBand8 = 1.2, MiquellaBlade1 = 1.2, MiquellaBlade2 = 1.2, MiquellaBlade3 = 1.2,
-                 MiquellaBlade4 = 1.2, MiquellaBlade5 = 1.2, MiquellaBlade6 = 1.2, MiquellaBlade7 = 1.2,
-                 MiquellaBlade8 = 1.2, MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
+        glow = with_grow({ MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaBand1 = 1.2,
+                           MiquellaBand2 = 1.2, MiquellaBand3 = 1.2, MiquellaBand4 = 1.2, MiquellaBand5 = 1.2,
+                           MiquellaBand6 = 1.2, MiquellaBand7 = 1.2, MiquellaBand8 = 1.2, MiquellaBlade1 = 1.2,
+                           MiquellaBlade2 = 1.2, MiquellaBlade3 = 1.2, MiquellaBlade4 = 1.2, MiquellaBlade5 = 1.2,
+                           MiquellaBlade6 = 1.2, MiquellaBlade7 = 1.2, MiquellaBlade8 = 1.2 }, 24),
         -- The two rings in place of a tsuba hover.
         floaters = { mode = "hover", joints = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
@@ -181,10 +191,15 @@ local KITS = {
                              "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" },
                    blades = { "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4", "MiquellaBlade5",
                               "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8" },
-                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.4 },
-                   -- Two strands of light round the blade, a third more each level from white on
-                   -- (user's pick 2026-10-02, "B"), bright gold against the white red level.
-                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 }, partColor = PART_GOLD },
+                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.4 } },
+        -- Two strands of light round the blade (user's pick 2026-10-02, "B"). They first came with
+        -- the spirit gauge's colour; the user meant the charge of the Spirit Roundslash (2026-10-03):
+        -- they grow through its Spirit Charge (the game's cKijinCharge*: _KijinChargeLv 0-3, its
+        -- timer reaching them at 0.8 / 1.6 / 2.9 s, wp03globalactionparam.user.3), stay through the
+        -- roundslash (cKijinSlashRound) and fade after it; bright gold, brighter as they grow.
+        grow = { bands = 24, fields = { "_KijinChargeLv", "<RealKijinChargeLv>k__BackingField" },
+                 timer = { "_KijinChargeTimer" }, times = { 0.8, 1.6, 2.9 }, action = "KijinCharge", hold = "KijinSlashRound",
+                 mul = { 1.6, 3.2 }, color = PART_GOLD },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -257,18 +272,24 @@ local KITS = {
         label = "Miquella light lance",
         mesh = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mesh",
         mdf2 = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
-                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2, MiquellaChargeTip = 1.2 },
+        glow = with_grow({ MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCharge3 = 1.2,
+                           MiquellaChargeTip = 1.2 }, 24),
         -- Charge (user's pick 2026-10-02, "A, the spiral drill"): strands of light grow from the
-        -- vamplate toward the point a level at a time, brighter each level, and turn about the
-        -- lance's axis on their bone (MQ_Drill), faster each level; at full charge the point's
-        -- longer blade. Only on the lance: the game's glow on the hunter is gone (LanceFX pak).
-        floaters = { mode = "fixed", spin = { axis = { 0, 0, 1 }, dps = { 0, 90, 200, 420 } }, joints = {
+        -- vamplate toward the point with the charge (user, 2026-10-03: not a level at a time), three
+        -- finer ones joining from level 1, brighter each level, and turn about the lance's axis on
+        -- their bone (MQ_Drill), faster as they grow (spin.grow); at full charge spin trails round
+        -- the root and the point's longer blade. Only on the lance: the game's glow on the hunter is
+        -- gone (LanceFX pak).
+        floaters = { mode = "fixed", spin = { axis = { 0, 0, 1 }, dps = { 0, 90, 200, 420 }, grow = true }, joints = {
             { name = "MQ_Drill", pos = { 0.0, 0.0, 1.7510 }, spin = true } } },
         charge = { levels = 3, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
                    weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaTemper = 1.0 },
                    colored = { "MiquellaBlade", "MiquellaGlow" },
-                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3, MiquellaChargeTip = 3 } },
+                   parts = { MiquellaCharge3 = 3, MiquellaChargeTip = 3 } },
+        -- _FinishChargeTimer reaches levels 1-3 at 0.8 / 2.0 / 3.6 s (wp06globalactionparam.user.3;
+        -- recorded 2026-10-02 it stopped at 3.60).
+        grow = { bands = 24, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
+                 timer = { "_FinishChargeTimer" }, times = { 0.8, 2.0, 3.6 } },
         shield = "Lance_Shield",
     },
     Lance_Shield = {
@@ -382,10 +403,14 @@ local KITS = {
             { name = "MQ_OrbOrange", pos = { 0.1219, -0.0704, 1.4160 }, orbit = 2 } } },
         -- Charge (user, 2026-10-02): gold -> bright gold -> white gold.
         charge = { levels = 2, fields = { "<ChargeLv>k__BackingField" }, look = "whiteGold2" },
-        -- An orb shows while its extract is lit (the game's timers); all three: the blade bright gold.
-        extracts = { orbs = { MiquellaExtractRed = "_ExtractTimerRed", MiquellaExtractWhite = "_ExtractTimerWhite",
-                              MiquellaExtractOrange = "_ExtractTimerOrange" },
-                     triple = "_ExtractTimerTripple" },
+        -- An orb shows while its extract is lit; all three: the blade bright gold. The timers are the
+        -- handling's ExtractTimer, an array of app.cValueHolderF in the order of the game's
+        -- app.Wp10Def.EXTRACT_TYPE, and TrippleUpTimer (recorded 2026-10-02; the _ExtractTimer*
+        -- names guessed first are the extracts' durations in _ActionParam, 90 / 120 / 150 s, so the
+        -- orbs never showed, user 2026-10-03).
+        extracts = { timers = "ExtractTimer", orbs = { MiquellaExtractRed = "RED", MiquellaExtractWhite = "WHITE",
+                                                        MiquellaExtractOrange = "ORANGE" },
+                     triple = { "TrippleUpTimer" } },
         kinsect = "Kinsect",
     },
     -- The kinsect: a golden swallowtail of light (A, solid gold wings). Not a weapon look: it goes
@@ -407,9 +432,8 @@ local KITS = {
         label = "Miquella light bow",
         mesh = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mesh",
         mdf2 = "Art/Model/MiquellaLight/Bow/wp_miquella_bow.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
-                 MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2,
-                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
+        glow = with_grow({ MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
+                           MiquellaGauge1 = 1.2, MiquellaGauge2 = 1.2, MiquellaGauge3 = 1.2 }, 21),
         -- The rings ahead of the arrow hover; while drawing they pack toward the bow like a
         -- spring being wound (pack: metres along +Z when fully packed, build_weapon_kit.py log).
         floaters = { mode = "hover", joints = {
@@ -423,11 +447,18 @@ local KITS = {
         -- Charge level (bright gold -> white gold) and drawing; the ring pairs Gauge1-3 light
         -- one pair per level. Field names guessed from the game's type names, as for the great sword.
         -- (recorded 2026-10-02: the level rests at 1; drawing = the string held by the hand)
-        -- The vine on the limbs opens flowers of light, two more a level, the tips' at full
-        -- charge (user's pick 2026-10-02, "A"): parts = material -> level.
         bow = { levels = 3, rings = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3" },
-                fields = { "<ChargeLv>k__BackingField" }, draw = { "_IsBowStringConstToHand" },
-                parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 } },
+                fields = { "<ChargeLv>k__BackingField" }, draw = { "_IsBowStringConstToHand" } },
+        -- The vine on the limbs opens flowers of light (user's pick 2026-10-02, "A"), ONE AT A TIME
+        -- (user, 2026-10-03: two at once had no flow): two in each level's time (the game's
+        -- _ChargeTimer against its own _ActionParam._ChargeTimeLv2-4, 1 / 2 / 3 s), the rest one after
+        -- another at the top level (post: seconds), the tips' larger ones last. Each flower is three
+        -- bands: its heart, every other petal, the rest (flowers: how many, the tips' included).
+        grow = { bands = 21, flowers = 7, base = 1, timer = { "_ChargeTimer", "_OnceChargeTimer" },
+                 timeFields = { [2] = "_ActionParam._ChargeTimeLv2", [3] = "_ActionParam._ChargeTimeLv3",
+                                [4] = "_ActionParam._ChargeTimeLv4" },
+                 times = { [2] = 1.0, [3] = 2.0, [4] = 3.0 }, maxField = { "<MaxChargeLv>k__BackingField" },
+                 post = 0.6 },
         shield = "Bow_Quiver",
     },
     -- The bow's quiver (_1), two designs to pick from in the game (2026-10-02).
@@ -517,6 +548,9 @@ local config = {
     -- slot name -> { original = game's .mesh, chain = its physics chain } while swapped, so a
     -- script reload (REFramework "Reset scripts") can pick up a weapon that already shows our model.
     swappedFrom = {},
+    -- "<weapon type>[/<charge type>]" -> { ["<level>"] = charge timer value }: where the game's
+    -- charge level actually changed, learned while playing (growing with the charge).
+    chargeTimes = {},
 }
 local saved = json.load_file(CONFIG_PATH)
 if saved then
@@ -529,6 +563,7 @@ if type(config.assignShield) ~= "table" then config.assignShield = {} end
 if type(config.migratedFrom) ~= "table" then config.migratedFrom = {} end
 if type(config.modeInvert) ~= "table" then config.modeInvert = {} end
 if type(config.swappedFrom) ~= "table" then config.swappedFrom = {} end
+if type(config.chargeTimes) ~= "table" then config.chargeTimes = {} end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 
 -- Weapon type of a model path: Art/Model/Item/it13/00/0001/it1300_0001_0.mesh -> "it13".
@@ -795,6 +830,19 @@ local function set_color(entry, mesh, mat, rgb)
     try(function() mesh:setMaterialFloat4(m.index, j, Vector4f.new(rgb[1], rgb[2], rgb[3], 1.0)) end)
 end
 
+-- A material's visibility: Dissolve (dithered fade), switched off when fully gone.
+local function set_alpha(entry, mesh, mat, a)
+    entry.vars = entry.vars or material_vars(mesh)
+    local m = entry.vars[mat]
+    if not m then return end
+    entry.fadeOn = entry.fadeOn or {}
+    if entry.fadeOn[mat] ~= (a > 0.001) then
+        entry.fadeOn[mat] = a > 0.001
+        try(function() mesh:setMaterialsEnable(m.index, a > 0.001) end)
+    end
+    set_float(entry, mesh, mat, "Dissolve", a)
+end
+
 -- Glow slider times the weapon state's multiplier (entry.mul, set by the state updates).
 local function apply_tuning(entry, mesh)
     entry.glowSlots = entry.glowSlots or glow_slots(mesh, entry.kit)
@@ -963,17 +1011,49 @@ end
 -- game's type database (strings in the exe), not yet confirmed per weapon: the first
 -- candidate that exists is used, and the menu shows which one (or lists similar fields).
 local GAUGE_SUBFIELDS = { "_Value", "_Current", "_Now", "_Point", "_Gauge", "Value" }
-local function read_number(obj, name)
-    local v = try(function() return obj:get_field(name) end)
+-- A number, a true-false, or an object holding one (a gauge, a timer: app.cValueHolderF._Value).
+-- (Game objects are userdata; the offline tests' stand-ins are tables.)
+local function is_object(v) return type(v) == "userdata" or type(v) == "table" end
+local function number_of(v)
     if type(v) == "number" then return v end
     if type(v) == "boolean" then return v and 1 or 0 end
-    if type(v) == "userdata" then
+    if is_object(v) then
         for _, sub in ipairs(GAUGE_SUBFIELDS) do
             local w = try(function() return v:get_field(sub) end)
             if type(w) == "number" then return w end
         end
     end
     return nil
+end
+
+local function read_number(obj, name)
+    return number_of(try(function() return obj:get_field(name) end))
+end
+
+-- A field of a field: "_ActionParam._ChargeTimeLv2".
+local function read_path(obj, path)
+    local head, rest = path:match("^([^%.]+)%.(.+)$")
+    if not head then return read_number(obj, path) end
+    local sub = try(function() return obj:get_field(head) end)
+    return is_object(sub) and read_path(sub, rest) or nil
+end
+
+-- The elements of a game array (a managed System.Array) as numbers (nil where none), or nil.
+local function array_numbers(arr)
+    local elems = try(function() return arr:get_elements() end)
+    if type(elems) ~= "table" then
+        -- (REFramework's array calls, else System.Array's own)
+        local n = try(function() return arr:get_size() end) or try(function() return arr:call("get_Length") end)
+        if type(n) ~= "number" then return nil end
+        elems = {}
+        for i = 0, math.min(n, 16) - 1 do
+            elems[i + 1] = try(function() return arr:get_element(i) end)
+                or try(function() return arr:call("GetValue(System.Int32)", i) end) or false
+        end
+    end
+    local out = {}
+    for i, e in ipairs(elems) do out[i] = number_of(e) or false end
+    return out
 end
 
 local resolved = { type = nil, fields = {} }     -- per handling type: key -> { name } or { missing, at }
@@ -1075,6 +1155,8 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
     local a, b = look[lo], look[hi]
     local mul, color = lerp(a.mul, b.mul, t), lerp3(a.color, b.color, t)
     entry.mul = {}
+    -- (the parts growing with the charge take the same light)
+    entry.partMul, entry.partColor = mul, spec.partColor or color
     for mat, w in pairs(spec.weights or CHARGE_WEIGHTS) do entry.mul[mat] = 1 + (mul - 1) * w end
     for _, mat in ipairs(spec.colored or { "MiquellaBlade" }) do set_color(entry, mesh, mat, color) end
     entry.vars = entry.vars or material_vars(mesh)
@@ -1189,49 +1271,60 @@ local function update_bow(entry, mesh, h, dt)
         entry.mul[mat] = lerp(lerp(1, DOT_DIM, entry.drawSmooth), mul, lit)
         set_color(entry, mesh, mat, lerp3(GOLD, color, lit))
     end
-    -- Flowers opening level by level (Dissolve fade; switched off while gone).
-    entry.vars = entry.vars or material_vars(mesh)
-    entry.partsOn = entry.partsOn or {}
-    for mat, lv in pairs(spec.parts or {}) do
-        local alpha = math.max(0, math.min(1, s - (lv - 1)))
-        local m = entry.vars[mat]
-        if m and entry.partsOn[mat] ~= (alpha > 0.001) then
-            entry.partsOn[mat] = alpha > 0.001
-            try(function() mesh:setMaterialsEnable(m.index, alpha > 0.001) end)
-        end
-        set_float(entry, mesh, mat, "Dissolve", alpha)
-        entry.mul[mat] = mul
-        set_color(entry, mesh, mat, color)
-    end
+    -- The flowers take the level's light; they open with the charge (update_grow).
+    entry.partMul, entry.partColor = mul, color
+    entry.bowLevel, entry.bowDrawing = level, drawing
     entry.packTarget = drawing and (PACK_DRAWN + (1 - PACK_DRAWN) * math.min(level, spec.levels) / spec.levels) or 0
 end
 
 -- Insect glaive extracts: an orb fades in while its extract is lit and circles the top blade
--- (step_floaters); with all three the blade burns bright gold.
+-- (step_floaters); with all three the blade burns bright gold. The timers come in the order of the
+-- game's extract types (app.Wp10Def.EXTRACT_TYPE, read once; red, white, orange if it cannot be read).
 local EXTRACT_FADE, TRIPLE_MUL, TRIPLE_COLOR = 0.3, 1.8, { 1.0, 0.56, 0.06 }
+local EXTRACT_ENUMS = { "app.Wp10Def.EXTRACT_TYPE", "app.Wp10Def+EXTRACT_TYPE" }
+local extractIndex = nil
+
+local function extract_indices()
+    if extractIndex then return extractIndex end
+    local found = {}
+    for _, tn in ipairs(EXTRACT_ENUMS) do
+        local td = try(function() return sdk.find_type_definition(tn) end)
+        for _, f in ipairs(td and try(function() return td:get_fields() end) or {}) do
+            local name = try(function() return f:get_name() end)
+            local v = try(function() return f:is_static() end) and try(function() return f:get_data(nil) end)
+            for _, colour in ipairs({ "RED", "WHITE", "ORANGE" }) do
+                if type(name) == "string" and type(v) == "number" and (name:upper() == colour or name:upper():find("_" .. colour .. "$")) then
+                    found[colour] = v
+                end
+            end
+        end
+        if next(found) then break end
+    end
+    extractIndex = { RED = found.RED or 0, WHITE = found.WHITE or 1, ORANGE = found.ORANGE or 2,
+                     from = next(found) and "the game's EXTRACT_TYPE" or "assumed" }
+    return extractIndex
+end
 
 local function update_extracts(entry, mesh, h, dt)
     local spec = entry.kit.extracts
-    entry.vars = entry.vars or material_vars(mesh)
-    entry.partsOn = entry.partsOn or {}
     entry.orbAlpha = entry.orbAlpha or {}
-    local info = {}
-    for mat, field in pairs(spec.orbs) do
-        local v = h and read_number(h, field)
-        info[#info + 1] = string.format("%s=%s", (field:gsub("_ExtractTimer", "")), v and string.format("%.0f", v) or "?")
+    local arr = h and try(function() return h:get_field(spec.timers) end)
+    local values = is_object(arr) and array_numbers(arr) or nil
+    local idx = extract_indices()
+    for mat, colour in pairs(spec.orbs) do
+        local v = values and values[(idx[colour] or 0) + 1] or nil
         local a = approach(entry.orbAlpha[mat] or 0, (v or 0) > 0 and 1 or 0, dt, EXTRACT_FADE, EXTRACT_FADE)
         entry.orbAlpha[mat] = a
-        local m = entry.vars[mat]
-        if m and entry.partsOn[mat] ~= (a > 0.001) then
-            entry.partsOn[mat] = a > 0.001
-            try(function() mesh:setMaterialsEnable(m.index, a > 0.001) end)
-        end
-        set_float(entry, mesh, mat, "Dissolve", a)
+        set_alpha(entry, mesh, mat, a)
     end
-    table.sort(info)
-    local t = h and read_number(h, spec.triple)
+    local shown = {}
+    for i, v in ipairs(values or {}) do shown[i] = v and string.format("%.0f", v) or "?" end
+    local tname = h and resolve(h, "triple", spec.triple)
+    local t = tname and read_number(h, tname)
     entry.tripleSmooth = approach(entry.tripleSmooth or 0, (t or 0) > 0 and 1 or 0, dt, 0.2, 0.4)
-    stateInfo.extract = table.concat(info, " ") .. string.format(" Tripple=%s", t and string.format("%.0f", t) or "?")
+    stateInfo.extract = string.format("%s [%s] (red %d, white %d, orange %d: %s)  %s=%s", spec.timers,
+        values and table.concat(shown, " ") or "not readable", idx.RED, idx.WHITE, idx.ORANGE, idx.from,
+        tname or "triple", t and string.format("%.0f", t) or "?")
     -- On top of the charge light (only while not charging, so the charge stays readable).
     local k = entry.tripleSmooth * (1 - math.min(1, entry.chargeSmooth or 0))
     if k > 0.001 then
@@ -1320,8 +1413,15 @@ local function update_gunlance(entry, mesh, h, dt, now)
     end
     if not isWeaponDrawn then level, pack = 0, 0 end
     entry.packTarget = pack
-    -- The gold thread: drawn out a third of the way per level (it shows from the first).
-    entry.stretch = approach(entry.stretch or 0, level / 3, dt, 0.2, 0.15)
+    -- The gold thread (it shows from the first level): drawn out of the core along with the charge,
+    -- all the way at the full level (user, 2026-10-03: not a third per level); a reload or a shell
+    -- draws it out a third.
+    local pulse = (entry.reloadUntil and now < entry.reloadUntil) or (entry.shellUntil and now < entry.shellUntil)
+    local reach = pulse and 1 / 3 or 0
+    if charging then reach = math.max(reach, (shot or (now - entry.chargeSince)) / (2 * GL_CHARGE_STEP)) end
+    if winding then reach = math.max(reach, (now - entry.windSince) / (2 * GL_LEVEL_TIME)) end
+    if not isWeaponDrawn then reach = 0 end
+    entry.stretch = approach(entry.stretch or 0, math.min(1, reach), dt, 0.08, 0.15)
     local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
     stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
                                        show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
@@ -1330,24 +1430,150 @@ local function update_gunlance(entry, mesh, h, dt, now)
     update_charge(entry, mesh, h, dt, now, spec.charge, level)
 end
 
+-- Growing with the charge (user, 2026-10-03: the spirals came a level's piece at a time, "abstract";
+-- "a spiral should grow slowly, that is what makes it look good"; the bow opened two flowers at
+-- once). The kit's growing parts are cut into bands by when they appear (MiquellaGrow1..bands). The
+-- game's charge drives them: its level, plus the share of the way to the next level from the game's
+-- charge timer and the level thresholds, the timer's value when each level is reached: learned
+-- while playing (where the game's level actually changed, kept in the config), else the game's own
+-- (timeFields, the bow), else the kit's (`times`, read from the game's parameter files). The growth
+-- is that progress over the top level (the bow: two flowers a level's time, the rest one after
+-- another once at the top, over `post` seconds); the band at its front fades in. Let go, the grown
+-- parts fade where they stand (held while the kit's `hold` action runs).
+local GROW_RELEASE, GROW_UP, GROW_DOWN = 0.3, 0.12, 0.35
+local growDirty = false              -- learned thresholds to save once the charge is over
+
+-- The charge timer's value when `level` is reached.
+local function grow_threshold(spec, h, learned, level)
+    if level <= (spec.base or 0) then return 0 end
+    local v = learned and learned[tostring(level)]
+    if v then return v end
+    local f = spec.timeFields and spec.timeFields[level]
+    v = f and h and read_path(h, f)
+    if v and v > 0 then return v end
+    return spec.times and spec.times[level]
+end
+
+local function update_grow(entry, mesh, h, dt, now)
+    local spec = entry.kit.grow
+    local g = entry.grow or {}
+    entry.grow = g
+    local base, top = spec.base or 0, spec.levels or 3
+    if spec.maxField then
+        local mf = h and resolve(h, "growTop", spec.maxField)
+        local m = mf and read_number(h, mf)
+        if m and m >= base + 1 and m <= 6 then top = math.floor(m + 0.5) end
+    end
+    local level, active, lname
+    if entry.kit.bow then
+        level, active = entry.bowLevel or base, entry.bowDrawing == true
+    else
+        lname = h and resolve(h, "grow", spec.fields)
+        level = lname and math.floor((read_number(h, lname) or 0) + 0.5) or base
+    end
+    level = math.max(base, math.min(top, level))
+    local tname = h and resolve(h, "growTimer", spec.timer)
+    local t = tname and read_number(h, tname)
+    if t and g.t and t > g.t + 1e-6 then g.risingAt = now end
+    local rising = g.risingAt ~= nil and now - g.risingAt < 0.25
+    if active == nil then active = level > base or (t ~= nil and t > 0 and rising) end
+    -- (only in the kit's charging action, until a level is reached: the long sword's timer may run
+    -- on any held Spirit Blade)
+    if spec.action and level <= base and not actionNow:find(spec.action, 1, true) then active = false end
+    if not active then level = base end
+    -- Thresholds per weapon type (and charge type: the great sword's charges differ).
+    local kname = spec.kind and h and resolve(h, "growKind", spec.kind)
+    local kv = kname and read_number(h, kname)
+    local key = (weapon_type(entry.original) or "?") .. (kv and ("/" .. math.floor(kv + 0.5)) or "")
+    local learned = config.chargeTimes[key]
+    if active and not g.active then
+        -- A charge begins (a level carried over from the move before starts where the timer is).
+        g.level, g.startT, g.startAt = level, level == base and 0 or (t or 0), now
+        g.topAt = level >= top and now or nil
+    elseif active and level ~= g.level then
+        if level == g.level + 1 and t and rising then
+            -- Where the game's level really changed: kept for the next charges (if near the table).
+            local table_t = grow_threshold(spec, h, nil, level)
+            if not table_t or (t > 0.4 * table_t and t < 2.5 * table_t) then
+                learned = learned or {}
+                config.chargeTimes[key] = learned
+                local old = learned[tostring(level)]
+                if not old or math.abs(old - t) > 0.02 then
+                    learned[tostring(level)] = math.floor(t * 1000 + 0.5) / 1000
+                    growDirty = true
+                end
+                gl_event(string.format("charge %s: level %d at %s %.3f (table %s)", key, level, tname, t,
+                    table_t and string.format("%.3f", table_t) or "-"))
+            end
+        end
+        g.level, g.startT, g.startAt = level, t or 0, now
+        g.topAt = level >= top and now or nil
+    elseif active and t and g.t and t < g.t - 0.05 then
+        -- The timer started over at the same level (a charge chained into another).
+        g.startT, g.startAt = level == base and 0 or t, now
+    end
+    g.active, g.t = active, t
+    -- The progress in levels: the level, plus the share of the way to the next (just short of it
+    -- until the game's level changes).
+    local lp, f = base, 0
+    if active then
+        lp = level
+        if level < top then
+            local T0, T1 = grow_threshold(spec, h, learned, level), grow_threshold(spec, h, learned, level + 1)
+            if T0 and T1 then
+                local d = math.max(0.05, T1 - T0)
+                local start = g.startT or T0
+                -- (measured from where this level began; if that does not fit the table, a level's time)
+                local span = (T1 - start > 0.3 * d) and (T1 - start) or d
+                local run = t and (t - start) or (now - (g.startAt or now))
+                f = math.max(0, math.min(0.98, run / span))
+            end
+            lp = level + f
+        elseif spec.post then
+            lp = top + math.min(1, (now - (g.topAt or now)) / spec.post)
+        end
+    end
+    local tau
+    if spec.flowers then
+        local n = spec.flowers
+        tau = (2 * (math.min(lp, top) - base) + math.max(0, lp - top) * (n - 2 * (top - base))) / n
+    else
+        tau = (lp - base) / math.max(1, top - base)
+    end
+    tau = math.max(0, math.min(1, tau))
+    if active then
+        g.fade = 1
+        g.shown = approach(g.shown or 0, tau, dt, GROW_UP, GROW_DOWN)
+    else
+        local holding = spec.hold and actionNow:find(spec.hold, 1, true) ~= nil
+        if not holding then g.fade = approach(g.fade or 0, 0, dt, GROW_RELEASE, GROW_RELEASE) end
+        if (g.fade or 0) <= 0 then g.shown = 0 end
+        if growDirty then growDirty = false; save_config() end
+    end
+    local shown, fade = g.shown or 0, g.fade or 0
+    entry.mul = entry.mul or {}
+    local mul = spec.mul and lerp(spec.mul[1], spec.mul[2], shown) or entry.partMul or 1.8
+    local color = spec.color or entry.partColor or PART_GOLD
+    for k = 1, spec.bands do
+        local mat = "MiquellaGrow" .. k
+        set_alpha(entry, mesh, mat, math.max(0, math.min(1, shown * spec.bands - (k - 1))) * fade)
+        entry.mul[mat] = mul
+        set_color(entry, mesh, mat, color)
+    end
+    -- (the lance's drill turns faster as it grows)
+    entry.growLevel = (base + shown * (top - base)) * fade
+    local T1 = level < top and grow_threshold(spec, h, learned, level + 1)
+    stateInfo.grow = string.format("%s = %d of %d + %.2f; %s = %s%s -> %.0f%%%s",
+        lname or (entry.kit.bow and "bow level" or "level"), level, top, f, tname or "timer", t and string.format("%.2f", t) or "?",
+        T1 and string.format(" (next level at %.2f%s)", T1, learned and learned[tostring(level + 1)] and ", learned" or "") or "",
+        100 * shown, active and "" or (fade > 0 and " (let go)" or ""))
+end
+
 -- Weapon modes: read the game's mode, put on the other mode's model when it changes.
 -- A morph window: progress p across win = { from, to }, smoothstepped.
 local function eased(p, win)
     local x = ramp(p, win[1], win[2])
     return x * x * (3 - 2 * x)
-end
-
--- A material's visibility: Dissolve (dithered fade), switched off when fully gone.
-local function set_alpha(entry, mesh, mat, a)
-    entry.vars = entry.vars or material_vars(mesh)
-    local m = entry.vars[mat]
-    if not m then return end
-    entry.fadeOn = entry.fadeOn or {}
-    if entry.fadeOn[mat] ~= (a > 0.001) then
-        entry.fadeOn[mat] = a > 0.001
-        try(function() mesh:setMaterialsEnable(m.index, a > 0.001) end)
-    end
-    set_float(entry, mesh, mat, "Dissolve", a)
 end
 
 -- The game's mode drives the morph's progress (entry.morphP, 0 base mode .. 1 the other) over
@@ -1669,6 +1895,13 @@ local function record_fields(h, now)
                 if i > 40 then break end
                 note(n .. "." .. sn, try(function() return v:get_field(sn) end))
             end
+            -- Arrays (the insect glaive's ExtractTimer): their first elements' numbers.
+            if rec.objects[n]:find("[]", 1, true) then
+                for i, x in ipairs(array_numbers(v) or {}) do
+                    if i > 8 then break end
+                    note(string.format("%s[%d]", n, i - 1), x or nil)
+                end
+            end
             v = nil
         end
         if type(v) == "boolean" then v = v and 1 or 0 end
@@ -1711,13 +1944,14 @@ local function update_states(chr)
     end
     for _, entry in pairs(swapped) do
         if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
-            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts or entry.kit.timing then
+            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts or entry.kit.timing or entry.kit.grow then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
                 if entry.kit.charge then update_charge(entry, mesh, h, dt, now) end
                 if entry.kit.gauge then update_gauge(entry, mesh, h, dt) end
                 if entry.kit.bow then update_bow(entry, mesh, h, dt) end
+                if entry.kit.grow then update_grow(entry, mesh, h, dt, now) end
                 if entry.kit.extracts then update_extracts(entry, mesh, h, dt) end
                 if entry.kit.gunlance then update_gunlance(entry, mesh, h, dt, now) end
                 if entry.kit.mode then update_mode(entry, mesh, h, dt) end
@@ -2020,9 +2254,10 @@ local function step_floaters()
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
                     if s.spin then
-                        -- Turning about the weapon's axis at the charge level's speed (the lance's drill).
+                        -- Turning about the weapon's axis at the charge level's speed (the lance's drill:
+                        -- smoothly as it grows).
                         local sp = entry.kit.floaters.spin
-                        local lv = math.max(0, math.min(#sp.dps - 1, entry.chargeSmooth or 0))
+                        local lv = math.max(0, math.min(#sp.dps - 1, (sp.grow and entry.growLevel) or entry.chargeSmooth or 0))
                         local lo = math.floor(lv)
                         local dps = lerp(sp.dps[lo + 1], sp.dps[math.min(#sp.dps, lo + 2)], lv - lo)
                         s.angle = ((s.angle or 0) + dps * dt) % 360
@@ -2237,6 +2472,7 @@ re.on_draw_ui(function()
     end
     for _, entry in pairs(swapped) do
         if (entry.kit.charge or entry.kit.bow) and stateInfo.charge then imgui.text("Charge: " .. stateInfo.charge) end
+        if entry.kit.grow and stateInfo.grow then imgui.text("Growth: " .. stateInfo.grow) end
         if entry.kit.extracts and stateInfo.extract then imgui.text("Extracts: " .. stateInfo.extract) end
         if entry.kit.gunlance and stateInfo.gunlance then imgui.text("Gunlance: " .. stateInfo.gunlance) end
         if entry.kit.timing and stateInfo.timing then imgui.text("Perfect Rush: " .. stateInfo.timing) end

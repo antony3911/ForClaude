@@ -45,10 +45,11 @@ def great_sword():
     import arsenal
     gt, k = 0.48, 1.6
     objs, mats, tip = arsenal.great_sword(gt=gt, render=False)
-    # Charge (user's pick 2026-10-02, "A"): strands of light round the blade, growing a level
-    # at a time (MiquellaCharge1-3), sparks off the edge at full charge.
-    strands = arsenal.great_sword_strands(mats, gt)
-    objs = list(objs) + [o for os_ in strands.values() for o in os_]
+    # Charge (user's pick 2026-10-02, "A"): strands of light round the blade, growing with the
+    # charge (bands MiquellaGrow1-24 by when they appear, user 2026-10-03), sparks off the edge at
+    # full charge (MiquellaCharge3).
+    strands, sparks = arsenal.great_sword_strands(mats, gt)
+    objs = list(objs) + [o for os_ in strands.values() for o in os_] + sparks
     hand = Vector((0, 0, gt - 0.04))
     to_file = Matrix.Scale(k, 4) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hand)
     return {
@@ -57,7 +58,7 @@ def great_sword():
         "bones": {"VFX_Attack": to_file @ Vector(tip)},
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Blade_Core": "MiquellaTemper", "Membrane": "MiquellaGlow"},
-        "by_name": {o.name: f"MiquellaCharge{lv}" for lv, os_ in strands.items() for o in os_},
+        "by_name": {**grow_materials(strands), **{o.name: "MiquellaCharge3" for o in sparks}},
         # The rings floating on the spine swing like loose rings, the big ring around the
         # blade hovers like the bowgun's (weapons script).
         "floaters": {**{f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)}, "Blade_Halo": "MQ_BladeHalo"},
@@ -163,8 +164,8 @@ def long_sword():
     ls.HANDLE_LEN = 0.42
     k = 1.9
     objs, mats, tip = ls.build()
-    # Spirit (user's pick 2026-10-02, "B"): two strands of light round the blade, growing a
-    # level at a time (MiquellaCharge1-3).
+    # Two strands of light round the blade (user's pick 2026-10-02, "B"), growing with the Spirit
+    # Charge before a Spirit Roundslash (user, 2026-10-03; bands MiquellaGrow1-24).
     strands = arsenal.long_sword_strands({"light": mats[1]})
     objs = list(objs) + [o for os_ in strands.values() for o in os_]
     hand = Vector((0, 0, -0.04))
@@ -175,7 +176,7 @@ def long_sword():
         "bones": {"VFX_Attack": to_file @ Vector(tip)},
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Hamon": "MiquellaTemper"},
-        "by_name": {o.name: f"MiquellaCharge{lv}" for lv, os_ in strands.items() for o in os_},
+        "by_name": grow_materials(strands),
         # The two rings in place of a tsuba hover like the bowgun's (weapons script).
         "floaters": {"Tsuba_Halo": "MQ_Tsuba0", "Tsuba_Halo_Inner": "MQ_Tsuba1"},
         # The temper line in 8 pieces root -> tip, a material each (MiquellaBand1-8): the weapons
@@ -185,6 +186,12 @@ def long_sword():
         # blade's length for both), so the band runs through the whole blade.
         "bands": [("MiquellaBlade", "MiquellaBlade", LS_BANDS), ("MiquellaTemper", "MiquellaBand", LS_BANDS)],
     }
+
+
+def grow_materials(bands):
+    """{part name: MiquellaGrow<band>} for parts that grow with the charge ({band: [parts]},
+    arsenal's "growing with the charge")."""
+    return {o.name: f"MiquellaGrow{b}" for b, os_ in bands.items() for o in os_}
 
 
 # ---- prototypes from arsenal.py, sword_shield.py and bowgun.py
@@ -400,12 +407,14 @@ def lance():
     shield = set(subtree("EnergyShield"))
     to_file = upright(1.7, (0, 0, 0.17))
     # Charge (user's pick 2026-10-02, "A, the spiral drill"): strands of light grow from the
-    # vamplate toward the point a level at a time (MiquellaCharge1-3), the point's longer blade at
-    # full charge; all strands on one bone on the axis (MQ_Drill) that the weapons script turns.
-    levels, flare = parts["drill"]
-    by_name = {o.name: f"MiquellaCharge{lv}" for lv, os_ in levels.items() for o in os_}
+    # vamplate toward the point with the charge (bands MiquellaGrow1-24, user 2026-10-03), spin
+    # trails round the root and the point's longer blade at full charge (MiquellaCharge3,
+    # MiquellaChargeTip); strands and trails on one bone on the axis (MQ_Drill) that the weapons
+    # script turns.
+    bands, spin, flare = parts["drill"]
+    by_name = {**grow_materials(bands), **{o.name: "MiquellaCharge3" for o in spin}}
     by_name.update({"Point_Flare_A": "MiquellaChargeTip", "Point_Flare_B": "MiquellaChargeTip"})
-    floaters = {o.name: "MQ_Drill" for os_ in levels.values() for o in os_}
+    floaters = {o.name: "MQ_Drill" for o in [o for os_ in bands.values() for o in os_] + spin}
     return placed("wp_miquella_ln", "Art/Model/MiquellaLight/Lance", [o for o in objs if o not in shield],
                   to_file, {}, by_name=by_name, floaters=floaters, pivots={"MQ_Drill": arsenal.DRILL_PIVOT})
 
@@ -844,9 +853,10 @@ def bow():
     floaters = {f"Arrow_Rail_{i}": f"MQ_Ring{i}" for i in range(arsenal.BOW_RAIL_N)}
     floaters["Rest_Halo"] = "MQ_RestHalo"
     by_name = {f"Arrow_Rail_{i}": f"MiquellaGauge{i // 2 + 1}" for i in range(arsenal.BOW_RAIL_N)}
-    # Charge (user's pick 2026-10-02, "A"): flowers of light open along the limbs' vine, two more a
-    # level (MiquellaCharge1-3), the tips' larger flowers at full charge.
-    by_name.update({o.name: f"MiquellaCharge{lv}" for lv, os_ in parts["bloom"].items() for o in os_})
+    # Charge (user's pick 2026-10-02, "A"): flowers of light open along the limbs' vine, two a
+    # level's time, ONE AT A TIME (user, 2026-10-03), the tips' larger flowers at full charge
+    # (bands MiquellaGrow1-21: a flower's heart, half its petals, the rest; arsenal.BLOSSOM_PLACES).
+    by_name.update(grow_materials(parts["bloom"]))
     for x in arsenal.bow_rail_x(1.0)[:2]:
         log(f"  packed ring at file z {(to_file @ Vector((x, 0, 0))).z:+.4f}")
     return placed("wp_miquella_bow", "Art/Model/MiquellaLight/Bow", objs, to_file, {},
@@ -975,9 +985,10 @@ def base_material(name):
 
 
 # Triangle budget per game material (the originals run 5k-60k triangles in all).
+GROW_MAX = 32                            # growth bands a kit may have (MiquellaGrow1..)
 BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500,
           "MiquellaMembrane": 2000, "MiquellaCharge1": 8000, "MiquellaCharge2": 8000, "MiquellaCharge3": 8000,
-          "MiquellaChargeTip": 2000}
+          "MiquellaChargeTip": 2000, **{f"MiquellaGrow{b}": 3000 for b in range(1, GROW_MAX + 1)}}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
@@ -990,6 +1001,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
+              **{f"MiquellaGrow{b}": "MiquellaGlow" for b in range(1, GROW_MAX + 1)},
               **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
               "MiquellaTiming": "MiquellaGlow", "MiquellaBurst": "MiquellaGlow",
               "MiquellaHalo": "MiquellaIvory",
@@ -1001,7 +1013,7 @@ DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
 UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary",
-                   "MiquellaTiming", "MiquellaBurst")
+                   "MiquellaTiming", "MiquellaBurst", "MiquellaGrow")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some

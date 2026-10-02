@@ -21,6 +21,11 @@ Usage: python recolor_efx.py [options] <in.efx.5571972> <out.efx.5571972>
                     (great sword: PLE_Body,PLE_IMP = the glow the game puts on the hunter's body)
   --skip-param A    colour parameters whose name contains A are left alone (e.g. Blood)
   --only-hide       only the --hide entries change, no recolouring
+  --layers          every colour (pale ones too) into a layer of gold, brightness kept: reds,
+                    pinks, purples a deep gold; oranges, yellows gold; greens a yellow gold;
+                    cyans and blues a pale white gold (DESIGN: the game's colours become shades
+                    of gold light). Golds are left alone. Overrides --warm / silver.
+  --skip-entry A,B  entries whose name contains A or B keep their colours (e.g. jimen,blood)
 Great sword / light bowgun (2026-10-02): --warm --no-silver, and for the great sword
 --hide PLE_Body,PLE_IMP --skip-param Blood (the user wants the charge shown on the blade only).
 Hammer, lance (2026-10-02, same wish): the hammer like the great sword; the lance
@@ -32,6 +37,9 @@ Insect glaive (2026-10-02, the red charge glow should be gold): --warm --no-silv
 004, 022, 031, 049-051, 053, 055-057, 059, 060 (the others have no warm colours, or are smoke,
 poison and hit dust); 020 and 021 stay --only-hide (the extracts' colours on the body).
 Bow (2026-10-02, the charge's red aura): --warm --no-silver on 11_it11_030 (charge levels 0-3).
+Attack trails of every weapon (user, 2026-10-02 night; trail_scan.py lists them): --layers,
+--skip-param Blood,Smoke,Head,Cartridge,Hit and --skip-entry jimen,land,blood,dirt, on each
+weapon's effect files except the ground ones (*_jimen, *_land_*).
 """
 import colorsys
 import os
@@ -75,12 +83,30 @@ def to_gold(r, g, b):
     return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(GOLD_HUE / 360, s, v))
 
 
+def to_layer(r, g, b):
+    """--layers: a colour into its layer of gold (None: already gold, grey or dark)."""
+    h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+    deg = h * 360
+    if s < 0.12 or v < 0.15 or 30 <= deg <= 50:
+        return None
+    if deg < 25 or deg >= 285:
+        hue, k = 32.0, 1.0           # reds, pinks, purples: deep gold
+    elif deg < 70:
+        hue, k = GOLD_HUE, 1.0       # oranges, yellows: gold
+    elif deg < 160:
+        hue, k = 46.0, 0.85          # greens: yellow gold
+    else:
+        hue, k = 42.0, 0.4           # cyans, blues: pale white gold
+    return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(hue / 360, s * k, v))
+
+
 def to_silver(r, g, b):
     _, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
     return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(SILVER_HUE / 360, SILVER_SAT * s, SILVER_VALUE * v))
 
 
-def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=(), only_hide=False):
+def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=(), only_hide=False, layers=False,
+            skip_entries=()):
     data = bytearray(data)
     efx = Efx(bytes(data))
     changed = 0
@@ -88,6 +114,13 @@ def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=(), o
     def patch(offset, label, blue_entry=False):
         nonlocal changed
         r, g, b, a = data[offset:offset + 4]
+        if layers:
+            new = to_layer(r, g, b)
+            if new:
+                data[offset:offset + 3] = bytes(new)
+                log(f"  {label}: {r:02X}{g:02X}{b:02X}{a:02X} -> {new[0]:02X}{new[1]:02X}{new[2]:02X}{a:02X}")
+                changed += 1
+            return
         kind = classify(r, g, b, warm)
         if not kind or (kind == "blue" and not silver):
             return
@@ -110,12 +143,12 @@ def recolor(data, log=print, warm=False, silver=True, hide=(), skip_params=(), o
         log(f"  hide {a.owner} {TYPE_NAMES[a.type]}.{name}: {data[at:at + 4].hex()} -> 00000000")
         data[at:at + 4] = bytes(4)
         changed += 1
-    fields = [f for f in fields if f not in hidden]
+    fields = [f for f in fields if f not in hidden and not any(k in f[0].owner for k in skip_entries)]
     if only_hide:
         Efx(bytes(data))
         return bytes(data), changed
     blue_entries = {a.owner for a, _, off in fields
-                    if silver and classify(*data[a.data_start + off:a.data_start + off + 3]) == "blue"}
+                    if silver and not layers and classify(*data[a.data_start + off:a.data_start + off + 3]) == "blue"}
     for a, name, off in fields:
         patch(a.data_start + off, f"{a.owner} {TYPE_NAMES[a.type]}.{name}", a.owner in blue_entries)
     Efx(bytes(data))                             # still walks cleanly
@@ -136,6 +169,10 @@ def main():
             opts["only_hide"] = True
         elif flag == "--skip-param":
             opts["skip_params"] = tuple(args.pop(0).split(","))
+        elif flag == "--layers":
+            opts["layers"] = True
+        elif flag == "--skip-entry":
+            opts["skip_entries"] = tuple(args.pop(0).split(","))
         else:
             sys.exit(f"unknown option {flag}")
     src, dst = args

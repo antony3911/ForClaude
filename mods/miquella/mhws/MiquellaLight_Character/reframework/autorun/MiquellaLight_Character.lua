@@ -31,14 +31,15 @@ local PIECES = {
         tint = "MiquellaSkin",
     },
 }
--- Skin tone of the body: a ColorParam tint over its skin texture (sRGB 234, 199, 172, a light
--- East Asian tone; user 2026-10-03). Until it gets the game's own skin material.
+-- Skin tone of the body. The skin is the game's own skin material (SkinEdit): a neutral albedo
+-- coloured from the SkinMap palette at AddColorUV, which the game sets on the hunter's face from
+-- character creation: "Match the face" copies it over. The others tint ColorParam on top
+-- (multipliers of the matched tone).
 local SKIN_TONES = {
-    { "Light (East Asian)", { 1.00, 1.00, 1.00 } },
-    { "Fair", { 1.05, 1.10, 1.16 } },
-    { "Medium", { 0.91, 0.85, 0.78 } },
-    { "Tan", { 0.81, 0.70, 0.61 } },
-    { "Deep", { 0.56, 0.45, 0.38 } },
+    { "Match the face", nil },
+    { "Fairer", { 1.05, 1.08, 1.12 } },
+    { "Darker", { 0.85, 0.78, 0.72 } },
+    { "Much darker", { 0.60, 0.50, 0.42 } },
 }
 local SKIN_NAMES = {}
 for i, t in ipairs(SKIN_TONES) do SKIN_NAMES[i] = t[1] end
@@ -79,6 +80,8 @@ local function piece_on(p)
     if p.key == "circlet" then return config.circlet end
     return config.body
 end
+
+local face_mesh      -- the hunter's face mesh component (defined below)
 
 local function try(fn, ...)
     local ok, result = pcall(fn, ...)
@@ -202,27 +205,41 @@ local function apply_glow(p)
     end
 end
 
-local function apply_tint(p)
-    if not (p.tint and p.st.mesh) then return end
-    local mesh = p.st.mesh
-    if not p.st.tintSlot then
-        local n = try(function() return mesh:get_MaterialNum() end) or 0
-        for i = 0, n - 1 do
-            if try(function() return mesh:getMaterialName(i) end) == p.tint then
-                local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
-                for j = 0, vars - 1 do
-                    if try(function() return mesh:getMaterialVariableName(i, j) end) == "ColorParam" then
-                        p.st.tintSlot = { mat = i, var = j }
-                    end
+local function material_var(mesh, matName, varName)
+    local n = try(function() return mesh:get_MaterialNum() end) or 0
+    for i = 0, n - 1 do
+        if not matName or try(function() return mesh:getMaterialName(i) end) == matName then
+            local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+            for j = 0, vars - 1 do
+                if try(function() return mesh:getMaterialVariableName(i, j) end) == varName then
+                    return { mat = i, var = j }
                 end
             end
         end
     end
-    local slot, c = p.st.tintSlot, SKIN_TONES[config.skinTone][2]
-    if slot then
-        p.st.tinted = try(function()
-            mesh:setMaterialFloat4(slot.mat, slot.var, Vector4f.new(c[1], c[2], c[3], 1.0))
-            return true
+    return nil
+end
+
+local function apply_tint(p)
+    if not (p.tint and p.st.mesh) then return end
+    local mesh = p.st.mesh
+    p.st.tintSlot = p.st.tintSlot or material_var(mesh, p.tint, "ColorParam")
+    p.st.uvSlot = p.st.uvSlot or material_var(mesh, p.tint, "AddColorUV")
+    local tone = SKIN_TONES[config.skinTone][2] or { 1.0, 1.0, 1.0 }
+    local slot = p.st.tintSlot
+    p.st.tinted = slot and try(function()
+        mesh:setMaterialFloat4(slot.mat, slot.var, Vector4f.new(tone[1], tone[2], tone[3], 1.0))
+        return true
+    end)
+    -- The face's skin tone (its AddColorUV), for every choice: the others tint on top of it.
+    local face = st.hxf and face_mesh(st.hxf)
+    if face and p.st.uvSlot then
+        p.st.faceSlot = p.st.faceSlot or material_var(face, nil, "AddColorUV")
+        local f, u = p.st.faceSlot, p.st.uvSlot
+        local uv = f and try(function() return face:getMaterialFloat4(f.mat, f.var) end)
+        p.st.faceUV = uv and try(function()
+            mesh:setMaterialFloat4(u.mat, u.var, Vector4f.new(uv.x, uv.y, uv.z, uv.w))
+            return string.format("%.2f, %.2f", uv.x, uv.y)
         end)
     end
 end
@@ -244,7 +261,7 @@ local function set_model(p)
     p.st.meshPath = path
     p.st.glowSlots = nil
     p.st.renderMatched = nil
-    p.st.tintSlot = nil
+    p.st.tintSlot, p.st.uvSlot, p.st.faceSlot = nil, nil, nil
     apply_glow(p)
     apply_tint(p)
     return true
@@ -376,7 +393,7 @@ end
 -- black in the shade (2026-10-03, found with MiquellaLight_MeshDiff.lua).
 local MATCH_RENDER = { "StencilValue", "ShadowCastMode" }
 
-local function face_mesh(hxf)
+function face_mesh(hxf)
     local child = try(function() return hxf:call("get_Child") end)
     while child do
         local go = try(function() return child:call("get_GameObject") end)
@@ -450,7 +467,8 @@ local function update_piece(p, hxf, hgo, now)
     else
         s.info = string.format("on the skeleton (%s), %s; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], s.render or "not matched yet",
-            s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
+            (s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
+            .. (s.faceUV and (", face tone " .. s.faceUV) or ", face tone not found"))
     end
     -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
     local hunterShown = try(function() return hgo:call("get_DrawSelf") end)

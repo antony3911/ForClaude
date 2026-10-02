@@ -1491,7 +1491,14 @@ GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("Miqu
 # started from have broken NRRO (2026-10-03: converted in the cloud they read roughness 0.03,
 # normal Y -0.9, AO 0.22 = dark, mirror-like), so the body no longer uses them.
 # NRRO = roughness, normal Y, AO, normal X (as the game's face: R varies, G 127, B 255, A 126).
-BODY_TEXTURES = {"MiquellaSkin": ((234, 199, 172), 0.55), "MiquellaCloth": ((226, 218, 200), 0.8)}
+# The skin uses the game's own skin material (the innerwear's "skin", shader SkinEdit: a neutral
+# albedo coloured by the SkinMap palette at the face's AddColorUV, which the character script
+# copies over). Its albedo is the game body texture's mean (sRGB 152, 152, 157) without the
+# texture itself (a muscular male body in the hunter's UV layout); the weapon material it had
+# before blotched and blurred the skin (user 2026-10-03, next to Gemma).
+BODY_TEXTURES = {"MiquellaSkin": ((152, 152, 157), 0.6), "MiquellaCloth": ((226, 218, 200), 0.8)}
+SKIN_SOURCE = ("ch02_002_0001", "skin")       # innerwear arms: material file, material
+SKIN_NULLS = {"BlendNormalMap": "systems/rendering/NullNormal.tex"}   # muscle blend: flat
 
 
 def split_for_export(obj, mesh_col):
@@ -1582,22 +1589,26 @@ def make_textures(kit_dir):
     return paths
 
 
-def write_mdf(path, template_mdf, textures=None):
+def write_mdf(path, template_mdf, textures=None, skin_mdf=None):
     import copy
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     template = readMDF(template_mdf)
     by_name = {m.materialName: m for m in template.materialList}
+    if skin_mdf:
+        skin = next(m for m in readMDF(skin_mdf).materialList if m.materialName == SKIN_SOURCE[1])
     mats = []
     for game_mat, source in GAME_MATERIALS.values():
-        new = copy.deepcopy(by_name[source])
+        new = copy.deepcopy(skin if skin_mdf and game_mat == "MiquellaSkin" else by_name[source])
         new.materialName = game_mat
         for t in new.textureList:
             if textures and t.textureType in textures.get(game_mat, {}):
                 t.texturePath = textures[game_mat][t.textureType]
+            elif game_mat == "MiquellaSkin" and t.textureType in SKIN_NULLS:
+                t.texturePath = SKIN_NULLS[t.textureType]
         mats.append(new)
     template.materialList = mats
     writeMDF(template, path)
-    log(f"mdf: {[(m.materialName, [t.texturePath for t in m.textureList if 'Art/' in t.texturePath]) for m in readMDF(path).materialList]}")
+    log(f"mdf: {[(m.materialName, m.mmtrPath if hasattr(m, 'mmtrPath') else '', [t.texturePath for t in m.textureList if 'Art/' in t.texturePath or 'Null' in t.texturePath]) for m in readMDF(path).materialList]}")
 
 
 def kit(data, game_body, face, kit_dir, template_mdf):
@@ -1645,7 +1656,9 @@ def kit(data, game_body, face, kit_dir, template_mdf):
             f"{sum(len(o.data.vertices) for o in subs)} verts")
         for o in subs:
             bpy.data.objects.remove(o, do_unlink=True)
-    write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf, make_textures(kit_dir))
+    # The innerwear's material file sits next to the body mesh's folder: .../000/2/ -> .../000/1/
+    skin_mdf = os.path.join(os.path.dirname(os.path.dirname(game_body)), "1", f"{SKIN_SOURCE[0]}.mdf2{MDF_EXT}")
+    write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf, make_textures(kit_dir), skin_mdf)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, "mq_body_kit.blend"))
 
 

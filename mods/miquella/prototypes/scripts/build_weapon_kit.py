@@ -206,8 +206,8 @@ def grow_materials(bands):
 # piece (named <prefix>_<band>_<strand>) is weighted by its height between the chain's two bones
 # around it (the chain's root is the parent itself). Two kinds:
 # - turn chains (the lance's drill, round helices): {prefix, chain: arsenal.grow_chain, bone,
-#   parent}: a bone on the axis at each band boundary for all the strands; the script moves the
-#   bones ahead of the growth to its front and turns them back about the axis by the helix's angle;
+#   parent}: bones on the axis, two to a band, for all the strands; the script moves the bones
+#   ahead of the growth to its front and turns them back about the axis by the helix's angle;
 # - path chains (the great sword's and long sword's flattened helices, where turning would carry
 #   the tip off them): {prefix, strand, path: one of arsenal.strand_chains, bone, parent}: bones on
 #   the strand itself, several a band; the script only moves them, to the front point.
@@ -222,9 +222,10 @@ def grow_chain_setup(spec):
     bands = arsenal_bands()
     rules = []                               # (piece name pattern, {band: [(z, bone) ... up the band]})
     for ch in chains:
-        points = ([(j, centre) for j, u, centre, theta in ch["chain"]] if "chain" in ch
+        points = ([(h, centre) for h, tau, centre, theta in ch["chain"]] if "chain" in ch
                   else [(h, point) for h, tau, point in ch["path"]])
-        per = 1 if "chain" in ch else (len(points) - 1) // bands
+        last_tau = (ch["chain"] if "chain" in ch else ch["path"])[-1][1]
+        per = round(points[-1][0] / (last_tau * bands))
         names, zs = {}, {}
         for i, (idx, point) in enumerate(points):
             if i == 0:
@@ -270,7 +271,7 @@ def write_grow(kit, spec, pivots):
     for ch in spec.get("grow_chains", []):
         origin = Vector((0, 0, 0)) if ch["parent"] == "Base" else pivots[ch["parent"]]
         if "chain" in ch:
-            entries = [(j, j / bands, centre, f", theta = {math.degrees(theta):.2f}") for j, u, centre, theta in ch["chain"]]
+            entries = [(h, tau, centre, f", theta = {math.degrees(theta):.2f}") for h, tau, centre, theta in ch["chain"]]
         else:
             entries = [(h, tau, point, "") for h, tau, point in ch["path"]]
         rows = [(idx, tau, spec["to_file"] @ Vector(point) - origin, extra) for idx, tau, point, extra in entries]
@@ -513,8 +514,8 @@ def lance():
     by_name = {**grow_materials(bands), **{o.name: "MiquellaCharge3" for o in spin}}
     by_name.update({"Point_Flare_A": "MiquellaChargeTip", "Point_Flare_B": "MiquellaChargeTip"})
     floaters = {o.name: "MQ_Drill" for o in [o for os_ in bands.values() for o in os_] + spin}
-    # The strands draw out smoothly on chains of bones under the drill's (MQ_Grow1-24 for the main
-    # strands, MQ_GrowF9-24 for the fine ones, which start at level 1), so they turn with it.
+    # The strands draw out smoothly on chains of bones under the drill's (MQ_Grow1-48 for the main
+    # strands, MQ_GrowF17-48 for the fine ones, which start at level 1; two a band), so they turn with it.
     grow = [{"prefix": "Drill_Main", "chain": chains["Main"], "bone": "MQ_Grow", "parent": "MQ_Drill"},
             {"prefix": "Drill_Fine", "chain": chains["Fine"], "bone": "MQ_GrowF", "parent": "MQ_Drill"}]
     return placed("wp_miquella_ln", "Art/Model/MiquellaLight/Lance", [o for o in objs if o not in shield],

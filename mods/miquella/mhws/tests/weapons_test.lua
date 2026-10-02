@@ -1119,8 +1119,8 @@ chargeT0 = fakeTime
 frames(24, 1 / 60)                   -- 0.4 s
 local n1 = grown(24)
 check(n1 >= 3 and n1 <= 5, string.format("lance: the drill grows from the start of the charge (%d of 24)", n1))
-frames(2, 1 / 60)                    -- 0.43 s: the front in band 5: its end bone on the axis, moved down
-local g5 = weaponGO.tf.joints["MQ_Grow5"]
+frames(2, 1 / 60)                    -- 0.43 s: the front in band 5: its end bone (MQ_Grow10) on the axis, moved down
+local g5 = weaponGO.tf.joints["MQ_Grow10"]
 check(g5 and g5.lp and g5.lr and math.abs(g5.lp.x) < 1e-6 and g5.lp.z < -0.6205 - 0.01 and math.abs(g5.lr.z) > 0.01,
       "lance: the growing band's bone is pulled to the front and turned back along the drill")
 frames(24, 1 / 60)

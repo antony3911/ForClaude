@@ -1118,20 +1118,21 @@ def reach_at(level, reach=STRAND_REACH):
     return r0 + (reach[k] - r0) * (level - k)
 
 
-def grow_chain(center_fn, turns, reach_of, tau0=0.0, bands=GROW_BANDS, sign=1.0):
-    """The bones that draw a growing strand out smoothly in the game (user, 2026-10-03: bands
-    alone still step, "it should stretch out like an animation"): one at each band boundary from
-    tau0 on, [(boundary j, reach u, the strands' centre there, their turn angle there)]. The weapons
-    script pulls the bone at the end of the band now growing to the growth's front (moved and turned
-    back along the helix), so that band is drawn out of a point as the charge runs.
-    reach_of(tau): the strands' reach at that share of the charge."""
+def grow_chain(center_fn, turns, reach_of, tau0=0.0, bands=GROW_BANDS, sign=1.0, per_band=2):
+    """The bones that draw a growing round helix out smoothly in the game (user, 2026-10-03: bands
+    alone still step, "it should stretch out like an animation"): on the axis, per_band to a band
+    from tau0 on, [(h, tau, the strands' centre there, their turn angle there)]. The weapons script
+    moves the bones the growth has not reached to its front and turns them back along the helix, so
+    the band now growing is drawn out of a point as the charge runs (two to a band: turning a bone
+    by a whole band's angle bent the tip into a small hook). reach_of(tau): the reach at that
+    share of the charge."""
     out = []
-    for j in range(bands + 1):
-        tau = j / bands
+    for h in range(bands * per_band + 1):
+        tau = h / (bands * per_band)
         if tau < tau0 - 1e-9:
             continue
         u = reach_of(tau)
-        out.append((j, u, center_fn(u), sign * 2 * math.pi * turns * u))
+        out.append((h, tau, center_fn(u), sign * 2 * math.pi * turns * u))
     return out
 
 

@@ -298,6 +298,7 @@ eck_sheet.png`（正面／斜前／側面／背面），全身 `bodyody_variant
 ## 8. 待決定的事
 
 - **發布到 Nexus Mods（使用者 2026-10-02：不急，確認做得到而已）**：等**米凱拉人物也做好**再一起包，或兩者都好了再分開上傳。到時要準備：Fluffy／手動都能裝的 zip（pak＋`reframework/autorun` 的換裝、特效腳本，不含偵察腳本、欄位記錄器預設關）、前置 REFramework、英中介紹與安裝說明、致謝（REFramework、RE Mesh Editor、RE Asset Library、REE.PAK.Tool）；改色的特效 pak 是改過的卡普空檔案（灰色地帶，放不放或當選配要使用者決定）；上傳由使用者自己操作。雛形：`release/MiquellaLight_v0.1.zip`
+- **操蟲棍三燈蓄力（上升螺旋斬）四選一**（2026-10-03 提案，`prototypes/action_states/glaive_charge.png`，DESIGN.md「操蟲棍三燈蓄力・提案」）：A 三花聚頂／B 螺旋花序／C 金絲蝶翼／D 三色光旋。遊戲欄位：`<ChargeLv>k__BackingField` 0～2、`_ChargeTimer`，動作 `cHoldAttackSuper` → `cBatonUpSlashSuper`
 - 四個新裝置（重弩、輕弩、弓、狩獵笛）使用者還沒回意見
 - 覆蓋原版檔案，還是用腳本掛上去（建議腳本掛載）
 - 頭髮微光的做法（建議：編髮發光、散髮不發光）
@@ -394,6 +395,7 @@ eck_sheet.png`（正面／斜前／側面／背面），全身 `bodyody_variant
 - **腳本**：`update_grow`（說明在換裝腳本 README「跟著蓄力連續長出來」）、`with_grow`、`read_path`、`array_numbers`、`number_of`；長槍轉速 `spin.grow`；銃槍金絲連續；操蟲棍 `extract_indices`（讀 `app.Wp10Def.EXTRACT_TYPE` 的列舉值，讀不到就紅 0、白 1、橘 2）；欄位記錄器也記陣列（`ExtractTimer[0]` 等）。`set_alpha` 移到前面給大家用
 - **輕弩花苞**：`build_device_kit.wyvernblast` 的位移 -0.13 → +0.02（原版落地圓盤在 y -0.05～+0.06，地面在特效原點）。對照圖 `MiquellaTools\work\previews\grow\bud_ground.png`
 - 預覽工具 `preview_grow.py`（照腳本的算法、照遊戲時間）；`preview_morph.py` 加了 `__main__` 判斷才能被 import
+- **操蟲棍三燈蓄力提案（01:40）**：使用者：「蟲棍在點完三燈後也會有蓄力攻擊，去查查看、想個設計方案」。查到：三燈時按住攻擊 `cHoldAttackSuper`（蓄兩段，`<ChargeLv>` 0～2、`_ChargeTimer` 最大 4.35），放開 `cBatonUpSlashSuper`（上升螺旋斬）→ `cSelfJumpLand`。四個方向 `glaive_charge.png` 已傳給使用者，**等他挑**（第 8 節）。挑了之後：A／D 用光花軌道骨頭（`orbit` 的半徑、高度、速度跟蓄力走）＋刀尖新零件或三色光絲的生長骨頭；B 用生長帶＋旋轉骨頭；C 用翅膀骨頭展開
 - **骨頭連續拉伸（01:30 加的）**：`arsenal.strand_point`／`strand_chains`（每條光絲在自己身上的骨頭點）、`grow_chain`（長槍軸上）；`build_weapon_kit.grow_chain_setup`（加骨頭、依高度綁權重：一段的頂點綁在它兩端的骨頭之間）、`write_grow`（輸出 `<kit>/<模型>_grow.lua`，貼進腳本的 `GROW_GS／LS／LN`）；腳本 `grow_joints`、`step_grow_joints`（正在長的那段裡還沒到的骨頭移到前緣，長槍再轉回螺旋角度；長過的放回原位設一次）、`GROW_SNAP`。`preview_grow.py` 也照這套算法動骨頭。骨頭數：大劍 154、太刀約 126、長槍 121（RE 網格上限 256）。近看檢查 `gs_zoom.png`、`lance_zoom.png`（`MiquellaTools\work\previews\grow\`）
 - **如果遊戲裡不對**：⓪光絲出現但一格一格跳、或尖端附近有一團光 → 骨頭沒動：選單 `Growth bones found:` 是不是 n/n（0 就是新骨頭沒建立關節）；①光絲完全沒出現 → 選單 `Growth:` 看段數和計時器有沒有讀到（`?` 就是欄位名錯）；②長得比升段快／慢 → `Growth:` 的 next level 有沒有變 `learned`，`fields_*.json` 的 `events` 有 `charge ...: level k at ...`；③太刀氣刃蓄力沒長 → `actions` 裡氣刃蓄力的動作名（現在找含 `KijinCharge` 的）；④操蟲棍還是沒光花 → `Extracts:` 寫 `not readable` 就是陣列讀法不對（`array_numbers` 試了 `get_elements`／`get_size`＋`get_element`／`get_Length`＋`GetValue`），三個數字對不上顏色就看 `(red 0, white 1, orange 2: assumed)` 改順序
 

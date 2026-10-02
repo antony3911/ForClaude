@@ -9,7 +9,7 @@ full charge (sparks, spin trails, the lance point's blade) come in at the top le
 drill turns on MQ_Drill, faster as it grows. Writes a strip of frames and an animated GIF in real
 time.
 
-Usage: python preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <out stem>
+Usage: python preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <out stem> [frames a second]
 Requires bpy 4.5 (only reads the .blend).
 """
 import math
@@ -113,7 +113,10 @@ def growth(w, t):
 
 
 def main():
+    global FPS
     blend, kind, stem = os.path.abspath(sys.argv[1]), sys.argv[2], os.path.abspath(sys.argv[3])
+    if len(sys.argv) > 4:
+        FPS = int(sys.argv[4])
     w = WEAPONS[kind]
     c.reset_scene()
     with bpy.data.libraries.load(blend) as (src, dst):

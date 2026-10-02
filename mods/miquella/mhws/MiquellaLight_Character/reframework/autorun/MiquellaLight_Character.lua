@@ -31,22 +31,16 @@ local PIECES = {
         tint = "MiquellaSkin",
     },
 }
--- Skin of the body: the face's own material (miquella_body.py: the body's UVs sit in a plain
--- patch of the face texture's neck). Every variable of the hunter's face material ("face") is
--- copied onto it, so the body takes the skin tone and colours chosen in character creation;
--- the choices below tint ColorParam on top. (2026-10-03: the innerwear's SkinEdit material,
--- even given the face's AddColorUV, came out darker and yellower than the face.)
+-- Skin of the body: the game's own skin material (SkinEdit) over a flat albedo of the face
+-- texture's neck colour (miquella_body.py). The face's skin tone (AddColorUV of its "face"
+-- material, set in character creation) is copied onto it; the SkinEdit skin still comes out ~3x
+-- darker than the face, hence SKIN_BASE on ColorParam (calibrated in game 2026-10-03: 3.3 over
+-- a warmer albedo; the face's neck colour is ~15 % lighter). The tone choices tint on top.
+-- (Tried and dropped the same day: the face's own material on the body -- darker, and its vertex
+-- shader mangled the body.)
 local FACE_MATERIAL = "face"
-local FLOAT4_VARS = {}
-for _, n in ipairs({ "Ripple_Color", "ColorParam", "ObjectOffset", "RayTrace_BaseColor", "BB_Min", "BB_Max",
-    "VFX_ColorParam1", "VFX_ColorParam2", "VFX_Param1", "VFX_Param2", "VFX_Param3", "VFX_Param4", "VFX_Param5",
-    "VFX_Param6", "VFX_Param7", "VFX_Param8", "VFX_Param9", "VFX_Param10", "Blend_A", "Blend_B", "Blend_C",
-    "Blend_D", "Blend_E", "Blend_F", "Blend_G", "Blend_H", "PaintColor_A", "PaintScaleOffset_A",
-    "PaintMatParam_A", "PaintColor_B", "PaintScaleOffset_B", "PaintMatParam_B", "PaintColor_C",
-    "PaintScaleOffset_C", "PaintMatParam_C", "AddColorUV", "RottenHSVParam", "Ripple_Emit_Pos" }) do
-    FLOAT4_VARS[n] = true
-end
-local SKIP_VARS = { ObjectOffset = true, BB_Min = true, BB_Max = true, Ripple_Emit_Pos = true }   -- the face's own place
+local COPY_VARS = { AddColorUV = true }
+local SKIN_BASE = 2.9
 local SKIN_TONES = {
     { "Match the face", nil },
     { "Fairer", { 1.05, 1.08, 1.12 } },
@@ -87,10 +81,10 @@ if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
-if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 2 then
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 3 then
     config.skinBrightness, config.skinTone = 1.0, 1   -- earlier values were for other materials
 end
-config.skinVersion = 2
+config.skinVersion = 3
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
 local function piece_on(p)
@@ -247,7 +241,6 @@ local function apply_tint(p)
     s.ourMat = s.ourMat or material_index(mesh, p.tint)
     if not s.ourMat then return end
     s.ourVars = s.ourVars or var_table(mesh, s.ourMat)
-    local color = { 1.0, 1.0, 1.0, 1.0 }
     local face = st.hxf and face_mesh(st.hxf)
     if face then
         s.faceMat = s.faceMat or material_index(face, FACE_MATERIAL)
@@ -255,34 +248,20 @@ local function apply_tint(p)
     end
     if face and s.faceMat then
         local copied = 0
-        for name, j in pairs(s.faceVars) do
-            local k = s.ourVars[name]
-            if k and not SKIP_VARS[name] then
-                if FLOAT4_VARS[name] then
-                    local v = try(function() return face:getMaterialFloat4(s.faceMat, j) end)
-                    if v then
-                        if name == "ColorParam" then color = { v.x, v.y, v.z, v.w } end
-                        if try(function()
-                            mesh:setMaterialFloat4(s.ourMat, k, Vector4f.new(v.x, v.y, v.z, v.w))
-                            return true
-                        end) then copied = copied + 1 end
-                    end
-                else
-                    local v = try(function() return face:getMaterialFloat(s.faceMat, j) end)
-                    if v and try(function() mesh:setMaterialFloat(s.ourMat, k, v); return true end) then
-                        copied = copied + 1
-                    end
-                end
-            end
+        for name in pairs(COPY_VARS) do
+            local j, k = s.faceVars[name], s.ourVars[name]
+            local v = j and k and try(function() return face:getMaterialFloat4(s.faceMat, j) end)
+            if v and try(function()
+                mesh:setMaterialFloat4(s.ourMat, k, Vector4f.new(v.x, v.y, v.z, v.w))
+                return true
+            end) then copied = copied + 1 end
         end
         s.copied = copied
     end
-    -- The tone choice and brightness on top of the face's ColorParam.
     local tone = SKIN_TONES[config.skinTone][2] or { 1.0, 1.0, 1.0 }
-    local b = config.skinBrightness
+    local b = config.skinBrightness * SKIN_BASE
     s.tinted = s.ourVars.ColorParam and try(function()
-        mesh:setMaterialFloat4(s.ourMat, s.ourVars.ColorParam, Vector4f.new(color[1] * tone[1] * b,
-            color[2] * tone[2] * b, color[3] * tone[3] * b, color[4]))
+        mesh:setMaterialFloat4(s.ourMat, s.ourVars.ColorParam, Vector4f.new(tone[1] * b, tone[2] * b, tone[3] * b, 1.0))
         return true
     end)
 end
@@ -511,7 +490,7 @@ local function update_piece(p, hxf, hgo, now)
         s.info = string.format("on the skeleton (%s), %s; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], s.render or "not matched yet",
             (s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
-            .. (s.copied and string.format(", %d face material values copied", s.copied) or ", face material not found"))
+            .. (s.copied == 1 and ", face skin tone copied" or ", face skin tone not found"))
     end
     -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
     local hunterShown = try(function() return hgo:call("get_DrawSelf") end)

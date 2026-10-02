@@ -3,13 +3,14 @@
 | kit | 檔案 | 說明 |
 |---|---|---|
 | `circlet` | `Art/Model/MiquellaLight/Character/mq_circlet.mesh`／`.mdf2` | 頭冠（光環）v10，約 1.5 萬面；材質 `MiquellaHalo`（象牙底、整個發金光）、`MiquellaGlow`（墜飾水滴） |
-| 身體 | `mq_body_a／b／c.mesh`＋`mq_body.mdf2` | 三種體型（A 纖細中性／B 少年感／C 柔和），各約 9700 點；材質 `MiquellaSkin`（抄雙劍 `MiquellaIvory`）、`MiquellaCloth`（內褲，抄 `MiquellaGrip`）。`miquella_body.py kit` 產生 |
+| 身體 | `mq_body_a／b／c.mesh`＋`mq_body.mdf2` | 三種體型（A 纖細中性／B 少年感／C 柔和），各約 3.8 萬點（細分一次）；材質 `MiquellaSkin`（抄雙劍 `MiquellaIvory`）、`MiquellaCloth`（內褲，抄 `MiquellaGrip`）。`miquella_body.py kit` 產生 |
 
 ## 身體（2026-10-02 深夜）
 
 遊戲沒有裸身模型（內衣是整套衣服，研究筆記第 18 節），所以用 **MakeHuman 的基礎人體（CC0，github.com/makehumancommunity/makehuman，可自由修改發布）**：
 1. **體型**：MakeHuman 的 macro 調整檔（成人 25 歲；性別、肌肉、體重三個滑桿，`VARIANTS`）＋細節（V 形軀幹減、胸肌減、乳頭磨平、小腹平、髖窄、脖子細，`COMMON_DETAILS`），胸前再局部抹平（`smooth_spots`）
-2. **對齊遊戲骨架**：整體先縮放、平移到遊戲的髖和脖子高度，再用 MakeHuman 自己的骨架和權重把每根骨頭拉到遊戲關節之間（Copy Location＋Stretch To，`fit_targets`）→ 綁定姿勢（A 字）、手指、腳踝都對上遊戲的。腳踝以下壓扁讓腳底貼地（遊戲的腳踝比較低）
+2. **對齊遊戲骨架**：整體先縮放、平移到遊戲的髖和脖子高度；**軀幹（脊椎、骨盆）保持 MakeHuman 自己的形狀**，只有四肢、脖子、手腳用 MakeHuman 自己的骨架和權重把骨頭拉到遊戲關節之間（Copy Location＋Stretch To，`fit_targets`）。遊戲的 `Hip`／`Spine_0` 比髖關節高 11 cm，之前把脊椎、骨盆也拉過去，胯下被拉到髖關節高度、擠出啤酒肚（2026-10-02 修正）→ 綁定姿勢（A 字）、手指、腳踝都對上遊戲的。腳踝以下壓扁讓腳底貼地（遊戲的腳踝比較低）
+2b. **腹股溝摺線**（三款共用，`BASE_GROOVES`）：髖接處先抹平（`smooth_groin`），細分一次後沿胯下往髖骨的 V 線刻寬而柔的凹谷（`GROOVES["crease"]`、`carve`）。比較圖：`python miquella_body.py groin <MakeHuman data> <ch02_002_0002.mesh> <輸出>`
 3. **脖子**：遊戲的臉部模型往下包到脖子（前 1.43、後頸 1.51，斜的），身體的脖子每 15° 一格往上伸進臉的脖子裡 3.5 cm、收到它半徑的 95%，接縫處半徑銜接（`FaceNeck`、`fit_neck`）
 4. **內褲**：0.78～0.99 m 的帶狀區域另一個材質（先水平切出邊緣，邊緣整齊）。長袍之後蓋在上面
 5. **權重**：MakeHuman 的骨頭對到遊戲的**主要骨頭**（`bone_map`：脊椎依高度分段、手指一對一、`lowerleg` → `Shin`、腳趾 → `Toe`），每點最多 6 根、正規化；遊戲的 `*_HJ_*` 輔助骨頭（扭轉、膝肘體積）先沒用，**在遊戲裡看關節變形**，不好再加

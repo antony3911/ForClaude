@@ -66,9 +66,22 @@ GROOVES = {
     # 人魚線: from the front hip bones down and in toward the groin (into the underwear).
     "v": [([(0.112, 1.065), (0.085, 1.005), (0.052, 0.955)], 0.0032, 0.012),
           ([(-0.112, 1.065), (-0.085, 1.005), (-0.052, 0.955)], 0.0032, 0.012)],
+    # The groin (inguinal) fold where thigh and pelvis meet (user 2026-10-02: thigh and crotch are
+    # separate forms, a V runs from the crotch up to the hip, shaded even under the underwear):
+    # from the inner thigh beside the crotch up and out past the front of the hip joint to the hip
+    # bone. A wide soft valley (a 6.5 mm one cut like a knife and left a spike), the two starting
+    # 6 cm apart (meeting in the middle left a lump between them). Side-facing surface too (the
+    # fold turns in between the legs). Every body shape has it (BASE_GROOVES).
+    "crease": [([(0.030, 0.815), (0.048, 0.852), (0.078, 0.912), (0.118, 0.985)], 0.0065, 0.015, 0.35),
+               ([(-0.030, 0.815), (-0.048, 0.852), (-0.078, 0.912), (-0.118, 0.985)], 0.0065, 0.015, 0.35)],
 }
+BASE_GROOVES = ["crease"]
+GROIN_OPTIONS = [
+    ("1 沒有摺線", {"base_grooves": []}),
+    ("2 腹股溝摺線", {}),
+]
 BELLY_OPTIONS = [
-    ("0 原本", {"flat": False}),
+    ("0 原本", {}),
     ("1 收小腹", {"details": FLAT_BELLY, "weight": 0.26}),
     ("2 收小腹＋緊實", {"details": FLAT_BELLY + TONE, "weight": 0.26}),
     ("3 收小腹＋馬甲線", {"details": FLAT_BELLY, "weight": 0.26, "grooves": ["vertical"]}),
@@ -252,9 +265,11 @@ def extend(a, b, ratio):
 
 def fit_targets(J, G):
     """Where each mapped MakeHuman bone's head and tail go, from the game's joints."""
+    # The torso keeps MakeHuman's own anatomy (only moved and scaled by `aligned`): the game's
+    # Hip / Spine_0 pivots sit 11 cm above its hip joints, and pulling MakeHuman's lower spine and
+    # pelvis onto them lifted the crotch to hip-joint height and merged thighs and pelvis (user,
+    # 2026-10-02: the groin had no structure). Limbs, neck, hands and feet are fitted.
     T = {}
-    T.update(chain_targets(J, G, ["spine05", "spine04", "spine03", "spine02", "spine01"],
-                           ["Spine_0", "Spine_1", "Spine_2", "Neck_0"]))
     T.update(chain_targets(J, G, ["neck01", "neck02", "neck03"], ["Neck_0", "Neck_1", "Head"]))
     head_len = (J["head____tail"] - J["head____head"]).length
     T["head"] = (G["Head"], G["Head"] + Vector((0, 0, head_len)))
@@ -262,7 +277,6 @@ def fit_targets(J, G):
         T.update(chain_targets(J, G, [f"clavicle.{s}", f"shoulder01.{s}"], [S + "Shoulder", S + "UpperArm"]))
         T.update(chain_targets(J, G, [f"upperarm01.{s}", f"upperarm02.{s}"], [S + "UpperArm", S + "Forearm"]))
         T.update(chain_targets(J, G, [f"lowerarm01.{s}", f"lowerarm02.{s}"], [S + "Forearm", S + "Hand"]))
-        T[f"pelvis.{s}"] = (G["Hip"], G[S + "Thigh"])
         T.update(chain_targets(J, G, [f"upperleg01.{s}", f"upperleg02.{s}"], [S + "Thigh", S + "Knee"]))
         T.update(chain_targets(J, G, [f"lowerleg01.{s}", f"lowerleg02.{s}"], [S + "Knee", S + "Foot"]))
         T[f"foot.{s}"] = (G[S + "Foot"], G[S + "Instep"])
@@ -459,6 +473,42 @@ SMOOTH_SPOTS = ("breast.L____tail", "breast.R____tail")
 SMOOTH_RADIUS, SMOOTH_STEPS = 0.035, 40
 
 
+def smooth_groin(obj, reach=0.035, steps=12):
+    """Linear skinning pinches small folds where the fitted thighs meet the pelvis: smooth the
+    surface within `reach` (front view) of the groin fold before anything is carved there."""
+    me = obj.data
+    me.update()
+    lines = [g[0] for g in GROOVES["crease"]]
+    weight = {}
+    for v in me.vertices:
+        if not 0.79 < v.co.z < 1.02 or v.normal.y > 0.5:
+            continue
+        d = min(seg_dist(v.co.x, v.co.z, a, b)[0] for pts in lines for a, b in zip(pts, pts[1:]))
+        if d < reach:
+            t = 1 - d / reach
+            weight[v.index] = t * t * (3 - 2 * t)
+    nbr = {i: [] for i in weight}
+    for e in me.edges:
+        a, b = e.vertices
+        if a in nbr:
+            nbr[a].append(b)
+        if b in nbr:
+            nbr[b].append(a)
+    co = {i: me.vertices[i].co.copy() for i in weight}
+    for i in weight:
+        for j in nbr[i]:
+            co.setdefault(j, me.vertices[j].co.copy())
+    for _ in range(steps):
+        new = {}
+        for i, w in weight.items():
+            if nbr[i]:
+                avg = sum((co[j] for j in nbr[i]), Vector()) / len(nbr[i])
+                new[i] = co[i].lerp(avg, 0.5 * w)
+        co.update(new)
+    for i in weight:
+        me.vertices[i].co = co[i]
+
+
 def smooth_spots(obj, points):
     me = obj.data
     nbr = [[] for _ in me.vertices]
@@ -485,7 +535,29 @@ def smooth_spots(obj, points):
         me.vertices[i].co = co[i]
 
 
-def cut_and_paint(obj, G, skin, cloth, face_pts=None):
+# Briefs: leg openings along the groin fold in front, along the buttock fold behind.
+BRIEF_TOP = 0.975
+BRIEF_FRONT = [(0.0, 0.80), (0.036, 0.858), (0.076, 0.908), (0.118, 0.975)]
+BRIEF_BACK = [(0.0, 0.79), (0.07, 0.81), (0.12, 0.86), (0.15, 0.94)]
+
+
+def line_z(pts, x):
+    x = abs(x)
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
+        if x <= x1:
+            return z0 + (z1 - z0) * (x - x0) / max(x1 - x0, 1e-6)
+    return pts[-1][1]
+
+
+def in_brief(c, n):
+    if abs(c.x) > 0.2 or c.z > BRIEF_TOP or c.z < 0.76:
+        return False
+    if abs(c.x) > BRIEF_FRONT[-1][0] and n.y < 0:
+        return c.z > BRIEF_FRONT[-1][1] - 0.002     # the side band at the hip
+    return c.z > line_z(BRIEF_FRONT if c.y < 0 else BRIEF_BACK, c.x)
+
+
+def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
     me = obj.data
     neck = FaceNeck(G, face_pts) if face_pts else None
     if neck:
@@ -509,7 +581,10 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None):
     me.materials.append(cloth)
     for p in me.polygons:
         c = p.center
-        p.material_index = 1 if low < c.z < high and abs(c.x) < xlim else 0
+        if style == "brief":
+            p.material_index = 1 if in_brief(c, p.normal) else 0
+        else:
+            p.material_index = 1 if low < c.z < high and abs(c.x) < xlim else 0
     log(f"{obj.name}: {len(me.vertices)} verts, {len(me.polygons)} faces after the cut")
 
 
@@ -603,9 +678,11 @@ def carve(obj, grooves):
     me.update()
     moves = {}
     for v in me.vertices:
-        if v.normal.y > -0.25:          # front-facing surface only (front is -Y)
-            continue
-        for pts, depth, width in grooves:
+        for g in grooves:
+            pts, depth, width = g[:3]
+            facing = g[3] if len(g) > 3 else -0.25
+            if v.normal.y > facing:     # front-facing surface only (front is -Y)
+                continue
             lens = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)]
             total, acc, best = sum(lens), 0.0, (9.9, 0.0)
             for i in range(len(pts) - 1):
@@ -646,20 +723,25 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     obj = build_mesh(name, v, uvs, faces, weights)
     arm = build_rig(skel, J)
     targets = fit_targets(J, G)
-    obj["fit"] = {b: [list(t) if h is None else list(h), list(t)] for b, (h, t) in targets.items()}
+    # Where each bone ends up (fitted, or MakeHuman's own after alignment): bone_map reads it.
+    fit = {b: [list(J[v["head"]]), list(J[v["tail"]])] for b, v in skel["bones"].items()}
+    fit.update({b: [list(t) if h is None else list(h), list(t)] for b, (h, t) in targets.items()})
+    obj["fit"] = fit
     pose_to(arm, targets)
     bake(obj, arm)
     ground_feet(obj, G)
-    if params.get("flat", True):
+    if params.get("flat", False):     # not needed since the torso keeps its own anatomy
         flatten_belly(obj)
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]
     smooth_spots(obj, spots)
-    if params.get("grooves"):
+    smooth_groin(obj)
+    grooves = list(params.get("base_grooves", BASE_GROOVES)) + list(params.get("grooves", []))
+    if grooves:
         subdivide(obj)
-        carve(obj, [g for key in params["grooves"] for g in GROOVES[key]])
+        carve(obj, [g for key in grooves for g in GROOVES[key]])
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" or o is arm]:
         bpy.data.objects.remove(o, do_unlink=True)
-    cut_and_paint(obj, G, skin, cloth, face_pts)
+    cut_and_paint(obj, G, skin, cloth, face_pts, params.get("underwear", "boxer"))
     return obj
 
 
@@ -903,8 +985,9 @@ def preview(data, game_body, out, face=None, extra=()):
     return shots
 
 
-def preview_abs(data, game_body, out, base_key="A"):
-    """Belly options on one body shape, torso close-ups (front, three-quarter, side) in a row."""
+def preview_abs(data, game_body, out, base_key="A", options=None, center_z=1.10, scale=0.52, prefix="belly"):
+    """Options on one body shape, close-ups (front, three-quarter, side) in a row."""
+    options = options or BELLY_OPTIONS
     import common as c
     c.reset_scene()
     enable_addon()
@@ -914,10 +997,10 @@ def preview_abs(data, game_body, out, base_key="A"):
     skin = c.make_material("Skin", "#F2DCD0", roughness=0.5, subsurface=0.15)
     cloth = c.make_material("Underwear", "#B8A27E", roughness=0.85)
     gap = 0.9
-    for k, (label, opt) in enumerate(BELLY_OPTIONS):
+    for k, (label, opt) in enumerate(options):
         params = dict(VARIANTS[base_key])
         params["details"] = list(params["details"]) + list(opt.get("details", []))
-        for key in ("weight", "muscle", "grooves", "flat"):
+        for key in ("weight", "muscle", "grooves", "base_grooves", "flat", "underwear"):
             if key in opt:
                 params[key] = opt[key]
         body = make_body(data, base, params, G, f"Belly_{k}", skin, cloth)
@@ -926,7 +1009,7 @@ def preview_abs(data, game_body, out, base_key="A"):
         bpy.data.objects.remove(arm, do_unlink=True)
     c.setup_render(samples=32, res=(600, 700), world_hex="#141418", world_strength=0.25)
     shots = []
-    n = len(BELLY_OPTIONS)
+    n = len(options)
     for view, az in (("front", 0), ("quarter", 30), ("side", 90)):
         for o in [o for o in bpy.data.objects if o.type == "LIGHT"]:
             bpy.data.objects.remove(o, do_unlink=True)
@@ -936,19 +1019,19 @@ def preview_abs(data, game_body, out, base_key="A"):
             cam_dir = Vector((math.sin(ang), -math.cos(ang), 0))
             # Raking key light from above and to the side shows the grooves.
             side = Vector((math.cos(ang), math.sin(ang), 0))
-            c.add_light(f"key{k}", "AREA", tuple(Vector((x0, 0, 1.45)) + cam_dir * 0.5 + side * 0.55), 6,
-                        size=0.25, target=(x0, 0, 1.08))
-            c.add_light(f"fill{k}", "AREA", tuple(Vector((x0, 0, 1.1)) + cam_dir * 0.9 - side * 0.5), 1.5,
-                        size=0.6, target=(x0, 0, 1.1))
-        for k, (label, _) in enumerate(BELLY_OPTIONS):
+            c.add_light(f"key{k}", "AREA", tuple(Vector((x0, 0, center_z + 0.35)) + cam_dir * 0.5 + side * 0.55), 6,
+                        size=0.25, target=(x0, 0, center_z - 0.02))
+            c.add_light(f"fill{k}", "AREA", tuple(Vector((x0, 0, center_z)) + cam_dir * 0.9 - side * 0.5), 1.5,
+                        size=0.6, target=(x0, 0, center_z))
+        for k, (label, _) in enumerate(options):
             x0 = gap * k
             ang = math.radians(az)
             cam_data = bpy.data.cameras.new(f"{view}{k}")
             cam_data.type = "ORTHO"
-            cam_data.ortho_scale = 0.52
+            cam_data.ortho_scale = scale
             cam = bpy.data.objects.new(f"{view}{k}", cam_data)
             bpy.context.scene.collection.objects.link(cam)
-            cam.location = (x0 + math.sin(ang) * 2.0, -math.cos(ang) * 2.0, 1.10)
+            cam.location = (x0 + math.sin(ang) * 2.0, -math.cos(ang) * 2.0, center_z)
             cam.rotation_euler = (math.radians(90), 0, ang)
             if view == "side":
                 # Clip off the near arm (it hangs in front of the belly in profile).
@@ -957,16 +1040,19 @@ def preview_abs(data, game_body, out, base_key="A"):
             for o in bpy.data.objects:
                 if o.type == "MESH":
                     o.hide_render = o.name != f"Belly_{k}"
-            path = os.path.join(out, f"belly_{view}_{k}.png")
+            path = os.path.join(out, f"{prefix}_{view}_{k}.png")
             bpy.context.scene.render.filepath = path
             bpy.ops.render.render(write_still=True)
             shots.append(path)
-    c.contact_sheet(shots, os.path.join(out, "belly_options.png"), cols=n)
-    log(f"sheet: rows front / three-quarter / side; columns {[l for l, _ in BELLY_OPTIONS]}")
+    c.contact_sheet(shots, os.path.join(out, f"{prefix}_options.png"), cols=n)
 
 
 def main():
     cmd = sys.argv[1]
+    if cmd == "groin":
+        data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
+        os.makedirs(out, exist_ok=True)
+        preview_abs(data, game_body, out, options=GROIN_OPTIONS, center_z=0.90, scale=0.40, prefix="groin")
     if cmd == "abs":
         data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
         os.makedirs(out, exist_ok=True)

@@ -126,6 +126,7 @@ local glStart, glKeep = nil, 0   -- gunlance charged shelling: its timer counts 
 local extract = {}               -- field -> value (insect glaive timers)
 local insectGO = nil             -- the kinsect GameObject behind _Insect
 local hunterAction = nil         -- type name of the hunter's current (base) action
+local handlingFields = {}        -- field names the handling lists (the field recorder and rush trace read them)
 function chr:call(m)
   if m == "get_BaseActionController" then
     return { call = function(_, cm)
@@ -137,7 +138,13 @@ function chr:call(m)
   if m == "get_WeaponHandling" then
     -- One handling type per weapon object, like the game's (field lookups are cached per type).
     return { get_type_definition = function() return { get_full_name = function() return "Handling_" .. weaponGO.name end,
-                                                       get_fields = function() return {} end,
+                                                       get_fields = function()
+                                                         local out = {}
+                                                         for _, fname in ipairs(handlingFields) do
+                                                           out[#out + 1] = { get_name = function() return fname end, is_static = function() return false end }
+                                                         end
+                                                         return out
+                                                       end,
                                                        get_parent_type = function() return nil end } end,
              get_field = function(_, n)
       if n == "_KijinExtern" then return kijin end
@@ -214,7 +221,11 @@ imgui = {
   end,
 }
 local savedCfg
-json = { load_file = function() return nil end, dump_file = function(p, t) if p == "MiquellaLight/Weapons.json" then savedCfg = t end end }
+local savedFiles = {}
+json = { load_file = function() return nil end, dump_file = function(p, t)
+  savedFiles[p] = t
+  if p == "MiquellaLight/Weapons.json" then savedCfg = t end
+end }
 
 if arg[2] == "missing" then
   failPaths["Art/Model/MiquellaLight/DualBlades/wp_miquella_db_s14.mesh"] = true
@@ -497,8 +508,11 @@ check(savedCfg.assignShield.it01 == "SwordShield_ShieldD", "sword & shield: shie
 local ringJ = weaponGO.tf.joints["MQ_TimingRing"]
 local function shown(n) return weaponMesh.matEnabled[n] == true, weaponMesh.floats[n .. ".2"] or 0 end
 check(not shown("MiquellaTiming") and not shown("MiquellaBurst"), "sword & shield: no timing ring outside Perfect Rush")
+handlingFields = { "_IsJustRush", "_StepSlashCount" }
+extract._IsJustRush, extract._StepSlashCount = false, 0
 hunterAction = "app.Wp01Action.cJustRushCombo0"
 frames(6, 1 / 60)
+extract._StepSlashCount = 1
 local zHigh = ringJ.lp.z
 check(shown("MiquellaTiming") and zHigh > 0.7, string.format("sword & shield: Perfect Rush shows the ring high on the blade (%.3f)", zHigh))
 frames(30, 1 / 60)
@@ -508,9 +522,22 @@ frames(3, 1 / 60)
 check(shown("MiquellaBurst"), "sword & shield: a Perfect bursts at the guard")
 frames(30, 1 / 60)
 check(not shown("MiquellaBurst"), "sword & shield: the burst fades")
-hunterAction, extract._IsJustRush = nil, nil
+hunterAction, extract._IsJustRush = nil, false
 frames(30, 1 / 60)
 check(not shown("MiquellaTiming"), "sword & shield: the ring goes after the rush")
+-- The rush trace (to time the ring from one test): every change during the rush, saved with the fields.
+frames(400, 1 / 60)
+local trace = nil
+for p, t in pairs(savedFiles) do
+  if p:find("MiquellaLight/fields_", 1, true) and t.trace then trace = table.concat(t.trace, " | ") end
+end
+check(trace ~= nil, "sword & shield: the rush trace is saved with the field record")
+trace = trace or ""
+check(trace:find("=== rush 1", 1, true) and trace:find("=== end", 1, true), "sword & shield: the trace marks the rush's start and end")
+check(trace:find("_StepSlashCount 0 -> 1", 1, true) ~= nil, "sword & shield: the trace logs a field's change")
+check(trace:find("_IsJustRush 0 -> 1", 1, true) and trace:find("Perfect!", 1, true), "sword & shield: the trace logs the Perfect")
+check(trace:find("ring at the guard", 1, true) ~= nil, "sword & shield: the trace logs the ring reaching the guard")
+handlingFields, extract._IsJustRush, extract._StepSlashCount = {}, nil, nil
 -- Long sword: the scabbard (_1) keeps its game look.
 weaponMesh = newMesh("Art/Model/Item/it03/00/0001/it0300_0001_0.mesh")
 weaponGO = newGO("Wp03", 5001, weaponMesh, nil)

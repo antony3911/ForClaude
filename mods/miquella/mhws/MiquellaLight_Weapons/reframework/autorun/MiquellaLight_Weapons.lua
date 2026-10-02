@@ -673,19 +673,27 @@ end
 -- 2026-10-02). Logged when they change (actionLog, saved with the field recorder's file).
 local ACTION_CONTROLLERS = { "get_BaseActionController", "get_SubActionController" }
 local actionNow, actionLog = "", {}
+local actionObjs = {}                -- the current action objects, { name, obj } (the rush trace reads them)
 
 local function current_actions(chr)
     local names = {}
+    actionObjs = {}
     for _, getter in ipairs(ACTION_CONTROLLERS) do
         local ctl = try(function() return chr:call(getter) end)
         local act = ctl and try(function() return ctl:call("get_CurrentAction") end)
         local n = act and try(function() return act:get_type_definition():get_full_name() end)
-        if n then names[#names + 1] = n end
+        if n then
+            names[#names + 1] = n
+            actionObjs[#actionObjs + 1] = { name = n, obj = act }
+        end
     end
     return table.concat(names, " + ")
 end
 
+local hunterChr = nil                -- the hunter character of this frame (the rush trace reads it)
+
 local function update_actions(chr)
+    hunterChr = chr
     local a = current_actions(chr)
     if a ~= actionNow then
         actionNow = a
@@ -1452,6 +1460,120 @@ local function update_gauges(entry, mesh, h, dt)
     stateInfo.gauges[entry.kit] = table.concat(info, "  ")
 end
 
+-- Every field of an object (its type and parents), not static.
+local function field_names(h)
+    local out, seen = {}, {}
+    local td = try(function() return h:get_type_definition() end)
+    while td do
+        for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
+            local n = try(function() return f:get_name() end)
+            if n and not seen[n] and not try(function() return f:is_static() end) then
+                seen[n] = true
+                out[#out + 1] = n
+            end
+        end
+        td = try(function() return td:get_parent_type() end)
+    end
+    return out
+end
+
+-- Perfect Rush trace, to time the ring from one test (2026-10-02): while a rush runs and 1 s
+-- after it, every frame, the number / true-false fields of the hunter, the weapon handling (and
+-- the objects it holds) and the current actions (and theirs). True-false and whole numbers are
+-- logged on every change (at most 12 lines a field each rush), other numbers when they start or
+-- stop (0 <-> not 0); a new action's true fields when it starts. Each line has the seconds since
+-- the rush began; saved as `trace` in the field recorder's file (fields_app_cHunterWp01Handling.json).
+local TRACE_LINES, TRACE_PER_FIELD, TRACE_AFTER, TRACE_SUB_FIELDS = 1500, 12, 1.0, 60
+local rushTrace = { lines = {}, on = false, start = 0, untilT = 0, last = {}, count = {}, names = {}, n = 0 }
+
+local function trace_line(text)
+    local lines = rushTrace.lines
+    lines[#lines + 1] = text
+    if #lines > TRACE_LINES then table.remove(lines, 1) end
+end
+
+local function trace_note(text, now)
+    if rushTrace.on then trace_line(string.format("%6.3f  %s", now - rushTrace.start, text)) end
+end
+
+local function trace_num(v)
+    if v == math.floor(v) and math.abs(v) < 1e9 then return string.format("%d", v) end
+    return string.format("%.3f", v)
+end
+
+local function trace_obj(obj, prefix, t, depth, seen, firstTrue, maxFields)
+    local addr = try(function() return obj:get_address() end)
+    if addr then
+        if seen[addr] then return end
+        seen[addr] = true
+    end
+    local tn = try(function() return obj:get_type_definition():get_full_name() end)
+    if not tn then return end
+    local names = rushTrace.names[tn]
+    if not names then
+        names = field_names(obj)
+        rushTrace.names[tn] = names
+    end
+    for i, n in ipairs(names) do
+        if maxFields and i > maxFields then break end
+        local v = try(function() return obj:get_field(n) end)
+        if type(v) == "userdata" then
+            if depth > 0 then trace_obj(v, prefix .. n .. ".", t, depth - 1, seen, firstTrue, TRACE_SUB_FIELDS) end
+        else
+            local isBool = type(v) == "boolean"
+            if isBool then v = v and 1 or 0 end
+            if type(v) == "number" then
+                local key = prefix .. n
+                local old = rushTrace.last[key]
+                rushTrace.last[key] = v
+                local line = nil
+                if old == nil then
+                    if firstTrue and isBool and v == 1 then line = key .. " = true" end
+                elseif old ~= v then
+                    local whole = v == math.floor(v) and old == math.floor(old)
+                    if whole or (old == 0) ~= (v == 0) then line = key .. " " .. trace_num(old) .. " -> " .. trace_num(v) end
+                end
+                if line then
+                    local c = (rushTrace.count[key] or 0) + 1
+                    rushTrace.count[key] = c
+                    if c <= TRACE_PER_FIELD then
+                        trace_line(string.format("%6.3f  %s", t, line))
+                    elseif c == TRACE_PER_FIELD + 1 then
+                        trace_line(string.format("%6.3f  %s (keeps changing)", t, key))
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function update_rush_trace(h, inRush, now)
+    if not config.recordFields then return end
+    if inRush and not rushTrace.on then
+        rushTrace.on, rushTrace.start, rushTrace.last, rushTrace.count = true, now, {}, {}
+        rushTrace.n, rushTrace.action = rushTrace.n + 1, actionNow
+        trace_line(string.format("=== rush %d at %.2f: %s", rushTrace.n, now, actionNow))
+    end
+    if not rushTrace.on then return end
+    if inRush then rushTrace.untilT = now + TRACE_AFTER end
+    local t = now - rushTrace.start
+    if now > rushTrace.untilT then
+        rushTrace.on = false
+        trace_line(string.format("%6.3f  === end", t))
+        return
+    end
+    if actionNow ~= rushTrace.action then
+        rushTrace.action = actionNow
+        trace_line(string.format("%6.3f  action %s", t, actionNow ~= "" and actionNow or "(none)"))
+    end
+    local seen = {}
+    if hunterChr then trace_obj(hunterChr, "hunter.", t, 0, seen, false) end
+    if h then trace_obj(h, "", t, 1, seen, false) end
+    for _, a in ipairs(actionObjs) do
+        trace_obj(a.obj, (a.name:match("[^%.]+$") or a.name) .. ".", t, 1, seen, true)
+    end
+end
+
 -- Sword & shield Perfect Rush (user's pick 2026-10-02, "S2"): see the kit's timing table.
 local TIMING_BURST = 0.35
 
@@ -1465,29 +1587,39 @@ local function update_timing(entry, mesh, h, dt, now)
             gl_event("Perfect Rush action " .. actionNow)
         end
     end
-    -- The game's own check for the window, when it answers (true / false); nil = not known.
+    update_rush_trace(h, inRush, now)
+    -- The game's own check for the window, when it answers (true / false) on the handling or the
+    -- hunter; nil = not known.
     local window = nil
-    if inRush and h then
-        for _, m in ipairs(spec.checks) do
-            local v = try(function() return h:call(m) end)
-            if type(v) == "boolean" then window = window or v end
+    if inRush then
+        for _, owner in ipairs({ h or false, hunterChr or false }) do
+            for _, m in ipairs(owner and spec.checks or {}) do
+                local v = try(function() return owner:call(m) end)
+                if type(v) == "boolean" then window = window or v end
+            end
         end
     end
     if window ~= entry.timingWindow then
         entry.timingWindow = window
-        if window ~= nil then gl_event("Perfect Rush window " .. tostring(window)) end
+        if window ~= nil then
+            gl_event("Perfect Rush window " .. tostring(window))
+            trace_note("window " .. tostring(window), now)
+        end
     end
     local p = 0
     if inRush then
         local t = (now - (entry.timingStart or now)) / spec.fall
         if window == nil then p = math.min(1, t) else p = window and 1 or math.min(0.9, t) end
     end
+    if p >= 1 and (entry.timingP or 0) < 1 then trace_note("ring at the guard", now) end
+    entry.timingP = p
     entry.slide = spec.rise * (1 - p)
     local ok = h and first_number(h, spec.success)
     local okOn = (ok or 0) > 0
     if okOn and not entry.timingOk then
         entry.burstAt = now
         gl_event("Perfect!")
+        trace_note("Perfect! (" .. spec.success[1] .. ")", now)
     end
     entry.timingOk = okOn
     entry.mul = entry.mul or {}
@@ -1505,22 +1637,6 @@ end
 -- (its type and parents); per field the lowest, highest and last value and how often it
 -- changed; saved every 5 s, one file per handling type.
 local rec = { type = nil, names = nil, data = nil, nextRead = 0, nextSave = 0, samples = 0 }
-
-local function field_names(h)
-    local out, seen = {}, {}
-    local td = try(function() return h:get_type_definition() end)
-    while td do
-        for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
-            local n = try(function() return f:get_name() end)
-            if n and not seen[n] and not try(function() return f:is_static() end) then
-                seen[n] = true
-                out[#out + 1] = n
-            end
-        end
-        td = try(function() return td:get_parent_type() end)
-    end
-    return out
-end
 
 local function record_fields(h, now)
     if not (config.recordFields and h) or now < rec.nextRead then return end
@@ -1575,7 +1691,8 @@ local function record_fields(h, now)
         local safe = rec.type:gsub("[^%w_]", "_")
         try(function() json.dump_file("MiquellaLight/fields_" .. safe .. ".json",
             { type = rec.type, samples = rec.samples, changed = changed, all = rec.data, objects = rec.objects,
-              events = #glEvents > 0 and glEvents or nil, actions = #actionLog > 0 and actionLog or nil }) end)
+              events = #glEvents > 0 and glEvents or nil, actions = #actionLog > 0 and actionLog or nil,
+              trace = #rushTrace.lines > 0 and rushTrace.lines or nil }) end)
     end
 end
 

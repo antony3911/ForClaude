@@ -53,6 +53,28 @@ VARIANTS = {
     "C": {"label": "C 柔和", "gender": 0.66, "muscle": 0.22, "weight": 0.44,
           "details": [("torso/torso-scale-horiz-decr", 0.2)]},
 }
+# The belly (user 2026-10-02: the first bodies read as a beer belly; wants a slim waist with
+# lines, 人魚線 / 馬甲線). Options shown side by side (preview abs); grooves are carved into the
+# surface after one subdivision: (front-view polyline of (x, z) in m, depth, half-width).
+FLAT_BELLY = [("stomach/stomach-pregnant-decr", 1.0)]
+TONE = [("stomach/stomach-tone-incr", 0.7)]
+GROOVES = {
+    # 馬甲線: the outer edges of the abdominal wall, ribs to lower belly, and a faint midline above the navel.
+    "vertical": [([(0.072, 1.24), (0.066, 1.14), (0.056, 1.04)], 0.0028, 0.011),
+                 ([(-0.072, 1.24), (-0.066, 1.14), (-0.056, 1.04)], 0.0028, 0.011),
+                 ([(0.0, 1.25), (0.0, 1.11)], 0.0016, 0.009)],
+    # 人魚線: from the front hip bones down and in toward the groin (into the underwear).
+    "v": [([(0.112, 1.065), (0.085, 1.005), (0.052, 0.955)], 0.0032, 0.012),
+          ([(-0.112, 1.065), (-0.085, 1.005), (-0.052, 0.955)], 0.0032, 0.012)],
+}
+BELLY_OPTIONS = [
+    ("0 原本", {"flat": False}),
+    ("1 收小腹", {"details": FLAT_BELLY, "weight": 0.26}),
+    ("2 收小腹＋緊實", {"details": FLAT_BELLY + TONE, "weight": 0.26}),
+    ("3 收小腹＋馬甲線", {"details": FLAT_BELLY, "weight": 0.26, "grooves": ["vertical"]}),
+    ("4 收小腹＋人魚線", {"details": FLAT_BELLY, "weight": 0.26, "grooves": ["v"]}),
+    ("5 收小腹＋兩種", {"details": FLAT_BELLY, "weight": 0.26, "grooves": ["vertical", "v"]}),
+]
 AGE = 0.5          # 25 years: adult proportions only
 RACES = {"african": 1 / 3, "asian": 1 / 3, "caucasian": 1 / 3}
 
@@ -491,6 +513,119 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None):
     log(f"{obj.name}: {len(me.vertices)} verts, {len(me.polygons)} faces after the cut")
 
 
+# The lower belly stuck out in profile like a beer belly (user 2026-10-02, side view): from below
+# the ribs to the pubic bone the front of the belly may not come past a straight line, and dips a
+# little behind it in the middle (BELLY_DIP), so the profile runs slim and slightly hollow.
+BELLY_SPAN = (0.92, 1.21)    # m: pubic bone .. below the ribs
+BELLY_DIP = 0.006            # m behind the line at its middle
+BELLY_HALF = 0.15            # m: |x| beyond which nothing moves
+
+
+def flatten_belly(obj):
+    me = obj.data
+    lo, hi = BELLY_SPAN
+    torso = [v for v in me.vertices if abs(v.co.x) < BELLY_HALF and lo - 0.02 < v.co.z < hi + 0.02]
+
+    def front(z):
+        s = [v.co.y for v in torso if abs(v.co.x) < 0.03 and abs(v.co.z - z) < 0.006]
+        return min(s) if s else None
+    y_lo, y_hi = front(lo), front(hi)
+    if y_lo is None or y_hi is None:
+        log("  belly: profile not found, left as is")
+        return
+    slabs = {}
+    for v in torso:
+        slabs.setdefault(round(v.co.z / 0.01), []).append(v)
+    worst = 0.0
+    for zb, vs in slabs.items():
+        z = zb * 0.01
+        if not lo < z < hi:
+            continue
+        t = (z - lo) / (hi - lo)
+        target = y_lo + (y_hi - y_lo) * t + BELLY_DIP * math.sin(math.pi * t)
+        fy = min(v.co.y for v in vs if abs(v.co.x) < 0.03) if any(abs(v.co.x) < 0.03 for v in vs) else None
+        if fy is None:
+            continue
+        push = target - fy              # > 0: the front sticks out past the line by this much
+        if push <= 0:
+            continue
+        worst = max(worst, push)
+        back = max(v.co.y for v in vs)
+        center = (fy + back) / 2
+        hw = max(abs(v.co.x) for v in vs if v.co.y < center) if any(v.co.y < center for v in vs) else BELLY_HALF
+        edge = min(1.0, (z - lo) / 0.03, (hi - z) / 0.03)
+        for v in vs:
+            if v.co.y >= center:
+                continue
+            wx = max(0.0, 1 - (v.co.x / (hw * 0.95)) ** 2)
+            wy = min(1.0, (center - v.co.y) / max(center - fy, 1e-4))
+            v.co.y += push * wx * wy * edge
+    log(f"  belly: flattened up to {worst * 100:.1f} cm")
+    # Smooth the moved area a little so slab steps do not show.
+    nbr = {}
+    ids = {v.index for v in torso}
+    for e in me.edges:
+        a, b = e.vertices
+        if a in ids and b in ids:
+            nbr.setdefault(a, []).append(b)
+            nbr.setdefault(b, []).append(a)
+    for _ in range(4):
+        co = {i: me.vertices[i].co.copy() for i in ids}
+        for i in ids:
+            v = me.vertices[i]
+            if lo < v.co.z < hi and abs(v.co.x) < BELLY_HALF * 0.9 and i in nbr:
+                avg = sum((co[j] for j in nbr[i]), Vector()) / len(nbr[i])
+                v.co = co[i].lerp(avg, 0.3)
+
+
+def subdivide(obj):
+    """One Catmull-Clark level (vertex groups carry over), so thin grooves have vertices to sit on."""
+    mod = obj.modifiers.new("Subdiv", "SUBSURF")
+    mod.levels = mod.render_levels = 1
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+
+
+def seg_dist(px, pz, a, b):
+    """Distance in the front view (x, z) from a point to segment ab, and the share along it."""
+    ax, az = a
+    bx, bz = b
+    dx, dz = bx - ax, bz - az
+    L2 = dx * dx + dz * dz
+    t = max(0.0, min(1.0, ((px - ax) * dx + (pz - az) * dz) / L2)) if L2 else 0.0
+    return math.hypot(px - (ax + t * dx), pz - (az + t * dz)), t
+
+
+def carve(obj, grooves):
+    """Soft grooves on the front of the body: each vertex near a polyline (front view) moves in
+    along its normal by depth * a Gaussian of its distance, tapered at the line's ends."""
+    me = obj.data
+    me.update()
+    moves = {}
+    for v in me.vertices:
+        if v.normal.y > -0.25:          # front-facing surface only (front is -Y)
+            continue
+        for pts, depth, width in grooves:
+            lens = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]) for i in range(len(pts) - 1)]
+            total, acc, best = sum(lens), 0.0, (9.9, 0.0)
+            for i in range(len(pts) - 1):
+                d, t = seg_dist(v.co.x, v.co.z, pts[i], pts[i + 1])
+                if d < best[0]:
+                    best = (d, (acc + t * lens[i]) / total)
+                acc += lens[i]
+            d, u = best
+            if d > 3 * width:
+                continue
+            taper = min(1.0, u / 0.2, (1 - u) / 0.2)
+            taper = taper * taper * (3 - 2 * taper)
+            amount = depth * math.exp(-(d / width) ** 2) * taper
+            moves[v.index] = moves.get(v.index, 0.0) + amount
+    for i, a in moves.items():
+        v = me.vertices[i]
+        v.co -= v.normal * a
+    log(f"  carved {len(grooves)} grooves over {len(moves)} vertices")
+
+
 def ground_feet(obj, G):
     """The game's ankle joint is lower than MakeHuman's: below the ankles the feet are squashed
     so the soles stand on the ground (z 0) instead of sinking into it."""
@@ -515,8 +650,13 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     pose_to(arm, targets)
     bake(obj, arm)
     ground_feet(obj, G)
+    if params.get("flat", True):
+        flatten_belly(obj)
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]
     smooth_spots(obj, spots)
+    if params.get("grooves"):
+        subdivide(obj)
+        carve(obj, [g for key in params["grooves"] for g in GROOVES[key]])
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" or o is arm]:
         bpy.data.objects.remove(o, do_unlink=True)
     cut_and_paint(obj, G, skin, cloth, face_pts)
@@ -763,8 +903,74 @@ def preview(data, game_body, out, face=None, extra=()):
     return shots
 
 
+def preview_abs(data, game_body, out, base_key="A"):
+    """Belly options on one body shape, torso close-ups (front, three-quarter, side) in a row."""
+    import common as c
+    c.reset_scene()
+    enable_addon()
+    arm, _ = import_game(game_body, keep_meshes=False)
+    G = game_joints(arm)
+    base = load_base(data)
+    skin = c.make_material("Skin", "#F2DCD0", roughness=0.5, subsurface=0.15)
+    cloth = c.make_material("Underwear", "#B8A27E", roughness=0.85)
+    gap = 0.9
+    for k, (label, opt) in enumerate(BELLY_OPTIONS):
+        params = dict(VARIANTS[base_key])
+        params["details"] = list(params["details"]) + list(opt.get("details", []))
+        for key in ("weight", "muscle", "grooves", "flat"):
+            if key in opt:
+                params[key] = opt[key]
+        body = make_body(data, base, params, G, f"Belly_{k}", skin, cloth)
+        body.location.x = gap * k
+    if arm:
+        bpy.data.objects.remove(arm, do_unlink=True)
+    c.setup_render(samples=32, res=(600, 700), world_hex="#141418", world_strength=0.25)
+    shots = []
+    n = len(BELLY_OPTIONS)
+    for view, az in (("front", 0), ("quarter", 30), ("side", 90)):
+        for o in [o for o in bpy.data.objects if o.type == "LIGHT"]:
+            bpy.data.objects.remove(o, do_unlink=True)
+        for k in range(n):
+            x0 = gap * k
+            ang = math.radians(az)
+            cam_dir = Vector((math.sin(ang), -math.cos(ang), 0))
+            # Raking key light from above and to the side shows the grooves.
+            side = Vector((math.cos(ang), math.sin(ang), 0))
+            c.add_light(f"key{k}", "AREA", tuple(Vector((x0, 0, 1.45)) + cam_dir * 0.5 + side * 0.55), 6,
+                        size=0.25, target=(x0, 0, 1.08))
+            c.add_light(f"fill{k}", "AREA", tuple(Vector((x0, 0, 1.1)) + cam_dir * 0.9 - side * 0.5), 1.5,
+                        size=0.6, target=(x0, 0, 1.1))
+        for k, (label, _) in enumerate(BELLY_OPTIONS):
+            x0 = gap * k
+            ang = math.radians(az)
+            cam_data = bpy.data.cameras.new(f"{view}{k}")
+            cam_data.type = "ORTHO"
+            cam_data.ortho_scale = 0.52
+            cam = bpy.data.objects.new(f"{view}{k}", cam_data)
+            bpy.context.scene.collection.objects.link(cam)
+            cam.location = (x0 + math.sin(ang) * 2.0, -math.cos(ang) * 2.0, 1.10)
+            cam.rotation_euler = (math.radians(90), 0, ang)
+            if view == "side":
+                # Clip off the near arm (it hangs in front of the belly in profile).
+                cam_data.clip_start, cam_data.clip_end = 2.0 - 0.2, 3.0
+            bpy.context.scene.camera = cam
+            for o in bpy.data.objects:
+                if o.type == "MESH":
+                    o.hide_render = o.name != f"Belly_{k}"
+            path = os.path.join(out, f"belly_{view}_{k}.png")
+            bpy.context.scene.render.filepath = path
+            bpy.ops.render.render(write_still=True)
+            shots.append(path)
+    c.contact_sheet(shots, os.path.join(out, "belly_options.png"), cols=n)
+    log(f"sheet: rows front / three-quarter / side; columns {[l for l, _ in BELLY_OPTIONS]}")
+
+
 def main():
     cmd = sys.argv[1]
+    if cmd == "abs":
+        data, game_body, out = (os.path.abspath(a) for a in sys.argv[2:5])
+        os.makedirs(out, exist_ok=True)
+        preview_abs(data, game_body, out)
     if cmd == "kit":
         data, game_body, face, kit_dir, template = (os.path.abspath(a) for a in sys.argv[2:7])
         kit(data, game_body, face, kit_dir, template)

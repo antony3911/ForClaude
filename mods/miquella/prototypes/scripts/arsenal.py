@@ -1256,6 +1256,67 @@ def bow_blossoms(mats):
     return out
 
 
+# The hammer's charge (user's pick 2026-10-02 evening, "H4"): an armillary sphere round the
+# caged sun, a great ring more each level, beads of light set along them. Each ring rides its
+# own bone at the head's centre (MQ_Arm0-2) that the weapons script turns about a different
+# axis, faster each level, so the rings sweep round the sun like a gyroscope.
+ARMILLARY = [((0.0, 1.0, 0.35), 0.31, (0, 0, 1)), ((0.0, -0.45, 1.0), 0.34, (1, 0, 0)),
+             ((0.55, 0.0, 1.0), 0.28, (0.3, 1, 0))]          # (ring normal, radius, turning axis)
+HAMMER_HEAD_CENTER = (0, 0, 1.04)
+
+
+def light_ring(name, center, radius, normal, mat, bevel, n=120):
+    u, w, _ = m.basis(normal)
+    pts = [Vector(center) + (u * math.cos(2 * math.pi * i / n) + w * math.sin(2 * math.pi * i / n)) * radius
+           for i in range(n + 1)]
+    return c.curve_tube(name, pts, [1.0] * (n + 1), mat, bevel=bevel, resolution=2)
+
+
+def hammer_armillary(mats):
+    """[(level, bone, [objects])]; names Armillary_<k>, Armillary_In_<k>, Armillary_Bead_<k>_<j>."""
+    out = []
+    for k, (normal, r, _) in enumerate(ARMILLARY):
+        axis = Vector(normal).normalized()
+        objs = [light_ring(f"Armillary_{k}", HAMMER_HEAD_CENTER, r, axis, mats["light"], 0.0055),
+                light_ring(f"Armillary_In_{k}", HAMMER_HEAD_CENTER, r - 0.012, axis, mats["light"], 0.0018)]
+        u, w, _ = m.basis(axis)
+        for j in range(6):
+            a = 2 * math.pi * j / 6 + k
+            p = Vector(HAMMER_HEAD_CENTER) + (u * math.cos(a) + w * math.sin(a)) * r
+            bpy.ops.mesh.primitive_ico_sphere_add(radius=0.009, subdivisions=1, location=p)
+            bead = bpy.context.active_object
+            bead.name = f"Armillary_Bead_{k}_{j}"
+            bead.data.materials.append(mats["light"])
+            objs.append(bead)
+        out.append((k + 1, f"MQ_Arm{k}", objs))
+    return out
+
+
+# The gunlance's charge (user's pick 2026-10-02 evening, "G3"): two gold threads twisted together
+# inside the barrel, drawn out of the energy core toward the muzzle as the charge builds, an eye
+# of twisted gold at the drawn end (Miquella's unalloyed gold needle). Built drawn out in full;
+# its top rides a bone (MQ_FilamentTop) that the weapons script lowers, every vertex weighted by
+# its height, so the twists tighten as it shortens and loosen as it is drawn out.
+FILAMENT_ROOT, FILAMENT_TOP = GUNLANCE_BASE + 0.04, GUNLANCE_TIP - 0.02
+FILAMENT_EYE = (0.07, 0.024)                 # height, half width
+
+
+def gunlance_filament(mats):
+    """Names Filament_Braid_<k>, Filament_Eye_<k>, Filament_Drop."""
+    twists, n, r = 9, 400, 0.006
+    objs = []
+    for k in range(2):
+        pts = [V(r * math.cos(k * math.pi + 2 * math.pi * twists * t), r * math.sin(k * math.pi + 2 * math.pi * twists * t),
+                 FILAMENT_ROOT + (FILAMENT_TOP - FILAMENT_ROOT) * t) for t in [i / (n - 1) for i in range(n)]]
+        objs.append(c.curve_tube(f"Filament_Braid_{k}", pts, [1.0] * n, mats["light"], bevel=0.0028, resolution=2))
+    eye_h, eye_w = FILAMENT_EYE
+    for k, s in enumerate((1, -1)):
+        pts = [V(s * eye_w * math.sin(math.pi * t), 0, FILAMENT_TOP + eye_h * t) for t in [i / 24 for i in range(25)]]
+        objs.append(c.curve_tube(f"Filament_Eye_{k}", pts, [1.0] * 25, mats["light"], bevel=0.0028, resolution=2))
+    objs += m.droplet("Filament_Drop", V(0, 0, FILAMENT_TOP + eye_h * 0.5), 0.011, (0, 0, 1), mats["light"], stretch=0.6)
+    return objs
+
+
 # Strands of light wrapped round a blade (user's picks 2026-10-02 evening: the great sword's
 # "A" and the long sword's "B"): they grow from the guard toward the point a level at a time.
 # The helix is flattened across the blade's thickness so it hugs a flat blade.

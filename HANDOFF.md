@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-02 早上（**本機 session，第一帳號**：接手第六輪實測——太刀流光做到刀身上、龍擊砲改讀獵人動作；在使用者的 Windows 電腦上，分支 `claude/two-account-handoff-plan`）。兩個帳號輪流做：第一帳號做雙劍、大劍、輕弩和換裝腳本的共用功能，第二帳號做其他武器和裝置
+最後更新：2026-10-02 晚上（**本機 session，第一帳號**：蓄力力量感的設計提案 → 使用者挑選 → 長槍、大劍、太刀、充能斧、弓、操蟲棍、銃槍、大錘的遊戲版做完並裝進遊戲；全部武器的攻擊軌跡改金；分支 `claude/two-account-handoff-plan`）。兩個帳號輪流做：第一帳號做雙劍、大劍、輕弩和換裝腳本的共用功能，第二帳號做其他武器和裝置（現在換裝腳本、特效腳本都在第一帳號手上）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -8,6 +8,12 @@
 ---
 
 ## 0. 兩個帳號之間的留言
+
+**第一帳號 → 下一個 session（2026-10-02 晚上，最新）**：使用者要求「邊做邊擴充 HANDOFF，以防對話用完」。現況：
+- **今天做完、已裝進遊戲（遊戲關著時直接裝的，`work\install` 也放了一份）**：長槍光旋、大劍／太刀光絲纏繞、充能斧光齒、弓藤蔓開花、操蟲棍三朵花、銃槍絞絲針眼、大錘渾天儀；全部武器的金色特效 pak（`fx_paks.py`）。細節在第 9 節「蓄力力量感」那條。**全部還沒實測**
+- **還沒做**：片手劍 **S2 時機光環**（做法見第 9 節）；裝置的起爆龍彈花苞（等使用者 F12 截圖）
+- **換裝腳本新增的機制**（`mhws/MiquellaLight_Weapons/README.md`「蓄力零件與骨頭的新機制」有說明）：`floaters.spin`（骨頭依蓄力段數繞軸轉，每根可指定軸）、`stretch`（骨頭從根部拉長，銃槍金絲）、`orbit.face`（繞刀的零件朝外、自轉）、`boosts[].chase`（幾組材質輪流亮＝跑馬燈）、`charge.partColor`、`bow.parts`；欄位記錄器的檔案多了 `actions`（獵人動作名稱的變化）
+- 測試 `weapons_test.lua` **177 項**全過（含 `missing`）
 
 **第一帳號（2026-10-02 07:45，接手中）**：換裝腳本、特效腳本現在歸第一帳號。第二帳號 06:40 留言的四項處理狀態見第 9 節「使用者實測第六輪」。**17:04 遊戲關掉，待裝的 26 個 pak（含 `HornFX` 第四版、新 `LongSword`、全部武器的金色特效 pak）和兩個腳本都已裝好並逐一比對**，等使用者實測
 
@@ -215,6 +221,9 @@
 | `python build_weapon_kit.py <名稱> <kit> <原版 .mesh> <雙劍 .mdf2>`（名稱見 `WEAPONS`：14 種武器、各盾牌、獵蟲） | **新武器的素材包一次做完**：原型 → 減面、依材質分槽 → 照原版擺放 → 原版骨架（特效骨頭移到我們的刀尖／槍口）→ `.mesh`＋`.mdf2`（材質抄雙劍 kit）。加武器就在 `WEAPONS` 加一個函式 |
 | `python build_device_kit.py <wyrmstake\|wyvernblast> <kit> <原版 .mesh> <stickyshell .mdf2>` | **武器裝置**：原型 → 一個材質 `lambert1`、三色分區貼圖、每個顯示群組放完整模型 → 蓋過遊戲的特效模型路徑 |
 | `python preview_kit.py <kit .blend> <原版 .mesh> <out.png> <front\|side\|gun> [間距]` | 素材包和原版並排的預覽（原版灰色）；圖裡有原版，**不進 repo**（放 `MiquellaTools\work\previews\`） |
+| `python power_states.py <set> <輸出>`（`lance_power`、`bow_power`、`extract_orbs`、`extract_on_glaive`、`weapons_power [武器名]`、`lance_anim`）／`python power_round2.py <gunlance\|hammer\|hammer3\|sns> <輸出>` | **蓄力力量感的設計提案**（2026-10-02）：每個方向蓄力 1→2→滿並排；`weapon_power.py`（其他武器的加強方向）、`orb_styles.py`（操蟲棍精華的四種造型）是它們用的模組 |
+| `python trail_scan.py <解出的遊戲檔根目錄> <MiquellaTools\work> [out.md]` | 列出每種武器特效檔裡的軌跡條目和顏色，標出哪些已在我們的 pak 裡 |
+| `bpy45\Scripts\python fx_paks.py <解出的遊戲檔根目錄> <MiquellaTools\work> [it01 ...]` | **全部武器的金色特效 pak**：照檔案裡的規則表用 `recolor_efx.py --layers` 改色、打包、放進 `work\install\pak_mods` |
 | `python preview_morph.py <kit .blend> <_morph.json> <輸出前綴> [第二個 kit .blend x y z]` | **變形動畫預覽**（斬擊斧、充能斧）：照遊戲的骨頭算法變形，輸出 `_strip.png`（進度 0～1 六格）和 `.gif`（來回）；第二個 kit（充能斧的盾）擺在旁邊淡出。只有我們的模型，可以進 repo（`prototypes/action_states/`） |
 
 **共用模組**：`common.py`（場景、材質、算圖）、`motifs.py`（光環、編織管、細枝束、卷草、懸浮光點、光刃…）、`status_fx.py`（腐敗黴球、寫實腐敗蝶、冰塊）、`particle_fx.py`（用旋渦氣流描出的火絲、爆炸光絲、體積冷霧）
@@ -328,7 +337,9 @@
 - **待做（照順序）**：①~~攻擊軌跡改金~~（2026-10-02 夜做了，見「使用者實測第六輪」的「所有武器的攻擊軌跡」）③起爆龍彈花苞如果也黑 → 照金針改發光材質、只放對的顯示群組
 - **蓄力力量感・設計提案（2026-10-02 夜，第一帳號，使用者睡前交代，等他挑）**：使用者：長槍蓄力不夠有力量感、要更有特色；弓蓄力多一些裝飾光效；操蟲棍三燈光球還沒設計好（多找設計）；其他武器蓄力也加力量感；「不急著放進遊戲」。預覽（`prototypes/action_states/`）：`lance_power.png`（A 光旋／B 光冠／C 光羽／D 收束，各三段）＋`lance_A_spin.gif`、`lance_D_compress.gif`；`bow_power.png`（A 藤蔓綻放／B 聖樹光陣／C 光點環繞／D 光翼）；`extract_orbs.png`＋`extract_on_glaive.png`（1 聖骸燈籠／2 三朵花／3 寶石／4 紋章）；`power_great_sword.png`、`power_hammer.png`、`power_gunlance.png`、`power_long_sword.png`、`power_charge_blade.png`（現在 vs A／B）。說明在 DESIGN.md「蓄力的力量感・提案」。程式 `power_states.py <set>`（`lance_power`、`bow_power`、`extract_orbs`、`extract_on_glaive`、`weapons_power [武器名]`、`lance_anim`）、`weapon_power.py`、`orb_styles.py`。**使用者挑了之後**：照選的方向做遊戲版（新零件分材質槽、`Dissolve` 依段數淡入；光旋要骨頭繞軸轉、收束要骨頭沿軸滑，跟浮動光環同一套）
   - **使用者選了（2026-10-02 晚）**：長槍 A、弓 A、操蟲棍 2（三朵花）、大劍 A、太刀 B、充能斧 A；銃槍要「槍身裡一條充能金絲逐漸拉伸」、大錘再想、片手劍完美突進／蓄力斬也要刀身變化 → 第二輪提案 `gunlance_filament.png`、`hammer_round3.png`、`sns_perfect.png`（等使用者挑）
-  - **遊戲版進度**：①**長槍 A 光旋：做完、已裝進遊戲（遊戲關著直接裝）**：`arsenal.lance_drill_parts`、kit 的 `MQ_Drill` 骨頭（z 1.751）、腳本新的骨頭模式 `spin`（`floaters.spin.dps` 依蓄力段數 0／90／200／420 度每秒），測試 164 項全過。②**大劍 A、太刀 B 光絲纏繞：做完、已裝進遊戲**：`arsenal.wrap_strands`／`great_sword_strands`（三條＋滿蓄力火花）／`long_sword_strands`（兩條），依段數分在 `MiquellaCharge1～3`，腳本 `charge.parts`＋新的 `partColor = PART_GOLD`（刀身白光時光絲還是亮金），測試 167 項。③**充能斧 A 光齒：做完、已裝進遊戲**：`arsenal.charge_blade_saw`（24 齒依序分 A／B／C 三組＋外側弧線每組一份），kit 的 `sets` 新增 `SawA／B／C`（跟斧刃一樣綁輪廓骨頭、`MiquellaSaw*` 預設隱藏），腳本 boosts 的 `chase`：斧強化時三組每秒 15 次輪流亮，像光齒沿刃口跑；變形表不變，測試 170 項。④**弓 A 藤蔓開花：做完、已裝進遊戲**：`arsenal.bow_blossoms`（每邊弓臂一段兩朵、滿蓄力弓尖大花，省面的 `light_blossom`），`MiquellaCharge1～3`，腳本 `bow.parts`（拉弓的段數），測試 173 項。⑤**操蟲棍三朵花：做完、已裝進遊戲**：`arsenal.extract_flower`（`orb_styles` 的花，遊戲版用省面零件，各自轉成在自己位置朝外），精華貼圖改 10 條色帶（每種精華：花瓣／暗心／亮心，加金色光環），kit 新增 `uv_band_of`（每個零件依材質對色帶，存在頂點屬性 `mq_band`，合併後依它設 UV）、`uv_band_count`；腳本 `orbit.face`：繞刀時一直朝外、繞自己的朝向慢轉（25 度每秒），測試 174 項。⑥**使用者第二輪選擇**：銃槍 **G3 絞絲針眼**、大錘 **H4 渾天儀**、片手劍 **S2 時機光環**：還沒做
+  - **遊戲版進度**：①**長槍 A 光旋：做完、已裝進遊戲（遊戲關著直接裝）**：`arsenal.lance_drill_parts`、kit 的 `MQ_Drill` 骨頭（z 1.751）、腳本新的骨頭模式 `spin`（`floaters.spin.dps` 依蓄力段數 0／90／200／420 度每秒），測試 164 項全過。②**大劍 A、太刀 B 光絲纏繞：做完、已裝進遊戲**：`arsenal.wrap_strands`／`great_sword_strands`（三條＋滿蓄力火花）／`long_sword_strands`（兩條），依段數分在 `MiquellaCharge1～3`，腳本 `charge.parts`＋新的 `partColor = PART_GOLD`（刀身白光時光絲還是亮金），測試 167 項。③**充能斧 A 光齒：做完、已裝進遊戲**：`arsenal.charge_blade_saw`（24 齒依序分 A／B／C 三組＋外側弧線每組一份），kit 的 `sets` 新增 `SawA／B／C`（跟斧刃一樣綁輪廓骨頭、`MiquellaSaw*` 預設隱藏），腳本 boosts 的 `chase`：斧強化時三組每秒 15 次輪流亮，像光齒沿刃口跑；變形表不變，測試 170 項。④**弓 A 藤蔓開花：做完、已裝進遊戲**：`arsenal.bow_blossoms`（每邊弓臂一段兩朵、滿蓄力弓尖大花，省面的 `light_blossom`），`MiquellaCharge1～3`，腳本 `bow.parts`（拉弓的段數），測試 173 項。⑤**操蟲棍三朵花：做完、已裝進遊戲**：`arsenal.extract_flower`（`orb_styles` 的花，遊戲版用省面零件，各自轉成在自己位置朝外），精華貼圖改 10 條色帶（每種精華：花瓣／暗心／亮心，加金色光環），kit 新增 `uv_band_of`（每個零件依材質對色帶，存在頂點屬性 `mq_band`，合併後依它設 UV）、`uv_band_count`；腳本 `orbit.face`：繞刀時一直朝外、繞自己的朝向慢轉（25 度每秒），測試 174 項。⑥**銃槍 G3 絞絲針眼：做完、已裝進遊戲**：`arsenal.gunlance_filament`（兩股絞絲從能量核心拉到槍口，頂端金針針眼＋光滴，材質 `MiquellaFilament`，預設隱藏）；kit 的頂點依高度分給 `Base` 和新骨頭 `MQ_FilamentTop`（檔案 z 0.429→2.015），腳本新的骨頭欄位 `stretch`（=根部高度）：`entry.stretch` 跟著段數 0→1/3→2/3→1（最短 15 %），所以金絲越蓄越長、絞紋變鬆，外面彈簧同時往槍根壓；顯示用 `charge.parts`（第一段起）。⑦**大錘 H4 渾天儀：做完、已裝進遊戲**：`arsenal.hammer_armillary`（三道大環＋各 6 顆光珠，材質 `MiquellaArmillary1～3` 依段數出現），各綁 `MQ_Arm0～2`（錘頭中心 z 1.316），腳本 `spin` 每根骨頭自己的軸（Z／-X／(0.3,1,0)，只繞法線轉的話圓環看起來不動），70／140／260 度每秒；錐形光環照舊。測試 177 項
+  - ⑧**片手劍 S2 時機光環：還沒做**。荒野機制：**完美突進**＝後跳接的四連擊，每擊前獵人亮起、亮的時候出手傷害大增；**蓄力斬**命中弱點會追加斬擊。執行檔裡找到：動作類別 `cJustRushStart`、`cJustRushCombo0～2`（`app.Wp01Action`？）、`cShortSwordAttack_JustRushCombo`；欄位 `_IsJustRush`、`_IsLastJustRushFinshSuccess`、`_StepSlashCount`（0～4，有記錄到）；判斷 `canJustRushCombo0～2`、`cCheckWp01CanJustRush`（大概就是「亮起」的時機窗）；特效骨頭名 `VFX_JustRush_Success`。**做法**：①劍上加一圈光環（綁骨頭 `MQ_TimingRing`，在動作 `cJustRush*` 期間從刀尖往護手滑，到護手＝時機）和完美時的爆開零件（三圈光環＋放射光芒，材質一組，0.3 秒淡出）；②腳本：讀 `actionNow`（已有）判斷在不在完美突進中，每幀試 `h:call("canJustRushCombo0/1/2")`（存在就用它決定「到護手」的時刻，記進 `glEvents` 類的事件），`_IsJustRush` 變 true 或下一個 `cJustRushCombo` 開始＝打出完美 → 爆開；③**先請使用者實際打幾次完美突進**（欄位記錄器開著），讀 `fields_app_cHunterWp01Handling.json` 的 `actions` 和 `changed` 確認時機，再調。預覽 `prototypes/action_states/sns_perfect.png`（S2 那列）
+  - **請使用者測（遊戲版第一次）**：長槍蓄力光絲有沒有越蓄越長、會不會轉；大劍／太刀光絲每段長出、三段時還是金色；充能斧斧強化（紅斧）時刃口光齒有沒有在跑；弓拉弓時弓臂開花；操蟲棍點燈時花有沒有朝外、繞刀、顏色對不對；銃槍蓄力砲擊時槍身裡金絲有沒有拉長；大錘蓄力時三道大環有沒有出現、轉起來像陀螺儀。另外：所有武器攻擊軌跡變金（狩獵笛音符軌跡變全金，不喜歡就拿掉 `HuntingHornFX`）
 
 **其他武器（第二帳號，2026-10-02）— 已裝進遊戲，等實測**
 - 換裝腳本選單：拿武器時 Weapon 槽選主武器外觀（`LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun`），**有盾的武器 SubWeapon 槽再選 `*_Shield`**。每把看：握的位置、刃口方向（揮砍的光痕那邊）、長度、盾有沒有穿過手臂、浮動光環

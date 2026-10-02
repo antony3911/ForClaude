@@ -350,14 +350,25 @@ def hammer():
     striking faces 0.58 apart (originals: head up to 1.65, 1.1 wide; ours stays slender)."""
     import arsenal
     import motifs
-    objs = capture(lambda: (arsenal.hammer(), arsenal.hammer_charge_rings(motifs.materials())))
+    parts = {}
+    objs = capture(lambda: (arsenal.hammer(), arsenal.hammer_charge_rings(motifs.materials()),
+                            parts.update(arm=arsenal.hammer_armillary(motifs.materials()))))
     to_file = upright(1.4, (0, 0, 0.1))
     # The charge rings: one material per level, hidden until the weapons script fades them in.
     by_name = {f"Charge_Ring_{i}_{side}": f"MiquellaCharge{level}"
                for i, (level, _, _) in enumerate(arsenal.HAMMER_CHARGE) for side in "LR"}
+    # The armillary rings (user's pick 2026-10-02, "H4"): one material per level, each ring on
+    # its own bone at the head's centre, turned by the weapons script.
+    floaters = {"Belt_Halo": "MQ_BeltHalo"}
+    for level, bone, os_ in parts["arm"]:
+        for o in os_:
+            by_name[o.name] = f"MiquellaArmillary{level}"
+            floaters[o.name] = bone
     return placed("wp_miquella_hm", "Art/Model/MiquellaLight/Hammer", objs, to_file,
                   {"VFX_Attack": to_file @ Vector((0, 0, 1.04 + 0.14))},
-                  floaters={"Belt_Halo": "MQ_BeltHalo"}, by_name=by_name)
+                  floaters=floaters, by_name=by_name,
+                  pivots={bone: arsenal.HAMMER_HEAD_CENTER for _, bone, _ in parts["arm"]},
+                  budget={f"MiquellaArmillary{k}": 3000 for k in (1, 2, 3)})
 
 
 def hunting_horn():
@@ -405,7 +416,8 @@ def gunlance():
     """Hand mid-grip; scaled 1.3: muzzle 2.04 m above the hand (originals: VFX_Fire 1.66, the
     bayonet up to 2.27). Shells come out of our muzzle (VFX_Fire moved there)."""
     import arsenal
-    objs = capture(arsenal.gunlance)
+    import motifs
+    objs = capture(lambda: (arsenal.gunlance(), arsenal.gunlance_filament(motifs.materials())))
     shield = set(subtree("EnergyShield"))
     to_file = upright(1.3, (0, 0, 0.17))
     muzzle = to_file @ Vector((0, 0, arsenal.GUNLANCE_TIP + 0.03))
@@ -415,8 +427,16 @@ def gunlance():
     z0 = (to_file @ Vector((0, 0, arsenal.GUNLANCE_BASE + 0.1))).z
     top = (to_file @ Vector((0, 0, arsenal.SPRING_TOP))).z
     log(f"  spring from file z {z0:+.4f} to {top:+.4f}")
+    f0, f1 = (to_file @ Vector((0, 0, arsenal.FILAMENT_ROOT))).z, (to_file @ Vector((0, 0, arsenal.FILAMENT_TOP))).z
+    log(f"  gold thread from file z {f0:+.4f} to {f1:+.4f}")
 
     def spring_weights(o, co):
+        if o.name.startswith("Filament_"):
+            # The gold thread: its eye on the top bone, the braid weighted by height (G3).
+            if not o.name.startswith("Filament_Braid"):
+                return [("MQ_FilamentTop", 1.0)]
+            w = min(1.0, max(0.0, (co.z - f0) / (f1 - f0)))
+            return [("MQ_FilamentTop", w), ("Base", 1.0 - w)]
         if not o.name.startswith("Binding"):
             return None
         w = min(1.0, max(0.0, (co.z - z0) / (top - z0)))
@@ -427,8 +447,11 @@ def gunlance():
     return placed("wp_miquella_gl", "Art/Model/MiquellaLight/Gunlance", [o for o in objs if o not in shield],
                   to_file, {"VFX_Fire": muzzle, "VFX_Pile": Vector((0, 0, 0.530)), "VFX_Heat": Vector((0, 0, 1.153))},
                   floaters={"Barrel_Halo_0": "MQ_Halo0", "Barrel_Halo_1": "MQ_Halo1"},
-                  pivots={"MQ_SpringTop": (0, 0, arsenal.SPRING_TOP)}, weight_fn=spring_weights,
-                  by_name={"Energy_Core": "MiquellaCore"})
+                  pivots={"MQ_SpringTop": (0, 0, arsenal.SPRING_TOP), "MQ_FilamentTop": (0, 0, arsenal.FILAMENT_TOP)},
+                  weight_fn=spring_weights, budget={"MiquellaFilament": 6000},
+                  by_name={"Energy_Core": "MiquellaCore",
+                           **{n: "MiquellaFilament" for n in ("Filament_Braid_0", "Filament_Braid_1", "Filament_Eye_0",
+                                                               "Filament_Eye_1", "Filament_Drop")}})
 
 
 def gunlance_shield():
@@ -933,6 +956,8 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaChargeTip": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
+              "MiquellaFilament": "MiquellaGlow",
+              **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
               **{f"MiquellaBand{k + 1}": "MiquellaGlow" for k in range(LS_BANDS)},
               **{f"MiquellaBlade{k + 1}": "MiquellaBlade" for k in range(LS_BANDS)},
               **{f"MiquellaFilm{k + 1}": "MiquellaGlow" for k in range(len(FILM_BANDS))}}
@@ -940,7 +965,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
 DEVICE_TEX_REL = "Art/Model/MiquellaLight/Devices/tex"
 UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
-HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw")
+HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some

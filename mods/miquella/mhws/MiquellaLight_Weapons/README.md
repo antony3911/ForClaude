@@ -32,3 +32,19 @@
 - 加新武器：在 `KITS` 加一項（模型路徑、`glow`、要的話加 `floaters`）
 - **浮動環還沒實測**：遊戲換模型時會不會替新骨頭建立關節要進遊戲才知道。`Rings found: 0/N` 就是沒建立 → 環會停在原位或跑掉，回報後改用其他做法
 - 如果載入失敗，選單會顯示紅字「Could not load ...」，原版武器保持原樣
+
+## 蓄力零件與骨頭的新機制（2026-10-02 晚，第一帳號）
+
+使用者挑選的「蓄力力量感」設計（DESIGN.md「蓄力的力量感・提案」）用到的設定，都寫在 `KITS` 各武器裡：
+
+| 設定 | 用在 | 作用 |
+|---|---|---|
+| `charge.parts = { 材質 = 段數 }` | 長槍、大劍、太刀、大錘、銃槍 | 零件材質在那一段淡入（`Dissolve`，消失時關掉材質） |
+| `charge.partColor` | 大劍、太刀（`PART_GOLD`） | 零件固定這個顏色（刀身三段變白時光絲還是亮金） |
+| `bow.parts` | 弓 | 同上，用拉弓的段數（藤蔓開花） |
+| `floaters.spin = { axis, dps = { 0段, 1段, 2段, 3段 } }`＋關節 `spin = true` 或 `{ 軸 }` | 長槍 `MQ_Drill`、大錘 `MQ_Arm0～2` | 骨頭固定在原位、依蓄力段數（`entry.chargeSmooth` 內插）每秒轉幾度；關節可以給自己的軸 |
+| 關節 `stretch = 根部高度` | 銃槍 `MQ_FilamentTop` | 骨頭的 z = 根部 + (原位 − 根部) × `entry.stretch`（最短 15 %），`entry.stretch` 由 `update_gunlance` 跟段數 |
+| `floaters.orbit.face = true`, `spin` | 操蟲棍精華 | 繞刀的零件一直朝外（建模時就朝外放），繞自己的朝向慢轉；不設就是原本的翻滾 |
+| `boosts[].chase = { 材質… }`, `chaseHz` | 充能斧斧強化 | 幾組材質輪流只亮一組（跑馬燈），不在那個型態時全部藏起來 |
+
+骨頭和零件在 `build_weapon_kit.py` 做：`floaters`（物件名 → 骨頭）＋`pivots`（骨頭位置）；一個材質分多種顏色用 `uv_band_of`／`uv_band_count`（操蟲棍精華，頂點屬性 `mq_band`）；只屬於一個型態的零件用 `sets`（充能斧 `SawA／B／C`）。預設隱藏的材質前綴在 `HIDDEN_AT_START`。

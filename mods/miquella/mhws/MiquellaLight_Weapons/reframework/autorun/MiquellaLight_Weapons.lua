@@ -220,13 +220,22 @@ local KITS = {
         label = "Miquella sun lantern (hammer)",
         mesh = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mesh",
         mdf2 = "Art/Model/MiquellaLight/Hammer/wp_miquella_hm.mdf2",
-        glow = { MiquellaGlow = 1.2, MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
-        floaters = { mode = "hover", joints = { { name = "MQ_BeltHalo", pos = { 0.0, 0.0, 1.3160 } } } },
+        glow = { MiquellaGlow = 1.2, MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2,
+                 MiquellaArmillary1 = 1.2, MiquellaArmillary2 = 1.2, MiquellaArmillary3 = 1.2 },
+        -- The armillary sphere round the sun (user's pick 2026-10-02, "H4"): a great ring more
+        -- each level, each on its bone at the head's centre turning about its own axis (spin:
+        -- the axis), faster each level, like a gyroscope.
+        floaters = { mode = "hover", spin = { axis = { 0, 0, 1 }, dps = { 0, 70, 140, 260 } }, joints = {
+            { name = "MQ_BeltHalo", pos = { 0.0, 0.0, 1.3160 } },
+            { name = "MQ_Arm0", pos = { 0.0, 0.0, 1.3160 }, spin = { 0, 0, 1 } },
+            { name = "MQ_Arm1", pos = { 0.0, 0.0, 1.3160 }, spin = { -1, 0, 0 } },
+            { name = "MQ_Arm2", pos = { 0.0, 0.0, 1.3160 }, spin = { 0.3, 1, 0 } } } },
         -- Charge (user, 2026-10-02): a cone of rings beyond each face grows a level at a time, the
         -- light goes bright gold -> white; the game's glow on the hunter is gone (HammerFX pak).
         charge = { levels = 3, fields = { "<ChargeLv>k__BackingField", "<ChargeLvEffect>k__BackingField" },
                    weights = { MiquellaGlow = 1.0 }, colored = { "MiquellaGlow" },
-                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 } },
+                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3,
+                             MiquellaArmillary1 = 1, MiquellaArmillary2 = 2, MiquellaArmillary3 = 3 } },
     },
     HuntingHorn = {
         label = "Miquella lyre of light (hunting horn)",
@@ -262,13 +271,17 @@ local KITS = {
         label = "Miquella light gunlance",
         mesh = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mesh",
         mdf2 = "Art/Model/MiquellaLight/Gunlance/wp_miquella_gl.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCore = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2, MiquellaCore = 1.2,
+                 MiquellaFilament = 1.2 },
         -- MQ_SpringTop: the ivory spring's top; packing it moves it 0.636 toward the root
-        -- (the spring at 45 % of its length).
+        -- (the spring at 45 % of its length). MQ_FilamentTop: the gold thread's eye (user's pick
+        -- 2026-10-02, "G3"): drawn out from the core (stretch: its root's height) toward the
+        -- muzzle as the charge builds, while the spring packs the other way.
         floaters = { mode = "hover", joints = {
             { name = "MQ_Halo0", pos = { 0.0, 0.0, 1.0140 } },
             { name = "MQ_Halo1", pos = { 0.0, 0.0, 1.4950 } },
-            { name = "MQ_SpringTop", pos = { 0.0, 0.0, 1.6640 }, pack = -0.636, mode = "fixed" } } },
+            { name = "MQ_SpringTop", pos = { 0.0, 0.0, 1.6640 }, pack = -0.636, mode = "fixed" },
+            { name = "MQ_FilamentTop", pos = { 0.0, 0.0, 2.0150 }, stretch = 0.4290, mode = "fixed" } } },
         -- Reload, charged shelling and Wyvern's Fire wind the spring (user, 2026-10-02); charged
         -- shelling's levels light it gold -> bright gold -> white gold. Fields guessed from the
         -- game's type names (menu: "Gunlance:").
@@ -279,7 +292,8 @@ local KITS = {
                      wyvern = { "_RyuugekiChargeTimer" }, wyvernGauge = { "_RyuugekiGauge" },
                      shells = { "_ChargeShotBulletNum" },
                      charge = { levels = 3, look = "whiteGold", colored = { "MiquellaBlade", "MiquellaGlow", "MiquellaCore" },
-                                weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 } } },
+                                weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaCore = 1.5 },
+                                parts = { MiquellaFilament = 1 } } },
         shield = "Gunlance_Shield",
     },
     Gunlance_Shield = {
@@ -1288,6 +1302,8 @@ local function update_gunlance(entry, mesh, h, dt, now)
     end
     if not isWeaponDrawn then level, pack = 0, 0 end
     entry.packTarget = pack
+    -- The gold thread: drawn out a third of the way per level (it shows from the first).
+    entry.stretch = approach(entry.stretch or 0, level / 3, dt, 0.2, 0.15)
     local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
     stateInfo.gunlance = string.format("%s %s %s %s shells=%s (level %d, spring %.2f)", show(rn, reload), show(sn, shot),
                                        show(wn, wyv), show(gn, gauge and string.format("%.2f", gauge)), tostring(shells),
@@ -1627,7 +1643,7 @@ local function float_joints(entry)
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
         local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, flap = j.flap,
-                                   spin = j.spin, off = { 0, 0, 0 },
+                                   spin = j.spin, stretch = j.stretch, off = { 0, 0, 0 },
                                    vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -1834,7 +1850,7 @@ local function step_floaters()
                         local dps = lerp(sp.dps[lo + 1], sp.dps[math.min(#sp.dps, lo + 2)], lv - lo)
                         s.angle = ((s.angle or 0) + dps * dt) % 360
                         s.pos = s.pivot
-                        s.rot = qaxis(sp.axis, s.angle)
+                        s.rot = qaxis(type(s.spin) == "table" and s.spin or sp.axis, s.angle)
                     elseif s.flap then
                         local w = entry.kit.floaters.flap
                         s.pos = s.pivot
@@ -1843,6 +1859,10 @@ local function step_floaters()
                         orbit_ring(s, entry.kit.floaters.orbit, now)
                     else
                         step_ring(s, FLOAT_MODES[s.mode or default], R, P, reset and 0 or dt, now, strength, entry.pack or 0)
+                        -- Drawn out from its root (the gunlance's gold thread): at entry.stretch of its length.
+                        if s.stretch then
+                            s.pos[3] = s.stretch + (s.pivot[3] - s.stretch) * math.max(0.15, entry.stretch or 0)
+                        end
                         if blend > 0.001 then ring_on_arrow(s, entry.arrowLine, blend) end
                     end
                 end

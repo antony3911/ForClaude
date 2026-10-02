@@ -42,7 +42,7 @@ local function newMesh(meshPath)
                "MiquellaGlow", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_gl%.") then
-      return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory" }
+      return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory", "MiquellaFilament" }
     end
     if self.mdfPath:match("wp_miquella_ig%.") then
       return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
@@ -52,7 +52,8 @@ local function newMesh(meshPath)
                "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_hm%.") then
-      return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory" }
+      return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory",
+               "MiquellaArmillary1", "MiquellaArmillary2", "MiquellaArmillary3" }
     end
     if self.mdfPath:match("wp_miquella_gs") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaCharge1", "MiquellaCharge2",
@@ -593,6 +594,14 @@ check(math.abs(weaponMesh.floats["MiquellaGlow.1"] / (1.2 * glow) - 1.8) < 1e-3,
 chargeLv = 3
 frames(40, 1 / 60)
 check(part("MiquellaCharge3"), "hammer: level 3 shows every cone ring")
+-- The armillary sphere (user's pick "H4"): every great ring shown and turning about its own axis.
+local function qOf(n) local j = weaponGO.tf.joints[n]; return j and j.lr end
+local q0, q1 = qOf("MQ_Arm0"), qOf("MQ_Arm1")
+frames(10, 1 / 60)
+local turned0 = q0 and math.abs(qOf("MQ_Arm0").z - q0.z) > 1e-3
+local turned1 = q1 and math.abs(qOf("MQ_Arm1").x - q1.x) > 1e-3
+check(part("MiquellaArmillary3") and turned0 and turned1 and math.abs(qOf("MQ_Arm0").x) < 1e-9,
+      "hammer: level 3 shows the armillary rings, each turning about its own axis")
 local hc = weaponMesh.colors["MiquellaCharge3"]
 check(hc and hc.z > 0.8 and weaponMesh.colors["MiquellaGlow"].z > 0.8, "hammer: level 3 turns rings and hammer white")
 chargeLv = 0
@@ -686,10 +695,17 @@ local z3 = top.lp.z
 check(z3 < z1 - 0.05, string.format("gunlance: charged shelling winds tighter per level (%.3f -> %.3f)", z1, z3))
 local gc = weaponMesh.colors["MiquellaCore"]
 check(gc and gc.y > 0.8 and gc.z > 0.5, "gunlance: full charge is white gold")
+-- The gold thread (user's pick "G3"): drawn out to the muzzle at full charge, shown.
+local thread = weaponGO.tf.joints["MQ_FilamentTop"]
+check(thread.lp and math.abs(thread.lp.z - 2.015) < 0.02 and weaponMesh.matEnabled["MiquellaFilament"] == true,
+      string.format("gunlance: full charge draws the gold thread out to the muzzle (%.3f)", thread.lp and thread.lp.z or -1))
 glStart = nil
 local far = 0
 for _ = 1, 60 do frames(1, 1 / 60); far = math.max(far, top.lp.z) end
 check(far > REST_TOP + 0.02, string.format("gunlance: the shot lets the spring fly back past its place (%.3f)", far))
+frames(40, 1 / 60)                   -- the charge light fades over a second
+check(thread.lp.z < 0.429 + (2.015 - 0.429) * 0.2 and weaponMesh.matEnabled["MiquellaFilament"] ~= true,
+      string.format("gunlance: after the shot the thread goes back into the core (%.3f)", thread.lp.z))
 extract._RyuugekiChargeTimer = 1.0
 frames(60, 1 / 60)
 check(math.abs(top.lp.z - (REST_TOP - 0.636)) < 0.01, "gunlance: Wyvern's Fire winds it all the way")

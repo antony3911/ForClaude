@@ -31,10 +31,22 @@ local PIECES = {
         tint = "MiquellaSkin",
     },
 }
--- Skin tone of the body. The skin is the game's own skin material (SkinEdit): a neutral albedo
--- coloured from the SkinMap palette at AddColorUV, which the game sets on the hunter's face from
--- character creation: "Match the face" copies it over. The others tint ColorParam on top
--- (multipliers of the matched tone).
+-- Skin of the body: the face's own material (miquella_body.py: the body's UVs sit in a plain
+-- patch of the face texture's neck). Every variable of the hunter's face material ("face") is
+-- copied onto it, so the body takes the skin tone and colours chosen in character creation;
+-- the choices below tint ColorParam on top. (2026-10-03: the innerwear's SkinEdit material,
+-- even given the face's AddColorUV, came out darker and yellower than the face.)
+local FACE_MATERIAL = "face"
+local FLOAT4_VARS = {}
+for _, n in ipairs({ "Ripple_Color", "ColorParam", "ObjectOffset", "RayTrace_BaseColor", "BB_Min", "BB_Max",
+    "VFX_ColorParam1", "VFX_ColorParam2", "VFX_Param1", "VFX_Param2", "VFX_Param3", "VFX_Param4", "VFX_Param5",
+    "VFX_Param6", "VFX_Param7", "VFX_Param8", "VFX_Param9", "VFX_Param10", "Blend_A", "Blend_B", "Blend_C",
+    "Blend_D", "Blend_E", "Blend_F", "Blend_G", "Blend_H", "PaintColor_A", "PaintScaleOffset_A",
+    "PaintMatParam_A", "PaintColor_B", "PaintScaleOffset_B", "PaintMatParam_B", "PaintColor_C",
+    "PaintScaleOffset_C", "PaintMatParam_C", "AddColorUV", "RottenHSVParam", "Ripple_Emit_Pos" }) do
+    FLOAT4_VARS[n] = true
+end
+local SKIP_VARS = { ObjectOffset = true, BB_Min = true, BB_Max = true, Ripple_Emit_Pos = true }   -- the face's own place
 local SKIN_TONES = {
     { "Match the face", nil },
     { "Fairer", { 1.05, 1.08, 1.12 } },
@@ -65,6 +77,7 @@ local config = {
     bodyShape = 1,
     hideOutfit = true,
     skinTone = 1,
+    skinBrightness = 1.0,   -- ColorParam multiplier on top of the face's
 }
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
@@ -74,6 +87,10 @@ if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 2 then
+    config.skinBrightness, config.skinTone = 1.0, 1   -- earlier values were for other materials
+end
+config.skinVersion = 2
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
 local function piece_on(p)
@@ -206,73 +223,68 @@ local function apply_glow(p)
     end
 end
 
-local function material_var(mesh, matName, varName)
+local function material_index(mesh, name)
     local n = try(function() return mesh:get_MaterialNum() end) or 0
     for i = 0, n - 1 do
-        if not matName or try(function() return mesh:getMaterialName(i) end) == matName then
-            local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
-            for j = 0, vars - 1 do
-                if try(function() return mesh:getMaterialVariableName(i, j) end) == varName then
-                    return { mat = i, var = j }
-                end
-            end
-        end
+        if try(function() return mesh:getMaterialName(i) end) == name then return i end
     end
     return nil
 end
 
--- Skin debug (2026-10-03: the body came out dark brown with the face pale): every material of
--- the face and of our body with its colour / UV / skin variables, written once per model to
--- reframework/data/MiquellaLight/skin_debug.json.
-local SKIN_DEBUG = "MiquellaLight/skin_debug.json"
-local function material_dump(mesh)
-    local out = {}
-    local n = try(function() return mesh:get_MaterialNum() end) or 0
-    for i = 0, n - 1 do
-        local m = { name = try(function() return mesh:getMaterialName(i) end) or "?", vars = {} }
-        local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
-        for j = 0, vars - 1 do
-            local v = try(function() return mesh:getMaterialVariableName(i, j) end) or "?"
-            local lv = v:lower()
-            if lv:find("color") or lv:find("uv") or lv:find("skin") or lv:find("sss") then
-                local f4 = try(function() return mesh:getMaterialFloat4(i, j) end)
-                local f1 = try(function() return mesh:getMaterialFloat(i, j) end)
-                m.vars[v] = f4 and string.format("%.3f %.3f %.3f %.3f", f4.x, f4.y, f4.z, f4.w)
-                    or (f1 and string.format("%.3f", f1)) or "?"
-            end
-        end
-        out[#out + 1] = m
+local function var_table(mesh, mat)
+    local t = {}
+    local n = try(function() return mesh:getMaterialVariableNum(mat) end) or 0
+    for j = 0, n - 1 do
+        local name = try(function() return mesh:getMaterialVariableName(mat, j) end)
+        if name then t[name] = j end
     end
-    return out
+    return t
 end
 
 local function apply_tint(p)
     if not (p.tint and p.st.mesh) then return end
-    local mesh = p.st.mesh
-    p.st.tintSlot = p.st.tintSlot or material_var(mesh, p.tint, "ColorParam")
-    p.st.uvSlot = p.st.uvSlot or material_var(mesh, p.tint, "AddColorUV")
+    local mesh, s = p.st.mesh, p.st
+    s.ourMat = s.ourMat or material_index(mesh, p.tint)
+    if not s.ourMat then return end
+    s.ourVars = s.ourVars or var_table(mesh, s.ourMat)
+    local color = { 1.0, 1.0, 1.0, 1.0 }
+    local face = st.hxf and face_mesh(st.hxf)
+    if face then
+        s.faceMat = s.faceMat or material_index(face, FACE_MATERIAL)
+        s.faceVars = s.faceVars or (s.faceMat and var_table(face, s.faceMat))
+    end
+    if face and s.faceMat then
+        local copied = 0
+        for name, j in pairs(s.faceVars) do
+            local k = s.ourVars[name]
+            if k and not SKIP_VARS[name] then
+                if FLOAT4_VARS[name] then
+                    local v = try(function() return face:getMaterialFloat4(s.faceMat, j) end)
+                    if v then
+                        if name == "ColorParam" then color = { v.x, v.y, v.z, v.w } end
+                        if try(function()
+                            mesh:setMaterialFloat4(s.ourMat, k, Vector4f.new(v.x, v.y, v.z, v.w))
+                            return true
+                        end) then copied = copied + 1 end
+                    end
+                else
+                    local v = try(function() return face:getMaterialFloat(s.faceMat, j) end)
+                    if v and try(function() mesh:setMaterialFloat(s.ourMat, k, v); return true end) then
+                        copied = copied + 1
+                    end
+                end
+            end
+        end
+        s.copied = copied
+    end
+    -- The tone choice and brightness on top of the face's ColorParam.
     local tone = SKIN_TONES[config.skinTone][2] or { 1.0, 1.0, 1.0 }
-    local slot = p.st.tintSlot
-    p.st.tinted = slot and try(function()
-        mesh:setMaterialFloat4(slot.mat, slot.var, Vector4f.new(tone[1], tone[2], tone[3], 1.0))
+    local b = config.skinBrightness
+    s.tinted = s.ourVars.ColorParam and try(function()
+        mesh:setMaterialFloat4(s.ourMat, s.ourVars.ColorParam, Vector4f.new(color[1] * tone[1] * b,
+            color[2] * tone[2] * b, color[3] * tone[3] * b, color[4]))
         return true
     end)
-    -- The face's skin tone (its AddColorUV), for every choice: the others tint on top of it.
-    local face = st.hxf and face_mesh(st.hxf)
-    if face and p.st.uvSlot then
-        p.st.faceSlot = p.st.faceSlot or material_var(face, nil, "AddColorUV")
-        local f, u = p.st.faceSlot, p.st.uvSlot
-        local uv = f and try(function() return face:getMaterialFloat4(f.mat, f.var) end)
-        p.st.faceUV = uv and try(function()
-            mesh:setMaterialFloat4(u.mat, u.var, Vector4f.new(uv.x, uv.y, uv.z, uv.w))
-            return string.format("%.2f, %.2f", uv.x, uv.y)
-        end)
-    end
-    if not p.st.skinDumped and face then
-        p.st.skinDumped = true
-        json.dump_file(SKIN_DEBUG, { face = material_dump(face), body = material_dump(mesh),
-                                     faceSlot = p.st.faceSlot, uvSlot = p.st.uvSlot, faceUV = p.st.faceUV or "nil" })
-    end
 end
 
 local function set_model(p)
@@ -292,7 +304,7 @@ local function set_model(p)
     p.st.meshPath = path
     p.st.glowSlots = nil
     p.st.renderMatched = nil
-    p.st.tintSlot, p.st.uvSlot, p.st.faceSlot = nil, nil, nil
+    p.st.ourMat, p.st.ourVars, p.st.faceMat, p.st.faceVars = nil, nil, nil, nil
     apply_glow(p)
     apply_tint(p)
     return true
@@ -499,7 +511,7 @@ local function update_piece(p, hxf, hgo, now)
         s.info = string.format("on the skeleton (%s), %s; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], s.render or "not matched yet",
             (s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
-            .. (s.faceUV and (", face tone " .. s.faceUV) or ", face tone not found"))
+            .. (s.copied and string.format(", %d face material values copied", s.copied) or ", face material not found"))
     end
     -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
     local hunterShown = try(function() return hgo:call("get_DrawSelf") end)
@@ -555,6 +567,11 @@ re.on_draw_ui(function()
     c, config.body = imgui.checkbox("Body", config.body); changed = changed or c
     c, config.bodyShape = imgui.combo("Body shape", config.bodyShape, BODY_SHAPES); changed = changed or c
     c, config.skinTone = imgui.combo("Skin tone", config.skinTone, SKIN_NAMES)
+    if c then
+        changed = true
+        apply_tint(PIECES[2])
+    end
+    c, config.skinBrightness = imgui.slider_float("Skin brightness", config.skinBrightness, 0.5, 1.5)
     if c then
         changed = true
         apply_tint(PIECES[2])

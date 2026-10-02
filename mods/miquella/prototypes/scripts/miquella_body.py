@@ -1491,14 +1491,14 @@ GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("Miqu
 # started from have broken NRRO (2026-10-03: converted in the cloud they read roughness 0.03,
 # normal Y -0.9, AO 0.22 = dark, mirror-like), so the body no longer uses them.
 # NRRO = roughness, normal Y, AO, normal X (as the game's face: R varies, G 127, B 255, A 126).
-# The skin uses the game's own skin material (the innerwear's "skin", shader SkinEdit: a neutral
-# albedo coloured by the SkinMap palette at the face's AddColorUV, which the character script
-# copies over). Its albedo is the game body texture's mean (sRGB 152, 152, 157) without the
-# texture itself (a muscular male body in the hunter's UV layout); the weapon material it had
-# before blotched and blurred the skin (user 2026-10-03, next to Gemma).
-BODY_TEXTURES = {"MiquellaSkin": ((152, 152, 157), 0.6), "MiquellaCloth": ((226, 218, 200), 0.8)}
-SKIN_SOURCE = ("ch02_002_0001", "skin")       # innerwear arms: material file, material
-SKIN_NULLS = {"BlendNormalMap": "systems/rendering/NullNormal.tex"}   # muscle blend: flat
+# The skin is the game face's own material ("face" of the female face ch00_001_0000, textures and
+# all), with every UV of the body inside a plain patch of the face texture's neck: the character
+# script copies the hunter's face material variables (skin tone, colours) onto it, so the body
+# is the colour of the neck it joins (2026-10-03: the innerwear's SkinEdit material came out
+# darker and yellower than the face whatever we multiplied it by).
+BODY_TEXTURES = {"MiquellaCloth": ((226, 218, 200), 0.8)}
+SKIN_SOURCE = ("ch00_001_0000", "face")
+FACE_PATCH = (0.40, 0.60, 0.15, 0.22)     # u0, u1, v0, v1: front of the neck, plain skin
 
 
 def split_for_export(obj, mesh_col):
@@ -1524,6 +1524,20 @@ def split_for_export(obj, mesh_col):
             col.objects.unlink(o)
         mesh_col.objects.link(o)
     return [o for _, o in out]
+
+
+def face_patch_uvs(me, skin):
+    """Two UV layers (the face material reads the second for paint). Skin: both a planar map of
+    the body into FACE_PATCH (u across, v up); cloth keeps its own in both."""
+    u0, u1, v0, v1 = FACE_PATCH
+    first = me.uv_layers[0]
+    second = me.uv_layers.new(name="UVMap1")
+    for lp in me.loops:
+        if skin:
+            co = me.vertices[lp.vertex_index].co
+            uv = (u0 + (u1 - u0) * (co.x / 1.4 + 0.5), v0 + (v1 - v0) * co.z / 1.6)
+            first.data[lp.index].uv = uv
+        second.data[lp.index].uv = first.data[lp.index].uv
 
 
 def position_colors(me):
@@ -1614,8 +1628,6 @@ def write_mdf(path, template_mdf, textures=None, skin_mdf=None):
         for t in new.textureList:
             if textures and t.textureType in textures.get(game_mat, {}):
                 t.texturePath = textures[game_mat][t.textureType]
-            elif game_mat == "MiquellaSkin" and t.textureType in SKIN_NULLS:
-                t.texturePath = SKIN_NULLS[t.textureType]
         mats.append(new)
     template.materialList = mats
     writeMDF(template, path)
@@ -1653,6 +1665,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         mesh_col.objects.link(arm)
         subs = split_for_export(body, mesh_col)
         for o in subs:
+            face_patch_uvs(o.data, o.name.endswith("MiquellaSkin"))
             prepare_for_export(o.data)
             position_colors(o.data)
             o.modifiers.clear()
@@ -1668,8 +1681,9 @@ def kit(data, game_body, face, kit_dir, template_mdf):
             f"{sum(len(o.data.vertices) for o in subs)} verts")
         for o in subs:
             bpy.data.objects.remove(o, do_unlink=True)
-    # The innerwear's material file sits next to the body mesh's folder: .../000/2/ -> .../000/1/
-    skin_mdf = os.path.join(os.path.dirname(os.path.dirname(game_body)), "1", f"{SKIN_SOURCE[0]}.mdf2{MDF_EXT}")
+    # The female face's material file, next to the face mesh given: .../ch00/000/0000/ -> .../ch00/001/0000/
+    skin_mdf = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(face))), "001", "0000",
+                            f"{SKIN_SOURCE[0]}.mdf2{MDF_EXT}")
     write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf, make_textures(kit_dir), skin_mdf)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, "mq_body_kit.blend"))
 

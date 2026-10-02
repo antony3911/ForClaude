@@ -45,6 +45,10 @@ local function newMesh(meshPath)
     if self.mdfPath:match("wp_miquella_ig%.") then
       return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
+    if self.mdfPath:match("wp_miquella_ln%.") then
+      return { "MiquellaBlade", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaChargeTip",
+               "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+    end
     if self.mdfPath:match("wp_miquella_hm%.") then
       return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory" }
     end
@@ -841,4 +845,31 @@ frames(90, 1 / 60)
 blo, bhi = bandRange()
 dlo, dhi = bandRange("MiquellaBlade")
 check(math.abs(dlo - 1.0) < 0.01 and dhi - dlo < 0.01 and bhi - blo < 0.01, "long sword: white = gold, no band")
+-- Lance (user's pick "A, the spiral drill"): the strands' bone turns about the lance's axis
+-- while charging, faster each level, and stays on its pivot.
+weaponMesh = newMesh("Art/Model/Item/it06/00/0001/it0600_0001_0.mesh")
+weaponGO = newGO("Wp06", 14001, weaponMesh, nil)
+subGO = nil
+extract = { _FinishChargeLevel = 0 }
+frames(200, 1 / 60)
+comboPick = { slot = "Weapon", name = "Lance" }; onDraw()
+frames(40, 1 / 60)
+check(weaponMesh.meshPath:match("MiquellaLight/Lance/wp_miquella_ln%.mesh"), "lance: model swapped")
+local function drillAngle()
+  local q = weaponGO.tf.joints["MQ_Drill"] and weaponGO.tf.joints["MQ_Drill"].lr
+  return q and math.deg(2 * math.atan(q.z, q.w)) % 360 or nil
+end
+local a0 = drillAngle()
+frames(30, 1 / 60)
+check(a0 ~= nil and math.abs(drillAngle() - a0) < 1e-6, "lance: the drill rests without a charge")
+extract._FinishChargeLevel = 1
+frames(60, 1 / 60)
+local a1 = drillAngle(); frames(30, 1 / 60); local d1 = (drillAngle() - a1) % 360
+extract._FinishChargeLevel = 3
+frames(90, 1 / 60)
+local a3 = drillAngle(); frames(30, 1 / 60); local d3 = (drillAngle() - a3) % 360
+check(d1 > 20 and d3 > d1 * 2, string.format("lance: the drill turns while charging, faster at full (%.0f -> %.0f deg in 0.5 s)", d1, d3))
+local dj = weaponGO.tf.joints["MQ_Drill"]
+check(dj.lp and math.abs(dj.lp.z - 1.751) < 1e-3 and math.abs(dj.lp.x) < 1e-6, "lance: the drill stays on its pivot")
+check(weaponMesh.matEnabled["MiquellaCharge3"] == true, "lance: full charge shows the last strands")
 print("ALL PASS")

@@ -327,6 +327,8 @@
 - **弓的箭改成米凱拉金針**（使用者：光箭太粗跑出光環外、像能量武器）：`arsenal.needle_arrow`（龍杭金針壓細拉長，金屬金色微光，材質 `MiquellaGold`＝裝置貼圖的金色帶、`Emissive_Intensity` 0.6），手上的箭、射出去的箭、箭筒裡的箭都換。排在遊戲關掉後安裝
 - **待做（照順序）**：①~~攻擊軌跡改金~~（2026-10-02 夜做了，見「使用者實測第六輪」的「所有武器的攻擊軌跡」）③起爆龍彈花苞如果也黑 → 照金針改發光材質、只放對的顯示群組
 - **蓄力力量感・設計提案（2026-10-02 夜，第一帳號，使用者睡前交代，等他挑）**：使用者：長槍蓄力不夠有力量感、要更有特色；弓蓄力多一些裝飾光效；操蟲棍三燈光球還沒設計好（多找設計）；其他武器蓄力也加力量感；「不急著放進遊戲」。預覽（`prototypes/action_states/`）：`lance_power.png`（A 光旋／B 光冠／C 光羽／D 收束，各三段）＋`lance_A_spin.gif`、`lance_D_compress.gif`；`bow_power.png`（A 藤蔓綻放／B 聖樹光陣／C 光點環繞／D 光翼）；`extract_orbs.png`＋`extract_on_glaive.png`（1 聖骸燈籠／2 三朵花／3 寶石／4 紋章）；`power_great_sword.png`、`power_hammer.png`、`power_gunlance.png`、`power_long_sword.png`、`power_charge_blade.png`（現在 vs A／B）。說明在 DESIGN.md「蓄力的力量感・提案」。程式 `power_states.py <set>`（`lance_power`、`bow_power`、`extract_orbs`、`extract_on_glaive`、`weapons_power [武器名]`、`lance_anim`）、`weapon_power.py`、`orb_styles.py`。**使用者挑了之後**：照選的方向做遊戲版（新零件分材質槽、`Dissolve` 依段數淡入；光旋要骨頭繞軸轉、收束要骨頭沿軸滑，跟浮動光環同一套）
+  - **使用者選了（2026-10-02 晚）**：長槍 A、弓 A、操蟲棍 2（三朵花）、大劍 A、太刀 B、充能斧 A；銃槍要「槍身裡一條充能金絲逐漸拉伸」、大錘再想、片手劍完美突進／蓄力斬也要刀身變化 → 第二輪提案 `gunlance_filament.png`、`hammer_round3.png`、`sns_perfect.png`（等使用者挑）
+  - **遊戲版進度**：①**長槍 A 光旋：做完、已裝進遊戲（遊戲關著直接裝）**：`arsenal.lance_drill_parts`、kit 的 `MQ_Drill` 骨頭（z 1.751）、腳本新的骨頭模式 `spin`（`floaters.spin.dps` 依蓄力段數 0／90／200／420 度每秒），測試 164 項全過。②大劍 A、太刀 B（光絲纏繞）③充能斧 A（光齒）④弓 A（藤蔓開花）⑤操蟲棍三朵花：還沒做
 
 **其他武器（第二帳號，2026-10-02）— 已裝進遊戲，等實測**
 - 換裝腳本選單：拿武器時 Weapon 槽選主武器外觀（`LongSword`、`SwordShield`、`Hammer`、`HuntingHorn`、`Lance`、`Gunlance`、`SwitchAxe`、`ChargeBlade`、`InsectGlaive`、`Bow`、`HeavyBowgun`），**有盾的武器 SubWeapon 槽再選 `*_Shield`**。每把看：握的位置、刃口方向（揮砍的光痕那邊）、長度、盾有沒有穿過手臂、浮動光環

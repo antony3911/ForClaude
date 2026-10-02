@@ -231,9 +231,12 @@ local KITS = {
         mdf2 = "Art/Model/MiquellaLight/Lance/wp_miquella_ln.mdf2",
         glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
                  MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2, MiquellaChargeTip = 1.2 },
-        -- Charge (DESIGN, user 2026-10-02): the cone of rings grows from the vamplate toward the
-        -- point a level at a time, brighter each level; at full charge the point's longer blade.
-        -- Only on the lance: the game's glow on the hunter is gone (LanceFX pak).
+        -- Charge (user's pick 2026-10-02, "A, the spiral drill"): strands of light grow from the
+        -- vamplate toward the point a level at a time, brighter each level, and turn about the
+        -- lance's axis on their bone (MQ_Drill), faster each level; at full charge the point's
+        -- longer blade. Only on the lance: the game's glow on the hunter is gone (LanceFX pak).
+        floaters = { mode = "fixed", spin = { axis = { 0, 0, 1 }, dps = { 0, 90, 200, 420 } }, joints = {
+            { name = "MQ_Drill", pos = { 0.0, 0.0, 1.7510 }, spin = true } } },
         charge = { levels = 3, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
                    weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.6, MiquellaTemper = 1.0 },
                    colored = { "MiquellaBlade", "MiquellaGlow" },
@@ -1581,7 +1584,8 @@ local function float_joints(entry)
     f = f or { joints = {} }
     f.tf, f.found = tf, 0
     for i, j in ipairs(spec.joints) do
-        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, flap = j.flap, off = { 0, 0, 0 },
+        local s = f.joints[i] or { name = j.name, mode = j.mode, pivot = j.pos, pack = j.pack, orbit = j.orbit, flap = j.flap,
+                                   spin = j.spin, off = { 0, 0, 0 },
                                    vel = { 0, 0, 0 }, phase = i * 1.7, pos = j.pos, rot = { 0, 0, 0, 1 } }
         s.joint = try(function() return tf:call("getJointByName", j.name) end)
         if s.joint then f.found = f.found + 1 end
@@ -1657,7 +1661,8 @@ end
 -- which work without it.
 local function rings_active(entry)
     return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil
-                               or (entry.kit.floaters and (entry.kit.floaters.orbit or entry.kit.floaters.flap)) ~= nil)
+                               or (entry.kit.floaters and (entry.kit.floaters.orbit or entry.kit.floaters.flap
+                                                           or entry.kit.floaters.spin)) ~= nil)
 end
 
 -- An orb circling the blade: its place on the circle (slot 0-2, a third apart), a slow bob,
@@ -1772,7 +1777,16 @@ local function step_floaters()
                 for _, s in ipairs(f.joints) do
                     -- Drawing/sheathing teleports the weapon: start the springs over.
                     if reset then s.prevAnchor, s.prevVel = nil, nil end
-                    if s.flap then
+                    if s.spin then
+                        -- Turning about the weapon's axis at the charge level's speed (the lance's drill).
+                        local sp = entry.kit.floaters.spin
+                        local lv = math.max(0, math.min(#sp.dps - 1, entry.chargeSmooth or 0))
+                        local lo = math.floor(lv)
+                        local dps = lerp(sp.dps[lo + 1], sp.dps[math.min(#sp.dps, lo + 2)], lv - lo)
+                        s.angle = ((s.angle or 0) + dps * dt) % 360
+                        s.pos = s.pivot
+                        s.rot = qaxis(sp.axis, s.angle)
+                    elseif s.flap then
                         local w = entry.kit.floaters.flap
                         s.pos = s.pivot
                         s.rot = qaxis({ 0, 0, 1 }, s.flap * (w.base + w.amp * math.sin(2 * math.pi * w.hz * now)))

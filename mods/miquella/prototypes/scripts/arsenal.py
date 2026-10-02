@@ -1101,6 +1101,62 @@ def lance_charge_parts(mats):
     return rings, flare
 
 
+# The lance's charge, second design (user's pick, 2026-10-02 evening: "A, the spiral drill"):
+# strands of light spiral from the vamplate's rim in toward the point, against the shaft's own
+# helix, growing a level at a time; all turn about the lance's axis on one bone (MQ_Drill),
+# faster each level, so the full charge reads as a drill of light.
+DRILL_Z = (0.47, 1.93)                       # strands from the vamplate's rim to near the point
+DRILL_PIVOT = (0, 0, 1.2)                    # MQ_Drill, on the axis
+# (level, strand set, reach from, reach to): the main three strands grow over three levels,
+# three finer ones over the last two.
+DRILL_PIECES = [(1, "Main", 0.0, 0.4), (2, "Main", 0.4, 0.75), (3, "Main", 0.75, 1.0),
+                (2, "Fine", 0.0, 0.5), (3, "Fine", 0.5, 0.85)]
+
+
+def drill_strand(name, mat, u0, u1, k, n_str, phase, r_root, turns, bevel, end_taper):
+    """One strand's piece between reach u0 and u1 (0 at the vamplate, 1 at the point)."""
+    z0, z1 = DRILL_Z
+    pts, radii = [], []
+    n = max(12, int(260 * (u1 - u0)))
+    for i in range(n):
+        t = i / (n - 1)
+        u = u0 + (u1 - u0) * t
+        r = r_root * (1 - u) ** 1.2 + 0.012
+        a = phase + 2 * math.pi * k / n_str - 2 * math.pi * turns * u
+        pts.append(V(r * math.cos(a), r * math.sin(a), z0 + (z1 - z0) * u))
+        radii.append((1 - 0.65 * u) * ((1 - 0.85 * m.smoothstep((t - 0.82) / 0.18)) if end_taper else 1.0))
+    return c.curve_tube(name, pts, radii, mat, bevel=bevel, resolution=3)
+
+
+def lance_drill_parts(mats):
+    """Returns ({level: [objects]}, [point flare objects]); names Drill_<set>_<level>_<k>,
+    Drill_Spin_<k>, Point_Flare_A/B (a longer blade of light around the point at full charge)."""
+    out = {1: [], 2: [], 3: []}
+    sets = {"Main": (3, 0.0, 0.16, 2.2, 0.0042), "Fine": (3, math.pi / 3, 0.2, 2.2, 0.0024)}
+    for level, kind, u0, u1 in DRILL_PIECES:
+        n_str, phase, r_root, turns, bevel = sets[kind]
+        last = (kind == "Main" and u1 == 1.0) or (kind == "Fine" and u1 == 0.85)
+        for k in range(n_str):
+            out[level].append(drill_strand(f"Drill_{kind}_{level}_{k}", mats["light"], u0, u1, k, n_str, phase,
+                                           r_root, turns, bevel, last))
+    # Spin trails around the root at full charge: the drill turning.
+    for k in range(3):
+        a0 = 2 * math.pi * k / 3
+        pts, radii = [], []
+        for i in range(60):
+            t = i / 59
+            a = a0 + math.radians(100) * t
+            pts.append(V(0.205 * math.cos(a), 0.205 * math.sin(a), 0.52 + 0.04 * t))
+            radii.append(max(0.05, t ** 0.8))
+        out[3].append(c.curve_tube(f"Drill_Spin_{k}", pts, radii, mats["light"], bevel=0.003, resolution=3))
+    flare = []
+    for name, normal in (("Point_Flare_A", (0, 1, 0)), ("Point_Flare_B", (1, 0, 0))):
+        flare += m.path_blade(name, [V(0, 0, LANCE_TIP - 0.38), V(0, 0, LANCE_TIP + 0.42)], normal,
+                              lambda t: 0.085 * (1 - t) ** 0.9 * (0.75 + 0.25 * math.sin(math.pi * min(t / 0.3, 1))),
+                              lambda t: 0.02 * (1 - t), mats["blade"])
+    return out, flare
+
+
 # ------------------------------------------------------------------ insect glaive extracts (game version)
 
 # Elden Ring's scarlet rot, frost and frenzied flame for red, white and orange (DESIGN). The

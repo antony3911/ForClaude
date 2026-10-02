@@ -24,3 +24,7 @@ C:\Users\anton\MiquellaTools\bpy45\Scripts\python preview_kit.py <本資料夾>\
 ```
 
 打包：本資料夾的 `natives` ＋雙劍的 `MiquellaBlade/Glow/Ivory` 貼圖放進同一個暫存資料夾 → `make_patch_pak.py` → `MiquellaLight_Lance.pak`（2026-10-02 已裝進遊戲的 `pak_mods`）。
+
+## 蓄力：光旋（2026-10-02，使用者選 A）
+
+光絲從護手邊緣往槍尖螺旋收攏（跟槍身的雙螺旋反向），依段數分在 `MiquellaCharge1～3`（一段：三條主絲長到 40 %；二段：主絲到 75 %＋三條細絲；三段：主絲到槍尖、細絲到 85 %、根部三道旋轉弧），`MiquellaChargeTip` 是滿蓄力時更長的槍尖光刃（到 3.79 m）。全部光絲綁在軸上的骨頭 `MQ_Drill`（檔案座標 z 1.751），換裝腳本依蓄力段數讓它繞 +Z 轉（0／90／200／420 度每秒），看起來像旋轉的光鑽。原型 `arsenal.lance_drill_parts`，預覽 `prototypes/action_states/lance_power.png`、`lance_A_spin.gif`。

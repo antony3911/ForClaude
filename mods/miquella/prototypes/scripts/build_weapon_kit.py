@@ -368,15 +368,19 @@ def lance():
     shield is lance_shield."""
     import arsenal
     import motifs
-    objs = capture(lambda: (arsenal.lance(), arsenal.lance_charge_parts(motifs.materials())))
+    parts = {}
+    objs = capture(lambda: (arsenal.lance(), parts.update(drill=arsenal.lance_drill_parts(motifs.materials()))))
     shield = set(subtree("EnergyShield"))
     to_file = upright(1.7, (0, 0, 0.17))
-    # Charge: the cone of rings a level at a time, the point's longer blade at full charge.
-    levels = arsenal.LANCE_CHARGE[5]
-    by_name = {f"Charge_Ring_{k}": f"MiquellaCharge{lv}" for k, lv in enumerate(levels)}
+    # Charge (user's pick 2026-10-02, "A, the spiral drill"): strands of light grow from the
+    # vamplate toward the point a level at a time (MiquellaCharge1-3), the point's longer blade at
+    # full charge; all strands on one bone on the axis (MQ_Drill) that the weapons script turns.
+    levels, flare = parts["drill"]
+    by_name = {o.name: f"MiquellaCharge{lv}" for lv, os_ in levels.items() for o in os_}
     by_name.update({"Point_Flare_A": "MiquellaChargeTip", "Point_Flare_B": "MiquellaChargeTip"})
+    floaters = {o.name: "MQ_Drill" for os_ in levels.values() for o in os_}
     return placed("wp_miquella_ln", "Art/Model/MiquellaLight/Lance", [o for o in objs if o not in shield],
-                  to_file, {}, by_name=by_name)
+                  to_file, {}, by_name=by_name, floaters=floaters, pivots={"MQ_Drill": arsenal.DRILL_PIVOT})
 
 
 def lance_shield():

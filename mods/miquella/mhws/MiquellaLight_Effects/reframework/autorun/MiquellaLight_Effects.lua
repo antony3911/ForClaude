@@ -42,12 +42,17 @@ local RULES = {
                                     skip = { "jimen", "land" } },                 -- ground dust stays as is
     -- Insect glaive (user, 2026-10-02: the red charge glow should be gold): its smoke, poison
     -- and hit dust (010-012, 100) and the GPU modules (9xx) stay as they are. Searched 4 times
-    -- a second, not every frame (slow): its charge glow lasts, and the flying kinsect brings
-    -- many effects (the user saw memory climb with every-frame searches).
+    -- a second (slow): its charge glow lasts, and the flying kinsect brings many effects (the
+    -- user saw memory climb with every-frame searches) -- but every frame while the hunter
+    -- attacks (fastWhile: words in the hunter's action): its trails are white in the files and
+    -- the game tints them red as they start, so a trail found a quarter second late showed red
+    -- first (user, 2026-10-03: the rising spin after the charged spin), as the dual blades' did.
     -- Bow (user, 2026-10-02: the charge shows a red aura): only its charge effect (11_it11_030).
     ["app.cHunterWp11Handling"] = { match = "11_it11_030", kind = "gold", label = "bow", slow = true },
     ["app.cHunterWp10Handling"] = { match = "it10", kind = "gold", label = "insect glaive", slow = true,
-                                    skip = { "11_it10_01", "11_it10_100", "11_it10_9" } },
+                                    skip = { "11_it10_01", "11_it10_100", "11_it10_9" },
+                                    fastWhile = { "Slash", "Attack", "Baton", "Spin", "Rising", "Dive", "Strike",
+                                                  "Jump", "Rush", "Hold", "Kick", "Tornado" } },
     -- Long sword (user, 2026-10-02: red trails at the red spirit level): the trail file
     -- 11_it03_001 is gold in MiquellaLight_LongSwordFX.pak; this tints what the game may still
     -- colour at run time. Its GPU modules (9xx) stay as they are.
@@ -390,14 +395,37 @@ end
 
 local cost = { total = 0, frames = 0, shown = 0 }   -- time spent per frame, averaged over a second
 
+-- The hunter's current (base) action's type name, e.g. app.Wp10Action.cBatonUpSlashSuper.
+local function hunter_action()
+    local pm = sdk.get_managed_singleton("app.PlayerManager")
+    local master = pm and try(function() return pm:getMasterPlayer() end)
+    local chr = master and try(function() return master:get_Character() end)
+    local ctl = chr and try(function() return chr:call("get_BaseActionController") end)
+    local act = ctl and try(function() return ctl:call("get_CurrentAction") end)
+    return act and try(function() return act:get_type_definition():get_full_name() end) or ""
+end
+
+-- A slow rule's weapon is attacking (its new trails must be found the frame they start).
+local attackingNow = false
+local function attacking(r)
+    if not (r and r.fastWhile) then return false end
+    local a = hunter_action()
+    for _, w in ipairs(r.fastWhile) do
+        if a:find(w, 1, true) then return true end
+    end
+    return false
+end
+
 local function tick()
     if not (config.recolor or config.hideBuffs) then return end
     local t0 = os.clock()
     if config.recolor then held_rule() end          -- once a second; new effects need it
     if #pending > 0 then pcall(take_pending) end
-    if os.clock() >= nextScan then
-        local held = config.recolor and held_rule()
-        nextScan = os.clock() + ((held and not held.slow) and SCAN_FAST or SCAN_SLOW)
+    local held = config.recolor and held_rule()
+    attackingNow = held and held.slow and attacking(held) or false
+    local fast = held and (not held.slow or attackingNow)
+    if fast or os.clock() >= nextScan then
+        nextScan = os.clock() + (fast and SCAN_FAST or SCAN_SLOW)
         pcall(scan)
     end
     if os.clock() >= cacheReset then
@@ -443,6 +471,9 @@ re.on_draw_ui(function()
     imgui.text(string.format("Tracking %d effects, %d colour parameters. Hooks %d/%d. %s", n, nParams, nHooks, #hooks,
         (entryOk and os.clock() - tickedAt < 0.5) and "Before rendering." or "Once per frame."))
     imgui.text(string.format("Cost: %.2f ms per frame (%s).", cost.shown,
-        rule and (rule.label .. ": searching every frame") or "searching 4 times a second"))
+        rule and (rule.label .. ((not rule.slow or attackingNow) and ": searching every frame"
+                                 or (rule.fastWhile and ": 4 times a second, every frame while attacking"
+                                     or ": searching 4 times a second")))
+             or "searching 4 times a second"))
     imgui.tree_pop()
 end)

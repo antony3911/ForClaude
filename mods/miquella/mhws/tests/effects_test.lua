@@ -69,6 +69,13 @@ sdk = {
             if m == "get_WeaponHandling" then
                 return { get_type_definition = function() return { get_full_name = function() return heldType end } end }
             end
+            if m == "get_BaseActionController" then
+                return { call = function(_, cm)
+                    if cm == "get_CurrentAction" then
+                        return { get_type_definition = function() return { get_full_name = function() return hunterAction end } end }
+                    end
+                end }
+            end
         end } end } end }
     end,
     to_ptr = function(v) return v end,
@@ -93,6 +100,7 @@ json = { load_file = function() return nil end, dump_file = function(p, t) saved
 local clock = 0
 os.clock = function() return clock end
 heldType = "app.cHunterWp02Handling"
+hunterAction = "app.Wp02Action.cIdle"
 
 dofile(arg[1])
 local function check(c, m) print((c and "PASS " or "FAIL ") .. m); if not c then os.exit(1) end end
@@ -220,4 +228,28 @@ playing = { muzzle, dust }
 beforeRender(); clock = clock + 0.05; beforeRender()
 check(hue_is_gold(muzzle.tint), "light bowgun: effect tinted gold")
 check(dust.tint.rgba == WHITE, "light bowgun: ground dust left as is")
+-- Insect glaive: searched 4 times a second (the flying kinsect), but every frame while the hunter
+-- attacks: its trails are white in the files and the game tints them red as they start (user,
+-- 2026-10-03: the rising spin showed red first, then gold).
+heldType, hunterAction = "app.cHunterWp10Handling", "app.Wp10Action.cIdle"
+clock = clock + 2
+playing = {}
+beforeRender()
+local idleTrail = effect("11_it10_004", "", RED, {})
+playing = { idleTrail }
+clock = clock + 0.02; beforeRender()
+check(idleTrail.tint.rgba == RED, "insect glaive: not attacking, a new effect waits for the next search (4 a second)")
+out = {}; onDraw()
+check(table.concat(out):match("insect glaive: 4 times a second, every frame while attacking"), "insect glaive: menu shows the search rate")
+hunterAction = "app.Wp10Action.cBatonUpSlashSuper"
+local spinTrail = effect("11_it10_001", "", RED, {})
+playing = { idleTrail, spinTrail }
+clock = clock + 0.02; beforeRender()
+check(hue_is_gold(spinTrail.tint), "insect glaive: attacking, a new trail is gold before its first frame (" .. rgb(spinTrail.tint) .. ")")
+out = {}; onDraw()
+check(table.concat(out):match("insect glaive: searching every frame"), "insect glaive: every frame while attacking")
+local smoke = effect("11_it10_010", "", RED, {})
+playing = { smoke }
+clock = clock + 0.02; beforeRender()
+check(smoke.tint.rgba == RED, "insect glaive: smoke and dust left as they are")
 print("ALL PASS")

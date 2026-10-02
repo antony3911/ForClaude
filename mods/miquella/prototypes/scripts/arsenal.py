@@ -1500,6 +1500,43 @@ def long_sword_strands(mats):
             strand_chains(center, radius, 2, 3.5))
 
 
+# The insect glaive's triple-up charge (user's pick 2026-10-03, "D", glaive_charge.py): with all
+# three extracts lit, holding the attack charges two levels before the Rising Spiral Slash; the
+# three extracts become three strands of light (rot crimson, frost white, frenzy orange) braiding
+# up the top blade from its halo, growing with the charge (level 1 to 45 % of the way), closing to
+# a point of gold light past the blade's tip at full charge. A round helix (its growth bones on
+# the axis, a turn chain); each strand on its extract's bright texture band, the point gold.
+BRAID_BANDS = 16
+BRAID_Z = (1.50, 2.00)                       # from just above the top halo to past the point
+BRAID_REACH = (0.45, 1.0)                    # at levels 1 and 2
+
+
+def glaive_braid_parts(mats, bands=BRAID_BANDS):
+    """({band: [pieces]}, grow chain); names IG_Braid_<band>_<strand> (strands 0-2: rot, frost,
+    frenzy; IG_Braid_<last>_3 / _4: the point's droplet and ring)."""
+    import orb_styles as ob
+    z0, z1, turns = BRAID_Z[0], BRAID_Z[1], 2.6
+
+    def point(k, u):
+        a = 2 * math.pi * k / 3 + 2 * math.pi * turns * u
+        r = 0.062 * (1 - u) ** 0.85 + 0.004
+        return V(r * math.cos(a), r * math.sin(a), z0 + (z1 - z0) * u)
+    out = {}
+    for k, kind in enumerate(("rot", "frost", "frenzy")):
+        mat = ob.ess_mats(kind)["hot"]
+        for b, s0, s1 in band_spans(bands=bands):
+            u0, u1 = reach_at(2 * s0, BRAID_REACH), reach_at(2 * s1, BRAID_REACH)
+            n = max(6, int(220 * (u1 - u0)) + 2)
+            us = [u0 + (u1 - u0) * i / (n - 1) for i in range(n)]
+            radii = [max(0.15, min(1.0, u * 14)) * (1 - 0.5 * u) for u in us]
+            out.setdefault(b, []).append(c.curve_tube(f"IG_Braid_{b}_{k}", [point(k, u) for u in us], radii, mat,
+                                                      bevel=0.0042, resolution=3))
+    out[bands] += m.droplet(f"IG_Braid_{bands}_3", V(0, 0, z1), 0.009, (0, 0, 1), mats["light"], stretch=2.2)
+    out[bands] += m.halo(f"IG_Braid_{bands}_4", (0, 0, z1 - 0.03), 0.022, 0.0016, (0, 0, 1), mats["light"])
+    axis = lambda u: V(0, 0, z0 + (z1 - z0) * u)
+    return out, grow_chain(axis, turns, lambda tau: reach_at(2 * tau, BRAID_REACH), bands=bands)
+
+
 # ------------------------------------------------------------------ insect glaive extracts (game version)
 
 # Elden Ring's scarlet rot, frost and frenzied flame for red, white and orange (DESIGN). The

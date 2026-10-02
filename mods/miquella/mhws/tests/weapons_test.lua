@@ -49,7 +49,9 @@ local function newMesh(meshPath)
       return { "MiquellaBlade", "MiquellaCore", "MiquellaGlow", "MiquellaIvory", "MiquellaFilament" }
     end
     if self.mdfPath:match("wp_miquella_ig%.") then
-      return { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      local list = { "MiquellaBlade", "MiquellaExtractOrange", "MiquellaExtractRed", "MiquellaExtractWhite", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      for k = 1, 16 do list[#list + 1] = "MiquellaExtractGrow" .. k end
+      return list
     end
     if self.mdfPath:match("wp_miquella_sns%.") then
       return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaTiming", "MiquellaBurst" }
@@ -809,6 +811,40 @@ frames(60, 1 / 60)
 local ic = weaponMesh.colors["MiquellaBlade"]
 check(ic and ic.y > 0.8 and ic.z > 0.5 and ic.z < 0.7, "insect glaive: level 2 (full) charge is white gold")
 chargeLv = 0
+-- The triple-up charge (user's pick "D"): in the game's cHoldAttackSuper the three extracts'
+-- colours braid up the top blade with the charge, the flowers fading into them; they stay through
+-- the Rising Spiral Slash (cBatonUpSlashSuper) and go after it, the flowers coming back.
+frames(30, 1 / 60)
+local function braid(n)
+  local full = 0
+  for k = 1, n do
+    if weaponMesh.matEnabled["MiquellaExtractGrow" .. k] == true and (weaponMesh.floats["MiquellaExtractGrow" .. k .. ".2"] or 0) > 0.999 then full = full + 1 end
+  end
+  return full
+end
+local function orbA(n) return weaponMesh.matEnabled["MiquellaExtract" .. n] == true and (weaponMesh.floats["MiquellaExtract" .. n .. ".2"] or 0) or 0 end
+check(braid(16) == 0 and orbA("Red") > 0.99, "insect glaive: no braid without the triple-up charge, the flowers shown")
+hunterAction, chargeT0 = "app.Wp10Action.cHoldAttackSuper", fakeTime
+frames(24, 1 / 60)                   -- 0.4 s of 0.8 to level 1
+local b1 = braid(16)
+check(b1 >= 3 and b1 <= 5, string.format("insect glaive: the triple-up charge braids the strands up the blade (%d of 16)", b1))
+check(weaponMesh.colors["MiquellaExtractGrow1"] and weaponMesh.colors["MiquellaExtractGrow1"].z > 0.99,
+      "insect glaive: the braid keeps its texture's colours (white emissive colour)")
+check(weaponGO.tf.joints["MQ_Braid8"] and weaponGO.tf.joints["MQ_Braid8"].lp, "insect glaive: the braid draws out on its bones")
+frames(24, 1 / 60)
+chargeLv = 1
+frames(48, 1 / 60)                   -- 1.6 s
+chargeLv = 2
+frames(30, 1 / 60)
+check(braid(16) == 16, "insect glaive: level 2: the strands close to the point past the tip")
+check(orbA("Red") < 0.05 and orbA("White") < 0.05, string.format("insect glaive: the flowers have gone into the strands (%.2f)", orbA("Red")))
+hunterAction, chargeT0, chargeLv = "app.Wp10Action.cBatonUpSlashSuper", nil, 0
+frames(40, 1 / 60)
+check(braid(16) == 16, "insect glaive: the braid stays through the Rising Spiral Slash")
+hunterAction = "app.Wp10Action.cSelfJumpLand"
+frames(40, 1 / 60)
+check(braid(16) == 0 and orbA("Red") > 0.99, "insect glaive: then it goes and the flowers come back")
+hunterAction = nil
 extractValues[1] = 0
 frames(60, 1 / 60)
 check(not orb("Red") and orb("White"), "insect glaive: an extract running out hides its orb")

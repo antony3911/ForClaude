@@ -25,3 +25,8 @@ C:\Users\anton\MiquellaTools\bpy45\Scripts\python preview_kit.py <本資料夾>\
 ```
 
 打包：本資料夾的 `natives` ＋雙劍的 `MiquellaBlade/Glow/Ivory` 貼圖放進同一個暫存資料夾 → `make_patch_pak.py` → `MiquellaLight_InsectGlaive.pak`（2026-10-02 已裝進遊戲的 `pak_mods`）。
+
+## 三燈蓄力：三色光旋（2026-10-03，使用者從四個方向選 D）
+
+三燈時按住攻擊蓄力兩段（遊戲的 `cHoldAttackSuper`），放開是上升螺旋斬（`cBatonUpSlashSuper`）。三股光絲（腐敗紅、冰凍白、癲火橘）從上刃的光環上方螺旋編上刀刃，一段長到 45 %，二段收成刀尖外一點金光（`arsenal.glaive_braid_parts`，原型 `glaive_charge.py` 的 D）。依出現的時間切成 16 段 `MiquellaExtractGrow1～16`：**材質用精華的三色貼圖**（`build_mdf` 對 `MiquellaExtract*` 的規則），每股光絲的 UV 指到自己精華的亮色帶（`rot_Hot`／`frost_Hot`／`frenzy_Hot` → 第 2／5／8 帶），刀尖的光點和小光環指到金色帶（9）。生長骨頭在軸上 `MQ_Braid1～32`（每段兩根，`Base` 的子骨頭），換裝腳本把正在長的那段連續拉出來；骨頭表 `wp_miquella_ig_grow.lua`（貼進腳本的 `GROW.IG`）。三朵精華花在光絲長到一半以後淡掉（像被吸進光絲），放開後回來。
+

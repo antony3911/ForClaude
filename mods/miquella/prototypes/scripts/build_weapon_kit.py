@@ -818,6 +818,7 @@ def insect_glaive():
     """Hand mid-grip; scaled 1.6: the top blade's point 1.82 m above the hand, the bottom one
     1.56 below (originals +1.74 / -1.6). The kinsect is a kit of its own."""
     import arsenal
+    import motifs
     real = arsenal.kinsect
     arsenal.kinsect = lambda *a, **k: []
     try:
@@ -842,14 +843,26 @@ def insect_glaive():
             by_name[o.name] = f"MiquellaExtract{kind}"
             objs.append(o)
 
+    # The triple-up charge (user's pick 2026-10-03, "D"): the three extracts' colours as three
+    # strands braiding up the top blade, growing with the charge on bones of their own (a turn
+    # chain, MQ_Braid1-32); their bands use the extract texture (MiquellaExtractGrow1-16, the
+    # strands on their extract's bright band, the point gold).
+    braid, chain = arsenal.glaive_braid_parts(motifs.materials())
+    for b, pieces in braid.items():
+        for o in pieces:
+            by_name[o.name] = f"MiquellaExtractGrow{b}"
+            objs.append(o)
+    grow = [{"prefix": "IG_Braid", "chain": chain, "bone": "MQ_Braid", "parent": "Base"}]
+
     def band_of(o):
         names = [sl.material.name.split(".")[0] for sl in o.material_slots if sl.material]
         return next((EXTRACT_PART_BANDS[n] for n in names if n in EXTRACT_PART_BANDS), None)
     return placed("wp_miquella_ig", "Art/Model/MiquellaLight/InsectGlaive", objs, to_file,
                   {"VFX_Attack": to_file @ Vector((0, 0, 1.45 + 0.42))},
-                  floaters=floaters, by_name=by_name, pivots=pivots, uv_band=EXTRACT_BANDS,
+                  floaters=floaters, by_name=by_name, pivots=pivots,
+                  uv_band={**EXTRACT_BANDS, **{f"MiquellaExtractGrow{b}": 9 for b in braid}},
                   uv_band_count=len(EXTRACT_TEXTURE), uv_band_of=band_of, textures=extract_textures,
-                  budget={f"MiquellaExtract{k}": 4000 for k in ("Red", "White", "Orange")})
+                  budget={f"MiquellaExtract{k}": 4000 for k in ("Red", "White", "Orange")}, grow_chains=grow)
 
 
 # Orbit of the extract orbs in the prototype's space (centre height, radius): around the middle
@@ -1092,7 +1105,8 @@ def base_material(name):
 GROW_MAX = 32                            # growth bands a kit may have (MiquellaGrow1..)
 BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, "MiquellaTemper": 1500,
           "MiquellaMembrane": 2000, "MiquellaCharge1": 8000, "MiquellaCharge2": 8000, "MiquellaCharge3": 8000,
-          "MiquellaChargeTip": 2000, **{f"MiquellaGrow{b}": 3000 for b in range(1, GROW_MAX + 1)}}
+          "MiquellaChargeTip": 2000, **{f"MiquellaGrow{b}": 3000 for b in range(1, GROW_MAX + 1)},
+          **{f"MiquellaExtractGrow{b}": 3000 for b in range(1, GROW_MAX + 1)}}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
@@ -1106,6 +1120,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
               **{f"MiquellaGrow{b}": "MiquellaGlow" for b in range(1, GROW_MAX + 1)},
+              **{f"MiquellaExtractGrow{b}": "MiquellaGlow" for b in range(1, GROW_MAX + 1)},
               **{f"MiquellaArmillary{k}": "MiquellaGlow" for k in (1, 2, 3)},
               "MiquellaTiming": "MiquellaGlow", "MiquellaBurst": "MiquellaGlow",
               "MiquellaHalo": "MiquellaIvory",

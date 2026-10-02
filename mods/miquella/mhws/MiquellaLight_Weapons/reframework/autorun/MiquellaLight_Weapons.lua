@@ -34,8 +34,8 @@ local CHARGE_FIELDS ={ "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_Char
 -- Parts that grow with the charge (spirals, the bow's flowers; user 2026-10-03) are cut into bands
 -- by when they appear, a material each: MiquellaGrow1..n (build_weapon_kit.py). They glow like the
 -- rest (the Glow slider).
-local function with_grow(glow, n)
-    for k = 1, n do glow["MiquellaGrow" .. k] = 1.2 end
+local function with_grow(glow, n, prefix)
+    for k = 1, n do glow[(prefix or "MiquellaGrow") .. k] = 1.2 end
     return glow
 end
 
@@ -112,7 +112,8 @@ local MORPH_CB = {
 -- helices); turn = true: bones on the axis for all the strands, also turned back by the helix's
 -- angle (the lance's round drill). Two bones a band either way. pos: rest position in the parent's space (file metres); tau:
 -- the share of the charge at which the growth reaches it; theta: the helix's angle (degrees).
-local GROW_GS = {
+local GROW = {}               -- (one local for all of them: Lua allows 200 in the main chunk)
+GROW.GS = {
     { parent = "Base", turn = false, root = { pos = { -0.0752, 0.0000, 0.2240 }, tau = 0.00000 },
       joints = {
         { name = "MQ_G0_1", pos = { -0.0747, -0.0191, 0.2720 }, tau = 0.02083 },
@@ -267,7 +268,7 @@ local GROW_GS = {
         { name = "MQ_G2_48", pos = { -0.1575, 0.0229, 2.1440 }, tau = 1.00000 },
       } },
 }
-local GROW_LS = {
+GROW.LS = {
     { parent = "Base", turn = false, root = { pos = { -0.1078, 0.0000, 0.1928 }, tau = 0.00000 },
       joints = {
         { name = "MQ_G0_1", pos = { -0.0952, -0.0216, 0.2377 }, tau = 0.02083 },
@@ -371,7 +372,7 @@ local GROW_LS = {
         { name = "MQ_G1_48", pos = { -0.0029, 0.0000, 1.9883 }, tau = 1.00000 },
       } },
 }
-local GROW_LN = {
+GROW.LN = {
     { parent = "MQ_Drill", turn = true, root = { pos = { 0.0000, 0.0000, -1.2410 }, tau = 0.00000, theta = -0.00 },
       joints = {
         { name = "MQ_Grow1", pos = { 0.0000, 0.0000, -1.1790 }, tau = 0.02083, theta = -19.80 },
@@ -460,6 +461,44 @@ local GROW_LN = {
       } },
 }
 
+GROW.IG = {
+    { parent = "Base", turn = true, root = { pos = { 0.0000, 0.0000, 1.2240 }, tau = 0.00000, theta = 0.00 },
+      joints = {
+        { name = "MQ_Braid1", pos = { 0.0000, 0.0000, 1.2465 }, tau = 0.03125, theta = 26.32 },
+        { name = "MQ_Braid2", pos = { 0.0000, 0.0000, 1.2690 }, tau = 0.06250, theta = 52.65 },
+        { name = "MQ_Braid3", pos = { 0.0000, 0.0000, 1.2915 }, tau = 0.09375, theta = 78.98 },
+        { name = "MQ_Braid4", pos = { 0.0000, 0.0000, 1.3140 }, tau = 0.12500, theta = 105.30 },
+        { name = "MQ_Braid5", pos = { 0.0000, 0.0000, 1.3365 }, tau = 0.15625, theta = 131.62 },
+        { name = "MQ_Braid6", pos = { 0.0000, 0.0000, 1.3590 }, tau = 0.18750, theta = 157.95 },
+        { name = "MQ_Braid7", pos = { 0.0000, 0.0000, 1.3815 }, tau = 0.21875, theta = 184.27 },
+        { name = "MQ_Braid8", pos = { 0.0000, 0.0000, 1.4040 }, tau = 0.25000, theta = 210.60 },
+        { name = "MQ_Braid9", pos = { 0.0000, 0.0000, 1.4265 }, tau = 0.28125, theta = 236.92 },
+        { name = "MQ_Braid10", pos = { 0.0000, 0.0000, 1.4490 }, tau = 0.31250, theta = 263.25 },
+        { name = "MQ_Braid11", pos = { 0.0000, 0.0000, 1.4715 }, tau = 0.34375, theta = 289.58 },
+        { name = "MQ_Braid12", pos = { 0.0000, 0.0000, 1.4940 }, tau = 0.37500, theta = 315.90 },
+        { name = "MQ_Braid13", pos = { 0.0000, 0.0000, 1.5165 }, tau = 0.40625, theta = 342.23 },
+        { name = "MQ_Braid14", pos = { 0.0000, 0.0000, 1.5390 }, tau = 0.43750, theta = 368.55 },
+        { name = "MQ_Braid15", pos = { 0.0000, 0.0000, 1.5615 }, tau = 0.46875, theta = 394.88 },
+        { name = "MQ_Braid16", pos = { 0.0000, 0.0000, 1.5840 }, tau = 0.50000, theta = 421.20 },
+        { name = "MQ_Braid17", pos = { 0.0000, 0.0000, 1.6115 }, tau = 0.53125, theta = 453.38 },
+        { name = "MQ_Braid18", pos = { 0.0000, 0.0000, 1.6390 }, tau = 0.56250, theta = 485.55 },
+        { name = "MQ_Braid19", pos = { 0.0000, 0.0000, 1.6665 }, tau = 0.59375, theta = 517.73 },
+        { name = "MQ_Braid20", pos = { 0.0000, 0.0000, 1.6940 }, tau = 0.62500, theta = 549.90 },
+        { name = "MQ_Braid21", pos = { 0.0000, 0.0000, 1.7215 }, tau = 0.65625, theta = 582.08 },
+        { name = "MQ_Braid22", pos = { 0.0000, 0.0000, 1.7490 }, tau = 0.68750, theta = 614.25 },
+        { name = "MQ_Braid23", pos = { 0.0000, 0.0000, 1.7765 }, tau = 0.71875, theta = 646.43 },
+        { name = "MQ_Braid24", pos = { 0.0000, 0.0000, 1.8040 }, tau = 0.75000, theta = 678.60 },
+        { name = "MQ_Braid25", pos = { 0.0000, 0.0000, 1.8315 }, tau = 0.78125, theta = 710.78 },
+        { name = "MQ_Braid26", pos = { 0.0000, 0.0000, 1.8590 }, tau = 0.81250, theta = 742.95 },
+        { name = "MQ_Braid27", pos = { 0.0000, 0.0000, 1.8865 }, tau = 0.84375, theta = 775.12 },
+        { name = "MQ_Braid28", pos = { 0.0000, 0.0000, 1.9140 }, tau = 0.87500, theta = 807.30 },
+        { name = "MQ_Braid29", pos = { 0.0000, 0.0000, 1.9415 }, tau = 0.90625, theta = 839.48 },
+        { name = "MQ_Braid30", pos = { 0.0000, 0.0000, 1.9690 }, tau = 0.93750, theta = 871.65 },
+        { name = "MQ_Braid31", pos = { 0.0000, 0.0000, 1.9965 }, tau = 0.96875, theta = 903.82 },
+        { name = "MQ_Braid32", pos = { 0.0000, 0.0000, 2.0240 }, tau = 1.00000, theta = 936.00 },
+      } },
+}
+
 local KITS = {
     DualBlades = {
         label = "Miquella light blade (dual blades)",
@@ -497,7 +536,7 @@ local KITS = {
         -- game's _ChargeTimer reaches levels 1-3 at 0.8 / 1.55 / 2.3 s in a plain charge
         -- (wp00globalactionparam.user.3; its other charges differ: learned per _ChargeType).
         grow = { bands = 24, fields = CHARGE_FIELDS, timer = { "_ChargeTimer" }, kind = { "_ChargeType" },
-                 times = { 0.8, 1.55, 2.3 }, chains = GROW_GS },
+                 times = { 0.8, 1.55, 2.3 }, chains = GROW.GS },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -553,7 +592,7 @@ local KITS = {
         -- roundslash (cKijinSlashRound) and fade after it; bright gold, brighter as they grow.
         grow = { bands = 24, fields = { "_KijinChargeLv", "<RealKijinChargeLv>k__BackingField" },
                  timer = { "_KijinChargeTimer" }, times = { 0.8, 1.6, 2.9 }, action = "KijinCharge", hold = "KijinSlashRound",
-                 mul = { 1.6, 3.2 }, color = PART_GOLD, chains = GROW_LS },
+                 mul = { 1.6, 3.2 }, color = PART_GOLD, chains = GROW.LS },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -643,7 +682,7 @@ local KITS = {
         -- _FinishChargeTimer reaches levels 1-3 at 0.8 / 2.0 / 3.6 s (wp06globalactionparam.user.3;
         -- recorded 2026-10-02 it stopped at 3.60).
         grow = { bands = 24, fields = { "_FinishChargeLevel", "_FinishChargeLevelForAction" },
-                 timer = { "_FinishChargeTimer" }, times = { 0.8, 2.0, 3.6 }, chains = GROW_LN },
+                 timer = { "_FinishChargeTimer" }, times = { 0.8, 2.0, 3.6 }, chains = GROW.LN },
         shield = "Lance_Shield",
     },
     Lance_Shield = {
@@ -743,7 +782,7 @@ local KITS = {
         label = "Miquella light glaive (insect glaive)",
         mesh = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mesh",
         mdf2 = "Art/Model/MiquellaLight/InsectGlaive/wp_miquella_ig.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = with_grow({ MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 }, 16, "MiquellaExtractGrow"),
         -- The extracts (rot, frost, frenzied flame) circle the top blade (orbit: their slot); they
         -- are flowers (user's pick 2026-10-02, style 2), so they keep facing out while circling
         -- and turn slowly about their own centre (face, spin degrees a second).
@@ -757,6 +796,15 @@ local KITS = {
             { name = "MQ_OrbOrange", pos = { 0.1219, -0.0704, 1.4160 }, orbit = 2 } } },
         -- Charge (user, 2026-10-02): gold -> bright gold -> white gold.
         charge = { levels = 2, fields = { "<ChargeLv>k__BackingField" }, look = "whiteGold2" },
+        -- The triple-up charge before the Rising Spiral Slash (the game's cHoldAttackSuper, then
+        -- cBatonUpSlashSuper; user's pick 2026-10-03, "D"): the three extracts become three strands
+        -- of light braiding up the top blade (rot crimson, frost white, frenzy orange: the extract
+        -- texture's bands, so the colour stays white), 45 % of the way at level 1, closing to a
+        -- point of gold past the tip at level 2; the flowers fade into them (extracts.absorb).
+        -- Level times guessed (the parameter files did not show them): learned from the first charges.
+        grow = { prefix = "MiquellaExtractGrow", bands = 16, levels = 2, fields = { "<ChargeLv>k__BackingField" },
+                 timer = { "_ChargeTimer" }, times = { 0.8, 1.6 }, action = "HoldAttackSuper",
+                 hold = "BatonUpSlashSuper", mul = { 1.4, 2.6 }, color = { 1.0, 1.0, 1.0 }, chains = GROW.IG },
         -- An orb shows while its extract is lit; all three: the blade bright gold. The timers are the
         -- handling's ExtractTimer, an array of app.cValueHolderF in the order of the game's
         -- app.Wp10Def.EXTRACT_TYPE, and TrippleUpTimer (recorded 2026-10-02; the _ExtractTimer*
@@ -764,7 +812,7 @@ local KITS = {
         -- orbs never showed, user 2026-10-03).
         extracts = { timers = "ExtractTimer", orbs = { MiquellaExtractRed = "RED", MiquellaExtractWhite = "WHITE",
                                                         MiquellaExtractOrange = "ORANGE" },
-                     triple = { "TrippleUpTimer" } },
+                     triple = { "TrippleUpTimer" }, absorb = true },
         kinsect = "Kinsect",
     },
     -- The kinsect: a golden swallowtail of light (A, solid gold wings). Not a weapon look: it goes
@@ -1559,7 +1607,7 @@ end
 
 -- Light bowgun rapid-fire gauge on the three drops over the barrel: each drop is one third
 -- of the gauge (dim when empty); in rapid-fire mode they burn brighter, deeper gold.
-local DOT_DIM, RAPID_MUL, RAPID_COLOR = 0.35, 1.8, { 1.0, 0.56, 0.06 }
+local DOTS = { dim = 0.35, rapidMul = 1.8, rapidColor = { 1.0, 0.56, 0.06 } }
 
 local function update_gauge(entry, mesh, h, dt)
     local spec = entry.kit.gauge
@@ -1580,8 +1628,8 @@ local function update_gauge(entry, mesh, h, dt)
     entry.mul = {}
     for i, mat in ipairs(spec.dots) do
         local lit = math.max(0, math.min(1, entry.gaugeSmooth * #spec.dots - (i - 1)))
-        entry.mul[mat] = lerp(DOT_DIM, 1, lit) * lerp(1, RAPID_MUL, entry.rapidSmooth)
-        set_color(entry, mesh, mat, lerp3(GOLD, RAPID_COLOR, entry.rapidSmooth))
+        entry.mul[mat] = lerp(DOTS.dim, 1, lit) * lerp(1, DOTS.rapidMul, entry.rapidSmooth)
+        set_color(entry, mesh, mat, lerp3(GOLD, DOTS.rapidColor, entry.rapidSmooth))
     end
 end
 
@@ -1596,7 +1644,7 @@ local BOW_LOOK = {
     [3] = { mul = 3.4, color = { 1.0, 0.86, 0.58 } },     -- white gold
     [4] = { mul = 4.0, color = { 1.0, 0.92, 0.74 } },     -- (a fourth level, if the game has one)
 }
-local PACK_DRAWN = 0.45          -- how packed the rings are as soon as the bow is drawn
+local PACK = { drawn = 0.45 }    -- drawn: how packed the rings are as soon as the bow is drawn
 
 local function update_bow(entry, mesh, h, dt)
     local spec = entry.kit.bow
@@ -1622,26 +1670,26 @@ local function update_bow(entry, mesh, h, dt)
     for _, mat in ipairs({ "MiquellaBlade", "MiquellaTemper", "MiquellaGlow" }) do set_color(entry, mesh, mat, color) end
     for i, mat in ipairs(spec.rings) do
         local lit = math.max(0, math.min(1, s - (i - 1)))
-        entry.mul[mat] = lerp(lerp(1, DOT_DIM, entry.drawSmooth), mul, lit)
+        entry.mul[mat] = lerp(lerp(1, DOTS.dim, entry.drawSmooth), mul, lit)
         set_color(entry, mesh, mat, lerp3(GOLD, color, lit))
     end
     -- The flowers take the level's light; they open with the charge (update_grow).
     entry.partMul, entry.partColor = mul, color
     entry.bowLevel, entry.bowDrawing = level, drawing
-    entry.packTarget = drawing and (PACK_DRAWN + (1 - PACK_DRAWN) * math.min(level, spec.levels) / spec.levels) or 0
+    entry.packTarget = drawing and (PACK.drawn + (1 - PACK.drawn) * math.min(level, spec.levels) / spec.levels) or 0
 end
 
 -- Insect glaive extracts: an orb fades in while its extract is lit and circles the top blade
 -- (step_floaters); with all three the blade burns bright gold. The timers come in the order of the
 -- game's extract types (app.Wp10Def.EXTRACT_TYPE, read once; red, white, orange if it cannot be read).
-local EXTRACT_FADE, TRIPLE_MUL, TRIPLE_COLOR = 0.3, 1.8, { 1.0, 0.56, 0.06 }
-local EXTRACT_ENUMS = { "app.Wp10Def.EXTRACT_TYPE", "app.Wp10Def+EXTRACT_TYPE" }
+local EXTRACT = { fade = 0.3, tripleMul = 1.8, tripleColor = { 1.0, 0.56, 0.06 },
+                  enums = { "app.Wp10Def.EXTRACT_TYPE", "app.Wp10Def+EXTRACT_TYPE" } }
 local extractIndex = nil
 
 local function extract_indices()
     if extractIndex then return extractIndex end
     local found = {}
-    for _, tn in ipairs(EXTRACT_ENUMS) do
+    for _, tn in ipairs(EXTRACT.enums) do
         local td = try(function() return sdk.find_type_definition(tn) end)
         for _, f in ipairs(td and try(function() return td:get_fields() end) or {}) do
             local name = try(function() return f:get_name() end)
@@ -1665,11 +1713,14 @@ local function update_extracts(entry, mesh, h, dt)
     local arr = h and try(function() return h:get_field(spec.timers) end)
     local values = is_object(arr) and array_numbers(arr) or nil
     local idx = extract_indices()
+    -- (with absorb, they fade into the strands the triple-up charge grows, and come back after)
+    local g = spec.absorb and entry.grow
+    local into = g and ramp(g.shown or 0, 0.35, 0.95) * (g.fade or 0) or 0
     for mat, colour in pairs(spec.orbs) do
         local v = values and values[(idx[colour] or 0) + 1] or nil
-        local a = approach(entry.orbAlpha[mat] or 0, (v or 0) > 0 and 1 or 0, dt, EXTRACT_FADE, EXTRACT_FADE)
+        local a = approach(entry.orbAlpha[mat] or 0, (v or 0) > 0 and 1 or 0, dt, EXTRACT.fade, EXTRACT.fade)
         entry.orbAlpha[mat] = a
-        set_alpha(entry, mesh, mat, a)
+        set_alpha(entry, mesh, mat, a * (1 - into))
     end
     local shown = {}
     for i, v in ipairs(values or {}) do shown[i] = v and string.format("%.0f", v) or "?" end
@@ -1683,29 +1734,29 @@ local function update_extracts(entry, mesh, h, dt)
     local k = entry.tripleSmooth * (1 - math.min(1, entry.chargeSmooth or 0))
     if k > 0.001 then
         entry.mul = entry.mul or {}
-        entry.mul.MiquellaBlade = (entry.mul.MiquellaBlade or 1) * lerp(1, TRIPLE_MUL, k)
-        set_color(entry, mesh, "MiquellaBlade", lerp3(GOLD, TRIPLE_COLOR, k))
+        entry.mul.MiquellaBlade = (entry.mul.MiquellaBlade or 1) * lerp(1, EXTRACT.tripleMul, k)
+        set_color(entry, mesh, "MiquellaBlade", lerp3(GOLD, EXTRACT.tripleColor, k))
     end
 end
 
 -- Gunlance (user, 2026-10-02): a reload winds the ivory spring toward the root and lets it
 -- spring back; charged shelling winds it tighter each level and holds it until the shot;
 -- Wyvern's Fire winds it all the way until it fires. The light follows the level.
-local RELOAD_PULSE, GL_LEVEL_TIME = 0.35, 0.45
-local SHELL_PULSE = 0.18             -- a shell fired: a short press
+local GL = { reloadPulse = 0.35, levelTime = 0.45 }
+GL.shellPulse = 0.18                -- a shell fired: a short press
 -- Wyvern's Fire: its gauge drops at the blast, too late for the wind-up (user, 2026-10-02), and
 -- the original gunlance bones on our model do not move during it (traces of 2026-10-02: Hinge
 -- 18 deg, Heat_Hinge 0 through the whole wind-up). Now the hunter's own action: the game's
 -- Wyvern's Fire actions are cRyuugeki* (Start, Idle, AimIdle, ToAim, Shoot, Shot) -> wound
 -- while one runs until the gauge drops (the blast), then it springs back and waits for them to end.
-local GL_WYVERN_ACTION = "Ryuugeki"
+GL.wyvernAction = "Ryuugeki"
 local glEvents = {}
 
 local function gl_event(text)
     glEvents[#glEvents + 1] = string.format("%8.2f  %s", os.clock(), text)
     if #glEvents > 100 then table.remove(glEvents, 1) end
 end
-local GL_CHARGE_STEP = 0.6           -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
+GL.chargeStep = 0.6                 -- charged shelling: a level per 0.6 s of its timer (it reached 1.83)
 
 local function first_number(h, names)
     for _, n in ipairs(names) do
@@ -1728,18 +1779,18 @@ local function update_gunlance(entry, mesh, h, dt, now)
     end
     entry.lastWyvGauge = gauge
     if shells and entry.lastShells and shells < entry.lastShells then
-        entry.shellUntil = now + SHELL_PULSE
+        entry.shellUntil = now + GL.shellPulse
         gl_event(string.format("shells %s -> %s", tostring(entry.lastShells), tostring(shells)))
     end
     entry.lastShells = shells
-    local wyvAction = actionNow:find(GL_WYVERN_ACTION, 1, true) ~= nil
+    local wyvAction = actionNow:find(GL.wyvernAction, 1, true) ~= nil
     if wyvAction ~= (entry.wasWyvAction or false) then
         gl_event(string.format("Wyvern's Fire action %s (%s)", wyvAction and "starts" or "ends", actionNow))
     end
     entry.wasWyvAction = wyvAction
     local reloading = (reload or 0) > 0
     if reloading and not entry.wasReloading then
-        entry.reloadUntil = now + RELOAD_PULSE
+        entry.reloadUntil = now + GL.reloadPulse
         gl_event("reload")
     end
     entry.wasReloading = reloading
@@ -1758,11 +1809,11 @@ local function update_gunlance(entry, mesh, h, dt, now)
     if entry.reloadUntil and now < entry.reloadUntil then level, pack = 1, 0.8 end
     if entry.shellUntil and now < entry.shellUntil then level, pack = math.max(level, 1), math.max(pack, 0.5) end
     if charging then
-        local lv = math.min(3, 1 + math.floor((shot or (now - entry.chargeSince)) / GL_CHARGE_STEP))
+        local lv = math.min(3, 1 + math.floor((shot or (now - entry.chargeSince)) / GL.chargeStep))
         level, pack = math.max(level, lv), math.max(pack, 0.4 + 0.2 * lv)
     end
     if winding then
-        level = math.max(level, math.min(3, 1 + math.floor((now - entry.windSince) / GL_LEVEL_TIME)))
+        level = math.max(level, math.min(3, 1 + math.floor((now - entry.windSince) / GL.levelTime)))
         pack = 1.0
     end
     if not isWeaponDrawn then level, pack = 0, 0 end
@@ -1772,8 +1823,8 @@ local function update_gunlance(entry, mesh, h, dt, now)
     -- draws it out a third.
     local pulse = (entry.reloadUntil and now < entry.reloadUntil) or (entry.shellUntil and now < entry.shellUntil)
     local reach = pulse and 1 / 3 or 0
-    if charging then reach = math.max(reach, (shot or (now - entry.chargeSince)) / (2 * GL_CHARGE_STEP)) end
-    if winding then reach = math.max(reach, (now - entry.windSince) / (2 * GL_LEVEL_TIME)) end
+    if charging then reach = math.max(reach, (shot or (now - entry.chargeSince)) / (2 * GL.chargeStep)) end
+    if winding then reach = math.max(reach, (now - entry.windSince) / (2 * GL.levelTime)) end
     if not isWeaponDrawn then reach = 0 end
     entry.stretch = approach(entry.stretch or 0, math.min(1, reach), dt, 0.08, 0.15)
     local function show(n, v) return n and string.format("%s=%s", n, tostring(v)) or "?" end
@@ -1794,7 +1845,7 @@ end
 -- is that progress over the top level (the bow: two flowers a level's time, the rest one after
 -- another once at the top, over `post` seconds); the band at its front fades in. Let go, the grown
 -- parts fade where they stand (held while the kit's `hold` action runs).
-local GROW_RELEASE, GROW_UP, GROW_DOWN, GROW_SNAP = 0.3, 0.12, 0.35, 6
+GROW.release, GROW.up, GROW.down, GROW.snap = 0.3, 0.12, 0.35, 6
 local growDirty = false              -- learned thresholds to save once the charge is over
 
 -- The charge timer's value when `level` is reached.
@@ -1897,10 +1948,10 @@ local function update_grow(entry, mesh, h, dt, now)
     tau = math.max(0, math.min(1, tau))
     if active then
         g.fade = 1
-        g.shown = approach(g.shown or 0, tau, dt, GROW_UP, GROW_DOWN)
+        g.shown = approach(g.shown or 0, tau, dt, GROW.up, GROW.down)
     else
         local holding = spec.hold and actionNow:find(spec.hold, 1, true) ~= nil
-        if not holding then g.fade = approach(g.fade or 0, 0, dt, GROW_RELEASE, GROW_RELEASE) end
+        if not holding then g.fade = approach(g.fade or 0, 0, dt, GROW.release, GROW.release) end
         if (g.fade or 0) <= 0 then g.shown = 0 end
         if growDirty then growDirty = false; save_config() end
     end
@@ -1910,9 +1961,9 @@ local function update_grow(entry, mesh, h, dt, now)
     local color = spec.color or entry.partColor or PART_GOLD
     -- (with bone chains a band is drawn out of a point, so it shows as soon as it starts; without,
     -- it fades in over its share)
-    local snap = spec.chains and GROW_SNAP or 1
+    local snap = spec.chains and GROW.snap or 1
     for k = 1, spec.bands do
-        local mat = "MiquellaGrow" .. k
+        local mat = (spec.prefix or "MiquellaGrow") .. k
         set_alpha(entry, mesh, mat, math.max(0, math.min(1, (shown * spec.bands - (k - 1)) * snap)) * fade)
         entry.mul[mat] = mul
         set_color(entry, mesh, mat, color)
@@ -1975,7 +2026,7 @@ end
 -- (count: the value is a number of phials; otherwise a fraction of the largest value seen),
 -- unlit ones dim; a boost (enhanced, amped) burns its materials bright gold. `when`: only in
 -- the base or the other ("alt") mode of the weapon.
-local GAUGE_DIM, BOOST_MUL, BOOST_COLOR = 0.25, 1.8, { 1.0, 0.56, 0.06 }
+local BOOST = { dim = 0.25, mul = 1.8, color = { 1.0, 0.56, 0.06 } }
 
 local function in_mode(entry, when)
     if not when then return true end
@@ -2009,8 +2060,8 @@ local function update_gauges(entry, mesh, h, dt)
             local full = g.fullBright and st.smooth > 0.995
             for i, mat in ipairs(g.dots) do
                 local lit = math.max(0, math.min(1, st.smooth * #g.dots - (i - 1)))
-                entry.mul[mat] = lerp(GAUGE_DIM, full and BOOST_MUL or 1, lit)
-                set_color(entry, mesh, mat, full and BOOST_COLOR or GOLD)
+                entry.mul[mat] = lerp(BOOST.dim, full and BOOST.mul or 1, lit)
+                set_color(entry, mesh, mat, full and BOOST.color or GOLD)
             end
             info[#info + 1] = name and string.format("%s=%s", name, v and string.format("%.1f", v) or "?")
                 or (g.key .. " not found")
@@ -2024,15 +2075,15 @@ local function update_gauges(entry, mesh, h, dt)
             entry.gaugeState[b.key] = st
             st.smooth = approach(st.smooth or 0, v > 0 and 1 or 0, dt, 0.15, 0.4)
             for _, mat in ipairs(b.mats) do
-                entry.mul[mat] = (entry.mul[mat] or 1) * lerp(1, BOOST_MUL, st.smooth)
-                set_color(entry, mesh, mat, lerp3(GOLD, BOOST_COLOR, st.smooth))
+                entry.mul[mat] = (entry.mul[mat] or 1) * lerp(1, BOOST.mul, st.smooth)
+                set_color(entry, mesh, mat, lerp3(GOLD, BOOST.color, st.smooth))
             end
             -- Chasing sets: one lit at a time, in turn (a light running along them).
             local step = b.chase and math.floor(os.clock() * (b.chaseHz or 10)) % #b.chase
             for i, mat in ipairs(b.chase or {}) do
                 set_alpha(entry, mesh, mat, (i - 1 == step) and st.smooth or 0)
-                entry.mul[mat] = BOOST_MUL
-                set_color(entry, mesh, mat, BOOST_COLOR)
+                entry.mul[mat] = BOOST.mul
+                set_color(entry, mesh, mat, BOOST.color)
             end
             info[#info + 1] = name and string.format("%s=%s", name, tostring(v)) or (b.key .. " not found")
         else
@@ -2066,13 +2117,13 @@ end
 -- logged on every change (at most 12 lines a field each rush), other numbers when they start or
 -- stop (0 <-> not 0); a new action's true fields when it starts. Each line has the seconds since
 -- the rush began; saved as `trace` in the field recorder's file (fields_app_cHunterWp01Handling.json).
-local TRACE_LINES, TRACE_PER_FIELD, TRACE_AFTER, TRACE_SUB_FIELDS = 1500, 12, 1.0, 60
+local TRACE = { lines = 1500, perField = 12, after = 1.0, subFields = 60 }
 local rushTrace = { lines = {}, on = false, start = 0, untilT = 0, last = {}, count = {}, names = {}, n = 0 }
 
 local function trace_line(text)
     local lines = rushTrace.lines
     lines[#lines + 1] = text
-    if #lines > TRACE_LINES then table.remove(lines, 1) end
+    if #lines > TRACE.lines then table.remove(lines, 1) end
 end
 
 local function trace_note(text, now)
@@ -2101,7 +2152,7 @@ local function trace_obj(obj, prefix, t, depth, seen, firstTrue, maxFields)
         if maxFields and i > maxFields then break end
         local v = try(function() return obj:get_field(n) end)
         if type(v) == "userdata" then
-            if depth > 0 then trace_obj(v, prefix .. n .. ".", t, depth - 1, seen, firstTrue, TRACE_SUB_FIELDS) end
+            if depth > 0 then trace_obj(v, prefix .. n .. ".", t, depth - 1, seen, firstTrue, TRACE.subFields) end
         else
             local isBool = type(v) == "boolean"
             if isBool then v = v and 1 or 0 end
@@ -2119,9 +2170,9 @@ local function trace_obj(obj, prefix, t, depth, seen, firstTrue, maxFields)
                 if line then
                     local c = (rushTrace.count[key] or 0) + 1
                     rushTrace.count[key] = c
-                    if c <= TRACE_PER_FIELD then
+                    if c <= TRACE.perField then
                         trace_line(string.format("%6.3f  %s", t, line))
-                    elseif c == TRACE_PER_FIELD + 1 then
+                    elseif c == TRACE.perField + 1 then
                         trace_line(string.format("%6.3f  %s (keeps changing)", t, key))
                     end
                 end
@@ -2138,7 +2189,7 @@ local function update_rush_trace(h, inRush, now)
         trace_line(string.format("=== rush %d at %.2f: %s", rushTrace.n, now, actionNow))
     end
     if not rushTrace.on then return end
-    if inRush then rushTrace.untilT = now + TRACE_AFTER end
+    if inRush then rushTrace.untilT = now + TRACE.after end
     local t = now - rushTrace.start
     if now > rushTrace.untilT then
         rushTrace.on = false
@@ -2469,12 +2520,12 @@ end
 
 -- The bow's rings packing toward entry.packTarget (0..1): smooth while winding up, one
 -- springy bounce past their rest places when the arrow is loosed.
-local PACK_HZ, PACK_BOUNCE = 2.6, 0.4
+PACK.hz, PACK.bounce = 2.6, 0.4
 
 local function step_pack(entry, dt)
     local target, x, v = entry.packTarget or 0, entry.pack or 0, entry.packVel or 0
-    local w = 2 * math.pi * PACK_HZ
-    local zeta = target > x and 1.0 or PACK_BOUNCE
+    local w = 2 * math.pi * PACK.hz
+    local zeta = target > x and 1.0 or PACK.bounce
     local steps = math.max(1, math.ceil(dt / (1 / 240)))
     local h = dt / steps
     for _ = 1, steps do
@@ -2514,8 +2565,7 @@ end
 -- path among the scene's meshes (the nearest to the bow, looked for twice a second until
 -- found), gives its line in the bow's frame; the rings slide across onto it and turn square
 -- to it. Rings sit on the line where their own height (+Z) meets it.
-local ARROW_MATCH, ARROW_LOOK, ARROW_NEAR = "it1199_0000_0", 0.5, 1.5
-local ARROW_BLEND, ARROW_MAX_OFF = 0.12, 0.25
+local ARROW = { match = "it1199_0000_0", look = 0.5, near = 1.5, blend = 0.12, maxOff = 0.25 }
 local arrowInfo = "not looked for"
 
 local function current_scene()
@@ -2530,10 +2580,10 @@ local function vec_of(v) return v and { v.x, v.y, v.z } or nil end
 local function find_arrow(P)
     local scene = current_scene()
     local arr = scene and try(function() return scene:call("findComponents(System.Type)", sdk.typeof(MESH)) end)
-    local best, bestD = nil, ARROW_NEAR
+    local best, bestD = nil, ARROW.near
     for _, m in ipairs(arr and try(function() return arr:get_elements() end) or {}) do
         local path = resource_path(try(function() return m:getMesh() end))
-        if path and path:find(ARROW_MATCH, 1, true) then
+        if path and path:find(ARROW.match, 1, true) then
             local go = try(function() return m:call("get_GameObject") end)
             local tf = go and try(function() return go:call("get_Transform") end)
             local p = tf and vec_of(try(function() return tf:call("get_Position") end))
@@ -2550,10 +2600,10 @@ local function follow_arrow(entry, P, R, now)
     if drawing then
         local tf = entry.arrowTf
         local ap = tf and vec_of(try(function() return tf:call("get_Position") end))
-        if not ap or vlen(vsub(ap, P)) > ARROW_NEAR then
+        if not ap or vlen(vsub(ap, P)) > ARROW.near then
             tf, ap = nil, nil
             if now >= (entry.arrowLookAt or 0) then
-                entry.arrowLookAt = now + ARROW_LOOK
+                entry.arrowLookAt = now + ARROW.look
                 tf = find_arrow(P)
                 ap = tf and vec_of(try(function() return tf:call("get_Position") end))
             end
@@ -2571,7 +2621,7 @@ local function follow_arrow(entry, P, R, now)
             or "drawing, arrow not found"
     end
     if line then entry.arrowLine = line end
-    entry.arrowBlend = approach(entry.arrowBlend or 0, line and 1 or 0, 1 / 60, ARROW_BLEND, ARROW_BLEND)
+    entry.arrowBlend = approach(entry.arrowBlend or 0, line and 1 or 0, 1 / 60, ARROW.blend, ARROW.blend)
 end
 
 -- A ring onto the arrow's line at its height, square to it, by entry.arrowBlend.
@@ -2579,7 +2629,7 @@ local function ring_on_arrow(s, line, blend)
     local t = (s.pos[3] - line.p[3]) / line.d[3]
     local dx, dy = line.p[1] + line.d[1] * t - s.pivot[1], line.p[2] + line.d[2] * t - s.pivot[2]
     local l = math.sqrt(dx * dx + dy * dy)
-    if l > ARROW_MAX_OFF then dx, dy = dx * ARROW_MAX_OFF / l, dy * ARROW_MAX_OFF / l end
+    if l > ARROW.maxOff then dx, dy = dx * ARROW.maxOff / l, dy * ARROW.maxOff / l end
     s.pos = { s.pos[1] + blend * dx, s.pos[2] + blend * dy, s.pos[3] }
     local angle = math.deg(math.acos(math.max(-1, math.min(1, line.d[3]))))
     s.rot = qmul(qaxis(cross({ 0, 0, 1 }, line.d), angle * blend), s.rot)

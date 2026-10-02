@@ -1,6 +1,6 @@
 # 交接紀錄：米凱拉風格《魔物獵人 荒野》mod
 
-最後更新：2026-10-03 01:45（**第一帳號：第七輪武器修正，已裝進遊戲**——螺旋跟著蓄力計時器、用骨頭連續伸長（不是一格格跳）、弓一朵一朵開花、太刀光絲改到氣刃蓄力、操蟲棍精華計時器修正、輕弩花苞抬到地面上；**操蟲棍三燈蓄力四個設計方案等使用者挑**；見第 0 節最新一則；**第二帳號同時在做人物**）。之前（本機 session，第一帳號）：脖子接縫重做（身體從外面相切貼上臉的脖子）；身體修正（骨架對齊造成的啤酒肚、腹股溝摺線）；片手劍校正追蹤、頭冠進遊戲（角色第一步）；之前：蓄力力量感的設計提案 → 使用者挑選 → 長槍、大劍、太刀、充能斧、弓、操蟲棍、銃槍、大錘的遊戲版做完並裝進遊戲；全部武器的攻擊軌跡改金；分支 `claude/two-account-handoff-plan`）。兩個帳號輪流做：第一帳號做雙劍、大劍、輕弩和換裝腳本的共用功能，第二帳號做其他武器和裝置（現在換裝腳本、特效腳本都在第一帳號手上）
+最後更新：2026-10-03 02:00（**第一帳號：第七輪武器修正，已裝進遊戲**——螺旋跟著蓄力計時器、用骨頭連續伸長（不是一格格跳）、弓一朵一朵開花、太刀光絲改到氣刃蓄力、操蟲棍精華計時器修正、輕弩花苞抬到地面上；**操蟲棍三燈蓄力 D 三色光旋做完**；操蟲棍攻擊軌跡先紅再金修了；見第 0 節最新一則；**第二帳號同時在做人物**）。之前（本機 session，第一帳號）：脖子接縫重做（身體從外面相切貼上臉的脖子）；身體修正（骨架對齊造成的啤酒肚、腹股溝摺線）；片手劍校正追蹤、頭冠進遊戲（角色第一步）；之前：蓄力力量感的設計提案 → 使用者挑選 → 長槍、大劍、太刀、充能斧、弓、操蟲棍、銃槍、大錘的遊戲版做完並裝進遊戲；全部武器的攻擊軌跡改金；分支 `claude/two-account-handoff-plan`）。兩個帳號輪流做：第一帳號做雙劍、大劍、輕弩和換裝腳本的共用功能，第二帳號做其他武器和裝置（現在換裝腳本、特效腳本都在第一帳號手上）
 
 > **新的 session 先讀完這份**，再依需要讀第 2 節列的文件。這份是總覽和索引，細節都在各文件裡。
 > 做完任何一步，就更新第 9 節「下一步」和第 4 節的進度表，commit 並 push。
@@ -175,6 +175,7 @@ eck_sheet.png`（正面／斜前／側面／背面），全身 `bodyody_variant
 | 重弩、輕弩 | 三顆懸浮光點＝點火量表／速射量表 |
 | 狩獵笛 | 音符點亮光弦；演奏時聲波環擴大 |
 | 能量盾 | 防禦時光膜、樹紋變亮；完美防禦閃亮金＋擴散光環 |
+| 操蟲棍三燈蓄力 | **D 三色光旋**（2026-10-03 使用者選）：三朵精華花化成紅白橘三股光絲，蓄力時從上刃光環螺旋編上刀刃（一段 45 %、二段收成刀尖外一點金光），上升螺旋斬揮完才淡出 |
 | **操蟲棍精華** | 紅白橘＝法環的**猩紅腐敗、冰凍、癲火**（使用者的點子）。平時只有光刃；**點燈後球才出現、繞著刃轉，不要光環**。**走寫實質感，不要能量感、科技感**：腐敗＝粉紅黴球（像腐敗苔藥）＋寫實小腐敗蝶（深紅、黑翅脈、破翅，夾紫藍和白）；癲火＝捲曲火球（像癲火聖印記，中心暗）；冰凍＝霜面冰塊＋不斷逸散的寒氣（像輝石冰塊）。三燈齊光刃亮金 |
 
 ### 武器裝置（`prototypes/devices/`，程式 `devices.py`）
@@ -298,7 +299,7 @@ eck_sheet.png`（正面／斜前／側面／背面），全身 `bodyody_variant
 ## 8. 待決定的事
 
 - **發布到 Nexus Mods（使用者 2026-10-02：不急，確認做得到而已）**：等**米凱拉人物也做好**再一起包，或兩者都好了再分開上傳。到時要準備：Fluffy／手動都能裝的 zip（pak＋`reframework/autorun` 的換裝、特效腳本，不含偵察腳本、欄位記錄器預設關）、前置 REFramework、英中介紹與安裝說明、致謝（REFramework、RE Mesh Editor、RE Asset Library、REE.PAK.Tool）；改色的特效 pak 是改過的卡普空檔案（灰色地帶，放不放或當選配要使用者決定）；上傳由使用者自己操作。雛形：`release/MiquellaLight_v0.1.zip`
-- **操蟲棍三燈蓄力（上升螺旋斬）四選一**（2026-10-03 提案，`prototypes/action_states/glaive_charge.png`，DESIGN.md「操蟲棍三燈蓄力・提案」）：A 三花聚頂／B 螺旋花序／C 金絲蝶翼／D 三色光旋。遊戲欄位：`<ChargeLv>k__BackingField` 0～2、`_ChargeTimer`，動作 `cHoldAttackSuper` → `cBatonUpSlashSuper`
+- （已決定 2026-10-03：操蟲棍三燈蓄力選 **D 三色光旋**，遊戲版已做，見第 9 節「第七輪」）
 - 四個新裝置（重弩、輕弩、弓、狩獵笛）使用者還沒回意見
 - 覆蓋原版檔案，還是用腳本掛上去（建議腳本掛載）
 - 頭髮微光的做法（建議：編髮發光、散髮不發光）
@@ -395,6 +396,8 @@ eck_sheet.png`（正面／斜前／側面／背面），全身 `bodyody_variant
 - **腳本**：`update_grow`（說明在換裝腳本 README「跟著蓄力連續長出來」）、`with_grow`、`read_path`、`array_numbers`、`number_of`；長槍轉速 `spin.grow`；銃槍金絲連續；操蟲棍 `extract_indices`（讀 `app.Wp10Def.EXTRACT_TYPE` 的列舉值，讀不到就紅 0、白 1、橘 2）；欄位記錄器也記陣列（`ExtractTimer[0]` 等）。`set_alpha` 移到前面給大家用
 - **輕弩花苞**：`build_device_kit.wyvernblast` 的位移 -0.13 → +0.02（原版落地圓盤在 y -0.05～+0.06，地面在特效原點）。對照圖 `MiquellaTools\work\previews\grow\bud_ground.png`
 - 預覽工具 `preview_grow.py`（照腳本的算法、照遊戲時間）；`preview_morph.py` 加了 `__main__` 判斷才能被 import
+- **使用者 02:00 回覆：「D 挺好看的」→ D 遊戲版做完、已裝進遊戲**：`arsenal.glaive_braid_parts`（三股光絲＋刀尖光點，16 段、軸上生長骨頭 `MQ_Braid1～32`）、`build_weapon_kit.insect_glaive`（`MiquellaExtractGrow*` 用精華三色貼圖，UV 指到各自精華的亮色帶）；腳本 `grow.prefix`、`extracts.absorb`（三朵花被吸進光絲、放開後回來）、只在 `cHoldAttackSuper` 長、`cBatonUpSlashSuper` 揮完才淡出；升段時間 0.8／1.6 是猜的（第一次蓄力會學到）。**加完撞到 Lua 主程式 200 個 local 的上限**（遊戲裡會整個載入失敗）→ 骨頭表收成 `GROW.*`、常數收進表，現在 172 個。測試 230 項全過
+- **操蟲棍攻擊軌跡「先紅再金」（使用者 02:00：跟雙刀以前一樣，主要在蓄力迴旋後派生的升空迴旋）**：原因跟雙刀一樣——軌跡 `11_it10_001`／`004` 的 `P_trail` 在特效檔裡是**白色**，紅色是遊戲執行時染的（改特效檔沒用），特效腳本對操蟲棍每秒只掃 4 次（之前放獵蟲時記憶體升高才改慢的），新軌跡最多紅 0.25 秒才被染金 → **特效腳本：操蟲棍攻擊中（獵人動作名含 Slash／Attack／Baton／Jump… 的 `fastWhile`）每幀掃，平常和獵蟲飛出去時還是每秒 4 次**，已裝進遊戲（要 Reset scripts）。選單會顯示「4 times a second, every frame while attacking」。`effects_test.lua` 加了這段，全過
 - **操蟲棍三燈蓄力提案（01:40）**：使用者：「蟲棍在點完三燈後也會有蓄力攻擊，去查查看、想個設計方案」。查到：三燈時按住攻擊 `cHoldAttackSuper`（蓄兩段，`<ChargeLv>` 0～2、`_ChargeTimer` 最大 4.35），放開 `cBatonUpSlashSuper`（上升螺旋斬）→ `cSelfJumpLand`。四個方向 `glaive_charge.png` 已傳給使用者，**等他挑**（第 8 節）。挑了之後：A／D 用光花軌道骨頭（`orbit` 的半徑、高度、速度跟蓄力走）＋刀尖新零件或三色光絲的生長骨頭；B 用生長帶＋旋轉骨頭；C 用翅膀骨頭展開
 - **骨頭連續拉伸（01:30 加的）**：`arsenal.strand_point`／`strand_chains`（每條光絲在自己身上的骨頭點）、`grow_chain`（長槍軸上）；`build_weapon_kit.grow_chain_setup`（加骨頭、依高度綁權重：一段的頂點綁在它兩端的骨頭之間）、`write_grow`（輸出 `<kit>/<模型>_grow.lua`，貼進腳本的 `GROW_GS／LS／LN`）；腳本 `grow_joints`、`step_grow_joints`（正在長的那段裡還沒到的骨頭移到前緣，長槍再轉回螺旋角度；長過的放回原位設一次）、`GROW_SNAP`。`preview_grow.py` 也照這套算法動骨頭。骨頭數：大劍 154、太刀約 126、長槍 121（RE 網格上限 256）。近看檢查 `gs_zoom.png`、`lance_zoom.png`（`MiquellaTools\work\previews\grow\`）
 - **如果遊戲裡不對**：⓪光絲出現但一格一格跳、或尖端附近有一團光 → 骨頭沒動：選單 `Growth bones found:` 是不是 n/n（0 就是新骨頭沒建立關節）；①光絲完全沒出現 → 選單 `Growth:` 看段數和計時器有沒有讀到（`?` 就是欄位名錯）；②長得比升段快／慢 → `Growth:` 的 next level 有沒有變 `learned`，`fields_*.json` 的 `events` 有 `charge ...: level k at ...`；③太刀氣刃蓄力沒長 → `actions` 裡氣刃蓄力的動作名（現在找含 `KijinCharge` 的）；④操蟲棍還是沒光花 → `Extracts:` 寫 `not readable` 就是陣列讀法不對（`array_numbers` 試了 `get_elements`／`get_size`＋`get_element`／`get_Length`＋`GetValue`），三個數字對不上顏色就看 `(red 0, white 1, orange 2: assumed)` 改順序

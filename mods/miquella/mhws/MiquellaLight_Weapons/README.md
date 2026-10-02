@@ -65,6 +65,9 @@
 | 大劍 | `_ChargeLevel`（`CHARGE_FIELDS`） | `_ChargeTimer` | 0.8／1.55／2.3（一般蓄力；其他蓄力種類不同，依 `_ChargeType` 各自學） | 三段時的火花照舊 `MiquellaCharge3` |
 | 長槍 | `_FinishChargeLevel` | `_FinishChargeTimer` | 0.8／2.0／3.6 | 細光絲從一段開始長；光鑽轉速跟著長的程度（`spin.grow`） |
 | 太刀 | `_KijinChargeLv`（氣刃蓄力） | `_KijinChargeTimer` | 0.8／1.6／2.9 | 只在 `cKijinCharge*` 動作裡開始長（`action`），大迴旋斬 `cKijinSlashRound` 揮完才淡出（`hold`）；亮金、越長越亮（`mul`） |
+| 操蟲棍（三燈蓄力，2026-10-03 使用者選 D） | `<ChargeLv>`（0～2） | `_ChargeTimer` | 0.8／1.6（猜的，參數檔看不出，玩一次就會學到） | `prefix = "MiquellaExtractGrow"`（材質用精華三色貼圖，`color` 白色）、16 段、骨頭 `MQ_Braid1～32`（軸上）；只在 `cHoldAttackSuper` 開始長、上升螺旋斬 `cBatonUpSlashSuper` 揮完才淡出；`extracts.absorb`：三朵精華花隨著光絲長出來淡掉、之後再回來 |
 | 弓 | `<ChargeLv>`（平時 1） | `_ChargeTimer`（沒有就 `_OnceChargeTimer`） | 遊戲的 `_ActionParam._ChargeTimeLv2～4`（1／2／3） | `flowers = 7`：每段的時間開兩朵（一朵一朵），到最高段剩下的接連開完（`post` 0.6 秒），弓尖大花最後；最高段讀 `<MaxChargeLv>` |
 
-預覽：`prototypes/scripts/preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <輸出>`（照遊戲的時間做 GIF 和一排格子），輸出在 `MiquellaTools\work\previews\grow\`。
+**注意：Lua 的主程式最多 200 個 local**（超過整個腳本載入失敗，遊戲裡也一樣；2026-10-03 加操蟲棍時撞到過）：現在 172 個，生長骨頭表放在 `GROW.GS／LS／LN／IG`、常數收在 `TRACE`、`ARROW`、`GL`、`DOTS`、`BOOST`、`EXTRACT`、`PACK` 表裡。新增東西優先放進現有的表。
+
+預覽：`prototypes/scripts/preview_grow.py <kit .blend> <great_sword|lance|long_sword|bow> <輸出> [每秒格數]`（照遊戲的時間做 GIF 和一排格子），輸出在 `MiquellaTools\work\previews\grow\`。

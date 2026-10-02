@@ -1,5 +1,5 @@
 """Step 2 of 2 (step 1: hair512_parts.py makes hair512.blend). Hairstyle 512 + 12 thin braids among the loose waves + the main braid lengthened (same width).
-Variant A: three thin braids fall in front of the shoulders; B: all at the back.
+Variant A: one thick braid in front of each shoulder; B: all at the back.
 Usage: bpy45 python hair512_braids.py <A|B> [out dir]   (renders contain Capcom models: keep out of the repo)"""
 import math, os, random, sys
 import bpy, bmesh
@@ -32,8 +32,10 @@ BACK = [(-88, 1.612, 1.38, 0.0095, 0.85, 1), (-80, 1.605, 1.22, 0.011, 0.75, 0),
         (50, 1.59, 1.24, 0.010, 0.7, 1), (57, 1.595, 1.15, 0.011, 0.7, 0),
         (78, 1.605, 1.30, 0.0105, 0.75, 0), (96, 1.615, 1.36, 0.009, 0.85, 1)]
 FRONT = [  # side (+1 left / -1 right), start azimuth, x on shoulder, end z, width
-    (1, 124, 0.112, 1.20, 0.0115), (1, 108, 0.135, 1.27, 0.0105), (-1, 120, 0.115, 1.23, 0.012)]
-FRONT_REPLACES = {0, 10, 11}   # indices in BACK dropped in variant A
+    # as thick as the two side twists that merge into the main braid (~3 cm)
+    (1, 122, 0.112, 1.17, 0.030), (-1, 120, 0.115, 1.15, 0.030)]
+THIN_SCALE = 1.5   # user 2026-10-03: the thin braids were too thin
+FRONT_REPLACES = {0, 11}   # indices in BACK dropped in variant A
 
 
 def flatten_new(before, color):
@@ -203,26 +205,27 @@ def braid(name, pts, outs, W, color, tail_len=None, seed=0, tie=True, tail=True,
         tb.ring_tube(rings)
         objs.append(tb.obj(name + "_tie", TIE_COL))
     if tail:
-        tl = tail_len or 3.2 * W
+        # soft fan of flat locks (wavy, tapering), fuller on thick braids
+        tl = tail_len or 3.0 * W
         kb = Builder()
-        for m in range(7):
-            ang = 2 * math.pi * m / 7 + rnd.uniform(-0.3, 0.3)
-            spread = Vector(ne * math.cos(ang) + be * math.sin(ang))
-            ln = tl * rnd.uniform(0.65, 1.0)
-            wv = rnd.uniform(-1, 1)
+        count = 9 if W < 0.02 else 14
+        for m in range(count):
+            ang = 2 * math.pi * m / count + rnd.uniform(-0.25, 0.25)
+            spread = Vector(ne * math.cos(ang) + be * math.sin(ang) * 0.6)
+            ln = tl * rnd.uniform(0.6, 1.0)
+            wv, fq = rnd.uniform(0, 6.3), rnd.uniform(2.5, 4.0)
             cs = []
-            for h in range(13):
-                u = h / 12
-                c = (end + te * (ln * u + 0.002) + spread * (0.12 * W + 0.22 * W * u)
-                     + ne * (0.15 * W * math.sin(3 * u + wv)))
-                cs.append(c)
+            for h in range(17):
+                u = h / 16
+                cs.append(end + te * (ln * u + 0.002) + spread * (0.10 * W + 0.30 * W * math.sin(u * 2.2))
+                          + spread.cross(te).normalized() * (0.10 * W * math.sin(fq * u * 3.1416 + wv)))
             rings = []
             for h, c in enumerate(cs):
-                u = h / 12
-                w = 0.13 * W * (1 - 0.85 * u)
+                u = h / 16
+                w = 0.20 * W * (1 - 0.9 * u ** 1.5)
                 side = spread.cross(te).normalized()
-                rings.append([c + side * (w * math.cos(2 * math.pi * k / 6)) + spread * (0.35 * w * math.sin(2 * math.pi * k / 6))
-                              for k in range(6)])
+                rings.append([c + side * (w * math.cos(2 * math.pi * k / 8)) + spread * (0.22 * w * math.sin(2 * math.pi * k / 8))
+                              for k in range(8)])
             kb.ring_tube(rings)
         objs.append(kb.obj(name + "_tail", color))
     return objs
@@ -394,6 +397,7 @@ def main():
     # --- thin braids
     back = [b for i, b in enumerate(BACK) if not (VARIANT == "A" and i in FRONT_REPLACES)]
     for n, (phi, z0, z1, w, fac, tuck) in enumerate(back):
+        w *= THIN_SCALE
         ctrl, outs = [], []
         z = z0
         while z > z1:

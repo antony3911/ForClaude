@@ -415,23 +415,32 @@ def bake(obj, arm):
 
 # ------------------------------------------------------------------ cut, materials
 
-# The game's face mesh (ch00_000_0000) covers the neck down to an open rim (front 1.43, nape
-# 1.53-1.56) lined inside by a narrow band (its Group_7, left out); on the hunter a collar hides
-# the rim. Miquella's neck shows (user 2026-10-02), so our neck runs up OVER the face's: per
-# direction a smooth curve leaves the body (upper chest, trapezius, upper back) along its own
-# surface, rises over the rim and lies down onto the face's neck, meeting it at a tangent
-# NECK_MERGE above the rim, where our neck ends flush with it (NECK_EPS out). So the neck widens
-# into the shoulders like a real one and the seam has no step and no kink. Near the rim the body
-# takes the face's skin weights (`face_neck_weights`). Tried before (user: "the neck is
-# twisted", "a spur", "two pieces"): stopping at the rim (inside the face above it, or covering
-# only the rim) left the face's straight neck looking stuck into the body.
-NECK_MERGE = (0.02, 0.035)         # how far above the rim it meets the face: front, sides and back
-NECK_LOW = (0.045, 0.03, 0.06)     # how far below the rim the curve leaves the body: front, sides, back
-NECK_EPS, NECK_RIM_EPS, NECK_CLEAR = 0.0003, 0.0012, 0.006    # outside the face; clear of the rim's flaps
-NECK_GAP = 0.0008        # off the face over it (finer bumps of the face's surface don't poke through)
-NECK_T0, NECK_ROWS = 0.3, 10        # the body is cut this far along the curves; new rows from there
-NECK_SMOOTH = 4                     # passes smoothing the curves around
-NECK_STEP, NECK_SAMPLES = 5.0, 48  # degrees between the curves, points along each
+# The game's face mesh (ch00_000_0000) covers the whole neck down to an open rim (front 1.43,
+# nape 1.53), lined inside by a narrow band (its Group_7). The game's own innerwear (ch02_002_0002,
+# its skin) starts right there, measured 2026-10-03: its top edge IS the face's rim, the same 48
+# vertices (0.000 mm apart), with the face's normals (0 degrees apart) and weights (identical)
+# on them, so the seam never opens and shows no shading line, and the face's neck keeps its
+# shape. Our neck does the same (user 2026-10-03: covering the face's neck from outside made "a
+# big ring bulging out"; a seam may show, a jewel can cover it, the shape may not change): the
+# face stays untouched, our body's top edge is the face's rim.
+# Below the rim: MakeHuman's neck is ~2 cm thinner than the face's (a man's) and its trapezius
+# starts ~6 cm lower, so a curve from the rim to MakeHuman's surface a few cm below had to tuck in
+# (a fold at the sides; user: "obvious deformation", and the neck looked long). So from each rim
+# vertex the profile aims NECK_DEPTH down and out at NECK_SLOPE (the neck-to-shoulder line: up
+# the trapezius at the sides, which shortens the neck; the upper chest; the upper back, under the
+# bulge MakeHuman's upper back makes behind the neck) and meets MakeHuman's body at its surface
+# nearest that point; the profile from there up to the rim (radius-height plane) is a cubic
+# Hermite leaving the body along its surface and reaching the rim along the face's (the plane of
+# the face's normal there), so the face's neck carries on into ours without a kink. Below the rim
+# the game's innerwear is no guide: its skin stands up there like a collar's lining. MakeHuman is
+# cut cleanly where the profiles meet it (`contour_cut`), everything from there up is built new
+# (`neck_tube`).
+NECK_SLOPE = (30.0, 50.0, -5.0)   # degrees out from straight down, the rim to the body: front, sides, back
+NECK_DEPTH = (0.05, 0.07, 0.09)   # how far below the rim the profiles meet the body: front, sides, back
+                                  # (back: under MakeHuman's upper back, which bulges up behind the neck)
+NECK_ROWS = 12                     # rows from the cut up to the rim
+NECK_SMOOTH = 4                    # passes smoothing the profiles around (not at their ends)
+NECK_SAMPLES = 64                  # points along each profile
 NECK_CUT = 1.47          # without the face mesh: a level cut
 UNDERWEAR = (0.78, 0.99, 0.30)   # boxer-brief band: lowest, highest, |x| limit (the hands hang beside it)
 
@@ -443,17 +452,23 @@ def face_outer(face_objs):
 
 def face_geometry(face_objs):
     """What fitting the neck needs from the face: its outer surface (world-space vertices and
-    polygons) and its neck rim (the lowest open boundary)."""
+    polygons) and its neck rim (the lowest open boundary): each rim vertex's position and the
+    face's own (custom) normal there, as the file has it."""
     import bmesh
+    from mathutils import kdtree
     verts, normals, polys, loops = [], [], [], []
     for o in face_outer(face_objs):
         base = len(verts)
         verts += [o.matrix_world @ v.co for v in o.data.vertices]
         rot = o.matrix_world.to_3x3()
-        normals += [(rot @ v.normal).normalized() for v in o.data.vertices]
-        polys += [[base + i for i in p.vertices] for p in o.data.polygons]
+        me = o.data
+        acc = [Vector() for _ in me.vertices]
+        for li, lp in enumerate(me.loops):          # the file's normals (custom, per corner)
+            acc[lp.vertex_index] += Vector(me.corner_normals[li].vector)
+        normals += [(rot @ n).normalized() for n in acc]
+        polys += [[base + i for i in p.vertices] for p in me.polygons]
         bm = bmesh.new()
-        bm.from_mesh(o.data)
+        bm.from_mesh(me)
         # The face is split along its UV seams (front and back of the neck): welded, those don't
         # count as edges.
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
@@ -472,9 +487,12 @@ def face_geometry(face_objs):
             loops.append([o.matrix_world @ v.co for v in vs])
         bm.free()
     rim = min(loops, key=lambda L: min(p.z for p in L))     # the lowest loop: the neck rim
-    near = [o.matrix_world @ v.co for o in face_objs for v in o.data.vertices
-            if 1.38 < (o.matrix_world @ v.co).z < 1.66]          # the lining included
-    return {"pts": verts, "normals": normals, "polys": polys, "rim": rim, "near": near}
+    kd = kdtree.KDTree(len(verts))
+    for i, p in enumerate(verts):
+        kd.insert(p, i)
+    kd.balance()
+    rim = [(p, normals[kd.find(p)[1]]) for p in rim]
+    return {"pts": verts, "normals": normals, "polys": polys, "rim": rim}
 
 
 def neck_center(G, z):
@@ -515,106 +533,133 @@ def ray_hit(bvh, G, ang, z):
     return dist, (-nz / k, nr / k)
 
 
+def hermite(A, TA, B, TB, n):
+    """n + 1 points of the cubic Hermite curve from A to B (unit tangents scaled by the chord)."""
+    L = (B - A).length
+    out = []
+    for i in range(n + 1):
+        t = i / n
+        h00, h10 = 2 * t ** 3 - 3 * t ** 2 + 1, t ** 3 - 2 * t ** 2 + t
+        h01, h11 = -2 * t ** 3 + 3 * t ** 2, t ** 3 - t ** 2
+        out.append(A * h00 + TA * (L * h10) + B * h01 + TB * (L * h11))
+    return out
+
+
+def resample(pts, n):
+    """n + 1 points evenly spaced along polyline pts."""
+    acc = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        acc.append(acc[-1] + (b - a).length)
+    out, j = [], 0
+    for i in range(n + 1):
+        d = acc[-1] * i / n
+        while j < len(pts) - 2 and acc[j + 1] < d:
+            j += 1
+        seg = acc[j + 1] - acc[j]
+        out.append(pts[j].lerp(pts[j + 1], (d - acc[j]) / seg if seg > 0 else 0.0))
+    return out
+
+
 class FaceNeck:
-    """The face's neck: its rim's height around (point by point; its notches are narrower than
-    any sector) and its surface (for rays)."""
+    """The face's neck: its rim (every vertex in order around: angle, position, the face's normal
+    there) and its surface (for rays). One profile per rim vertex once built."""
     def __init__(self, G, face):
         from mathutils.bvhtree import BVHTree
         self.G = G
-        self.rim = sorted((polar(G, p)[0], p.z) for p in face["rim"] if polar(G, p)[1] < 0.12)
-        self.rim_rs = sorted((polar(G, p)[0], polar(G, p)[1]) for p in face["rim"] if polar(G, p)[1] < 0.12)
+        self.rim = sorted(((polar(G, p)[0], p, n) for p, n in face["rim"]), key=lambda t: t[0])
+        self.angles = [a for a, _, _ in self.rim]
         self.bvh = BVHTree.FromPolygons(face["pts"], face["polys"])
-        from mathutils import kdtree
-        self.near = face["near"]
-        self.kd = kdtree.KDTree(len(self.near))
-        for i, q in enumerate(self.near):
-            self.kd.insert(q, i)
-        self.kd.balance()
         self.curves = None
 
-    def clear_r(self, ang, z):
-        """The farthest out any face point (the rim's flaps, the lining's hem) reaches around
-        (ang, z)."""
-        h = ray_hit(self.bvh, self.G, ang, z)
-        r0 = h[0] if h else self.rim_radius(ang)        # below the rim: around the rim's radius
+    def to_world(self, ang, r, z):
         c = neck_center(self.G, z)
         a = math.radians(ang)
-        q = Vector((c.x + r0 * math.sin(a), c.y - r0 * math.cos(a), z))
-        return max([r0] + [polar(self.G, self.near[i])[1] for _, i, _ in self.kd.find_range(q, NECK_CLEAR)])
+        return Vector((c.x + r * math.sin(a), c.y - r * math.cos(a), z))
 
-    def rim_radius(self, ang):
+    @staticmethod
+    def up_tangent(ang, n):
+        """A surface normal -> the surface's tangent going up, in the radius-height plane at ang."""
+        d = Vector((math.sin(math.radians(ang)), -math.cos(math.radians(ang)), 0.0))
+        nr, nz = n.dot(d), n.z
+        if nr < 0:
+            nr, nz = -nr, -nz
+        k = math.hypot(nr, nz) or 1.0
+        return Vector((-nz / k, nr / k))
+
+    def bracket(self, ang):
+        """The rim vertices either side of angle ang, and the share of the way between them."""
         import bisect
-        R = self.rim_rs
-        i = bisect.bisect_left(R, (ang, -9.9))
-        a0, r0 = R[i - 1] if i > 0 else (R[-1][0] - 360.0, R[-1][1])
-        a1, r1 = R[i] if i < len(R) else (R[0][0] + 360.0, R[0][1])
-        return r0 + (r1 - r0) * (ang - a0) / max(a1 - a0, 1e-6)
+        A, n = self.angles, len(self.angles)
+        ang %= 360.0
+        i = bisect.bisect_right(A, ang)
+        k0, k1 = (i - 1) % n, i % n
+        a0 = A[k0] - (360.0 if i == 0 else 0.0)
+        a1 = A[k1] + (360.0 if i == n else 0.0)
+        return k0, k1, (ang - a0) / max(a1 - a0, 1e-9)
 
     def edge(self, ang):
-        import bisect
-        R = self.rim
-        i = bisect.bisect_left(R, (ang, -9.9))
-        a0, z0 = R[i - 1] if i > 0 else (R[-1][0] - 360.0, R[-1][1])
-        a1, z1 = R[i] if i < len(R) else (R[0][0] + 360.0, R[0][1])
-        return z0 + (z1 - z0) * (ang - a0) / max(a1 - a0, 1e-6)
-
-    def merge(self, ang):
-        return self.edge(ang) + around(ang, *NECK_MERGE)
+        """The rim's height at angle ang."""
+        k0, k1, t = self.bracket(ang)
+        return self.rim[k0][1].z + (self.rim[k1][1].z - self.rim[k0][1].z) * t
 
     def face_r(self, ang, z):
         h = ray_hit(self.bvh, self.G, ang, z)
         return h[0] if h else None
 
     def build(self, body_bvh):
-        """One curve per NECK_STEP degrees, from the body's surface below the rim to the face's
-        NECK_MERGE above it (cubic Hermite in the radius-height plane, tangents from both)."""
+        """One profile per rim vertex (radius-height plane), from where it meets the body (A) up
+        to that vertex (B), a Hermite curve leaving the body along its surface and reaching the
+        rim along the face's (the plane of the face's normal there). A: the body's surface
+        nearest the point NECK_DEPTH below B along a line NECK_SLOPE out from straight down (so
+        the feet go round smoothly: trapezius at the sides, upper chest, upper back under
+        MakeHuman's bulge behind the neck, which goes)."""
+        G, n = self.G, len(self.rim)
+        cols = []
+        for ang, p, nrm in self.rim:
+            B, TB = Vector((polar(G, p)[1], p.z)), self.up_tangent(ang, nrm)
+            depth = around(ang, *NECK_DEPTH)
+            aim = self.to_world(ang, B.x + depth * math.tan(math.radians(around(ang, *NECK_SLOPE))), p.z - depth)
+            cols.append((ang, p, B, TB, aim))
         self.curves = []
-        n = int(round(360.0 / NECK_STEP))
-        for k in range(n):
-            ang = k * NECK_STEP
-            zm = self.merge(ang)
-            zl = self.edge(ang) - around(ang, *NECK_LOW)
-            hb, ha = ray_hit(self.bvh, self.G, ang, zm), ray_hit(body_bvh, self.G, ang, zl)
-            if hb is None or ha is None:
-                raise RuntimeError(f"neck: no surface at {ang} degrees")
-            A, B = Vector((ha[0], zl)), Vector((hb[0] + NECK_EPS, zm))
-            TA, TB = Vector(ha[1]), Vector(hb[1])
-            L = (B - A).length
-            pts = []
-            for i in range(NECK_SAMPLES + 1):
-                t = i / NECK_SAMPLES
-                h00, h10 = 2 * t ** 3 - 3 * t ** 2 + 1, t ** 3 - 2 * t ** 2 + t
-                h01, h11 = -2 * t ** 3 + 3 * t ** 2, t ** 3 - t ** 2
-                pts.append(A * h00 + TA * (L * h10) + B * h01 + TB * (L * h11))
-            # Over the rim the curve has to clear the rim's flaps and the lining's hem: where it
-            # doesn't, it bulges out smoothly (most at the rim, nothing at either end).
-            zr = self.edge(ang)
-            need = 0.0
-            for dz in (-0.007, -0.0035, 0.0, 0.004, 0.008):     # the lining's hem hangs below the rim
-                rc = self.clear_r(ang, zr + dz)
-                rr = curve_r_at(pts, zr + dz)
-                if rc is not None and rr is not None:
-                    need = max(need, rc + NECK_RIM_EPS - rr)
-            if need > 0:
-                for q in pts:
-                    if q.y <= zr:
-                        q.x += need * smoothstep(zl, zr - 0.009, q.y)
-                    else:
-                        q.x += need * (1 - smoothstep(zr + 0.008, zm, q.y))
-            self.curves.append(pts)
-        # Neighbouring directions can differ a lot (the collarbones, the trapezius' edge): smooth
-        # the curves around, or the neck wrinkles between them.
-        n = len(self.curves)
+        for ang, p, B, TB, aim in cols:
+            loc, nrm = body_bvh.find_nearest(aim)[:2]
+            if os.environ.get("NECK_DEBUG"):
+                log(f"  foot {ang:5.1f}: r {polar(G, loc)[1] * 100:.1f} cm, {(loc.z - p.z) * 100:+.1f} cm, "
+                    f"{(loc - aim).length * 100:.1f} cm off the aim")
+            A, TA = Vector((polar(G, loc)[1], loc.z)), self.up_tangent(ang, nrm)
+            chord = (B - A).normalized()
+            while TA.y < 0.25:                  # leave the body rising, never dipping first
+                TA = (TA + chord * 0.25).normalized()
+            self.curves.append(resample(hermite(A, TA, B, TB, NECK_SAMPLES * 2), NECK_SAMPLES))
+        log("  neck: profiles meet the body at " + ", ".join(
+            f"{ang:.0f}deg r {c[0].x * 100:.1f} {(c[0].y - B.y) * 100:+.1f}cm"
+            for (ang, _, B, _, _), c in list(zip(cols, self.curves))[::6]))
+        # And the profiles between their ends (they stay on the body and on the rim).
+        keep = [1.0 - smoothstep(0.0, 0.15, i / NECK_SAMPLES) * (1.0 - smoothstep(0.75, 0.95, i / NECK_SAMPLES))
+                for i in range(NECK_SAMPLES + 1)]
         for _ in range(NECK_SMOOTH):
             self.curves = [[(self.curves[(k - 1) % n][i] + self.curves[k][i] * 2 + self.curves[(k + 1) % n][i]) / 4
+                            * (1 - keep[i]) + self.curves[k][i] * keep[i]
                             for i in range(NECK_SAMPLES + 1)] for k in range(n)]
+        # A profile never dips below where it has been (neighbours meeting the body far lower
+        # pull its middle down): everything under a dip would count as past its foot.
+        for c in self.curves:
+            for i in range(1, len(c)):
+                c[i].y = max(c[i].y, c[i - 1].y)
 
     def curve(self, ang):
-        f = (ang % 360.0) / NECK_STEP
-        k0 = int(f) % len(self.curves)
-        k1 = (k0 + 1) % len(self.curves)
-        t = f - int(f)
+        k0, k1, t = self.bracket(ang)
         return [p.lerp(q, t) for p, q in zip(self.curves[k0], self.curves[k1])]
+
+    def past_foot(self, co):
+        """Which side of its direction's foot point co lies, along the chord from the foot up to
+        the rim (m): positive toward the rim (MakeHuman's there goes), negative on the body.
+        Only near the feet does it matter (`contour_cut` takes the side the head is on)."""
+        ang, r, _ = polar(self.G, co)
+        if r > 0.25 or co.z < 1.2:
+            return -1.0
+        c = self.curve(ang)
+        return (Vector((r, co.z)) - c[0]).dot((c[-1] - c[0]).normalized())
 
 
 def curve_at(curve, t):
@@ -623,118 +668,92 @@ def curve_at(curve, t):
     return curve[i].lerp(curve[i + 1], f - i)
 
 
-def curve_r_at(curve, z):
-    """The curve's radius at height z (its first crossing), or None."""
-    for a, b in zip(curve, curve[1:]):
-        if (a.y - z) * (b.y - z) <= 0 and a.y != b.y:
-            return a.x + (b.x - a.x) * (z - a.y) / (b.y - a.y)
-    return None
+def contour_cut(bm, s_of):
+    """Cut the mesh along the zero line of a scalar on its vertices (edges crossing it are split
+    where it crosses, faces split between those points) and delete the positive side the topmost
+    face is on, and anything left hanging loose: a clean edge instead of a row of whole faces'
+    teeth, and the scalar only has to be right near the cut."""
+    import bmesh
+    s = {v: s_of(v.co) for v in bm.verts}
+    zero = set()
+    for e in list(bm.edges):
+        a, b = e.verts
+        sa, sb = s[a], s[b]
+        if sa * sb < 0:
+            _, nv = bmesh.utils.edge_split(e, a, sa / (sa - sb))
+            s[nv] = 0.0
+            zero.add(nv)
+    for f in list(bm.faces):
+        vs = [v for v in f.verts if v in zero]
+        if len(vs) == 2 and not any(vs[1] in (lp.link_loop_next.vert, lp.link_loop_prev.vert)
+                                    for lp in f.loops if lp.vert is vs[0]):
+            bmesh.utils.face_split(f, vs[0], vs[1])
+    positive = {f for f in bm.faces if max(s[v] for v in f.verts) > 0 and min(s[v] for v in f.verts) >= 0}
+
+    def spread(start, inside):
+        seen, stack = {start}, [start]
+        while stack:
+            f = stack.pop()
+            for e in f.edges:
+                for g in e.link_faces:
+                    if g not in seen and inside(g):
+                        seen.add(g)
+                        stack.append(g)
+        return seen
+    top = max(bm.faces, key=lambda f: f.calc_center_median().z)
+    bmesh.ops.delete(bm, geom=list(spread(top, lambda g: g in positive)), context="FACES")
+    parts, left = [], set(bm.faces)
+    while left:
+        part = spread(next(iter(left)), lambda g: True)
+        parts.append(part)
+        left -= part
+    parts.sort(key=len)
+    bmesh.ops.delete(bm, geom=[f for part in parts[:-1] for f in part], context="FACES")
+    log(f"  neck: cut along the profiles' feet; {len(parts) - 1} loose pieces "
+        f"({sum(len(p) for p in parts[:-1])} faces) dropped")
 
 
-def closest_on(curve, q):
-    """The point of polyline `curve` nearest q: (share along it 0..1, point, distance)."""
-    best = (9.9, 0.0, curve[0])
-    n = len(curve) - 1
-    for i in range(n):
-        a, b = curve[i], curve[i + 1]
-        ab = b - a
-        t = max(0.0, min(1.0, (q - a).dot(ab) / max(ab.length_squared, 1e-12)))
-        p = a + ab * t
-        d = (q - p).length
-        if d < best[0]:
-            best = (d, (i + t) / n, p)
-    return best[1], best[2], best[0]
-
-
-def neck_place(G, neck, co):
-    """Where a body vertex near the neck goes, or None if it stays: onto its direction's curve
-    (eased in near the curve's start), never inside the face over its rim."""
-    ang, r, _ = polar(G, co)
-    if r > 0.22 or not 1.30 < co.z < 1.75:
-        return None
-    t, p, dist = closest_on(neck.curve(ang), Vector((r, co.z)))
-    if t <= 0.0 or dist > 0.06:
-        return None
-    if t >= 1.0:                # past the merge: kept only by a face below it; flush on the face
-        p = Vector((r, co.z))
-        rf = neck.face_r(ang, co.z)
-        if rf is not None:
-            p.x = rf + NECK_EPS
-    else:
-        w = smoothstep(0.0, 0.15, t)
-        p = Vector((r, co.z)).lerp(p, w)
-    edge = neck.edge(ang)
-    if p.y >= edge:
-        rf = neck.face_r(ang, p.y)
-        if rf is not None:
-            # NECK_GAP out over the face, closing to NECK_EPS at the merge line (no edge stands off)
-            gap = NECK_EPS + (NECK_GAP - NECK_EPS) * smoothstep(neck.merge(ang), edge + 0.004, p.y)
-            p.x = max(p.x, rf + gap)
-    c = neck_center(G, p.y)
-    a = math.radians(ang)
-    return Vector((c.x + p.x * math.sin(a), c.y - p.x * math.cos(a), p.y))
-
-
-def fit_neck(me, G, neck):
-    from mathutils.bvhtree import BVHTree
-    used = sorted({i for p in me.polygons for i in p.vertices})
-    neck.build(BVHTree.FromPolygons([v.co for v in me.vertices], [list(p.vertices) for p in me.polygons]))
-    zone = []
-    for i in used:
-        v = me.vertices[i]
-        new = neck_place(G, neck, v.co)
-        if new is not None:
-            v.co = new
-            zone.append(i)
-    log(f"  neck: {len(zone)} vertices onto the curves")
-    return zone
-
-
-def relax_neck(me, G, neck, zone, steps=6):
-    """Pulled onto the curves, MakeHuman's vertices bunch up and fold here and there: smooth the
-    zone along the surface (keeping its volume) and put it back on the curves after each step."""
-    me.update()
-    zs = set(zone)
-    nbr = {i: [] for i in zone}
-    for e in me.edges:
-        a, b = e.vertices
-        if a in zs:
-            nbr[a].append(b)
-        if b in zs:
-            nbr[b].append(a)
-    for _ in range(steps):
-        for k in (0.5, -0.53):
-            new = {}
-            for i in zone:
-                if nbr[i]:
-                    avg = sum((me.vertices[j].co for j in nbr[i]), Vector()) / len(nbr[i])
-                    new[i] = me.vertices[i].co + (avg - me.vertices[i].co) * k
-            for i, co in new.items():
-                me.vertices[i].co = co
-        for i in zone:
-            new = neck_place(G, neck, me.vertices[i].co)
-            if new is not None:
-                me.vertices[i].co = new
-
-
-def cut_height(G, neck, p):
-    """Where MakeHuman's neck is cut (NECK_T0 along the curves, below the face's rim; near the
-    neck axis only): `neck_tube` builds the rest."""
-    if neck is None:
-        return NECK_CUT
-    ang, r, _ = polar(G, p)
-    return curve_at(neck.curve(ang), NECK_T0).y if r < 0.16 else 99.0
+def zip_rings(bm, lower, lower_ang, upper, upper_ang):
+    """Triangles between two closed rings of vertices (each in order of growing angle around the
+    neck, with its angles), walking round both by angle: always on along the ring whose next
+    vertex comes first."""
+    def from_ref(ring, angs, ref):
+        s = min(range(len(ring)), key=lambda i: (angs[i] - ref) % 360.0)
+        ring, angs = ring[s:] + ring[:s], angs[s:] + angs[:s]
+        out = []
+        for a in angs:
+            u = ref + (a - ref) % 360.0
+            out.append(u if not out or u >= out[-1] else u + 360.0)
+        return ring, out
+    ref = lower_ang[0]
+    lower, la = from_ref(lower, lower_ang, ref)
+    upper, ua = from_ref(upper, upper_ang, ref)
+    n, m = len(lower), len(upper)
+    i = j = 0
+    faces = []
+    while i < n or j < m:
+        a_next = la[i + 1] if i + 1 < n else la[0] + 360.0
+        b_next = ua[j + 1] if j + 1 < m else ua[0] + 360.0
+        if j >= m or (i < n and a_next <= b_next):
+            faces.append(bm.faces.new((lower[i % n], lower[(i + 1) % n], upper[j % m])))
+            i += 1
+        else:
+            faces.append(bm.faces.new((lower[i % n], upper[(j + 1) % m], upper[j % m])))
+            j += 1
+    return faces
 
 
 def neck_tube(bm, G, neck):
-    """Our neck from the cut up to the merge line, built new: one column per vertex of the cut,
-    NECK_ROWS rows along that direction's curve (MakeHuman's own vertices bunched and folded up
-    there, and the face poked through, user 2026-10-02). Each column carries its cut vertex's
-    weights and UV; the rows over the face's rim stay off it (as `neck_place`)."""
+    """Our neck from the cut (where the profiles start) up to the face's rim, built new: two
+    columns per rim vertex (one on it, one halfway to the next), NECK_ROWS rows along the
+    profiles; the top row is the face's rim itself, one vertex per rim vertex, at exactly its
+    position (as the game's innerwear meets the face). The cut (MakeHuman's vertices, set onto
+    the profiles' start) zips onto the first row. Weights and UVs come from the nearest vertex of
+    the cut."""
     deform = bm.verts.layers.deform.verify()
     uv = bm.loops.layers.uv.active
     edges = [e for e in bm.edges if e.is_boundary and min(v.co.z for v in e.verts) > 1.30
-             and max(polar(G, v.co)[1] for v in e.verts) < 0.18]
+             and max(polar(G, v.co)[1] for v in e.verts) < 0.22]
     adj = {}
     for e in edges:
         a, b = e.verts
@@ -754,6 +773,10 @@ def neck_tube(bm, G, neck):
             seen.add(cur)
             loop.append(cur)
         loops.append(loop)
+    if os.environ.get("NECK_DEBUG"):
+        for lp in sorted(loops, key=len, reverse=True)[:6]:
+            log(f"  cut loop: {len(lp)} verts, z {min(v.co.z for v in lp):.3f}..{max(v.co.z for v in lp):.3f}, "
+                f"r {min(polar(G, v.co)[1] for v in lp) * 100:.1f}..{max(polar(G, v.co)[1] for v in lp) * 100:.1f} cm")
     loop = max(loops, key=len)
     n = len(loop)
     angs = [polar(G, v.co)[0] for v in loop]
@@ -770,105 +793,91 @@ def neck_tube(bm, G, neck):
 
     def place(ang, t):
         p = curve_at(neck.curve(ang % 360.0), t)
-        r, z = p.x, p.y
-        edge = neck.edge(ang % 360.0)
-        if z >= edge:
-            rf = neck.face_r(ang % 360.0, z)
-            if rf is not None:
-                gap = NECK_EPS + (NECK_GAP - NECK_EPS) * smoothstep(neck.merge(ang % 360.0), edge + 0.004, z)
-                r = max(r, rf + gap)
-        c = neck_center(G, z)
+        c = neck_center(G, p.y)
         a = math.radians(ang)
-        return Vector((c.x + r * math.sin(a), c.y - r * math.cos(a), z))
+        return Vector((c.x + p.x * math.sin(a), c.y - p.x * math.cos(a), p.y))
 
-    cols = []
-    for v, ang in zip(loop, col_ang):
-        v.co = place(ang, NECK_T0)
-        w = dict(v[deform])
-        uvv = v.link_loops[0][uv].uv.copy() if uv and v.link_loops else None
-        col = [v]
-        for row in range(1, NECK_ROWS + 1):
-            nv = bm.verts.new(place(ang, NECK_T0 + (1.0 - NECK_T0) * row / NECK_ROWS))
-            for g, x in w.items():
-                nv[deform][g] = x
-            col.append(nv)
-        cols.append((col, uvv))
+    def nearest_cut(ang):
+        return min(range(n), key=lambda i: abs((col_ang[i] - ang + 180.0) % 360.0 - 180.0))
+
+    for v in loop:                  # (on the profiles' start already, give or take the cut's chords)
+        v.co = place(polar(G, v.co)[0], 0.0)
+    cut_w = [dict(v[deform]) for v in loop]
+    cut_uv = [v.link_loops[0][uv].uv.copy() if uv and v.link_loops else None for v in loop]
+    vert_uv = {v: u for v, u in zip(loop, cut_uv)}
+
+    def new_vert(co, ang):
+        nv = bm.verts.new(co)
+        i = nearest_cut(ang)
+        for g, x in cut_w[i].items():
+            nv[deform][g] = x
+        vert_uv[nv] = cut_uv[i]
+        return nv
+
+    m = len(neck.rim)
+    angs = []
+    for k in range(m):
+        a0, a1 = neck.angles[k], neck.angles[(k + 1) % m]
+        angs += [a0, a0 + ((a1 - a0) % 360.0) / 2]
+    rows = [[new_vert(place(a, row / NECK_ROWS), a) for a in angs] for row in range(1, NECK_ROWS)]
+    rim = [new_vert(p.copy(), a) for a, p, _ in neck.rim]
     bm.verts.ensure_lookup_table()
-    made = []
-    for i in range(n):
-        (c0, uv0), (c1, uv1) = cols[i], cols[(i + 1) % n]
-        for row in range(NECK_ROWS):
-            f = bm.faces.new((c0[row], c1[row], c1[row + 1], c0[row + 1]))
-            if uv:
-                for lp, u in zip(f.loops, (uv0, uv1, uv1, uv0)):
-                    if u is not None:
-                        lp[uv].uv = u
-            made.append(f)
-    # Even it out along the surface (inner rows only; the cut and the merge line stay), back off
-    # the face after each step.
-    inner = [(col[row], ang) for (col, _), ang in zip(cols, col_ang) for row in range(1, NECK_ROWS)]
-    for _ in range(4):
-        for k in (0.5, -0.53):
-            new = []
-            for v, ang in inner:
-                nb = [e.other_vert(v) for e in v.link_edges]
-                avg = sum((q.co for q in nb), Vector()) / len(nb)
-                new.append(v.co + (avg - v.co) * k)
-            for (v, _), co in zip(inner, new):
-                v.co = co
-        for v, ang in inner:
-            a, r, c = polar(G, v.co)
-            edge = neck.edge(a)
-            if v.co.z >= edge:
-                rf = neck.face_r(a, v.co.z)
-                if rf is not None:
-                    gap = NECK_EPS + (NECK_GAP - NECK_EPS) * smoothstep(neck.merge(a), edge + 0.004, v.co.z)
-                    if r < rf + gap:
-                        k2 = (rf + gap) / max(r, 1e-6)
-                        v.co.x = c.x + (v.co.x - c.x) * k2
-                        v.co.y = c.y + (v.co.y - c.y) * k2
+    made = zip_rings(bm, loop, col_ang, rows[0], angs)
+    for low, up in zip(rows, rows[1:]):
+        for i in range(2 * m):
+            j = (i + 1) % (2 * m)
+            made.append(bm.faces.new((low[i], low[j], up[j], up[i])))
+    top = rows[-1]
+    for k in range(m):
+        a, b, c = top[2 * k], top[2 * k + 1], top[(2 * k + 2) % (2 * m)]
+        made += [bm.faces.new((a, b, rim[k])), bm.faces.new((b, rim[(k + 1) % m], rim[k])),
+                 bm.faces.new((b, c, rim[(k + 1) % m]))]
+    if uv:
+        for f in made:
+            for lp in f.loops:
+                u = vert_uv.get(lp.vert)
+                if u is not None:
+                    lp[uv].uv = u
     # Facing out?
-    f = made[len(made) // 2]
-    f.normal_update()
-    ang, _, cc = polar(G, f.calc_center_median())
-    out = Vector((math.sin(math.radians(ang)), -math.cos(math.radians(ang)), 0.0))
-    if f.normal.dot(out) < 0:
+    votes = 0
+    for f in made:
+        f.normal_update()
+        ang, _, _ = polar(G, f.calc_center_median())
+        out = Vector((math.sin(math.radians(ang)), -math.cos(math.radians(ang)), 0.0))
+        votes += 1 if f.normal.dot(out) > 0 else -1
+    if votes < 0:
         for f in made:
             f.normal_flip()
-    log(f"  neck: built {n} columns x {NECK_ROWS} rows from the cut to the merge line")
+    log(f"  neck: the cut ({n} vertices) zipped onto {2 * m} columns x {NECK_ROWS - 1} rows, up to the "
+        f"face's rim ({m} vertices)")
+
+
+def rim_lookup(neck):
+    """KD tree over the face's rim vertices (index into neck.rim)."""
+    from mathutils import kdtree
+    kd = kdtree.KDTree(len(neck.rim))
+    for i, (_, p, _) in enumerate(neck.rim):
+        kd.insert(p, i)
+    kd.balance()
+    return kd
 
 
 def match_face_normals(obj, G, neck, face):
-    """Shading across the merge line: up our neck's last stretch over the face, its normals turn
-    to the face's there (custom normals, which the exporter writes), so no line shows where it
-    ends (user 2026-10-02: the neck read as two pieces)."""
-    from mathutils.geometry import barycentric_transform
-    pts, nrm, polys = face["pts"], face["normals"], face["polys"]
+    """Shading across the seam: on the rim our vertices take the face's own normals there (custom
+    normals, which the exporter writes), as the game's innerwear does, so no line shows."""
     me = obj.data
     me.update()
+    kd = rim_lookup(neck)
     out, n = [], 0
     for v in me.vertices:
         normal = v.normal.copy()
-        if 1.38 < v.co.z < 1.66:
-            ang, r, _ = polar(G, v.co)
-            edge, top = neck.edge(ang), neck.merge(ang)
-            if r < 0.14 and edge - 0.002 < v.co.z < top + 0.002:
-                w = smoothstep(edge + 0.4 * (top - edge), top, v.co.z)
-                # The face's own (smooth) normal where a ray from the axis meets it.
-                c = neck_center(G, v.co.z)
-                d = Vector((v.co.x - c.x, v.co.y - c.y, 0.0)).normalized()
-                loc, _, idx, _ = neck.bvh.ray_cast(Vector((c.x, c.y, v.co.z)), d, 0.4)
-                if loc is not None and w > 0:
-                    a, b, cc = polys[idx][:3]
-                    bc = barycentric_transform(loc, pts[a], pts[b], pts[cc],
-                                               Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1)))
-                    fn = nrm[a] * bc.x + nrm[b] * bc.y + nrm[cc] * bc.z
-                    if fn.length > 0 and fn.normalized().dot(normal) > 0.3:
-                        normal = normal.lerp(fn.normalized(), w).normalized()
-                        n += 1
+        _, i, d = kd.find(v.co)
+        if d < 1e-6:
+            normal = neck.rim[i][2].copy()
+            n += 1
         out.append(normal)
     me.normals_split_custom_set_from_vertices(out)
-    log(f"  neck: {n} normals turned to the face's")
+    log(f"  neck: {n} rim normals are the face's")
 
 
 def face_neck_weights(face_objs, arm):
@@ -1127,14 +1136,15 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
     me = obj.data
     neck = FaceNeck(G, face_pts) if face_pts else None
     if neck:
-        zone = fit_neck(me, G, neck)
-        relax_neck(me, G, neck, zone)
+        from mathutils.bvhtree import BVHTree
+        neck.build(BVHTree.FromPolygons([v.co for v in me.vertices], [list(p.vertices) for p in me.polygons]))
     import bmesh
     bm = bmesh.new()
     bm.from_mesh(me)
-    above = [f for f in bm.faces if f.calc_center_median().z > 1.36
-             and f.calc_center_median().z > cut_height(G, neck, f.calc_center_median())]
-    bmesh.ops.delete(bm, geom=above, context="FACES")
+    if neck:
+        contour_cut(bm, neck.past_foot)
+    else:
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_center_median().z > NECK_CUT], context="FACES")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     if neck:
         neck_tube(bm, G, neck)
@@ -1418,6 +1428,8 @@ def blend_face_weights(obj, G, neck, tree, face_ws):
         if w <= 0:
             continue
         near = tree.find_n(v.co, 4)
+        if near and near[0][2] < 1e-6:          # on the rim: exactly the face's weights there
+            near, w = near[:1], 1.0
         inv = [(1.0 / max(d, 1e-4), i) for _, i, d in near]
         tot = sum(k for k, _ in inv)
         acc = {}
@@ -1470,6 +1482,36 @@ def split_for_export(obj, mesh_col):
     return [o for _, o in out]
 
 
+def prepare_for_export(me):
+    """RE Mesh Editor reworks a mesh that has quads (bmesh triangulation) or vertices with more
+    than one UV (split along the UV islands, normals carried over from a copy by nearest surface)
+    and both lose our custom normals (the rim's, `match_face_normals`: they read back up to 24
+    degrees off). Done here first, the normals put back per vertex by position, so the exporter
+    leaves the mesh alone."""
+    import bmesh
+    from mathutils import kdtree
+    normals = [Vector() for _ in me.vertices]
+    for li, lp in enumerate(me.loops):
+        normals[lp.vertex_index] += Vector(me.corner_normals[li].vector)
+    kd = kdtree.KDTree(len(me.vertices))
+    for v in me.vertices:
+        kd.insert(v.co, v.index)
+    kd.balance()
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    uv = bm.loops.layers.uv.active
+    if uv:
+        def uv_at(f, v):
+            return next(lp[uv].uv for lp in f.loops if lp.vert is v)
+        seams = [e for e in bm.edges if len(e.link_faces) == 2 and any(
+            (uv_at(e.link_faces[0], v) - uv_at(e.link_faces[1], v)).length > 1e-6 for v in e.verts)]
+        bmesh.ops.split_edges(bm, edges=seams)
+    bm.to_mesh(me)
+    bm.free()
+    me.normals_split_custom_set_from_vertices([normals[kd.find(v.co)[1]].normalized() for v in me.vertices])
+
+
 def write_mdf(path, template_mdf):
     import copy
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
@@ -1516,6 +1558,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         mesh_col.objects.link(arm)
         subs = split_for_export(body, mesh_col)
         for o in subs:
+            prepare_for_export(o.data)
             o.modifiers.clear()
             o.modifiers.new("Armature", "ARMATURE").object = arm
             o.parent = arm

@@ -31,15 +31,14 @@ local PIECES = {
         tint = "MiquellaSkin",
     },
 }
--- Skin tone of the body until it gets a real skin material: a ColorParam tint over the ivory
--- texture (sRGB 0.94, 0.91, 0.82). User 2026-10-03: ivory could not be told from the clothes.
+-- Skin tone of the body: a ColorParam tint over its skin texture (sRGB 234, 199, 172, a light
+-- East Asian tone; user 2026-10-03). Until it gets the game's own skin material.
 local SKIN_TONES = {
-    { "Fair", { 1.00, 0.90, 0.90 } },
-    { "Pale", { 1.00, 0.97, 0.99 } },
-    { "Medium", { 0.94, 0.76, 0.69 } },
-    { "Tan", { 0.81, 0.60, 0.50 } },
-    { "Deep", { 0.56, 0.39, 0.30 } },
-    { "Ivory (no tint)", { 1.0, 1.0, 1.0 } },
+    { "Light (East Asian)", { 1.00, 1.00, 1.00 } },
+    { "Fair", { 1.05, 1.10, 1.16 } },
+    { "Medium", { 0.91, 0.85, 0.78 } },
+    { "Tan", { 0.81, 0.70, 0.61 } },
+    { "Deep", { 0.56, 0.45, 0.38 } },
 }
 local SKIN_NAMES = {}
 for i, t in ipairs(SKIN_TONES) do SKIN_NAMES[i] = t[1] end

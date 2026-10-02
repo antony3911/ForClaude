@@ -1487,6 +1487,11 @@ MESH_EXT, MDF_EXT = ".241111606", ".45"
 REL = "Art/Model/MiquellaLight/Character"
 # Our material -> (game material name, dual blades material it is copied from).
 GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("MiquellaCloth", "MiquellaGrip")}
+# Our own flat textures (sRGB albedo; roughness 0..1). The dual blades' textures these materials
+# started from have broken NRRO (2026-10-03: converted in the cloud they read roughness 0.03,
+# normal Y -0.9, AO 0.22 = dark, mirror-like), so the body no longer uses them.
+# NRRO = roughness, normal Y, AO, normal X (as the game's face: R varies, G 127, B 255, A 126).
+BODY_TEXTURES = {"MiquellaSkin": ((234, 199, 172), 0.55), "MiquellaCloth": ((226, 218, 200), 0.8)}
 
 
 def split_for_export(obj, mesh_col):
@@ -1544,7 +1549,40 @@ def prepare_for_export(me):
     me.normals_split_custom_set_from_vertices([normals[kd.find(v.co)[1]].normalized() for v in me.vertices])
 
 
-def write_mdf(path, template_mdf):
+def make_textures(kit_dir):
+    """Flat ALBD and NRRO per body material: PNG (texture_sources) -> DDS (BC7) -> Wilds .tex in
+    natives/.../Character/tex. Returns {material: {texture type: path in the game}}."""
+    import ctypes
+    import numpy as np
+    from PIL import Image
+    if os.name == "nt":                 # texconv reads PNGs through WIC (COM)
+        ctypes.windll.ole32.CoInitializeEx(None, 0)
+    from re_mesh_editor.modules.ddsconv.directx.texconv import Texconv, unload_texconv
+    from re_mesh_editor.modules.tex.blender_re_tex import convertTexDDSList
+    src = os.path.join(kit_dir, "texture_sources")
+    dds = os.path.join(kit_dir, "dds")
+    tex = os.path.join(kit_dir, "natives", "STM", *REL.split("/"), "tex")
+    for d in (src, dds, tex):
+        os.makedirs(d, exist_ok=True)
+    conv = Texconv()
+    paths = {}
+    for mat, (rgb, rough) in BODY_TEXTURES.items():
+        for kind, rgba, fmt in (("ALBD", list(rgb) + [255], "BC7_UNORM_SRGB"),
+                                ("NRRO", [round(rough * 255), 128, 255, 128], "BC7_UNORM")):
+            png = os.path.join(src, f"{mat}_{kind}.png")
+            Image.fromarray(np.full((256, 256, 4), rgba, dtype=np.uint8), "RGBA").save(png)
+            conv.convert_to_dds(file=png, dds_fmt=fmt, out=dds, no_mip=False, verbose=False,
+                                allow_slow_codec=True)
+            kind_name = "BaseDielectricMap" if kind == "ALBD" else "NormalRoughnessOcclusionMap"
+            paths.setdefault(mat, {})[kind_name] = f"{REL}/tex/{mat}_{kind}.tex"
+    unload_texconv()
+    names = [f for f in os.listdir(dds) if f.endswith(".dds")]
+    ok, failed = convertTexDDSList(names, dds, tex, "MHWILDS")
+    log(f"textures: {len(names)} dds -> {ok} tex ({failed} failed)")
+    return paths
+
+
+def write_mdf(path, template_mdf, textures=None):
     import copy
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
     template = readMDF(template_mdf)
@@ -1553,10 +1591,13 @@ def write_mdf(path, template_mdf):
     for game_mat, source in GAME_MATERIALS.values():
         new = copy.deepcopy(by_name[source])
         new.materialName = game_mat
+        for t in new.textureList:
+            if textures and t.textureType in textures.get(game_mat, {}):
+                t.texturePath = textures[game_mat][t.textureType]
         mats.append(new)
     template.materialList = mats
     writeMDF(template, path)
-    log(f"mdf: {[m.materialName for m in readMDF(path).materialList]}")
+    log(f"mdf: {[(m.materialName, [t.texturePath for t in m.textureList if 'Art/' in t.texturePath]) for m in readMDF(path).materialList]}")
 
 
 def kit(data, game_body, face, kit_dir, template_mdf):
@@ -1604,7 +1645,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
             f"{sum(len(o.data.vertices) for o in subs)} verts")
         for o in subs:
             bpy.data.objects.remove(o, do_unlink=True)
-    write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf)
+    write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf, make_textures(kit_dir))
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, "mq_body_kit.blend"))
 
 

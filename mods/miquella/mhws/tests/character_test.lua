@@ -211,7 +211,7 @@ else
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
   local tint = bmesh.float4["1.0"]
-  check(tint and math.abs(tint.x - 1.0) < 1e-6 and math.abs(tint.y - 0.90) < 1e-6 and bmesh.float4["0.0"] == nil,
+  check(tint and math.abs(tint.x - 1.0) < 1e-6 and math.abs(tint.y - 1.0) < 1e-6 and bmesh.float4["0.0"] == nil,
         "body: skin tone tint on MiquellaSkin's ColorParam only")
   check(face.drawSelf == true and hair.drawSelf == true and weapon.drawSelf == true, "body: face, hair and weapon stay")
   comboAnswer["Body shape"] = 3; menu(); frames(2, 1 / 60)

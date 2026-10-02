@@ -19,31 +19,9 @@
 **→ 01:20 五項都做完、已裝進遊戲（遊戲關著直接裝：`GreatSword`、`LongSword`、`Lance`、`Bow`、`Devices` 五個 pak＋換裝腳本，`work\install` 也放了一份）**，測試 216 項全過，預覽 `MiquellaTools\work\previews\grow\*.gif` 已傳給使用者。做法：會長的零件依「什麼時候出現」切成很多段材質 `MiquellaGrow1～n`，換裝腳本新的 `update_grow` 讀遊戲的**蓄力計時器**（大劍 `_ChargeTimer`、長槍 `_FinishChargeTimer`、太刀 `_KijinChargeTimer`、弓 `_ChargeTimer`）和升段門檻（從遊戲參數檔 `wpXXglobalactionparam.user.3` 解出來，玩的時候還會記下實際升段的計時器值，存在 `Weapons.json` 的 `chargeTimes`）連續淡入；細節在換裝腳本 README「跟著蓄力連續長出來」。操蟲棍：腳本以前讀的 `_ExtractTimerRed` 等是 `_ActionParam` 裡的**精華持續時間**（90／120／150），根本不是計時器，所以光球從沒出現 → 改讀處理器的 `ExtractTimer`（`app.cValueHolderF[]`，依 `EXTRACT_TYPE` 排）和 `TrippleUpTimer`。輕弩花苞：地面在特效原點（不是 -0.13），整個抬高 15 cm。**請使用者測**：大劍／長槍蓄力時光絲從護手一路長、放開後淡出；太刀**氣刃蓄力**時光絲纏上刀身、大迴旋斬後才淡出（練氣段數不再帶光絲）；弓拉弓時花一朵一朵開、到三段剩下的和弓尖大花接連開；銃槍蓄力砲擊時金絲連續拉長；操蟲棍點燈後光花有沒有出現（選單 `Extracts:` 會列出三個計時器）；輕弩花苞落地後整朵在地面上。選單 `Growth:` 顯示段數、計時器、下一段門檻（`learned`＝實際量到的）
 **→ 01:30 使用者看了預覽問「是動態的還是只分成六段」「要像動畫慢慢伸長，段數太少會很明顯」**（6 格只是截圖時間點；實際 24 段跟著計時器走，但 2 公尺長的刀每段 8 公分還是會一格格跳）→ **加了骨頭把正在長的那段連續拉出來，已裝進遊戲**：大劍、太刀每條光絲各自 48 根骨頭（`MQ_G<光絲>_1～48`，就在光絲上，因為壓扁的橢圓螺旋用「繞軸轉」會讓尖端偏離 5～6 cm），長槍軸上主絲 48 根＋細絲 32 根（`MQ_Grow1～48`、`MQ_GrowF17～48`，每段兩根，`MQ_Drill` 的子骨頭、沿螺旋轉回去；每段一根時剛開始長的尖端會彎成 2～3 cm 的小勾）；腳本 `step_grow_joints` 每幀只動正在長的那段的骨頭。近看檢查：`MiquellaTools\work\previews\grow\gs_zoom.png`（0.2 秒內 8 格，尖端每格都連續往前）。測試 222 項全過。**使用者另外要：操蟲棍三燈時的蓄力攻擊（遊戲裡 `cHoldAttackSuper` 蓄力 → `cBatonUpSlashSuper` 上升螺旋斬）也做設計方案** → 見第 9 節「第七輪」
 
-**第二帳號（人物）→ 下一個 session（2026-10-03 早上，最新）**：脖子照**原版的接法**重做，使用者：「這個版本不錯」（剩下的小變形頭髮擋得住），**已裝進遊戲**（遊戲關著直接裝、讀回驗證）：
-- 原版怎麼接（量 `ch00_000_0000` 臉＋`ch02_002_0002` 內衣）：臉的脖子下緣是一圈 48 點，內衣皮膚的上緣**就是這 48 點**（位置、法線、權重完全一樣）；身體不蓋臉，臉的脖子不被動
-- 我們一樣：身體上緣＝那 48 點（法線、權重抄臉的）；下緣以下每點往外下方瞄一點（`NECK_SLOPE`／`NECK_DEPTH`），取 MakeHuman 最近的表面當接點，三次 Hermite 曲線接上（兩端都順著表面）；MakeHuman 沿接點那圈精確切開（`contour_cut`）、以上重長網格。肩頸線比 MakeHuman 原本高，脖子看起來比較短。做法和「試過不行的」在 `mhws/MiquellaLight_Character_kit/README.md` 第 3 點
-- **匯出的坑**：RE Mesh Editor 遇到四邊形、或一個點有多個 UV，會自己重做網格，自訂法線跑掉（讀回差 24°）→ `prepare_for_export` 先三角化、沿 UV 接縫拆開、法線按位置放回，讀回差 0.6°（檔案的 8 位元精度）
-- 預覽：`MiquellaTools/work/previews/neck8/neck_sheet.png`（上排臉塗藍看接縫位置）
-- **等使用者**：遊戲裡看脖子（轉頭、低頭）；挑體型 A／B／C。之後：膚色材質（現在是雙劍象牙色，跟臉的膚色不同）、長袍、頭髮（米凱拉頭髮多，能蓋住脖子接縫）
+**第二帳號（人物）→ 下一個 session（2026-10-03 早上，最新）**：人物的現況、文件、下一步**整理在第 9 節「人物」**（之前的身體、臀腿、胯下、脖子留言都併進去了）。這次：脖子照原版接法重做（使用者：「這個版本不錯」），已裝進遊戲；匯出時自訂法線被 RE Mesh Editor 弄丟的坑也修了（`prepare_for_export`）
 
-**第一帳號 → 下一個 session（2026-10-02 21:30）**：使用者連續看圖給意見，臀腿這一輪改完、**已裝進遊戲**，使用者選了「修改後」（`SHAPE_OPTIONS` 第 2 款＝現在的預設）：
-- **腹股溝**：使用者說 15 mm 的凹谷太寬（給了人體參考圖）→ 收窄成 10 mm、深 4.5 mm，起點靠中間（±2 cm）
-- **大腿**：使用者給了側面腿的參考圖：大腿要從臀下往膝蓋**直直收成錐形**，不是弧形 → `taper_thighs`（每條腿每個高度的前後緣移到臀下 z 0.80～膝上 0.53 的直線上，整個切面跟著縮放）。**注意**：這時網格裡還有 MakeHuman 的輔助幾何（褲襪、裙子，沒有面的散點，`cut_and_paint` 才刪），量體型要排除（`used` 集合），不然會量錯、把腿弄皺
-- **屁股**：使用者說背面看起來是方的、每邊有一條硬豎線、太結實很怪；長袍到大腿才開始下擺，屁股處是貼身的，所以形狀要自然 → ①豎線是我第一版「撐平臀縫」的局部平滑邊界造成的，改成 `bridge_cleft` **只從裡面填**（每個高度從左右臀峰拉一條線、中間凹 4 mm，細分後才做）；②`soften_buttocks`：保留體積的平滑（Taubin）磨掉 MakeHuman 的肌肉起伏；③臀部體積 `buttocks-volume-incr` 0.75（`COMMON_DETAILS`，使用者喜歡圓一點的）；④每邊屁股下緣一道往外上揚的弧形摺線（`GROOVES["gluteal"]`，刻在背面）
-- 預覽：`python miquella_body.py hips ...` → `MiquellaTools\work\previews\hips\hips_{front,back,legs}_options.png`（1 修改前／2 修改後／3 屁股少圓／4 屁股再圓）；三款全身 `bodyody_variants_{front,side}.png`
-- **等使用者**：挑體型 A／B／C、腹部線條；遊戲裡實測
-
-**第一帳號 → 下一個 session（2026-10-02 20:50）**：使用者看了身體，指出①側面像啤酒肚、②**胯下結構錯**（大腿和骨盆是分開的兩塊，要有從胯下往腿根延伸的 V 形摺線，穿內褲反而更明顯）。上一個 session 找到根本原因但沒記錄就用完了，這個 session 接著做完，**已重新裝進遊戲（遊戲關著直接裝）**：
-- **根本原因**：`fit_targets` 把 MakeHuman 的脊椎、骨盆拉到遊戲的 `Hip`／`Spine_0`（比髖關節高 11 cm）→ 胯下被拉高到髖關節高度、大腿和骨盆糊成一塊，也擠出啤酒肚。**改成軀幹只整體對齊**，只有四肢、脖子、手腳照遊戲關節拉。胯下降到 0.823 m（比大腿關節低 9 cm）。`flatten_belly` 不再用（`flat` 預設關）
-- **腹股溝摺線**＝三款共用的基本構造（`BASE_GROOVES = ["crease"]`）：細分一次後沿 V 線刻寬而柔的凹谷（深 6.5 mm、寬 15 mm）；兩條線從胯下兩側大腿內側（相隔 6 cm）往上往外到髖骨。**試過不行的**：窄的 6.5 mm 像刀割、四分之三視角有尖刺；不細分也有尖刺和稜角；兩條線在正中間交會會擠出鼓包。`smooth_groin` 先抹平髖接處的皺摺。三角褲款（沿 V 線的褲口）邊緣鋸齒、剪太高，**先拿掉**，只留四角褲
-- 每款身體約 3.8 萬點（細分後）。預覽：`MiquellaTools\work\previews\groin\groin_options.png`（沒摺線／有摺線）、`bodyody_variants_front.png`、`bellyelly_options.png`（已用修正後的身體重畫）
-- **等使用者**：看圖確認胯下；挑體型 A／B／C；腹部線條要不要（belly 那張）；遊戲裡實測
-
-**第一帳號 → 下一個 session（2026-10-02 深夜）**：使用者還沒實測（去打 LoL，說「你再去想些事做」，之後說「那身體你先做吧」）。這段做了三件事，都已裝進遊戲（遊戲關著直接裝）：
-- **米凱拉的身體**（三款，等使用者挑；第 9 節「角色」）：MakeHuman CC0 人體 → `MiquellaLight_Character.pak` 的 `mq_body_a／b／c`，腳本掛到獵人骨架上並藏原本的衣服
-- **片手劍時機光環的校正追蹤**：完美突進期間每幀記下所有欄位的變化，存在欄位記錄檔的 `trace`（第 9 節⑧）。使用者打幾次完美突進後讀 `fields_app_cHunterWp01Handling.json` 的 `trace` 校正
-- **角色第一步：頭冠進遊戲**（第 9 節「角色」）：新腳本 `MiquellaLight_Character.lua`＋`MiquellaLight_Character.pak`，用 `via.GameObject.create` 生成物件、掛到獵人 `Head` 骨頭（EMV Engine 的做法，不覆蓋遊戲檔）。**這個方法驗證成功後，身體、長袍、頭髮都照做**。也解出了男性內衣 `ch02_002_000{1,2,4,5}`、骨架 `ch02_000_9000.fbxskel`、臉 `ch00_000／001_0000`、髮型 `ch01_000_0001`（在 `MiquellaTools\extracted`）
-- 測試：`weapons_test.lua` 189 項、`character_test.lua` 四種模式全過
+**第一帳號 → 下一個 session（2026-10-02 深夜）**：（身體、頭冠見第 9 節「人物」）**片手劍時機光環的校正追蹤**：完美突進期間每幀記下所有欄位的變化，存在欄位記錄檔的 `trace`（第 9 節⑧）。使用者打幾次完美突進後讀 `fields_app_cHunterWp01Handling.json` 的 `trace` 校正。測試：`weapons_test.lua` 189 項、`character_test.lua` 四種模式全過
 
 **第一帳號 → 下一個 session（2026-10-02 晚上）**：使用者要求「邊做邊擴充 HANDOFF，以防對話用完」。現況：
 - **今天做完、已裝進遊戲（遊戲關著時直接裝的，`work\install` 也放了一份）**：長槍光旋、大劍／太刀光絲纏繞、充能斧光齒、弓藤蔓開花、操蟲棍三朵花、銃槍絞絲針眼、大錘渾天儀、片手劍時機光環（第一版，時機用猜的）；全部武器的金色特效 pak（`fx_paks.py`）。細節在第 9 節「蓄力力量感」那條。**全部還沒實測**
@@ -130,10 +108,10 @@
 ### 角色
 | 項目 | 狀態 | 位置 |
 |---|---|---|
-| 頭冠（光環） | 基礎造型 v10：髮帶散成細枝 → 捲成一束 → 三叉往後掃，整個發亮金光；**遊戲版（2026-10-02 深夜）已裝進遊戲、等實測**：腳本生成物件掛到獵人 `Head` 骨頭（不覆蓋遊戲檔） | `prototypes/circlet/`、`mhws/MiquellaLight_Character*/` |
+| 頭冠（光環） | v10：髮帶散成細枝 → 捲成一束 → 三叉往後掃，整個發金光；遊戲版**已裝、還沒實測**（腳本掛到 `Head`） | `prototypes/circlet/`、`mhws/MiquellaLight_Character*/` |
 | 角色概念（人台） | 長袍、編髮、頭冠戴在頭髮上；v4 頭髮改成遊戲用的髮片做法 | `prototypes/character_concept/` |
-| 身體 | 三款 A／B／C（MakeHuman CC0）掛在獵人骨架上，**已裝進遊戲、等實測和挑選**；骨架對齊修正（啤酒肚、胯下）、腹股溝摺線、錐形大腿、圓潤的屁股、收腰＋馬甲線＋背溝、脖子（照原版接法：身體上緣＝臉下緣那 48 點，法線、權重抄臉的；肩頸線拉高）（2026-10-03，使用者：「這個版本不錯」） | `prototypes/scripts/miquella_body.py`、`mhws/MiquellaLight_Character_kit/` |
-| 長袍、頭髮 | 還沒做 | — |
+| 身體 | 三款 A／B／C（MakeHuman CC0）掛在獵人骨架上，**已裝、等使用者挑和實測**；脖子照原版接法（2026-10-03 使用者 OK）。細節見第 9 節「人物」 | `prototypes/scripts/miquella_body.py`、`mhws/MiquellaLight_Character_kit/` |
+| 長袍、頭髮 | 還沒做（已決定的方向：`notes/two-account-handoff-plan.md`「米凱拉風格角色」） | — |
 
 ### 武器造型（全部定案，除非使用者再改）
 | 武器 | 定案的設計（細節見 DESIGN.md 第 5 節） | 位置 |
@@ -402,17 +380,18 @@
 - **第一帳號的「依武器種類選外觀」接上時**：同種類的 `_0`、`_1` 會套同一個外觀 → 有盾的武器要用主武器 `KITS` 的 `shield` 欄位給 `_1` 換盾（→ **2026-10-02 第一帳號接上了**：`_1` 盾用 `shield`、可在副武器那列改選；雙劍兩手同外觀；刀鞘、箭筒保持原版）
 - Claude 接著：獵蟲接進換裝腳本（先用偵察腳本找獵蟲的 GameObject）；防禦時才出現的盾光膜（需要防禦狀態欄位＋半透明材質：**特效模型的材質有半透明**——`VFX_Transparent_Bubble`（`common/other/bubble/11_bubble_00`）、`VFX_RoughTransparent_D`，可以試著抄給盾的光膜用；武器材質本身只有鏤空裁切）；斬擊斧劍模式、充能斧斧模式（要找模式欄位）
 
-**角色（2026-10-02 深夜開始，第一帳號）**
-- **頭冠遊戲版（做完、已裝進遊戲，等實測）**：`build_weapon_kit.py circlet`（原型 `circlet.py` v10，放大 (1.22, 1.10, 1.12) 戴在遊戲的頭上，檔案空間＝`Head` 骨頭空間，材質 `MiquellaHalo`＝象牙底整個發金光）→ `MiquellaLight_Character_kit`、`MiquellaLight_Character.pak`；腳本 `mhws/MiquellaLight_Character/`（README 有做法和選單）。**請使用者測**：選單「MiquellaLight: Character」，看頭冠有沒有出現、在不在額頭、跟不跟頭動；狀態列寫 `Head joint` 或 `following every frame`、離 `Head` 幾公分；位置不對用選單的上下／前後滑桿調，告訴 Claude 數值寫回模型。戴頭盔會穿模（先關頭盔顯示）。預覽 `MiquellaTools\work\previews\circlet\circlet_on_game_head.png`（含遊戲的頭，不進 repo）
-- **如果生成物件不行**（狀態列寫 could not create）：退回覆蓋檔案的做法（把頭冠併進某款髮型 `ch01_000_00xx`，或放進內衣身體）
-- **發現（2026-10-02 深夜）**：荒野的內衣是**整套衣服**（襯衫、皮帶、褲子、靴子），皮膚只有手、脖子、臉 → **沒有裸身模型可改，身體要自己做**（研究筆記第 18 節，有骨頭位置和 A 字綁定姿勢）
-- **身體（2026-10-02 深夜，使用者：「那身體你先做吧」）做完、已裝進遊戲，等實測**：MakeHuman 基礎人體（CC0）調成纖細中性、對齊遊戲骨架、切掉頭接遊戲的臉、內褲材質；**三款 A 纖細中性／B 少年感／C 柔和**（預覽 `MiquellaTools\work\previews\body\body_variants_sheet.png` 已傳給使用者，**等他挑**），三款都進了 pak，遊戲選單 `Body shape` 可切。做法、指令在 `mhws/MiquellaLight_Character_kit/README.md`，程式 `prototypes/scripts/miquella_body.py`。腳本：身體物件 SameJointsConstraint 跟著獵人、打開時藏獵人的防具和內衣（ch02／ch03），臉和頭髮保留。`character_test.lua` 21 項。**請使用者測**：選單「MiquellaLight: Character」看身體有沒有出現、原本的衣服有沒有消失、動作時關節變形、脖子接縫；三款切換比較。**權重只用主要骨頭**，膝肘肩如果折得難看 → 改用遊戲 `*_HJ_*` 輔助骨頭（例：從內衣用最近表面轉移權重、排除 `_CT`／`_CH_` 擺動骨頭）。膚色現在是雙劍的象牙材質（之後做膚色貼圖或抄遊戲的皮膚材質）
-- **小腹（使用者 2026-10-02：「像中年老男人的啤酒肚」，側面下腹凸出）**：真正原因是骨架對齊把脊椎、骨盆拉到遊戲的 `Hip`（見下一條），修正後側面就平了；`flatten_belly`（正面輪廓壓成直線）反而推出怪凸起，**不用了**（`flat` 預設 False）。**腹部線條還等使用者挑**：`belly_options.png`（0 原本／1 收小腹 `stomach-pregnant-decr`／2＋緊實／3＋馬甲線／4＋人魚線／5 兩種，已用修正後的身體重畫），`python miquella_body.py abs ...`；挑好後把選的 `details`／`grooves` 併進 `VARIANTS`（或 `COMMON_DETAILS`）再跑 `kit`
-- **胯下（使用者 2026-10-02：大腿和胯下是兩塊分開的結構，要有 V 形摺線，穿內褲反而更明顯）——做完、已裝進遊戲**：①`fit_targets` 不再把 MakeHuman 的 `spine01～05`、`pelvis` 拉到遊戲的 `Hip`／`Spine_0`（它們比髖關節高 11 cm，把胯下拉到髖關節高度、大腿和骨盆糊在一起）；軀幹只整體縮放平移，`obj["fit"]` 改成每根骨頭最後的位置（`bone_map` 用）；②`smooth_groin` 抹平髖接處的線性蒙皮皺摺；③`GROOVES["crease"]` 腹股溝摺線（三款共用 `BASE_GROOVES`，`base_grooves: []` 可關掉）：(0.030,0.815)→(0.048,0.852)→(0.078,0.912)→(0.118,0.985)，深 6.5 mm、寬 15 mm、側面也刻（`facing` 0.35）。比較圖 `python miquella_body.py groin ...` → `previews\groin\groin_options.png`。之後的長袍、內褲都不能把這條線蓋平
-- **臀腿（使用者 2026-10-02 晚，給了參考圖；選了「修改後」）——做完、已裝進遊戲**：腹股溝收窄（10 mm）；`taper_thighs` 錐形大腿（`THIGH_TAPER` 0.53～0.80）；`soften_buttocks`（Taubin，`SOFT_BUTT`）；`bridge_cleft` 從裡面填平臀縫（`CLEFT`，細分後）；`buttocks-volume-incr` 0.75；`GROOVES["gluteal"]` 臀下弧線（`carve` 的第 5 個欄位 True＝刻在背面）。`BASE_GROOVES = ["crease", "gluteal"]`。參數 `cleft`／`taper`／`soft`／`base_grooves` 設 0 或空可關掉（`SHAPE_OPTIONS` 的「修改前」就是全關）。之後的長袍在臀部是貼身的，要照這個形狀
-- **脖子（2026-10-03 照原版接法重做，使用者：「這個版本不錯」）——做完、已裝進遊戲**：見第 0 節最新一則、`mhws/MiquellaLight_Character_kit/README.md` 第 3 點（做法、試過不行的、匯出法線的坑）
-- **身體線條（使用者 2026-10-02 晚交給 Claude 決定）——做完**：收腰＋馬甲線＋背溝，三款都有；人魚線不加
-- **下一步（頭冠驗證後）**：①~~匯入內衣四件、量體型~~（做了，研究筆記第 18 節）；②~~自己做身體~~（上一條）（纖細、平滑）＋長袍（上半身貼身、下擺擺動）原型，**放在遊戲的身體旁邊並排**給使用者挑體型；③頭髮（擺動鏈）。長袍下擺的擺動要學內衣身體的 `chain2`。內衣身體的模型有「群組」（0～14，穿防具時遊戲藏掉被蓋住的部分），掛上去時要把原本的內衣／防具藏起來（`set_DrawSelf(false)` 或關材質）
+**人物（第二帳號負責；2026-10-03 整理）**
+- **現況**（都已裝進遊戲，選單「MiquellaLight: Character」）：
+  - 頭冠 v10：腳本生成物件掛到獵人 `Head`（不覆蓋遊戲檔）；**還沒實測**：看在不在額頭、跟不跟頭動，位置用選單滑桿調、數值告訴 Claude 寫回模型；戴頭盔會穿模
+  - 身體三款 A 纖細中性／B 少年感／C 柔和（選單 `Body shape`），開啟時藏獵人的防具和內衣，臉和頭髮保留；**等使用者挑**。已修：骨架對齊（啤酒肚、胯下）、腹股溝 V 線、錐形大腿、圓潤屁股、收腰＋馬甲線＋背溝、脖子（2026-10-03 照原版接法，使用者：「這個版本不錯」，剩下的小變形頭髮擋得住）
+  - 材質暫用雙劍的象牙色（跟臉的膚色不同）
+- **文件**：做法、參數、指令、試過不行的 → `mhws/MiquellaLight_Character_kit/README.md`；腳本、選單、測試 → `mhws/MiquellaLight_Character/README.md`；遊戲獵人身體的量測 → 研究筆記第 18 節；已決定的方向（一件長袍蓋全身、身體不刪減、長袍內側要雙面…）→ `notes/two-account-handoff-plan.md`「米凱拉風格角色」
+- **下一步**（照順序）：
+  1. 使用者在遊戲裡測：身體有沒有出現、原本的衣服有沒有藏起來、關節變形（膝肘肩不好看 → 權重改用遊戲的 `*_HJ_*` 輔助骨頭）、脖子轉頭／低頭、頭冠位置；挑 A／B／C
+  2. 膚色材質（抄臉的皮膚材質，接縫看不出色差）
+  3. 長袍：上半身和臀部貼身（照身體形狀，腹股溝線不能蓋平）、下擺擺動（學內衣的 `chain2`）
+  4. 頭髮（擺動鏈；米凱拉頭髮多，可以擋住脖子接縫）
+- **備案**：生成物件不行（狀態列寫 could not create）→ 改成覆蓋檔案（頭冠併進某款髮型 `ch01_000_00xx` 或內衣）
 
 **不需要遊戲、隨時可做**：調整任何預覽、做新的設計提案、整理文件
 

@@ -1157,6 +1157,62 @@ def lance_drill_parts(mats):
     return out, flare
 
 
+# Strands of light wrapped round a blade (user's picks 2026-10-02 evening: the great sword's
+# "A" and the long sword's "B"): they grow from the guard toward the point a level at a time.
+# The helix is flattened across the blade's thickness so it hugs a flat blade.
+STRAND_PIECES = [(1, 0.0, 0.4), (2, 0.4, 0.75), (3, 0.75, 1.0)]
+GS_WIDTH_KNOTS = [(0.0, 0.012), (0.1, 0.055), (0.24, 0.085), (0.42, 0.165), (0.6, 0.23),
+                  (0.76, 0.2), (0.88, 0.11), (0.96, 0.038), (1.0, 0.0)]     # as great_sword's
+
+
+def wrap_strands(prefix, center_fn, radius_fn, mat, n_str=3, turns=3.2, flat=0.55, bevel=0.0035):
+    """{level: [strand pieces]}, names <prefix>_<level>_<k>; center_fn(u) / radius_fn(u) along
+    the blade, u 0 at the guard and 1 at the point."""
+    out = {1: [], 2: [], 3: []}
+    for level, u0, u1 in STRAND_PIECES:
+        for k in range(n_str):
+            n = max(12, int(260 * (u1 - u0)))
+            pts, radii = [], []
+            for i in range(n):
+                u = u0 + (u1 - u0) * i / (n - 1)
+                a = 2 * math.pi * k / n_str + 2 * math.pi * turns * u
+                r = radius_fn(u)
+                pts.append(center_fn(u) + V(r * math.cos(a), r * math.sin(a) * flat, 0))
+                radii.append((1 - 0.6 * u) * max(0.05, min(1.0, u * 12)))
+            out[level].append(c.curve_tube(f"{prefix}_{level}_{k}", pts, radii, mat, bevel=bevel, resolution=3))
+    return out
+
+
+def great_sword_strands(mats, gt=0.36):
+    """Three strands round the great sword's blade (its centre line half a width off the spine,
+    toward the edge) and, at full charge, sparks thrown off the edge. Names GS_Strand_*, GS_Spark_*."""
+    z0, length = gt + 0.1, 1.2
+
+    def center(u):
+        spine_x = -0.035 * math.sin(math.pi * u) + 0.075 * u ** 3
+        return V(spine_x + 0.5 * m.interp1d(GS_WIDTH_KNOTS, u), 0, z0 + length * u)
+
+    out = wrap_strands("GS_Strand", center, lambda u: 0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + 0.035, mats["light"])
+    rng = random.Random(5)
+    for k in range(9):
+        u = rng.uniform(0.25, 0.9)
+        p = center(u) + V(0.5 * m.interp1d(GS_WIDTH_KNOTS, u) + rng.uniform(0.05, 0.14), rng.uniform(-0.03, 0.03),
+                          rng.uniform(-0.03, 0.03))
+        out[3] += m.droplet(f"GS_Spark_{k}", p, rng.uniform(0.006, 0.01), (1, 0, 0.6), mats["light"], stretch=2.5)
+    return out
+
+
+def long_sword_strands(mats):
+    """Two strands round the long sword's blade, along its curve. Names LS_Strand_*."""
+    import long_sword as ls
+
+    def center(u):
+        s = 0.03 + 0.9 * u
+        return ls.blade_center(s) + V(ls.blade_profile(s)[0] * 0.5, 0, 0)
+    return wrap_strands("LS_Strand", center, lambda u: 0.04 - 0.02 * u, mats["light"], n_str=2, turns=3.5,
+                        bevel=0.0025)
+
+
 # ------------------------------------------------------------------ insect glaive extracts (game version)
 
 # Elden Ring's scarlet rot, frost and frenzied flame for red, white and orange (DESIGN). The

@@ -21,7 +21,8 @@ local function newMesh(meshPath)
       return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
     end
     if self.mdfPath:match("wp_miquella_ls%.") then
-      return { "MiquellaGlow", "MiquellaIvory", "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4",
+      return { "MiquellaGlow", "MiquellaIvory", "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3",
+               "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4",
                "MiquellaBlade5", "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8", "MiquellaBand1", "MiquellaBand2",
                "MiquellaBand3", "MiquellaBand4", "MiquellaBand5", "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" }
     end
@@ -53,7 +54,8 @@ local function newMesh(meshPath)
       return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory" }
     end
     if self.mdfPath:match("wp_miquella_gs") then
-      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper" }
+      return { "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaCharge1", "MiquellaCharge2",
+               "MiquellaCharge3" }
     end
     return { "lambert" }
   end
@@ -414,11 +416,16 @@ chargeLv = 2
 frames(30, 1 / 60)
 check(math.abs(weaponMesh.floats["MiquellaBlade.1"] - 1.2 * glow * 2.8) < 1e-6, "great sword: level 2 glows 2.8x")
 check(weaponMesh.floats["MiquellaTemper.3"] == 0.0, "great sword: no band before level 3")
+check(weaponMesh.matEnabled["MiquellaCharge2"] == true and weaponMesh.matEnabled["MiquellaCharge3"] ~= true,
+      "great sword: level 2 shows the strands up to the second piece")
 chargeLv = 3
 frames(30, 1 / 60)
 local c = weaponMesh.colors["MiquellaBlade"]
 check(c and c.z > 0.8, "great sword: level 3 turns the blade white")
 check(weaponMesh.floats["MiquellaTemper.3"] == 1.0, "great sword: level 3 runs the band on the temper line")
+local sc = weaponMesh.colors["MiquellaCharge3"]
+check(weaponMesh.matEnabled["MiquellaCharge3"] == true and sc and sc.z < 0.3,
+      "great sword: level 3 shows all the strands and sparks, bright gold on the white blade")
 local band1 = weaponMesh.floats["MiquellaTemper.4"]
 frames(10, 1 / 60)
 check(weaponMesh.floats["MiquellaTemper.4"] ~= band1, "great sword: the band moves")
@@ -840,6 +847,8 @@ extract["<AuraLevel>k__BackingField"] = 4
 frames(60, 1 / 60)
 local lc = weaponMesh.colors["MiquellaBlade1"]
 check(lc and lc.z > 0.8, "long sword: red = white light")
+local lsc = weaponMesh.colors["MiquellaCharge3"]
+check(weaponMesh.matEnabled["MiquellaCharge3"] == true and lsc and lsc.z < 0.3, "long sword: red wraps the whole blade in gold strands")
 extract["<AuraLevel>k__BackingField"] = 2
 frames(90, 1 / 60)
 blo, bhi = bandRange()

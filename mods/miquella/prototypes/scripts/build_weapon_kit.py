@@ -45,6 +45,10 @@ def great_sword():
     import arsenal
     gt, k = 0.48, 1.6
     objs, mats, tip = arsenal.great_sword(gt=gt, render=False)
+    # Charge (user's pick 2026-10-02, "A"): strands of light round the blade, growing a level
+    # at a time (MiquellaCharge1-3), sparks off the edge at full charge.
+    strands = arsenal.great_sword_strands(mats, gt)
+    objs = list(objs) + [o for os_ in strands.values() for o in os_]
     hand = Vector((0, 0, gt - 0.04))
     to_file = Matrix.Scale(k, 4) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hand)
     return {
@@ -53,7 +57,7 @@ def great_sword():
         "bones": {"VFX_Attack": to_file @ Vector(tip)},
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Blade_Core": "MiquellaTemper", "Membrane": "MiquellaGlow"},
-        "by_name": {},
+        "by_name": {o.name: f"MiquellaCharge{lv}" for lv, os_ in strands.items() for o in os_},
         # The rings floating on the spine swing like loose rings, the big ring around the
         # blade hovers like the bowgun's (weapons script).
         "floaters": {**{f"Spine_Ring_{i}": f"MQ_Ring{i}" for i in range(3)}, "Blade_Halo": "MQ_BladeHalo"},
@@ -154,10 +158,15 @@ def long_sword():
     2.17-2.2 m above the hand and their handles 0.76 m below it (ours: 2.13 and 0.77);
     hand just below the collar; turned 180 degrees about Z so the edge is on -X and the
     tip curves toward +X like the originals' (VFX_Attack x +0.07 to +0.13)."""
+    import arsenal
     import long_sword as ls
     ls.HANDLE_LEN = 0.42
     k = 1.9
     objs, mats, tip = ls.build()
+    # Spirit (user's pick 2026-10-02, "B"): two strands of light round the blade, growing a
+    # level at a time (MiquellaCharge1-3).
+    strands = arsenal.long_sword_strands({"light": mats[1]})
+    objs = list(objs) + [o for os_ in strands.values() for o in os_]
     hand = Vector((0, 0, -0.04))
     to_file = Matrix.Scale(k, 4) @ Matrix.Rotation(math.pi, 4, "Z") @ Matrix.Translation(-hand)
     return {
@@ -166,7 +175,7 @@ def long_sword():
         "bones": {"VFX_Attack": to_file @ Vector(tip)},
         "materials": {"Blade_Light": "MiquellaBlade", "Light": "MiquellaGlow", "Ivory": "MiquellaIvory",
                       "Hamon": "MiquellaTemper"},
-        "by_name": {},
+        "by_name": {o.name: f"MiquellaCharge{lv}" for lv, os_ in strands.items() for o in os_},
         # The two rings in place of a tsuba hover like the bowgun's (weapons script).
         "floaters": {"Tsuba_Halo": "MQ_Tsuba0", "Tsuba_Halo_Inner": "MQ_Tsuba1"},
         # The temper line in 8 pieces root -> tip, a material each (MiquellaBand1-8): the weapons

@@ -27,8 +27,10 @@ local CHECK_EVERY = 20       -- frames between checks
 -- Phial gauges (switch axe, charge blade): one material per floating phial.
 local PHIALS = { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGauge4", "MiquellaGauge5" }
 local BOTTLE_FIELDS = { "_ActionEnterBinNum", "_BottleNum" }
+-- Charge parts that stay bright gold whatever the level's colour (strands on a white-hot blade).
+local PART_GOLD = { 1.0, 0.62, 0.12 }
 -- Charge level fields (candidates from the game's type names; the first found is used).
-local CHARGE_FIELDS = { "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
+local CHARGE_FIELDS ={ "_ChargeLv", "_ChargeLevel", "_EffectChargeLevel", "_ChargeLvEffect" }
 
 -- Mode morphs (switch axe, charge blade; user 2026-10-02: swapping models flashed, the weapon
 -- should change shape): both modes are one model. Written by build_weapon_kit.py
@@ -118,7 +120,8 @@ local KITS = {
         label = "Miquella light blade (great sword)",
         mesh = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mesh",
         mdf2 = "Art/Model/MiquellaLight/GreatSword/wp_miquella_gs.mdf2",
-        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2 },
+        glow = { MiquellaBlade = 1.2, MiquellaGlow = 1.2, MiquellaTemper = 1.2,
+                 MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
         -- Rings on the spine: bone pivots in the model's space (build_weapon_kit.py log).
         floaters = { mode = "swing", joints = {
             { name = "MQ_Ring0", pos = { 0.0456, 0.0, 1.2189 } },
@@ -127,7 +130,10 @@ local KITS = {
             -- The big ring around the blade near the hilt hovers like the bowgun's rings.
             { name = "MQ_BladeHalo", pos = { -0.0240, 0.0, 0.6833 }, mode = "hover" } } },
         -- Charge level 0-3 (candidates from the game's type names; the first found is used).
-        charge = { levels = 3, fields = CHARGE_FIELDS, band = true },
+        -- Strands of light round the blade grow a level at a time, sparks at full (user's pick
+        -- 2026-10-02, "A"); they stay bright gold while the blade turns white.
+        charge = { levels = 3, fields = CHARGE_FIELDS, band = true,
+                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 }, partColor = PART_GOLD },
     },
     LightBowgun = {
         label = "Miquella light bowgun",
@@ -155,7 +161,7 @@ local KITS = {
                  MiquellaBand3 = 1.2, MiquellaBand4 = 1.2, MiquellaBand5 = 1.2, MiquellaBand6 = 1.2, MiquellaBand7 = 1.2,
                  MiquellaBand8 = 1.2, MiquellaBlade1 = 1.2, MiquellaBlade2 = 1.2, MiquellaBlade3 = 1.2,
                  MiquellaBlade4 = 1.2, MiquellaBlade5 = 1.2, MiquellaBlade6 = 1.2, MiquellaBlade7 = 1.2,
-                 MiquellaBlade8 = 1.2 },
+                 MiquellaBlade8 = 1.2, MiquellaCharge1 = 1.2, MiquellaCharge2 = 1.2, MiquellaCharge3 = 1.2 },
         -- The two rings in place of a tsuba hover.
         floaters = { mode = "hover", joints = {
             { name = "MQ_Tsuba0", pos = { 0.0152, 0.0, 0.1900 } },
@@ -175,7 +181,10 @@ local KITS = {
                              "MiquellaBand6", "MiquellaBand7", "MiquellaBand8" },
                    blades = { "MiquellaBlade1", "MiquellaBlade2", "MiquellaBlade3", "MiquellaBlade4", "MiquellaBlade5",
                               "MiquellaBlade6", "MiquellaBlade7", "MiquellaBlade8" },
-                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.4 } },
+                   weights = { MiquellaBlade = 1.0, MiquellaGlow = 0.4 },
+                   -- Two strands of light round the blade, a third more each level from white on
+                   -- (user's pick 2026-10-02, "B"), bright gold against the white red level.
+                   parts = { MiquellaCharge1 = 1, MiquellaCharge2 = 2, MiquellaCharge3 = 3 }, partColor = PART_GOLD },
     },
     -- The other weapons (build_weapon_kit.py, 2026-10-02). Shields are looks of their own for
     -- the sub weapon (_1) model; `shield` names the look that goes with a weapon's shield.
@@ -1037,7 +1046,7 @@ local function update_charge(entry, mesh, h, dt, now, spec, level)
         end
         set_float(entry, mesh, mat, "Dissolve", alpha)
         entry.mul[mat] = mul
-        set_color(entry, mesh, mat, color)
+        set_color(entry, mesh, mat, spec.partColor or color)
     end
     if not spec.band then return end
     -- The band: on from the third level, sweeping root -> tip (the temper UVs run along it).

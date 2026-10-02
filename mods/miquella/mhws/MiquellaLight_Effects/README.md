@@ -27,3 +27,5 @@
 - 搭配的改檔 pak（不進 repo，從使用者的遊戲檔產生）：`MiquellaLight_GreatSwordFX.pak`（大劍 18 檔：暖色 → 金、**身上發光 `PLE_Body`／`PLE_IMP` 改全黑透明 = 拿掉**，使用者要蓄力只在刀身表現）、`MiquellaLight_LightBowgunFX.pak`（輕弩 19 檔：暖色 → 金）。重做：
   `recolor_efx.py --warm --no-silver --hide PLE_Body,PLE_IMP --skip-param Blood <解出的 11_it00_*.efx> <輸出>`（輕弩只要 `--warm --no-silver`），再 `make_patch_pak.py`
 - 第七版（2026-10-02，等實測）：**操蟲棍（`it10`）的特效也整個染金**（使用者：蓄力時還看得到紅色光氣，要金色）；煙、毒、命中塵土（`11_it10_01x`、`11_it10_100`）和 `9xx` 不染。搭配 `MiquellaLight_InsectGlaiveFX.pak` 第二版：原本藏掉精華身上顏色的 `020`／`021`，加上 14 個特效檔暖色 → 金（指令見 `recolor_efx.py` 說明）。另外 `MiquellaLight_LongSwordFX.pak`（新）：太刀練氣白黃紅的刀身光（`11_it03_000` 的 `PLE_wep`）和身上光、粒子（`11_it03_004`）拿掉，讓我們刀身的流光看得清楚
+- 第八版（2026-10-02 夜，等實測）：**太刀（`it03`）規則**：特效檔（`11_it03_`，`9xx` 不染）每秒 4 次染金。使用者：紅刃時有紅色攻擊軌跡 → 軌跡 `11_it03_001` 本身在 `LongSwordFX` 改成金色，這條規則只是保險
+- **所有武器的特效 pak 改用 `fx_paks.py` 產生**（2026-10-02 夜）：`trail_scan.py` 掃出每種武器的軌跡和顏色，`recolor_efx.py --layers` 把所有顏色變成不同層次的金（紅紫 → 深金、橘黃 → 金、綠 → 黃金、藍青 → 白金），`fx_paks.py` 照檔案裡的規則表一次做完 `MiquellaLight_<武器>FX.pak`（雙劍不動；大劍、大錘、長槍保留身上光隱藏；地面煙塵、血、煙、彈種顏色不動）。指令：`bpy45\Scripts\python fx_paks.py <解出的遊戲檔根目錄> <MiquellaTools\work> [it01 ...]`

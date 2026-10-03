@@ -18,7 +18,19 @@ Prototype axes: +Y muzzle, +Z up (the grip ran from (0, -0.08, -0.03) down to (0
 Renders the heavy and light bowgun from the side and from behind over the shoulder (the
 player's view), the options side by side; only our model.
 
-Usage: python grip_options.py <out_dir> [test] [O A B C D]
+Second set, `loop` (user: "or a grip that curves back and joins the stock?"): the grip stays,
+its foot runs on back and joins the stock's underside, closing a thumbhole frame, so it reads as
+part of the stock's openwork rather than a lone handle:
+
+  A  woven loop: one woven tube, down the grip and back up into the stock, thinning
+  B  scroll bridge: the woven grip, an ivory cord with a gold thread back to the stock, a gold
+     scroll curling into the opening
+  C  trident: the woven grip's foot splits into three strands fanning back to the stock (the
+     circlet's trident)
+  D  arc of light: the woven grip, a gold arc of light back to the stock, a drop of light in a
+     halo floating in the opening
+
+Usage: python grip_options.py <out_dir> [test] [loop] [O A B C D]
 """
 import math
 import os
@@ -28,6 +40,7 @@ import sys
 OUT = sys.argv[1] if len(sys.argv) > 1 else "out/grip"
 FLAGS = sys.argv[2:]
 TEST = "test" in FLAGS
+LOOP = "loop" in FLAGS
 PICK = [f for f in FLAGS if f in ("O", "A", "B", "C", "D")] or ["O", "A", "B", "C", "D"]
 
 import bpy                               # noqa: E402
@@ -37,10 +50,13 @@ sys.argv = [sys.argv[0], OUT]
 import common as c                       # noqa: E402
 import motifs as m                       # noqa: E402
 from motifs import V                     # noqa: E402
+from motifs import smoothstep            # noqa: E402
 import bowgun as hb                      # noqa: E402
 
 PI = math.pi
 NAMES = {"O": "現在（編織握把）", "A": "A 卷草垂飾", "B": "B 光滴垂飾", "C": "C 金絲卷草（無握把）", "D": "D 編髮垂飾"}
+if LOOP:
+    NAMES = {"O": "現在（編織握把）", "A": "A 編織環", "B": "B 卷草橋", "C": "C 三叉回流", "D": "D 光弧"}
 TOP = V(0, -0.08, -0.03)                 # where the grip met the receiver
 _KEYS = ("STOCK_END", "WRIST", "RECEIVER_END", "MUZZLE", "CONDUIT_R", "CONDUIT_Z")
 HBG = {k: getattr(hb, k) for k in _KEYS}
@@ -118,8 +134,66 @@ def braid_pendant(k, mats):
     return objs
 
 
+def loop_line():
+    """The grip's foot on back to the stock's underside, a quarter of the way from the butt."""
+    j_y = hb.STOCK_END + 0.25 * (hb.WRIST - hb.STOCK_END)
+    ctr, _, rz = hb.body_section(j_y)
+    J = V(0, j_y, ctr.z - rz * 0.7)
+    B = V(0, -0.15, -0.17)                   # the grip's foot
+    up = B + (TOP - B) * 0.15                # leaves the grip a little above its foot, rounding the corner
+    back = m.resample(m.catmull([up, B + V(0, -0.025, -0.022), B + V(0, -0.075, -0.04), (B + J) / 2 + V(0, 0, -0.045),
+                                 J + V(0, 0.035, -0.035), J], 140), 90)
+    return B, J, back
+
+
+def woven_loop(k, mats, rng):
+    B, J, back = loop_line()
+    path = [TOP + (back[0] - TOP) * (i / 10) for i in range(10)] + back
+    return m.woven_tube("LA_Loop", path, 0.018, mats["ivory"], rng,
+                        radius_fn=lambda u: 1.0 - 0.3 * smoothstep((u - 0.3) / 0.6))
+
+
+def scroll_loop(k, mats, rng):
+    objs = ORIGINAL_GRIP(mats["ivory"], rng)
+    B, J, back = loop_line()
+    objs += m.rope("LB_Cord", back, 0.012, mats, strands=3, gold=True, taper=0.3, merge=0.99)
+    mid = back[len(back) // 2]
+    plane = m.plane_mapper(mid + V(0, 0, 0.008), (0, 0, 1), (0, 1, 0))     # 2D x: up into the opening
+    objs += m.tendril("LB_Scroll", plane, (0, 0), 8, 0.11, 1.5, 0.0062, mats, strands=2, strand_mat="light",
+                      gold=False, offshoots=((0.4, -1, 0.5, -1.4),))
+    return objs
+
+
+def trident_loop(k, mats, rng):
+    objs = ORIGINAL_GRIP(mats["ivory"], rng)
+    B = V(0, -0.15, -0.17)
+    for j, f in enumerate((0.12, 0.25, 0.4)):
+        y = hb.STOCK_END + f * (hb.WRIST - hb.STOCK_END)
+        ctr, _, rz = hb.body_section(y)
+        J = V(0, y, ctr.z - rz * 0.7)
+        pts = m.resample(m.catmull([B + V(0, -0.005, 0.006), B + V(0, -0.05, -0.022 + 0.01 * j),
+                                    (B + J) / 2 + V(0, 0, -0.04 + 0.014 * j), J + V(0, 0.025, -0.02), J], 100), 70)
+        objs.append(c.curve_tube(f"LC_Strand_{j}", pts, [1 - 0.45 * (i / 69) for i in range(70)], mats["ivory"],
+                                 bevel=0.0068 - 0.0012 * j, resolution=3))
+        if j == 1:
+            objs += m.wound_cord("LC_Gold", pts, 0.0072, 5, 0.0016, mats, strand_mat="light")
+    return objs
+
+
+def light_loop(k, mats, rng):
+    objs = ORIGINAL_GRIP(mats["ivory"], rng)
+    B, J, back = loop_line()
+    objs.append(c.curve_tube("LD_Arc", back, [1.0] * len(back), mats["light"], bevel=0.0045, resolution=3))
+    low = back[len(back) // 2]
+    hole = V(0, (B.y + J.y) / 2 + 0.012, (J.z + low.z) / 2 + 0.012)
+    objs += m.halo("LD_Halo", hole, 0.021, 0.0022, (1, 0, 0), mats["light"])
+    objs += m.droplet("LD_Drop", hole, 0.012, (0, 0, -1), mats["phial_lit"], stretch=1.5)
+    return objs
+
+
 OPTIONS = {"A": scroll_pendant, "B": light_drop, "C": gold_filigree, "D": braid_pendant}
 SIZE = {"A": 1.7, "B": 1.5, "C": 1.9, "D": 1.35}        # each option about the old grip's size
+LOOPS = {"A": woven_loop, "B": scroll_loop, "C": trident_loop, "D": light_loop}
 
 
 def build(gun, opt):
@@ -128,7 +202,10 @@ def build(gun, opt):
     if opt == "O":
         hb.pistol_grip = ORIGINAL_GRIP
     else:
-        hb.pistol_grip = lambda material, rng: OPTIONS[opt](k * SIZE[opt], materials(material))
+        if LOOP:
+            hb.pistol_grip = lambda material, rng: LOOPS[opt](k, materials(material), rng)
+        else:
+            hb.pistol_grip = lambda material, rng: OPTIONS[opt](k * SIZE[opt], materials(material))
     if gun == "hbg":
         _, glow = hb.build()
     else:
@@ -166,14 +243,15 @@ def main():
             ("lbg", 1, "輕弩・背後（玩家視角）")]
     sheet = Image.new("RGB", (W * len(PICK), head + H * len(rows)), (20, 20, 24))
     d = ImageDraw.Draw(sheet)
-    d.text((14, 8), "輕弩、重弩握把：人物不會去握，換成不像把手的東西", fill=(240, 210, 140), font=font)
+    d.text((14, 8), "輕弩、重弩握把：底部繞回去跟槍托合體（像拇指孔槍托）" if LOOP else
+           "輕弩、重弩握把：人物不會去握，換成不像把手的東西", fill=(240, 210, 140), font=font)
     for ci, opt in enumerate(PICK):
         d.text((ci * W + 14, head - (40 if not TEST else 24)), NAMES[opt], fill=(255, 225, 150), font=font)
         for ri, (gun, vi, label) in enumerate(rows):
             sheet.paste(Image.open(tiles[(gun, opt)][vi]), (ci * W, head + ri * H))
             if ci == 0:
                 d.text((10, head + ri * H + 8), label, fill=(200, 200, 200), font=font)
-    out = os.path.join(OUT, "grip_options.png")
+    out = os.path.join(OUT, "grip_loop_options.png" if LOOP else "grip_options.png")
     sheet.save(out)
     print("WROTE", out, flush=True)
 

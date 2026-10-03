@@ -43,7 +43,18 @@ the stock's underside, enclosing an opening:
   D  braid: a three-strand braid makes the loop, gold bands at both joints, a drop of light
      hanging from its lowest point
 
-Usage: python grip_options.py <out_dir> [test] [loop|frame] [O A B C D]
+Fourth set, `one` (user: "the stock and the grip read as two things; I want one piece"): the
+stock behind the wrist and the grip become one woven ring round a thumbhole (bowgun_onepiece.py);
+the weave runs round the ring, so nothing joins anything:
+
+  A  one piece, big thumbhole: a solid weave, a gold line round the hole on both faces
+  B  one piece, small thumbhole: more stock than hole, the same weave and gold line
+  C  one piece, openwork: a thin core under a sparse lattice of strands, two gold threads
+     winding round with them
+  D  one piece, braid: three thick strands braided round the ring, a gold thread, gold bands at
+     the butt and at the foot of the grip
+
+Usage: python grip_options.py <out_dir> [test] [loop|frame|one] [O A B C D]
 """
 import math
 import os
@@ -55,6 +66,7 @@ FLAGS = sys.argv[2:]
 TEST = "test" in FLAGS
 LOOP = "loop" in FLAGS
 FRAME = "frame" in FLAGS
+ONE = "one" in FLAGS
 PICK = [f for f in FLAGS if f in ("O", "A", "B", "C", "D")] or ["O", "A", "B", "C", "D"]
 
 import bpy                               # noqa: E402
@@ -73,6 +85,9 @@ if LOOP:
     NAMES = {"O": "現在（編織握把）", "A": "A 編織環", "B": "B 卷草橋", "C": "C 三叉回流", "D": "D 光弧"}
 if FRAME:
     NAMES = {"O": "現在（編織握把）", "A": "A 卷草框", "B": "B 枝條框", "C": "C 豎琴框", "D": "D 編髮框"}
+if ONE:
+    NAMES = {"O": "現在（槍托＋握把）", "A": "A 一體・大拇指孔", "B": "B 一體・小拇指孔", "C": "C 一體・鏤空編織",
+             "D": "D 一體・編髮"}
 TOP = V(0, -0.08, -0.03)                 # where the grip met the receiver
 _KEYS = ("STOCK_END", "WRIST", "RECEIVER_END", "MUZZLE", "CONDUIT_R", "CONDUIT_Z")
 HBG = {k: getattr(hb, k) for k in _KEYS}
@@ -285,6 +300,36 @@ def braid_frame(k, mats, rng):
     return objs
 
 
+def one_piece(opt, gun, mats, rng):
+    import bowgun_onepiece as op
+    frame = HBG if gun == "hbg" else LBG
+    kw = dict(wrist=frame["WRIST"], stock_len=frame["WRIST"] - frame["STOCK_END"])
+    ivory, light = mats["ivory"], mats["light"]
+    if opt in ("A", "B"):
+        fr = op.ring_frames(gun, hole_scale=1.0 if opt == "A" else 0.62, **kw)
+        objs = [op.ring_core("One_Core", fr, ivory)]
+        objs += op.ring_strands("One_Weave", fr, ivory, 40, 2.2, 0.0042 if gun == "hbg" else 0.0031, rng=rng)
+        objs += op.hole_inlay("One_Inlay", fr, light)
+        return objs
+    fr = op.ring_frames(gun, **kw)
+    if opt == "C":
+        objs = [op.ring_core("One_Core", fr, ivory, 0.5, 0.5)]
+        objs += op.ring_strands("One_Lattice", fr, ivory, 14, 9.0, 0.0052 if gun == "hbg" else 0.0038, scale=1.0, rng=rng)
+        objs += op.ring_strands("One_Gold", fr, light, 2, 9.0, 0.0018, scale=1.02, cross=False, phase=PI / 4)
+        return objs
+    big = 0.0155 if gun == "hbg" else 0.0105
+    objs = [op.ring_core("One_Core", fr, ivory, 0.45, 0.45)]
+    objs += op.ring_strands("One_Braid", fr, ivory, 3, 15.0, big * 0.8, scale=0.62, cross=False)
+    objs += op.ring_strands("One_Gold", fr, light, 3, 9.0, 0.0019, scale=0.98, cross=False, phase=PI / 3)
+    butt = min(range(len(fr)), key=lambda i: fr[i][0].y)
+    foot = min(range(len(fr)), key=lambda i: fr[i][0].z)
+    for name, i in (("One_Band_Butt", butt), ("One_Band_Foot", foot)):
+        t = (fr[(i + 2) % len(fr)][0] - fr[i - 2][0]).normalized()
+        ctr, u, a, b = fr[i]
+        objs += m.halo(name, ctr, max(a, b) * 1.02, 0.0028 if gun == "hbg" else 0.002, t, light)
+    return objs
+
+
 OPTIONS = {"A": scroll_pendant, "B": light_drop, "C": gold_filigree, "D": braid_pendant}
 SIZE = {"A": 1.7, "B": 1.5, "C": 1.9, "D": 1.35}        # each option about the old grip's size
 LOOPS = {"A": woven_loop, "B": scroll_loop, "C": trident_loop, "D": light_loop}
@@ -296,6 +341,15 @@ def build(gun, opt):
     k = 1.0 if gun == "hbg" else 0.85
     if opt == "O":
         hb.pistol_grip = ORIGINAL_GRIP
+    elif ONE:
+        # The stock ends at the wrist; the ring takes over behind it.
+        frame = HBG if gun == "hbg" else LBG
+        base, wrist = frame["section"], frame["WRIST"]
+        ctr_w, rx_w, rz_w = base(wrist)
+        hb.STOCK_END = wrist - 0.03
+        hb.body_section = lambda y, base=base, wrist=wrist: (base(y) if y >= wrist else
+                                                            (V(0, y, ctr_w.z), rx_w, rz_w))
+        hb.pistol_grip = lambda material, rng, gun=gun: one_piece(opt, gun, materials(material), rng)
     else:
         if FRAME:
             hb.pistol_grip = lambda material, rng: FRAMES[opt](k, materials(material), rng)
@@ -340,7 +394,8 @@ def main():
             ("lbg", 1, "輕弩・背後（玩家視角）")]
     sheet = Image.new("RGB", (W * len(PICK), head + H * len(rows)), (20, 20, 24))
     d = ImageDraw.Draw(sheet)
-    title = ("輕弩、重弩握把：重新設計一個從機匣繞回槍托的框（不用原本的握把）" if FRAME else
+    title = ("輕弩、重弩：槍托和握把一體成形（編織沿著拇指孔繞一圈，沒有接縫）" if ONE else
+             "輕弩、重弩握把：重新設計一個從機匣繞回槍托的框（不用原本的握把）" if FRAME else
              "輕弩、重弩握把：底部繞回去跟槍托合體（像拇指孔槍托）" if LOOP else
              "輕弩、重弩握把：人物不會去握，換成不像把手的東西")
     d.text((14, 8), title, fill=(240, 210, 140), font=font)
@@ -350,7 +405,7 @@ def main():
             sheet.paste(Image.open(tiles[(gun, opt)][vi]), (ci * W, head + ri * H))
             if ci == 0:
                 d.text((10, head + ri * H + 8), label, fill=(200, 200, 200), font=font)
-    out = os.path.join(OUT, "grip_frame_options.png" if FRAME else "grip_loop_options.png" if LOOP else "grip_options.png")
+    out = os.path.join(OUT, "grip_onepiece_options.png" if ONE else "grip_frame_options.png" if FRAME else "grip_loop_options.png" if LOOP else "grip_options.png")
     sheet.save(out)
     print("WROTE", out, flush=True)
 

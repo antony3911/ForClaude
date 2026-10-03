@@ -23,3 +23,8 @@
 
 - 還沒在遊戲裡測過。寫法照 MDF-XL 和 REFramework 官方範例，每個讀取都包在 `pcall` 裡，讀不到的欄位會顯示 `nil`，不會讓遊戲當掉
 - 只讀取資料，不會修改任何物件
+
+## 其他測試腳本（用完要從遊戲移除）
+
+- `MiquellaLight_MeshDiff.lua`：比對臉和我們物件的 Mesh 設定（2026-10-03，找出 StencilValue）
+- `MiquellaLight_ChainProbe.lua`：腳本生成的物件能不能有擺動物理（2026-10-03）。複製獵人的頭髮三份、各加不同的元件，記錄髮尾晃動到 `reframework/data/MiquellaLight/chain_probe.json`。**結論：`Chain2`＋`ChildSecondary` 就會跟真頭髮一樣甩**（研究筆記第 15 節）。**會改場景**（生成物件、可以藏掉真頭髮），不是唯讀的

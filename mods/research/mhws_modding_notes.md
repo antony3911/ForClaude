@@ -303,6 +303,8 @@ xf:set_SameJointsConstraint(true)
 - 不用決定要犧牲哪一件內衣或哪一款髮型
 - 可以用選單開關，也不會跟其他替換同一個檔案的 mod 衝突
 - 缺點：要同時把原本的防具／內衣／髮型隱藏（`set_DrawSelf(false)` 或關閉材質），而且擺動物理（chain2）要另外處理（MDF-XL 的武器換裝會一起換 `chain2`：`chain2:set_ChainAsset(...)`）
+- **腳本生成的物件也能有擺動物理（2026-10-03 實測，`MiquellaLight_Scout/.../MiquellaLight_ChainProbe.lua`）**：複製獵人的 512 頭髮（同樣的 mesh、mdf2、`ch01_001_0512.chain2`），`SameJointsConstraint` 掛到獵人上，自己 `createComponent`：**只加 `via.motion.Chain2` → 完全不動（0 mm）**；**再加 `via.motion.ChildSecondary` → 跟真頭髮一樣甩**（髮尾 5 秒內最大 1171 mm，真頭髮 1184 mm）；再加 `via.motion.JointConstraints` 沒差別（1151 mm）。建立元件不會當掉。→ 長袍下擺、頭髮編髮都可以用腳本掛＋自己的 `.chain2`，元件要 `Chain2`＋`ChildSecondary`
+- 遊戲自己的零件長這樣（同一次記錄）：會擺動的防具／髮型帶 `app.ChainSetting`、`via.motion.Chain2`、`via.motion.ChildSecondary`、`via.motion.JointConstraints`、`app.UnderWaterChain`；**有一件腿部防具（`ch03_042_0015`）的裙子是 `via.dynamics.GpuCloth`＋`app.ClothSetting`＋`app.SkirtBatchProcessing`（GPU 布料模擬）**，是另一條路，還沒研究。女獵人的眉毛也在 `ch01` 底下（`ch01_001_1003`，沒有 chain），找頭髮要挑有 chain2 的那個
 
 **2. 武器換裝（Transmog）**
 

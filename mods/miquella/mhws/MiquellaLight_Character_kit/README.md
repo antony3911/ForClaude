@@ -4,6 +4,11 @@
 |---|---|---|
 | `circlet` | `Art/Model/MiquellaLight/Character/mq_circlet.mesh`／`.mdf2` | 頭冠（光環）v10，約 1.5 萬面；材質 `MiquellaHalo`（象牙底、整個發金光）、`MiquellaGlow`（墜飾水滴） |
 | 身體 | `mq_body_a／b／c.mesh`（男獵人）、`mq_body_a／b／c_f.mesh`（女獵人）＋`mq_body.mdf2` | 三種體型（A 纖細中性／B 少年感／C 柔和），各約 3.8 萬點（細分一次）；**米凱拉的體型男女獵人一樣**，`_f` 只是接女獵人的臉和骨架；材質 `MiquellaSkin`（抄雙劍 `MiquellaIvory`）、`MiquellaCloth`（內褲，抄 `MiquellaGrip`）。`miquella_body.py kit` 產生 |
+| 長袍 | `mq_robe_smooth_c.mesh`（男）、`mq_robe_smooth_c_f.mesh`（女）＋`mq_robe.mdf2` | 素面貼身款（2026-10-04 第一版），照 C 款身體做；骨架＝內衣的＋防具 `ch03_025_0015` 的骨頭（12 條裙擺鏈搬到我們的下擺上）；材質 `MiquellaRobe`（抄 `MiquellaGrip`、雙面、米白平紋布 `tex/MiquellaRobe_*`）。`robe_kit.py` 產生 |
+
+## 長袍（2026-10-04）
+
+`bpy45\Scripts\python robe_kit.py smooth female`（女）／`smooth male`（男），加 `preview <資料夾>` 出靜止、下擺擺動、跨步的檢查圖。要先有身體 kit（從 `mq_body_c[_f].mesh` 讀身體和權重）。做法、權重、擺動、碰撞的現況見 HANDOFF 第 9 節「人物」第 3 項。身體配合長袍拆了三個材質（`MiquellaSkinChest`、`MiquellaSkinWaist`、`MiquellaClothWaist`，`miquella_body.py` 的 `mark_covered`），穿長袍時腳本關掉。
 
 ## 身體（2026-10-02 深夜）
 

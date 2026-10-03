@@ -88,3 +88,18 @@
 - 選單：`Gunlance:` 最後有 `lily: open 0.00, light 0.00 (Wyvern's Fire full at 2.50 s)`（學到後寫 `learned`）；`Lily joints found: n/126`（**0 就是遊戲沒替新骨頭建立關節**，要回報）
 - 舊的彈簧、金絲、`update_charge` 白金色那套，銃槍不再用（`GL.levelTime` 等常數留著沒用到）
 
+
+## 重弩：防禦盾 D 光輪（`guard`，2026-10-03，本機 session）
+
+使用者在第二輪（槍管上的光環往後拉、擴大成盾）選了 D 光輪。模型和骨頭見 `MiquellaLight_HeavyBowgun_kit/README.md`；腳本這邊（`HeavyBowgun` kit 的 `guard` 表，從 kit 的 `wp_miquella_hbg_guard.lua` 貼進來）：
+
+- **偵測防禦**：`actionNow`（獵人的動作型別名稱）含 `Guard` 就算在防禦（**猜的，還沒在遊戲裡看過重弩的防禦動作名稱**），離開後再撐 `hold` 0.5 秒；選單勾「Hold the guard open (test)」（`config.guardTest`）強制打開
+- **進度** `entry.guardP`：打開 `open` 0.3 秒、收回 `close` 0.45 秒；滑動 `guardSlide`＝smoothstep(p/0.6)、撐大 `guardGrow`＝smoothstep((p-0.35)/0.65)（跟提案動畫 `attachments.py` 的 `ring_motion` 一樣）
+- **光環**：四個浮動光環（`MQ_Halo0～3`）在 `step_floaters` 裡沿槍管移 `dz × guardSlide`（`GL.guard_float`，懸浮的晃動照舊）；每個光環圍一圈 16 根骨頭（`MQ_G<光環>_<0..15>`，是 `MQ_Halo` 的子骨頭、在光環中心），`GL.apply_guard` 把它們放在半徑 `lerp(r0, r1, guardGrow)` → 光環撐大但線不變粗
+- **光芒**：24 根 `MQ_Ray<n>` 從根部 `root` 拉到尖端 `tip`（頂點從根到尖漸變綁 `Base`→`MQ_Ray`），材質 `MiquellaGuardRay`（一開始藏著）跟 `guardGrow` 淡入；三顆光點（`MQ_Phial0～2`）飛到盾緣 `drops`；`MiquellaGlow` 跟著亮到 ×1.8
+- 光環浮動在「Floating rings」關掉時也會為了盾動（`rings_active` 含 `kit.guard`）
+- 選單：`Guard: 0.00 (slide, widen) action: …  joints found: 88/88`（**0 就是遊戲沒替新骨頭建立關節**）
+
+## 握持記錄器（`GL.record_grip`，2026-10-03，本機 session）
+
+使用者：「輕弩、重弩的槍托，人物都不會去抓到那個位置」。欄位記錄器開著、武器拔出時，每 0.1 秒把獵人的 `R_Hand`、`L_Hand`、`R/L_Forearm`、`R/L_UpperArm`、`R/L_Shoulder`、`Spine_2`、`Neck_0`、`Head` 換算到**武器自己的座標**（＝模型檔案的座標），依動作記 min／總和 `sum`／次數 `n`／max，連同武器掛的骨頭（`parent`），每 5 秒存成 `reframework/data/MiquellaLight/grip_<處理器型別>.json`。選單在 `Recording …` 下面有一行 `Grip:`。每種武器都會記，之後對齊別的武器也能用

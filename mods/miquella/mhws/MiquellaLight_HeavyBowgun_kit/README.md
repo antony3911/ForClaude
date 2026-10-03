@@ -6,6 +6,8 @@
 |---|---|---|---|
 | `heavy_bowgun` | `wp_miquella_hbg.mesh` | `it1200_0000_0` | 跟輕弩 kit 同一套擺法（槍口 +Z、+Y 朝上、槍膛在原點下 0.19），×1.3：長 1.7 m（原版 -0.74～0.96）。`VFX_Fire`、`VFX_FirePower` 移到我們的槍口（原版掛在 `Hinge` 下，Hinge 沒旋轉，換算成相對位置）。三顆光點各自一個材質（`MiquellaGauge1～3`），之後可當量表 |
 
+**防禦盾 D 光輪（2026-10-03，使用者選的）**：`heavy_bowgun` 另外做 24 道光芒（`GD_Ray_<n>`，材質 `MiquellaGuardRay`＝抄 `MiquellaBlade`、一開始藏著），在盾的平面（原型 y 0.40＝檔案 z 0.42，機匣前）、外圈半徑 0.304 外面，長短交錯（0.13／0.078）；骨頭：四個光環各圍 16 根 `MQ_G<光環>_<j>`（`MQ_Halo` 的子骨頭，光環頂點依角度分給相鄰兩根）、每道光芒尖端一根 `MQ_Ray<n>`（頂點從根到尖由 `Base` 漸變到它）；`VFX_Shield`（遊戲的防禦特效掛點，原版在 `Hinge` 下）移到盾的中心 (0, -0.194, 0.42)。腳本用的表另外寫成 `wp_miquella_hbg_guard.lua`（每個光環的 `dz`、半徑 `r0`→`r1`，光芒的根和尖，光點要飛去的位置），貼進換裝腳本 `HeavyBowgun.guard`。預覽：`preview_guard.py`（照腳本的算法展開 0～100 %）
+
 貼圖沿用雙劍的（`Art/Model/MiquellaLight/DualBlades/tex/`），pak 裡自帶一份。材質抄雙劍 kit 的 `.mdf2`（現在遊戲的 180 參數排列）。`.blend`（匯出前的場景）不進 repo，用下面的指令重建。
 
 ## 共通規則（2026-10-02 第二個帳號做的第一版，還沒進遊戲測）

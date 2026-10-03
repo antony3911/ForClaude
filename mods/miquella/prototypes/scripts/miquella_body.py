@@ -1698,7 +1698,18 @@ def blend_leg_weights(obj, legs):
 MESH_EXT, MDF_EXT = ".241111606", ".45"
 REL = "Art/Model/MiquellaLight/Character"
 # Our material -> (game material name, dual blades material it is copied from).
-GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("MiquellaCloth", "MiquellaGrip")}
+GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("MiquellaCloth", "MiquellaGrip"),
+                  "SkinChest": ("MiquellaSkinChest", "MiquellaIvory"), "SkinWaist": ("MiquellaSkinWaist", "MiquellaIvory"),
+                  "UnderwearWaist": ("MiquellaClothWaist", "MiquellaGrip")}
+# The parts of the body under the robe's fitted part (2026-10-04, robe game version): materials of
+# their own, the same as the skin's / briefs', which the character script switches off while a
+# robe is worn -- the cloth is only 4 mm off the skin there and the skin poked through (DESIGN.md:
+# an outfit never deletes the body). "Chest": under every robe (collar to the chest, the sleeves);
+# "Waist": under the fitted robes only (chest to the hips: the drapes hang away from it there).
+COVERED_OF = {"MiquellaSkinChest": "MiquellaSkin", "MiquellaSkinWaist": "MiquellaSkin",
+              "MiquellaClothWaist": "MiquellaCloth"}
+COVER_MARGIN = 0.01       # m: inside the fitted part by this much from its edges
+COVER_ARM = 0.10          # m from the arm's bones: the sleeves (the chest zone's rule beside the drape line)
 # Our own flat textures (sRGB albedo; roughness 0..1). The dual blades' textures these materials
 # started from have broken NRRO (2026-10-03: converted in the cloud they read roughness 0.03,
 # normal Y -0.9, AO 0.22 = dark, mirror-like), so the body no longer uses them.
@@ -1713,6 +1724,43 @@ GAME_MATERIALS = {"Skin": ("MiquellaSkin", "MiquellaIvory"), "Underwear": ("Miqu
 BODY_TEXTURES = {"MiquellaSkin": ((161, 179, 181), 0.6), "MiquellaCloth": ((226, 218, 200), 0.8)}
 SKIN_SOURCE = ("ch02_002_0001", "skin")       # innerwear arms: material file, material
 SKIN_NULLS = {"BlendNormalMap": "systems/rendering/NullNormal.tex"}   # muscle blend: flat
+
+
+def mark_covered(obj, G):
+    """The faces under the robe's fitted part -> the covered materials (COVERED_OF), by the robe's
+    own cut lines (robe_designs.Fit: collar, cuffs, skirt top; DRAPE_TOP and DRAPE_X for the
+    drapes), COVER_MARGIN in from its edges."""
+    import robe_designs as rd
+    fit = rd.Fit([obj], G)
+    m = COVER_MARGIN
+
+    def chest(co):
+        if not (fit.s_collar(co) < -m and fit.s_cuff("L", co) < -m and fit.s_cuff("R", co) < -m):
+            return False
+        return co.z - rd.angle_blend(fit.theta(co), *rd.DRAPE_TOP) > m or abs(co.x) > rd.DRAPE_X + m
+
+    fit.top = rd.SKIRT_TOP
+    me = obj.data
+    slot = {}
+    for name in ("SkinChest", "SkinWaist", "UnderwearWaist"):
+        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
+        if me.materials.find(mat.name) < 0:
+            me.materials.append(mat)
+        slot[name] = me.materials.find(mat.name)
+    zone = ["Chest" if chest(v.co) else "Waist" if fit.covered(v.co, m) else None for v in me.vertices]
+    counts = {}
+    for p in me.polygons:
+        zs = {zone[i] for i in p.vertices}
+        if None in zs:
+            continue
+        z = "Chest" if zs == {"Chest"} else "Waist"
+        base = me.materials[p.material_index].name.split(".")[0]
+        if base not in ("Skin", "Underwear"):
+            continue
+        name = "SkinChest" if base == "Skin" and z == "Chest" else base + "Waist"
+        p.material_index = slot[name]
+        counts[name] = counts.get(name, 0) + 1
+    log(f"  covered by the robe: {counts}")
 
 
 def split_for_export(obj, mesh_col):
@@ -1781,11 +1829,11 @@ def prepare_for_export(me):
     me.normals_split_custom_set_from_vertices([normals[kd.find(v.co)[1]].normalized() for v in me.vertices])
 
 
-def make_textures(kit_dir):
-    """Flat ALBD and NRRO per body material: PNG (texture_sources) -> DDS (BC7) -> Wilds .tex in
-    natives/.../Character/tex. Returns {material: {texture type: path in the game}}."""
+def images_to_tex(kit_dir, images):
+    """images: (material, "ALBD" | "NRRO", RGBA uint8 array) -> PNG (texture_sources) -> DDS (BC7,
+    sRGB for ALBD) -> Wilds .tex in natives/.../Character/tex. Returns {material: {texture type:
+    path in the game}}."""
     import ctypes
-    import numpy as np
     from PIL import Image
     if os.name == "nt":                 # texconv reads PNGs through WIC (COM)
         ctypes.windll.ole32.CoInitializeEx(None, 0)
@@ -1797,21 +1845,29 @@ def make_textures(kit_dir):
     for d in (src, dds, tex):
         os.makedirs(d, exist_ok=True)
     conv = Texconv()
-    paths = {}
-    for mat, (rgb, rough) in BODY_TEXTURES.items():
-        for kind, rgba, fmt in (("ALBD", list(rgb) + [255], "BC7_UNORM_SRGB"),
-                                ("NRRO", [round(rough * 255), 128, 255, 128], "BC7_UNORM")):
-            png = os.path.join(src, f"{mat}_{kind}.png")
-            Image.fromarray(np.full((256, 256, 4), rgba, dtype=np.uint8), "RGBA").save(png)
-            conv.convert_to_dds(file=png, dds_fmt=fmt, out=dds, no_mip=False, verbose=False,
-                                allow_slow_codec=True)
-            kind_name = "BaseDielectricMap" if kind == "ALBD" else "NormalRoughnessOcclusionMap"
-            paths.setdefault(mat, {})[kind_name] = f"{REL}/tex/{mat}_{kind}.tex"
+    paths, names = {}, []
+    for mat, kind, rgba in images:
+        png = os.path.join(src, f"{mat}_{kind}.png")
+        Image.fromarray(rgba, "RGBA").save(png)
+        conv.convert_to_dds(file=png, dds_fmt="BC7_UNORM_SRGB" if kind == "ALBD" else "BC7_UNORM", out=dds,
+                            no_mip=False, verbose=False, allow_slow_codec=True)
+        kind_name = "BaseDielectricMap" if kind == "ALBD" else "NormalRoughnessOcclusionMap"
+        paths.setdefault(mat, {})[kind_name] = f"{REL}/tex/{mat}_{kind}.tex"
+        names.append(f"{mat}_{kind}.dds")
     unload_texconv()
-    names = [f for f in os.listdir(dds) if f.endswith(".dds")]
     ok, failed = convertTexDDSList(names, dds, tex, "MHWILDS")
     log(f"textures: {len(names)} dds -> {ok} tex ({failed} failed)")
     return paths
+
+
+def make_textures(kit_dir):
+    """Flat ALBD and NRRO per body material. Returns {material: {texture type: path in the game}}."""
+    import numpy as np
+    images = []
+    for mat, (rgb, rough) in BODY_TEXTURES.items():
+        images.append((mat, "ALBD", np.full((256, 256, 4), list(rgb) + [255], dtype=np.uint8)))
+        images.append((mat, "NRRO", np.full((256, 256, 4), [round(rough * 255), 128, 255, 128], dtype=np.uint8)))
+    return images_to_tex(kit_dir, images)
 
 
 def write_mdf(path, template_mdf, textures=None, skin_mdf=None):
@@ -1823,12 +1879,13 @@ def write_mdf(path, template_mdf, textures=None, skin_mdf=None):
         skin = next(m for m in readMDF(skin_mdf).materialList if m.materialName == SKIN_SOURCE[1])
     mats = []
     for game_mat, source in GAME_MATERIALS.values():
-        new = copy.deepcopy(skin if skin_mdf and game_mat == "MiquellaSkin" else by_name[source])
+        base = COVERED_OF.get(game_mat, game_mat)
+        new = copy.deepcopy(skin if skin_mdf and base == "MiquellaSkin" else by_name[source])
         new.materialName = game_mat
         for t in new.textureList:
-            if textures and t.textureType in textures.get(game_mat, {}):
-                t.texturePath = textures[game_mat][t.textureType]
-            elif game_mat == "MiquellaSkin" and t.textureType in SKIN_NULLS:
+            if textures and t.textureType in textures.get(base, {}):
+                t.texturePath = textures[base][t.textureType]
+            elif base == "MiquellaSkin" and t.textureType in SKIN_NULLS:
                 t.texturePath = SKIN_NULLS[t.textureType]
         mats.append(new)
     template.materialList = mats
@@ -1868,6 +1925,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
     for key, params in VARIANTS.items():
         name = f"mq_body_{key.lower()}{suffix}"
         body = make_body(data, base, params, G, name, skin, cloth, face_pts)
+        mark_covered(body, G)
         game_weights(body, base[3], G)
         blend_leg_weights(body, legs)
         blend_face_weights(body, G, neck, tree, face_ws)

@@ -10,6 +10,11 @@
 --   SameJointsConstraint, so its bones (named like the hunter's) follow the hunter's. While it
 --   shows, the hunter's own armor and innerwear (models under character/ch02 and ch03) are
 --   hidden; the face (ch00) and hair (ch01) stay.
+-- - an outfit over the body (2026-10-04: the robe, robe_kit.py), on the skeleton the same way; its
+--   skirt swings on the skirt chains of a game leg armor (ch03_025_0015): the object gets a
+--   via.motion.Chain2 with that armor's own .chain2 (the game's file, loaded by its path) and a
+--   via.motion.ChildSecondary (without it a spawned chain does not move: research notes 15).
+--   While it is worn the body's parts under it (materials of their own) are switched off.
 --
 -- STATUS: untested (2026-10-02). Every game call is wrapped in pcall. Visual only.
 
@@ -28,9 +33,25 @@ local PIECES = {
         key = "body", name = "MiquellaLight_Body", attach = "skeleton",
         -- On the hunter's skeleton in its bind pose (miquella_body.py kit).
         mesh = nil, mdf2 = DIR .. "mq_body.mdf2",
-        tint = "MiquellaSkin",
+        -- the skin and the skin under the robe (switched off while it is worn), all tinted alike
+        tint = { "MiquellaSkin", "MiquellaSkinChest", "MiquellaSkinWaist" },
+    },
+    {
+        key = "robe", name = "MiquellaLight_Robe", attach = "skeleton",
+        mesh = nil, mdf2 = DIR .. "mq_robe.mdf2",
+        chain = "Art/Model/Character/ch03/025/001/5/ch03_025_0015.chain2",
     },
 }
+-- Outfits over the body (robe_kit.py): one mesh per fit and hunter sex, fitted to body shape C
+-- (the other shapes wear C's for now). covers: the body's materials under it, switched off.
+local OUTFITS = {
+    { name = "None" },
+    { name = "Robe, plain", fit = "smooth", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
+}
+local OUTFIT_NAMES = {}
+for i, o in ipairs(OUTFITS) do OUTFIT_NAMES[i] = o.name end
+local COVERABLE = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" }
+local SWING_JOINT = "L_B_Skirt_CH_end"   -- the back skirt's hem: how far it swings (menu, robe_debug.json)
 -- Skin of the body: the game's own skin material (SkinEdit) over a flat albedo of the face
 -- texture's neck colour (miquella_body.py). The face's skin tone (AddColorUV of its "face"
 -- material, set in character creation) is copied onto it; the SkinEdit skin still comes out ~3x
@@ -80,6 +101,7 @@ local config = {
     hideOutfit = true,
     skinTone = 1,
     skinBrightness = 1.0,   -- ColorParam multiplier on top of the face's
+    outfit = 1,
 }
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
@@ -89,6 +111,7 @@ if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
 if type(config.size) ~= "number" or config.size < SIZE_MIN or config.size > SIZE_MAX then config.size = SIZE_DEFAULT end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
+if not OUTFITS[config.outfit] then config.outfit = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
 if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 3 then
     config.skinBrightness, config.skinTone = 1.0, 1   -- earlier values were for other materials
@@ -96,9 +119,15 @@ end
 config.skinVersion = 3
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return body_mesh(config.bodyShape) end
+local lastFit = "smooth"
+PIECES[3].mesh = function()
+    lastFit = OUTFITS[config.outfit].fit or lastFit
+    return DIR .. "mq_robe_" .. lastFit .. "_c" .. (hunterFemale and "_f" or "") .. ".mesh"
+end
 local function piece_on(p)
     if not config.enabled then return false end
     if p.key == "circlet" then return config.circlet end
+    if p.key == "robe" then return config.body and OUTFITS[config.outfit].fit ~= nil end
     return config.body
 end
 
@@ -132,6 +161,13 @@ for _, m in ipairs(BODY_MESHES) do
     holder("via.render.MeshResource", m .. ".mesh")
     holder("via.render.MeshResource", m .. "_f.mesh")
 end
+for _, o in ipairs(OUTFITS) do
+    if o.fit then
+        holder("via.render.MeshResource", DIR .. "mq_robe_" .. o.fit .. "_c.mesh")
+        holder("via.render.MeshResource", DIR .. "mq_robe_" .. o.fit .. "_c_f.mesh")
+    end
+end
+holder("via.motion.Chain2Resource", PIECES[3].chain)
 
 local function resource_path(res)
     local s = res and try(function() return res:ToString() end)
@@ -262,32 +298,61 @@ end
 local function apply_tint(p)
     if not (p.tint and p.st.mesh) then return end
     local mesh, s = p.st.mesh, p.st
-    s.ourMat = s.ourMat or material_index(mesh, p.tint)
-    if not s.ourMat then return end
-    s.ourVars = s.ourVars or var_table(mesh, s.ourMat)
+    s.tintMats = s.tintMats or {}
     local face = st.hxf and face_mesh(st.hxf)
     if face then
         s.faceMat = s.faceMat or material_index(face, FACE_MATERIAL)
         s.faceVars = s.faceVars or (s.faceMat and var_table(face, s.faceMat))
     end
-    if face and s.faceMat then
-        local copied = 0
-        for name in pairs(COPY_VARS) do
-            local j, k = s.faceVars[name], s.ourVars[name]
-            local v = j and k and try(function() return face:getMaterialFloat4(s.faceMat, j) end)
-            if v and try(function()
-                mesh:setMaterialFloat4(s.ourMat, k, Vector4f.new(v.x, v.y, v.z, v.w))
-                return true
-            end) then copied = copied + 1 end
-        end
-        s.copied = copied
-    end
     local tone = SKIN_TONES[config.skinTone][2] or { 1.0, 1.0, 1.0 }
     local b = config.skinBrightness * SKIN_BASE
-    s.tinted = s.ourVars.ColorParam and try(function()
-        mesh:setMaterialFloat4(s.ourMat, s.ourVars.ColorParam, Vector4f.new(tone[1] * b, tone[2] * b, tone[3] * b, 1.0))
-        return true
-    end)
+    local copied, tinted = 0, false
+    for _, name in ipairs(p.tint) do
+        local t = s.tintMats[name]
+        if t == nil then
+            local i = material_index(mesh, name)
+            t = i and { mat = i, vars = var_table(mesh, i) } or false
+            s.tintMats[name] = t
+        end
+        if t then
+            if face and s.faceMat then
+                for vname in pairs(COPY_VARS) do
+                    local j, k = s.faceVars[vname], t.vars[vname]
+                    local v = j and k and try(function() return face:getMaterialFloat4(s.faceMat, j) end)
+                    if v and try(function()
+                        mesh:setMaterialFloat4(t.mat, k, Vector4f.new(v.x, v.y, v.z, v.w))
+                        return true
+                    end) then copied = copied + 1 end
+                end
+            end
+            tinted = (t.vars.ColorParam and try(function()
+                mesh:setMaterialFloat4(t.mat, t.vars.ColorParam, Vector4f.new(tone[1] * b, tone[2] * b, tone[3] * b, 1.0))
+                return true
+            end)) or tinted
+        end
+    end
+    s.copied, s.tinted = copied, tinted
+end
+
+-- The body's parts under the outfit (materials of their own, miquella_body.py mark_covered) off
+-- while it is worn, on otherwise.
+local function apply_cover(body, robeShown)
+    local s = body.st
+    if not s.mesh then return end
+    local covers = robeShown and OUTFITS[config.outfit].covers or {}
+    local key = table.concat(covers, ",")
+    if s.coverKey == key then return end
+    local hide = {}
+    for _, name in ipairs(covers) do hide[name] = true end
+    local n = 0
+    for _, name in ipairs(COVERABLE) do
+        local i = material_index(s.mesh, name)
+        if i then
+            try(function() s.mesh:setMaterialsEnable(i, not hide[name]) end)
+            if hide[name] then n = n + 1 end
+        end
+    end
+    s.coverKey, s.covered = key, n
 end
 
 local function set_model(p)
@@ -307,7 +372,12 @@ local function set_model(p)
     p.st.meshPath = path
     p.st.glowSlots = nil
     p.st.renderMatched = nil
-    p.st.ourMat, p.st.ourVars, p.st.faceMat, p.st.faceVars = nil, nil, nil, nil
+    p.st.tintMats, p.st.faceMat, p.st.faceVars, p.st.coverKey = nil, nil, nil, nil
+    if p.chain and p.st.chain then
+        local c = holder("via.motion.Chain2Resource", p.chain)
+        p.st.chainSet = c ~= nil and try(function() p.st.chain:set_ChainAsset(c); return true end) == true
+        try(function() p.st.chain:call("set_Enabled", true) end)
+    end
     apply_glow(p)
     apply_tint(p)
     return true
@@ -334,6 +404,23 @@ local function spawn(p)
         return false
     end
     p.st.go, p.st.mesh = go, mesh
+    if p.chain then
+        -- swinging: Chain2 runs the chain asset, ChildSecondary makes it move on a spawned object
+        local made = {}
+        for _, t in ipairs({ "via.motion.Chain2", "via.motion.ChildSecondary" }) do
+            local c = try(function() return go:call("getComponent(System.Type)", sdk.typeof(t)) end)
+            if not c then
+                c = try(function() return go:call("createComponent(System.Type)", sdk.typeof(t)) end)
+                if c then
+                    c = try(function() return c:add_ref() end) or c
+                    try(function() c:call(".ctor()") end)
+                end
+            end
+            made[#made + 1] = c and t:gsub("via%.motion%.", "") or (t:gsub("via%.motion%.", "") .. " FAILED")
+            if t == "via.motion.Chain2" then p.st.chain = c end
+        end
+        p.st.chainComps = table.concat(made, " + ")
+    end
     p.st.xf = try(function() return go:call("get_Transform") end)
     p.st.spawnedAt, p.st.refreshed = os.clock(), 0
     p.st.parentAddr, p.st.follow = nil, nil
@@ -512,6 +599,101 @@ local function match_render(p, hxf)
     p.st.renderMatched = true
 end
 
+-- ------------------------------------------------------------------ robe: is it swinging? (for Claude)
+
+-- How far the back hem swung relative to the hips over the last SWING_WINDOW s (mm): ~0 means the
+-- chain does not run. Written with what the game has about chains to robe_debug.json: Chain2's
+-- and app.ChainSetting's members, and the hunter's own chained part's ChainSetting values (the leg
+-- collisions come from .clsp files that the game's parts register somewhere: not known yet).
+local SWING_WINDOW = 5.0
+local ROBE_DEBUG = "MiquellaLight/robe_debug.json"
+local swing = { lo = nil, hi = nil, from = 0, last = nil }
+
+local function joint_pos(xf, name)
+    local j = xf and try(function() return xf:call("getJointByName", name) end)
+    return j and try(function() return j:call("get_Position") end), j and try(function() return j:call("get_Rotation") end)
+end
+
+local function measure_swing(robe, hxf, now)
+    local p = joint_pos(robe.st.xf, SWING_JOINT)
+    local hp, hq = joint_pos(hxf, "Hip")
+    if not (p and hp and hq) then return end
+    local x, y, z = unrotate(hq, { p.x - hp.x, p.y - hp.y, p.z - hp.z })
+    if not swing.lo or now - swing.from > SWING_WINDOW then
+        if swing.lo then
+            swing.last = 1000 * math.sqrt((swing.hi[1] - swing.lo[1]) ^ 2 + (swing.hi[2] - swing.lo[2]) ^ 2
+                + (swing.hi[3] - swing.lo[3]) ^ 2)
+        end
+        swing.lo, swing.hi, swing.from = { x, y, z }, { x, y, z }, now
+        return
+    end
+    local v = { x, y, z }
+    for i = 1, 3 do
+        swing.lo[i] = math.min(swing.lo[i], v[i])
+        swing.hi[i] = math.max(swing.hi[i], v[i])
+    end
+end
+
+local function value_text(v)
+    if type(v) ~= "userdata" then return tostring(v) end
+    return try(function() return v:call("ToString()") end) or try(function() return v:ToString() end) or "?"
+end
+
+local function type_info(name, obj)
+    local td = try(function() return sdk.find_type_definition(name) end)
+    if not td then return { missing = true } end
+    local out = { methods = {}, fields = {} }
+    for _, m in ipairs(try(function() return td:get_methods() end) or {}) do
+        out.methods[#out.methods + 1] = try(function() return m:get_name() end)
+    end
+    for _, f in ipairs(try(function() return td:get_fields() end) or {}) do
+        local fname = try(function() return f:get_name() end)
+        if fname then
+            local ftype = try(function() return f:get_type():get_full_name() end) or "?"
+            local v = obj and try(function() return obj:get_field(fname) end)
+            out.fields[fname] = ftype .. (obj and (" = " .. value_text(v)) or "")
+        end
+    end
+    return out
+end
+
+local function find_component(xf, typeName, depth)
+    if depth > SCAN_DEPTH then return nil end
+    local child = try(function() return xf:call("get_Child") end)
+    while child do
+        local go = try(function() return child:call("get_GameObject") end)
+        local c = go and try(function() return go:call("getComponent(System.Type)", sdk.typeof(typeName)) end)
+        if c then return c, go end
+        local found, fgo = find_component(child, typeName, depth + 1)
+        if found then return found, fgo end
+        child = try(function() return child:call("get_Next") end)
+    end
+    return nil
+end
+
+local function write_robe_debug(robe, hxf)
+    local s = robe.st
+    local d = { mesh = s.meshPath, chainComps = s.chainComps, chainSet = s.chainSet, swingMm = swing.last,
+        covered = PIECES[2].st.covered, chain = robe.chain,
+        chainAsset = s.chain and resource_path(try(function() return s.chain:call("get_ChainAsset") end)) }
+    if not s.typesDumped then
+        s.typesDumped = true
+        d.chain2Type = type_info("via.motion.Chain2")
+        d.childSecondaryType = type_info("via.motion.ChildSecondary")
+        local cs, csGo = find_component(hxf, "app.ChainSetting", 1)
+        d.hunterChainSetting = type_info("app.ChainSetting", cs)
+        d.hunterChainSettingOn = csGo and mesh_path(csGo)
+        local hc, hcGo = find_component(hxf, "via.motion.Chain2", 1)
+        d.hunterChain2 = hc and type_info("via.motion.Chain2", hc)
+        d.hunterChain2On = hcGo and mesh_path(hcGo)
+        s.typeDump = d
+    else
+        for k, v in pairs(s.typeDump) do if d[k] == nil and type(v) == "table" then d[k] = v end end
+        d.hunterChainSettingOn, d.hunterChain2On = s.typeDump.hunterChainSettingOn, s.typeDump.hunterChain2On
+    end
+    pcall(json.dump_file, ROBE_DEBUG, d)
+end
+
 local function update_piece(p, hxf, hgo, now)
     local s = p.st
     local show = piece_on(p)
@@ -561,12 +743,23 @@ local function update_piece(p, hxf, hgo, now)
             s.debugAt = now + 1
             write_debug(p, hxf)
         end
+    elseif p.key == "robe" then
+        s.info = string.format("%s on the skeleton (%s), for a %s hunter; chain: %s, asset %s; hem swing %s",
+            OUTFITS[config.outfit].name, s.jointCall or "?",
+            hunterFemale == nil and "?" or hunterFemale and "female" or "male", s.chainComps or "none",
+            s.chainSet and "set" or "NOT set", swing.last and string.format("%.0f mm in %.0f s", swing.last, SWING_WINDOW)
+            or "measuring")
+        if show then measure_swing(p, hxf, now) end
+        if now >= (s.debugAt or 0) then
+            s.debugAt = now + 2
+            write_robe_debug(p, hxf)
+        end
     else
         s.info = string.format("on the skeleton (%s), %s for a %s hunter; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], hunterFemale == nil and "?" or hunterFemale and "female" or "male",
             s.render or "not matched yet",
             (s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
-            .. (s.copied == 1 and ", face skin tone copied" or ", face skin tone not found"))
+            .. ((s.copied or 0) > 0 and ", face skin tone copied" or ", face skin tone not found"))
     end
     -- Hidden with the hunter (e.g. when the game hides it) and when switched off.
     local hunterShown = try(function() return hgo:call("get_DrawSelf") end)
@@ -588,6 +781,8 @@ local function update(now)
     if not hxf then return end
     st.hxf, st.info = hxf, nil
     for _, p in ipairs(PIECES) do update_piece(p, hxf, hgo, now) end
+    local robe = PIECES[3]
+    apply_cover(PIECES[2], piece_on(robe) and robe.st.go ~= nil and robe.st.loadError == nil)
     update_outfit(hxf, now)
 end
 
@@ -636,6 +831,15 @@ re.on_draw_ui(function()
     local b = PIECES[2].st
     if b.loadError then imgui.text(b.loadError) end
     if b.info then imgui.text("Body: " .. b.info .. string.format("  (outfit objects hidden: %d)", #outfit.list)) end
+    -- Outfit
+    c, config.outfit = imgui.combo("Outfit", config.outfit, OUTFIT_NAMES); changed = changed or c
+    local r = PIECES[3].st
+    if config.outfit > 1 then
+        if r.loadError then imgui.text(r.loadError) end
+        if r.info then imgui.text("Outfit: " .. r.info) end
+        imgui.text(string.format("Body parts under it switched off: %d", b.covered or 0))
+        if config.bodyShape ~= 3 then imgui.text("(the robe is fitted to body shape C)") end
+    end
     -- Circlet
     c, config.circlet = imgui.checkbox("Circlet (halo)", config.circlet); changed = changed or c
     c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0); changed = changed or c

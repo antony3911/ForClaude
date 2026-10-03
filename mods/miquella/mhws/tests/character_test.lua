@@ -93,16 +93,30 @@ local function newObject(name)
     elseif m == "set_DrawSelf" then self.drawSelf = a
     elseif m == "getComponent(System.Type)" then return self.comps[a.name]
     elseif m == "createComponent(System.Type)" then
+      if a.name ~= "via.render.Mesh" then     -- Chain2, ChildSecondary
+        local c = { type = a.name }
+        function c:add_ref() return self end
+        function c:call(mm, v)
+          if mm == "set_Enabled" then self.enabled = v elseif mm == "get_ChainAsset" then return self.asset end
+        end
+        function c:set_ChainAsset(r) self.asset = r end
+        self.comps[a.name] = c
+        return c
+      end
       local mesh = { floats = {}, float4 = {}, enabled = {} }
       function mesh:add_ref() return self end
       function mesh:call() end
       function mesh:setMesh(r) self.meshRes = r end
       function mesh:set_Material(r) self.mdfRes = r end
-      function mesh:get_MaterialNum() return self.mdfRes and 2 or 0 end
       local function body(m) return m.mdfRes and m.mdfRes.path:find("mq_body", 1, true) end
-      function mesh:getMaterialName(i)
-        return (body(self) and { "MiquellaCloth", "MiquellaSkin" } or { "MiquellaGlow", "MiquellaHalo" })[i + 1]
+      local function names(m)
+        if not m.mdfRes then return {} end
+        if body(m) then return { "MiquellaCloth", "MiquellaClothWaist", "MiquellaSkin", "MiquellaSkinChest", "MiquellaSkinWaist" } end
+        if m.mdfRes.path:find("mq_robe", 1, true) then return { "MiquellaRobe" } end
+        return { "MiquellaGlow", "MiquellaHalo" }
       end
+      function mesh:get_MaterialNum() return #names(self) end
+      function mesh:getMaterialName(i) return names(self)[i + 1] end
       function mesh:getMaterialVariableNum() return 3 end
       function mesh:getMaterialVariableName(i, j)
         return (body(self) and { "ColorParam", "Emissive_Intensity", "Wet" } or { "Dissolve", "Emissive_Intensity", "Emissive_Power" })[j + 1]
@@ -219,9 +233,32 @@ else
     "body: on the hunter's skeleton (SameJointsConstraint), shown")
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
-  local tint = bmesh.float4["1.0"]
-  check(tint and math.abs(tint.x - 2.9) < 1e-6 and math.abs(tint.y - 2.9) < 1e-6 and bmesh.float4["0.0"] == nil,
-        "body: skin tone tint on MiquellaSkin's ColorParam only")
+  local tint = bmesh.float4["2.0"]
+  check(tint and math.abs(tint.x - 2.9) < 1e-6 and math.abs(tint.y - 2.9) < 1e-6 and bmesh.float4["3.0"]
+        and bmesh.float4["4.0"] and bmesh.float4["0.0"] == nil and bmesh.float4["1.0"] == nil,
+        "body: skin tone tint on the skin materials' ColorParam (MiquellaSkin, -Chest, -Waist) only")
+  check(made("MiquellaLight_Robe") == nil, "no outfit by default: no robe object")
+  -- Outfit: the plain robe
+  comboAnswer["Outfit"] = 2; menu(); frames(70, 1 / 60)
+  local robe = made("MiquellaLight_Robe")
+  local rmesh = robe and robe.comps["via.render.Mesh"]
+  check(rmesh and rmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_robe_smooth_c" .. SFX .. ".mesh"
+    and rmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_robe.mdf2", "robe: the plain robe for this hunter's sex")
+  local chain = robe and robe.comps["via.motion.Chain2"]
+  check(chain and robe.comps["via.motion.ChildSecondary"] and chain.enabled == true and chain.asset
+    and chain.asset.path == "Art/Model/Character/ch03/025/001/5/ch03_025_0015.chain2",
+    "robe: Chain2 (the armor's chain2) and ChildSecondary")
+  check(robe.xf.parent == hunterXf and robe.xf.sameJoints == true and robe.drawSelf == true, "robe: on the skeleton, shown")
+  check(bmesh.enabled[1] == false and bmesh.enabled[3] == false and bmesh.enabled[4] == false
+    and bmesh.enabled[0] == true and bmesh.enabled[2] == true, "robe on: the body under it switched off, the rest on")
+  check(dumps["MiquellaLight/robe_debug.json"] and dumps["MiquellaLight/robe_debug.json"].chainSet == true,
+    "robe: status written for Claude")
+  check(menu():find("Robe, plain", 1, true) ~= nil, "robe: status in the menu")
+  comboAnswer["Outfit"] = 1; menu(); frames(2, 1 / 60)
+  check(robe.drawSelf == false and bmesh.enabled[1] == true and bmesh.enabled[3] == true and bmesh.enabled[4] == true,
+    "robe off: hidden, the body whole again")
+  comboAnswer["Outfit"] = 2; menu(); frames(2, 1 / 60)
+  check(robe.drawSelf == true and count("MiquellaLight_Robe") == 1 and bmesh.enabled[3] == false, "robe on again, same object")
   check(face.drawSelf == true and hair.drawSelf == true and weapon.drawSelf == true, "body: face, hair and weapon stay")
   comboAnswer["Body shape"] = 3; menu(); frames(2, 1 / 60)
   check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_c" .. SFX .. ".mesh" and count("MiquellaLight_Body") == 1,
@@ -257,19 +294,27 @@ else
   check(go.drawSelf == false and body.drawSelf == false, "hidden with the hunter")
   hunterGO.drawn = true; frames(1, 1 / 60)
   -- An area change destroys our objects: new ones are made.
-  go.valid, body.valid = false, false; frames(2, 1 / 60)
-  check(count("MiquellaLight_Circlet") == 2 and count("MiquellaLight_Body") == 2
+  go.valid, body.valid, robe.valid = false, false, false; frames(2, 1 / 60)
+  check(count("MiquellaLight_Circlet") == 2 and count("MiquellaLight_Body") == 2 and count("MiquellaLight_Robe") == 2
     and made("MiquellaLight_Body").drawSelf == true, "remade after the game destroys them")
+  frames(10, 1 / 60)
+  local b2 = made("MiquellaLight_Body").comps["via.render.Mesh"]
+  check(b2.enabled[3] == false and made("MiquellaLight_Robe").comps["via.motion.Chain2"].asset ~= nil,
+    "remade: robe with its chain, the body under it off")
   -- Reset scripts: hidden, outfit shown, and the next run takes them over instead of making more.
   onReset()
   check(made("MiquellaLight_Circlet").drawSelf == false and made("MiquellaLight_Body").drawSelf == false
     and innerwear.drawSelf == true, "script reset: ours hidden, the outfit shown")
   sceneObjects["MiquellaLight_Circlet"] = made("MiquellaLight_Circlet")
   sceneObjects["MiquellaLight_Body"] = made("MiquellaLight_Body")
+  sceneObjects["MiquellaLight_Robe"] = made("MiquellaLight_Robe")
+  check(made("MiquellaLight_Robe").drawSelf == false, "script reset: the robe hidden too")
   onFrame, onPre = {}, {}
+  json.load_file = function() return savedCfg end
   dofile(arg[1])
   frames(3, 1 / 60)
-  check(#created == 4 and made("MiquellaLight_Body").drawSelf == true, "next run takes over the leftover objects")
+  check(#created == 6 and made("MiquellaLight_Body").drawSelf == true and made("MiquellaLight_Robe").drawSelf == true,
+    "next run takes over the leftover objects")
 end
 print(failed == 0 and string.format("ALL PASS (%d)%s", passed, mode and (" " .. mode) or "")
   or string.format("%d FAILED, %d passed", failed, passed))

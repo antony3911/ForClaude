@@ -170,6 +170,10 @@ local function distance(a, b)
     return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 end
 
+local function unrotate(q, v)   -- by the inverse of q
+    return rotate({ x = -q.x, y = -q.y, z = -q.z, w = q.w }, v)
+end
+
 -- ------------------------------------------------------------------ our objects
 
 local st = { hxf = nil, info = "waiting for the hunter" }
@@ -331,6 +335,16 @@ local function local_offset()
     return { o[1] / 100, o[2] / 100, o[3] / 100 }
 end
 
+-- REFramework's Quaternion.new takes (w, x, y, z) (glm), not (x, y, z, w): new(0, 0, 0, 1) is
+-- half a turn about Z, which hung the circlet upside down from the Head joint, its front 13 cm
+-- below it at the base of the neck (2026-10-03, circlet_debug.json). Checked once, as the weapons
+-- script does, in case the order changes.
+local function identity_quat()
+    local probe = try(function() return Quaternion.new(0.5, 0.1, 0.2, 0.3) end)
+    if probe and math.abs(probe.w - 0.5) < 1e-6 then return Quaternion.new(1, 0, 0, 0) end
+    return Quaternion.new(0, 0, 0, 1)
+end
+
 local function attach(p, hxf, now)
     local xf = p.st.xf
     try(function() xf:call("set_Parent", hxf) end)
@@ -344,7 +358,7 @@ local function attach(p, hxf, now)
         try(function() xf:call("set_LocalPosition", Vector3f.new(0, 0, 0)) end)
         p.st.jointCall = ok and "SameJointsConstraint on" or "SameJointsConstraint failed"
     end
-    try(function() xf:call("set_LocalRotation", Quaternion.new(0, 0, 0, 1)) end)
+    try(function() xf:call("set_LocalRotation", identity_quat()) end)
     p.st.parentAddr = address(hxf)
     p.st.attachAt, p.st.checked = now, false
 end
@@ -368,6 +382,36 @@ local function follow()
             end
         end
     end
+end
+
+-- Where the circlet really is (2026-10-03: in game a dark ring sat at the base of the neck),
+-- written for Claude to read: our object and the Head / Neck_0 joints and the hunter's root,
+-- in the world and in the Head joint's own axes. The circlet's front (FRONT, file space) should
+-- come out ~13 cm above Head and ~11 cm in front of it (build_weapon_kit.py circlet).
+local DEBUG_PATH = "MiquellaLight/circlet_debug.json"
+local FRONT = { 0.0, 0.128, 0.113 }
+local function vec(v) return v and { v.x, v.y, v.z, v.w } end
+local function write_debug(p, hxf)
+    local s = p.st
+    local j, n = head_joint(hxf, p.joint), head_joint(hxf, "Neck_0")
+    local hp = j and try(function() return j:call("get_Position") end)
+    local hq = j and try(function() return j:call("get_Rotation") end)
+    local op = try(function() return s.xf:call("get_Position") end)
+    local oq = try(function() return s.xf:call("get_Rotation") end)
+    local d = { mode = MODES[config.mode], follow = s.follow == true, jointCall = s.jointCall,
+        head = vec(hp), headRot = vec(hq), neck0 = vec(n and try(function() return n:call("get_Position") end)),
+        hunter = vec(try(function() return hxf:call("get_Position") end)),
+        hunterRot = vec(try(function() return hxf:call("get_Rotation") end)),
+        obj = vec(op), objRot = vec(oq), objScale = vec(try(function() return s.xf:call("get_LocalScale") end)) }
+    if hp and hq and op and oq then
+        d.objInHead = { unrotate(hq, { op.x - hp.x, op.y - hp.y, op.z - hp.z }) }
+        local fx, fy, fz = rotate(oq, { FRONT[1] * config.size, FRONT[2] * config.size, FRONT[3] * config.size })
+        d.front = { op.x + fx, op.y + fy, op.z + fz }
+        d.frontInHead = { unrotate(hq, { d.front[1] - hp.x, d.front[2] - hp.y, d.front[3] - hp.z }) }
+        d.upOfHead = { rotate(hq, { 0, 1, 0 }) }      -- the Head joint's +Y in the world
+        d.upOfObj = { rotate(oq, { 0, 1, 0 }) }
+    end
+    pcall(json.dump_file, DEBUG_PATH, d)
 end
 
 -- ------------------------------------------------------------------ the hunter's outfit
@@ -498,6 +542,10 @@ local function update_piece(p, hxf, hgo, now)
                            j and try(function() return j:call("get_Position") end))
         s.info = string.format("on: %s  (%s)  %s cm from the %s joint", s.follow and "following every frame"
             or p.joint .. " joint", s.jointCall or "?", d and string.format("%.1f", d * 100) or "?", p.joint)
+        if now >= (s.debugAt or 0) then
+            s.debugAt = now + 1
+            write_debug(p, hxf)
+        end
     else
         s.info = string.format("on the skeleton (%s), %s for a %s hunter; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], hunterFemale == nil and "?" or hunterFemale and "female" or "male",

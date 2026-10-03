@@ -10,7 +10,7 @@ local fakeTime = 0
 os.clock = function() return fakeTime end
 Vector3f = { new = function(x, y, z) return { x = x, y = y, z = z } end }
 Vector4f = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
-Quaternion = { new = function(x, y, z, w) return { x = x, y = y, z = z, w = w } end }
+Quaternion = { new = function(w, x, y, z) return { x = x, y = y, z = z, w = w } end }   -- glm order, as REFramework
 
 local function resource(path) return { ToString = function() return "Resource[" .. path .. "]" end } end
 
@@ -177,7 +177,9 @@ imgui = {
   text = function(t) texts[#texts + 1] = t end,
 }
 local savedCfg
-json = { load_file = function() return nil end, dump_file = function(_, t) savedCfg = t end }
+local dumps = {}
+json = { load_file = function() return nil end,
+  dump_file = function(path, t) dumps[path] = t; if path:find("Character.json", 1, true) then savedCfg = t end end }
 
 local function frames(n, dt)
   for _ = 1, n do
@@ -203,6 +205,7 @@ else
   check(mesh and mesh.meshRes and mesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_circlet.mesh", "circlet: sets our model")
   check(mesh and mesh.floats["1.1"] and math.abs(mesh.floats["1.1"] - 0.8) < 1e-6, "circlet: halo glow at its mdf2 value")
   check(xf.parent == hunterXf and go.drawSelf == true, "circlet: parented to the hunter, shown")
+  check(xf.lr and xf.lr.w == 1 and xf.lr.x == 0 and xf.lr.y == 0 and xf.lr.z == 0, "circlet: no turn of its own on the joint")
   -- Body
   local body = made("MiquellaLight_Body")
   check(body ~= nil and count("MiquellaLight_Body") == 1, "makes one body object")
@@ -235,6 +238,8 @@ else
   else
     check(xf.joint == "Head" and not xf.followed, "circlet: on the Head joint, no per-frame follow")
   end
+  local dbg = dumps["MiquellaLight/circlet_debug.json"]
+  check(dbg and dbg.head and math.abs(dbg.head[2] - 1.57) < 1e-6 and dbg.mode, "circlet: where it is written for Claude")
   -- Offset in the head's own axes: 2 cm forward (+Z) with the head turned 90 deg about Y -> +X in the world.
   comboAnswer["Attach"] = 3; menu()
   sliderAnswer["Forward / back (cm)"] = 2.0; menu()

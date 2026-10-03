@@ -1,14 +1,19 @@
-"""Robe design proposals (2026-10-03) on Miquella's body for a female hunter (mq_body_c_f), with the
-game's female face, hairstyle 512 and our circlet for context. One robe (DESIGN.md "服裝"): fitted
-bodice grown out of the body surface down to the hips, long fitted sleeves to the wrist, a skirt
-hanging from the hips to the ankles, round collar with a wide gold band; the versions differ in the
-gold work:
-  A plain gold bands (the spec as written)
-  B openwork bands: two thin gold rails with scrolls (卷草) between, the cloth showing through
-  C B's bands plus embroidered scroll vines climbing from the hem, the cuffs and the collar
-  D thinner plain bands plus a braided gold cord at the hips, two cords hanging in front that end
-    in lit droplets in small halos (the floating-phial motif)
-Usage: bpy45 python robe_designs.py <out dir> [A B C D] [test]
+"""Robe design (2026-10-03/04) on Miquella's body for a female hunter (mq_body_c_f), with the game's
+female face, hairstyle 512 and our circlet for context. Long sleeves to the wrist, a skirt to the
+ankles. Decided with the user (DESIGN.md "服裝"):
+  fits (all kept, as options): "lines" fitted, the body's lines showing; "smooth" fitted, no lines;
+    "drape" hanging from the shoulders, pushed out only by the buttocks; "cinch" the drape with the
+    sash pulling it in at the waist
+  jewellery, all gold, on the drape only (the fitted ones plain, version N): D = gold-ring sash
+    (loose on the hips on "drape", cinched at the waist on "cinch") with two hanging cords ending in
+    gold drops, narrow gold hem and cuff bands, and the broad collar 丁 (collar:strands: the
+    circlet's strands radiating over a gold plate, a fringe of gold drops)
+  proposals not taken: A plain wide bands, B openwork scroll bands, C scroll vines; collars 甲
+    beads, 乙 leaves, 丙 scrolls
+Usage: bpy45 python robe_designs.py <out dir> [A B C D N] [lines smooth drape cinch] [collar:<kind>]
+       [full] [test]
+  e.g. "D drape cinch collar:strands full" (Cycles close-ups of the collar plus the full body),
+       "N lines smooth"
 Renders contain Capcom models (face, hair): keep them out of the repo."""
 import math
 import os
@@ -858,6 +863,8 @@ def belt(surf, grid, loose=False):
 
 
 def gold_work(version, bm, grid, fit, collar_kind=None):
+    if version == "N":   # plain: the fitted robes have no jewellery (user 2026-10-04)
+        return []
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     surf = Surface(bm, fit)
     J = fit.J
@@ -1258,7 +1265,8 @@ def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
     out = os.path.abspath(args[0])
     test = "test" in args
-    versions = [a for a in args[1:] if a in ("A", "B", "C", "D")] or ["A", "B", "C", "D"]
+    versions = [a for a in args[1:] if a in ("A", "B", "C", "D", "N")] or ["A", "B", "C", "D"]
+    full = "full" in args   # with a collar: the full-body views too
     fits = [a for a in args[1:] if a in FITS] or ["drape"]
     collars = [a.split(":", 1)[1] for a in args[1:] if a.startswith("collar:")]
     os.makedirs(out, exist_ok=True)
@@ -1309,6 +1317,8 @@ def main():
                 objs = [robe] + gold_work(v, bm, grid, fit, collar_kind=kind)
                 if kind:
                     paths = render_collar(out, f"robe_{f}_{v}_collar_{kind}", test)
+                    if full:
+                        paths += render(out, f"robe_{f}_{v}_collar_{kind}", test)
                 else:
                     paths = render(out, f"robe_{f}_{v}", test)
                 log("rendered", paths)

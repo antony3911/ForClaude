@@ -353,6 +353,61 @@ def mag_c(mats, rng):
     return objs
 
 
+def mag_c_lantern(mats, rng):
+    """Reliquary C for the game (user 2026-10-03, on C hung on the gun's side: "a square box at
+    the side is ugly"): hung under the receiver like the proposal, and no longer a box: six ivory
+    pillars bowing out a little and tapering down like a lantern, a pointed arch window of gold
+    light on each face, the big drop of light hanging inside, an inverted spire of scrolls (long
+    and short in turn) at the foot."""
+    axis = V(0, 0.12, -1).normalized()
+    e1 = V(1, 0, 0)
+    e2 = axis.cross(e1).normalized()
+    top = MAG_TOP + axis * 0.004
+    h, r_top, r_bot = 0.15, 0.036, 0.024
+
+    def radius(s):
+        return r_top + (r_bot - r_top) * s / h
+
+    def ring_pt(theta, s, scale=1.0):
+        return top + axis * s + (e1 * math.cos(theta) + e2 * math.sin(theta)) * (radius(s) * scale)
+
+    objs = []
+    for k in range(6):
+        pts = [ring_pt(PI / 3 * k, h * u, 1 + 0.07 * math.sin(PI * u)) for u in (i / 12 for i in range(13))]
+        objs.append(c.curve_tube(f"C2_Pillar_{k}", pts, [1.0] * 13, mats["ivory"], bevel=0.0036, resolution=3))
+    objs += m.halo("C2_Top_Ring", top, r_top * 1.06, 0.0034, axis, mats["ivory"])
+    objs += m.halo("C2_Top_Gold", top + axis * 0.012, r_top * 1.03, 0.0014, axis, mats["light"])
+    objs += m.halo("C2_Foot_Ring", top + axis * h, r_bot * 1.08, 0.0032, axis, mats["ivory"])
+    z_lo, z_mid, z_hi = 0.024, 0.066, 0.128      # the arches point down (the casket hangs)
+    for k in range(6):
+        a = PI / 6 + PI / 3 * k
+        n = e1 * math.cos(a) + e2 * math.sin(a)
+        t = e2 * math.cos(a) - e1 * math.sin(a)
+
+        def face_pt(s, f, n=n, t=t):
+            return top + axis * s + n * (radius(s) * math.cos(PI / 6) * 1.05) + t * (f * radius(s) * 0.31)
+
+        for side in (-1, 1):
+            pts = [face_pt(z_lo + (z_mid - z_lo) * u, side) for u in (i / 8 for i in range(9))]
+            pts += [face_pt(z_mid + (z_hi - z_mid) * u, side * (1 - u * u)) for u in (i / 14 for i in range(1, 15))]
+            objs += gd.tube(f"C2_Arch_{k}_{side}", pts, mats["light"], 0.0013)
+        objs += gd.tube(f"C2_Arch_Top_{k}", [face_pt(z_lo, -1), face_pt(z_lo, 1)], mats["light"], 0.0011)
+    objs += m.droplet("C2_Relic", top + axis * 0.085, 0.015, axis, mats["phial_lit"], stretch=1.6)
+    objs += m.halo("C2_Relic_Halo", top + axis * 0.068, 0.017, 0.0016, axis, mats["light"])
+    foot = top + axis * h
+    for k in range(6):                   # inverted spire of scrolls, long and short in turn
+        a = PI / 3 * k
+        out = e1 * math.cos(a) + e2 * math.sin(a)
+        plane = m.plane_mapper(foot + out * 0.016, axis, out)
+        long_ = k % 2 == 0
+        objs += m.tendril(f"C2_Spire_{k}", plane, (0, 0), 25 if long_ else 40, 0.048 if long_ else 0.03,
+                          -1.3 if long_ else -1.6, 0.0024 if long_ else 0.0019, mats, strands=2, curl_start=0.4)
+    objs.append(c.curve_tube("C2_Finial", [foot, foot + axis * 0.05], [1.0, 0.1], mats["ivory"], bevel=0.0045,
+                             resolution=3))
+    objs += m.droplet("C2_Finial_Light", foot + axis * 0.055, 0.006, axis, mats["phial_lit"], stretch=1.4)
+    return objs
+
+
 def mag_d(mats, rng):
     """Floating rounds: no magazine, a chain of lit drops in their own halos hanging in an arc
     under the gun, strung on a vine of gold light from a scroll bracket (spent drops go out)."""

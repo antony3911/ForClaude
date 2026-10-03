@@ -1106,10 +1106,10 @@ def heavy_bowgun():
 #     rounds and spokes) and axis (the hub, 0.136 behind center).
 #   it1299_0000_0, the heavy bowgun's magazine: a canister 0.2 thick on the -X side, leaning down
 #     toward the muzzle along (0.22, -0.78, 0.59) (its Piston bone's -Y), middle near
-#     (-0.20, -0.16, 0.02); Piston and EnergyStick at its upper rear end.
+#     (-0.20, -0.16, 0.02); Piston and EnergyStick at its upper rear end. Ours hangs under the
+#     gun instead (hbg_mag): where the mesh sits is ours to choose, only the bones are the game's.
 DRUM_AT, DRUM_K = Vector((-0.25, -0.219, 0.035)), 2.3
-MAG_AT, MAG_K = Vector((-0.205, -0.15, 0.02)), 2.4
-MAG_AXIS = Vector((0.22, -0.78, 0.59)).normalized()
+MAG_K = 1.15
 
 
 def attachment_parts(fn):
@@ -1139,35 +1139,23 @@ def lbg_drum():
 
 
 def hbg_mag():
-    """Magazine C, the reliquary: the prototype's casket (hanging along (0, 0.2, -1)) leaned
-    along the original canister, its middle on the canister's, an ivory neck in to the gun; a
-    light at its upper end rides the EnergyStick bone."""
+    """Magazine C, the reliquary, as a hanging lantern (mag_c_lantern; user 2026-10-03, on the
+    first game version leaned along the original canister on the gun's side: "a square box at
+    the side is ugly"): under the receiver in front of the grip like the proposal, placed with
+    the heavy bowgun kit's own transform (the same prototype gun), 1.15x about its top. The
+    Piston bone (the effects 11_it12_030 / 032 / 199 play on it and its child EnergyStick, 0.063
+    up its +Y) moves into the casket, unrotated, so the energy rod stands inside it."""
     import attachments as at
-    import motifs
-    mats, objs = attachment_parts(at.mag_c)
-    p_axis = Vector((0, 0.2, -1)).normalized()
-    p_side = Vector((0, 1, 0.2)).normalized()
-    f_x = (Vector((1, 0, 0)) - MAG_AXIS.x * MAG_AXIS).normalized()
-    f_side = f_x.cross(MAG_AXIS)
-    proto = Matrix((Vector((1, 0, 0)), p_side, p_axis)).transposed().to_4x4()   # columns
-    game = Matrix((f_x, f_side, MAG_AXIS)).transposed().to_4x4()
-    top = at.MAG_TOP + p_axis * 0.005
-    middle = top + p_axis * 0.1
-    to_file = Matrix.Translation(MAG_AT) @ Matrix.Scale(MAG_K, 4) @ game @ proto.inverted() @ Matrix.Translation(-middle)
-    to_proto = to_file.inverted()
-    # The neck in to the gun from the casket's inner face, and the light on its upper end.
-    inner = to_proto @ (MAG_AT + f_x * 0.06 * MAG_K / 2)
-    objs += motifs.woven_tube("Mag_Neck", [inner, to_proto @ Vector((-0.04, MAG_AT.y, MAG_AT.z))], 0.011,
-                              mats["ivory"], random.Random(3))
-    objs += motifs.droplet("Mag_Cap", top - p_axis * 0.012, 0.0075, -p_axis, mats["phial_lit"], stretch=1.4)
-    objs += motifs.halo("Mag_Cap_Halo", top - p_axis * 0.006, 0.011, 0.0016, p_axis, mats["light"])
-    bpy.context.view_layer.update()
-    objs = [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")]
-
-    def bone(o, _center):
-        return "EnergyStick" if o.name.startswith("Mag_Cap") else "Base"
-
-    return placed("it1299_0000_0", "Art/Model/Item/it12/99/0000", objs, to_file, {}, bone_fn=bone)
+    import bowgun as hb
+    _, objs = attachment_parts(at.mag_c_lantern)
+    axes = Matrix(((-1, 0, 0, 0), (0, 0, 1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))      # as heavy_bowgun()
+    gun = (Matrix.Translation((0, -0.194, -0.10)) @ Matrix.Scale(1.3, 4) @ axes
+           @ Matrix.Translation((0, 0, -hb.CONDUIT_Z)))
+    top = at.MAG_TOP
+    to_file = gun @ Matrix.Translation(top) @ Matrix.Scale(MAG_K, 4) @ Matrix.Translation(-top)
+    piston = to_file @ (top + Vector((0, 0.12, -1)).normalized() * 0.14)
+    return placed("it1299_0000_0", "Art/Model/Item/it12/99/0000", objs, to_file, {"Piston": piston},
+                  unrotate=["Piston"])
 
 
 # The circlet ("halo", character groundwork 2026-10-02): circlet.py's v10 in the Head joint's
@@ -1726,6 +1714,16 @@ def main():
     lo, hi = file_bounds(subs)
     log(f"file-space bounds min=({lo.x:+.3f}, {lo.y:+.3f}, {lo.z:+.3f}) max=({hi.x:+.3f}, {hi.y:+.3f}, {hi.z:+.3f})")
     arm = import_skeleton(orig_mesh, mesh_col, spec["bones"], pivots, spec.get("bone_parents"))
+    for name in spec.get("unrotate", ()):
+        # A moved bone set upright (its children follow it in the game, which composes local
+        # matrices); stored rows 0-2 (rotation) become identity in all three matrices.
+        b = arm.data.bones[name]
+        for key in ("reMeshWorldMatrix", "reMeshLocalMatrix", "reMeshInverseMatrix"):
+            mtx = [list(r) for r in b[key]]
+            for i in range(3):
+                mtx[i][:3] = [1.0 if i == j else 0.0 for j in range(3)]
+            b[key] = mtx
+        log(f"  bone {name} unrotated")
     bind(subs, arm)
     # Drop everything that is not part of the export.
     keep = set(subs) | {arm}

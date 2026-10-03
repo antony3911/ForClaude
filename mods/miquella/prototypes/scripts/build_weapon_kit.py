@@ -1331,6 +1331,7 @@ HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "Miquella
 EXTRACTED = "C:/Users/anton/MiquellaTools/extracted/natives/stm"
 GLOW_EMI = "Art/Model/MiquellaLight/DualBlades/tex/MiquellaGlow_EMI.tex"
 HALO_EMISSIVE, HALO_INTENSITY = (1.0, 0.72, 0.30, 1.0), 0.8
+HALO_EMIT_ON = {"Emissive_Power": 1.0, "UseCounterExposureEmit": 1.0, "CounterExposureEmit_Blend": 0.8}
 MEMBRANES = {
     # A: the aura effect on a player's equipment (two-sided, colour gradient, opacity).
     "aura": ("art/vfx/mesh/pl/equip/11_ch00_069_0006.mdf2.45", None, {
@@ -1649,11 +1650,15 @@ def build_mdf(path, template_mdf, names, membrane=None, hidden=()):
             if name == "MiquellaHalo":
                 # The circlet: ivory that glows gold all over (circlet v10, the user: the whole
                 # circlet glows, its twigs too); the character script's Glow slider scales it.
+                # The ivory's Emissive_Power 0 turns emission off (2026-10-03: plain metal in
+                # game): the glow material's switches.
                 for p in new.propertyList:
                     if p.propName == "Emissive_Color":
                         p.propValue = list(HALO_EMISSIVE)
                     elif p.propName == "Emissive_Intensity":
                         p.propValue = [HALO_INTENSITY]
+                    elif p.propName in HALO_EMIT_ON:
+                        p.propValue = [HALO_EMIT_ON[p.propName]]
                 for t in new.textureList:
                     if t.textureType == "EmissiveMap":
                         t.texturePath = GLOW_EMI

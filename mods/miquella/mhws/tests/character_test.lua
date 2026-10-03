@@ -103,9 +103,9 @@ local function newObject(name)
       function mesh:getMaterialName(i)
         return (body(self) and { "MiquellaCloth", "MiquellaSkin" } or { "MiquellaGlow", "MiquellaHalo" })[i + 1]
       end
-      function mesh:getMaterialVariableNum() return 2 end
+      function mesh:getMaterialVariableNum() return 3 end
       function mesh:getMaterialVariableName(i, j)
-        return (body(self) and { "ColorParam", "Emissive_Intensity" } or { "Dissolve", "Emissive_Intensity" })[j + 1]
+        return (body(self) and { "ColorParam", "Emissive_Intensity", "Wet" } or { "Dissolve", "Emissive_Intensity", "Emissive_Power" })[j + 1]
       end
       function mesh:setMaterialFloat4(i, j, v) self.float4[i .. "." .. j] = v end
       function mesh:setMaterialFloat(i, j, v) self.floats[i .. "." .. j] = v end
@@ -204,6 +204,7 @@ else
   local xf, mesh = go.xf, go.comps["via.render.Mesh"]
   check(mesh and mesh.meshRes and mesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_circlet.mesh", "circlet: sets our model")
   check(mesh and mesh.floats["1.1"] and math.abs(mesh.floats["1.1"] - 0.8) < 1e-6, "circlet: halo glow at its mdf2 value")
+  check(mesh and mesh.floats["1.2"] == 1.0 and mesh.floats["0.2"] == 1.0, "circlet: emission switched on (Emissive_Power 1)")
   check(xf.parent == hunterXf and go.drawSelf == true, "circlet: parented to the hunter, shown")
   check(xf.lr and xf.lr.w == 1 and xf.lr.x == 0 and xf.lr.y == 0 and xf.lr.z == 0, "circlet: no turn of its own on the joint")
   -- Body

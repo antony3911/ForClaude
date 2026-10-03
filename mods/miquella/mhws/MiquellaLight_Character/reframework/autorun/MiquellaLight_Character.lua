@@ -203,6 +203,11 @@ local function create_object(name)
     return go
 end
 
+-- The glow materials' emission switches, as on the dual blades' glow material: MiquellaHalo was
+-- copied from the ivory, whose Emissive_Power 0 turns the emission off whatever the intensity
+-- (2026-10-03: the circlet showed as plain metal). Set here until the mdf2 is rebuilt with them.
+local EMIT_ON = { Emissive_Power = 1.0, UseCounterExposureEmit = 1.0, CounterExposureEmit_Blend = 0.8 }
+
 local function glow_slots(p)
     local slots = {}
     local mesh = p.st.mesh
@@ -211,11 +216,13 @@ local function glow_slots(p)
         local base = p.glow and p.glow[try(function() return mesh:getMaterialName(i) end) or ""]
         if base then
             local vars = try(function() return mesh:getMaterialVariableNum(i) end) or 0
+            local slot = { mat = i, base = base, on = {} }
             for j = 0, vars - 1 do
-                if try(function() return mesh:getMaterialVariableName(i, j) end) == "Emissive_Intensity" then
-                    slots[#slots + 1] = { mat = i, var = j, base = base }
-                end
+                local name = try(function() return mesh:getMaterialVariableName(i, j) end)
+                if name == "Emissive_Intensity" then slot.var = j
+                elseif name and EMIT_ON[name] then slot.on[j] = EMIT_ON[name] end
             end
+            if slot.var then slots[#slots + 1] = slot end
         end
     end
     return slots
@@ -226,6 +233,7 @@ local function apply_glow(p)
     p.st.glowSlots = p.st.glowSlots or glow_slots(p)
     for _, s in ipairs(p.st.glowSlots) do
         try(function() p.st.mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
+        for j, v in pairs(s.on) do try(function() p.st.mesh:setMaterialFloat(s.mat, j, v) end) end
     end
 end
 
@@ -330,9 +338,12 @@ local function spawn(p)
     return p.st.xf ~= nil
 end
 
+-- Size scales the circlet about the middle of the head at the brow (Head joint space), so a smaller
+-- one hugs the head instead of sinking toward the neck as it would about the joint itself.
+local SIZE_PIVOT = { 0.0, 0.128, 0.0 }
 local function local_offset()
-    local o = config.offset
-    return { o[1] / 100, o[2] / 100, o[3] / 100 }
+    local o, k = config.offset, 1 - config.size
+    return { o[1] / 100 + SIZE_PIVOT[1] * k, o[2] / 100 + SIZE_PIVOT[2] * k, o[3] / 100 + SIZE_PIVOT[3] * k }
 end
 
 -- REFramework's Quaternion.new takes (w, x, y, z) (glm), not (x, y, z, w): new(0, 0, 0, 1) is
@@ -626,6 +637,7 @@ re.on_draw_ui(function()
     c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0); changed = changed or c
     if c then apply_glow(PIECES[1]) end
     c, config.size = imgui.slider_float("Size", config.size, 0.8, 1.3); changed = changed or c
+    if c then PIECES[1].st.parentAddr = nil end
     local labels = { "Left / right (cm)", "Up / down (cm)", "Forward / back (cm)" }
     for i = 1, 3 do
         c, config.offset[i] = imgui.slider_float(labels[i], config.offset[i], -4.0, 4.0)

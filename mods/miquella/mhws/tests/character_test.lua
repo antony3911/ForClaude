@@ -26,7 +26,10 @@ local function outfitGO(path)
 end
 local innerwear = outfitGO("Art/Model/Character/ch02/002/000/2/ch02_002_0002.mesh")
 local armorLeg = outfitGO("Art/Model/Character/ch03/021/001/4/ch03_021_0014.mesh")
-local face = outfitGO("Art/Model/Character/ch00/000/0000/ch00_000_0000.mesh")
+-- "female": the female face (ch00_001), whose hunters get the _f body meshes
+local face = outfitGO(mode == "female" and "Art/Model/Character/ch00/001/0000/ch00_001_0000.mesh"
+  or "Art/Model/Character/ch00/000/0000/ch00_000_0000.mesh")
+local SFX = mode == "female" and "_f" or ""
 local hair = outfitGO("Art/Model/Character/ch01/000/0/001/ch01_000_0001.mesh")
 local weapon = outfitGO("Art/Model/Item/it02/00/0002/it0200_0002_0.mesh")
 local function childXf(go, child, nxt)
@@ -204,8 +207,10 @@ else
   local body = made("MiquellaLight_Body")
   check(body ~= nil and count("MiquellaLight_Body") == 1, "makes one body object")
   local bmesh = body.comps["via.render.Mesh"]
-  check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_a.mesh"
-    and bmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_body.mdf2", "body: shape A with its material")
+  frames(2, 1 / 60)
+  check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_a" .. SFX .. ".mesh"
+    and bmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_body.mdf2",
+    "body: shape A for this hunter's sex (" .. (SFX == "" and "male" or "female") .. ") with its material")
   check(body.xf.parent == hunterXf and body.xf.sameJoints == true and body.drawSelf == true,
     "body: on the hunter's skeleton (SameJointsConstraint), shown")
   frames(40, 1 / 60)
@@ -215,7 +220,7 @@ else
         "body: skin tone tint on MiquellaSkin's ColorParam only")
   check(face.drawSelf == true and hair.drawSelf == true and weapon.drawSelf == true, "body: face, hair and weapon stay")
   comboAnswer["Body shape"] = 3; menu(); frames(2, 1 / 60)
-  check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_c.mesh" and count("MiquellaLight_Body") == 1,
+  check(bmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_body_c" .. SFX .. ".mesh" and count("MiquellaLight_Body") == 1,
     "body: picking shape C swaps the model in place")
   checkAnswer["Hide the hunter's armor and innerwear"] = false; menu(); frames(2, 1 / 60)
   check(innerwear.drawSelf == true and armorLeg.drawSelf == true, "outfit shown again when the option is off")

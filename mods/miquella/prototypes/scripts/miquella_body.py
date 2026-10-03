@@ -439,8 +439,12 @@ def bake(obj, arm):
 # cut cleanly where the profiles meet it (`contour_cut`), everything from there up is built new
 # (`neck_tube`).
 NECK_SLOPE = (30.0, 50.0, -5.0)   # degrees out from straight down, the rim to the body: front, sides, back
-NECK_DEPTH = (0.05, 0.07, 0.09)   # how far below the rim the profiles meet the body: front, sides, back
-                                  # (back: under MakeHuman's upper back, which bulges up behind the neck)
+NECK_DEPTH = (0.035, 0.04, 0.0405)  # how far below the rim the profiles meet the body: front, sides,
+                                  # back. Was 5 / 7 / 9 cm (under MakeHuman's upper back, which bulged
+                                  # up behind the neck): the neck came out too long, a long V in front,
+                                  # stretched behind (user 2026-10-03); now the body round the neck
+                                  # rises to meet it (NECK_LIFT, option C of four). 2.3 / 3.2 cm in
+                                  # front and at the sides bent into a crease round the neck's base.
 NECK_ROWS = 12                     # rows from the cut up to the rim
 NECK_SMOOTH = 4                    # passes smoothing the profiles around (not at their ends)
 NECK_SAMPLES = 64                  # points along each profile
@@ -855,6 +859,32 @@ def neck_tube(bm, G, neck):
         f"face's rim ({m} vertices)")
 
 
+NECK_FOOT_SMOOTH = (0.025, 8)     # reach (m) and passes of the smoothing across the neck's foot
+
+
+def smooth_neck_foot(obj, G, neck):
+    """Smooths across where the neck meets the body: the cut zips MakeHuman's irregular vertices
+    onto the tube's first row, and with the base of the neck raised (NECK_LIFT) that showed as a
+    line round the chest like a collar's (2026-10-03). Fading out up the tube: by halfway to the
+    face's rim nothing moves (smoothed up to it, the tube no longer met the rim's normals and a
+    line showed there instead)."""
+    reach, steps = NECK_FOOT_SMOOTH
+
+    def weight(co, _n):
+        if not 1.25 < co.z < 1.60:
+            return 0.0
+        ang, r, _ = polar(G, co)
+        if r > 0.22:
+            return 0.0
+        k0, k1, t = neck.bracket(ang)
+        foot = neck.curves[k0][0].lerp(neck.curves[k1][0], t)
+        rim = neck.curves[k0][-1].lerp(neck.curves[k1][-1], t)
+        p = Vector((r, co.z)) - foot
+        up = p.dot(rim - foot) / (rim - foot).length_squared      # 0 at the foot, 1 at the rim
+        return (1 - smoothstep(reach * 0.3, reach, p.length)) * (1 - smoothstep(0.0, 0.5, up))
+    log(f"  neck: {smooth_where(obj, weight, steps, keep_volume=True)} vertices smoothed round its foot")
+
+
 def rim_lookup(neck):
     """KD tree over the face's rim vertices (index into neck.rim)."""
     from mathutils import kdtree
@@ -1087,6 +1117,64 @@ def taper_thighs(obj, G, amount=1.0):
                 v.co.y = ft + (v.co.y - f) * (bt - ft) / (b - f)
 
 
+# The chest (user 2026-10-03, in game: small bumps on the chest, against the smooth-body rule):
+# smoothing 3.5 cm round the nipple points left the pectoral mounds; the whole mound, CHEST
+# radius round each point, front-facing surface only, is smoothed flat (Laplacian with the
+# mound's edge held: it settles into the surface spanning the edge).
+CHEST = {"radius": 0.08, "steps": 80}
+
+
+def flatten_chest(obj, points, radius, steps=CHEST["steps"]):
+    def weight_of(co, n):
+        if n.y > -0.15:                 # front-facing only (Blender -y is the front)
+            return 0.0
+        d = min((co - p).length for p in points)
+        return 1 - smoothstep(radius * 0.5, radius, d)
+    n = smooth_where(obj, weight_of, steps)
+    fill_nipples(obj, points)
+    return n
+
+
+def fill_nipples(obj, points, r_in=0.02, r_out=0.045):
+    """The nipple itself (denser mesh: smoothing left a pucker there): the chest in front as a
+    height field (depth over x, z), a quadratic fitted to the ring r_in..r_out round each point
+    and the inside set onto it, blending out across the ring."""
+    import numpy as np
+    me = obj.data
+    me.update()
+    for p in points:
+        near = [v for v in me.vertices if v.normal.y < -0.3 and abs(v.co.y - p.y) < 0.03
+                and math.hypot(v.co.x - p.x, v.co.z - p.z) < r_out * 1.3]
+        ring = [v for v in near if math.hypot(v.co.x - p.x, v.co.z - p.z) > r_in]
+        A = np.array([[1, v.co.x - p.x, v.co.z - p.z, (v.co.x - p.x) ** 2, (v.co.x - p.x) * (v.co.z - p.z),
+                       (v.co.z - p.z) ** 2] for v in ring])
+        k = np.linalg.lstsq(A, np.array([v.co.y for v in ring]), rcond=None)[0]
+        for v in near:
+            dx, dz = v.co.x - p.x, v.co.z - p.z
+            fit = k[0] + k[1] * dx + k[2] * dz + k[3] * dx * dx + k[4] * dx * dz + k[5] * dz * dz
+            v.co.y += (fit - v.co.y) * (1 - smoothstep(r_in, r_out, math.hypot(dx, dz)))
+
+
+# The base of the neck (user 2026-10-03: "the V from the neck to the chest is drawn out too long",
+# "the neck is clearly too long and looks stretched"): the face's neck goes down in front to about
+# the top of the breastbone and behind to about Neck_1, and MakeHuman's chest and upper back only
+# began 5 cm (front) to 9 cm (back) lower, a plain tube fitted between. The body round the neck
+# rises toward it: the most at the top and close to the neck, nothing out at the shoulder joints
+# or below the chest; the neck's profiles (NECK_DEPTH) then land on it sooner.
+NECK_LIFT = {"lift": 0.03, "z": (1.18, 1.40), "r": (0.08, 0.17)}
+
+
+def raise_neck_base(obj, G, lift):
+    z0, z1 = NECK_LIFT["z"]
+    r0, r1 = NECK_LIFT["r"]
+    c = G["Neck_0"]
+    for v in obj.data.vertices:
+        r = math.hypot(v.co.x - c.x, v.co.y - c.y)
+        w = smoothstep(z0, z1, v.co.z) * (1 - smoothstep(r0, r1, r))
+        if w > 0:
+            v.co.z += lift * w
+
+
 def smooth_spots(obj, points):
     me = obj.data
     nbr = [[] for _ in me.vertices]
@@ -1158,6 +1246,8 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
         bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, z), plane_no=(0, 0, 1))
     bm.to_mesh(me)
     bm.free()
+    if neck:
+        smooth_neck_foot(obj, G, neck)
     me.materials.clear()
     me.materials.append(skin)
     me.materials.append(cloth)
@@ -1345,8 +1435,12 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
     shorten_feet(obj, G)
     if params.get("flat", False):     # not needed since the torso keeps its own anatomy
         flatten_belly(obj)
+    if params.get("lift", NECK_LIFT["lift"]):
+        raise_neck_base(obj, G, params.get("lift", NECK_LIFT["lift"]))
     spots = [obj.data.vertices[skel["joints"][n][0]].co.copy() for n in SMOOTH_SPOTS]
     smooth_spots(obj, spots)
+    if params.get("chest", CHEST["radius"]):
+        flatten_chest(obj, spots, params.get("chest", CHEST["radius"]))
     smooth_groin(obj)
     if params.get("soft", SOFT_BUTT["steps"]):
         soften_buttocks(obj, params.get("soft", SOFT_BUTT["steps"]))
@@ -1643,8 +1737,13 @@ def kit(data, game_body, face, kit_dir, template_mdf):
     cloth = bpy.data.materials.new("Underwear")
     natives = os.path.join(kit_dir, "natives", "STM", *REL.split("/"))
     os.makedirs(natives, exist_ok=True)
+    # Each sex has its own meshes (2026-10-03): the female face's neck rim (ch00_001) is 1-2 cm
+    # lower and 4 mm thinner than the male's, and the female skeleton (ch03 innerwear) has the
+    # shoulders and arms 2 cm narrower each side; built on the male ones, the body's rim stood off
+    # the female neck as a dark ring. Female meshes end in _f (the character script picks by face).
+    suffix = "_f" if "ch00_001" in os.path.basename(face) else ""
     for key, params in VARIANTS.items():
-        name = f"mq_body_{key.lower()}"
+        name = f"mq_body_{key.lower()}{suffix}"
         body = make_body(data, base, params, G, name, skin, cloth, face_pts)
         game_weights(body, base[3], G)
         blend_face_weights(body, G, neck, tree, face_ws)
@@ -1671,9 +1770,11 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         for o in subs:
             bpy.data.objects.remove(o, do_unlink=True)
     # The innerwear's material file sits next to the body mesh's folder: .../000/2/ -> .../000/1/
-    skin_mdf = os.path.join(os.path.dirname(os.path.dirname(game_body)), "1", f"{SKIN_SOURCE[0]}.mdf2{MDF_EXT}")
+    # (ch02_002_0002 -> ch02_002_0001, the female ch03_002_0002 -> ch03_002_0001)
+    arms = os.path.basename(game_body).split(".")[0][:-4] + SKIN_SOURCE[0][-4:]
+    skin_mdf = os.path.join(os.path.dirname(os.path.dirname(game_body)), "1", f"{arms}.mdf2{MDF_EXT}")
     write_mdf(os.path.join(natives, f"mq_body.mdf2{MDF_EXT}"), template_mdf, make_textures(kit_dir), skin_mdf)
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, "mq_body_kit.blend"))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(kit_dir, f"mq_body{suffix}_kit.blend"))
 
 
 # ------------------------------------------------------------------ preview

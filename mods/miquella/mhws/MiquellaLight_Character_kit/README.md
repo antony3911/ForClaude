@@ -3,7 +3,7 @@
 | kit | 檔案 | 說明 |
 |---|---|---|
 | `circlet` | `Art/Model/MiquellaLight/Character/mq_circlet.mesh`／`.mdf2` | 頭冠（光環）v10，約 1.5 萬面；材質 `MiquellaHalo`（象牙底、整個發金光）、`MiquellaGlow`（墜飾水滴） |
-| 身體 | `mq_body_a／b／c.mesh`＋`mq_body.mdf2` | 三種體型（A 纖細中性／B 少年感／C 柔和），各約 3.8 萬點（細分一次）；材質 `MiquellaSkin`（抄雙劍 `MiquellaIvory`）、`MiquellaCloth`（內褲，抄 `MiquellaGrip`）。`miquella_body.py kit` 產生 |
+| 身體 | `mq_body_a／b／c.mesh`（男獵人）、`mq_body_a／b／c_f.mesh`（女獵人）＋`mq_body.mdf2` | 三種體型（A 纖細中性／B 少年感／C 柔和），各約 3.8 萬點（細分一次）；**米凱拉的體型男女獵人一樣**，`_f` 只是接女獵人的臉和骨架；材質 `MiquellaSkin`（抄雙劍 `MiquellaIvory`）、`MiquellaCloth`（內褲，抄 `MiquellaGrip`）。`miquella_body.py kit` 產生 |
 
 ## 身體（2026-10-02 深夜）
 
@@ -12,6 +12,9 @@
 2. **對齊遊戲骨架**：整體先縮放、平移到遊戲的髖和脖子高度；**軀幹（脊椎、骨盆）保持 MakeHuman 自己的形狀**，只有四肢、脖子、手腳用 MakeHuman 自己的骨架和權重把骨頭拉到遊戲關節之間（Copy Location＋Stretch To，`fit_targets`）。遊戲的 `Hip`／`Spine_0` 比髖關節高 11 cm，之前把脊椎、骨盆也拉過去，胯下被拉到髖關節高度、擠出啤酒肚（2026-10-02 修正）→ 綁定姿勢（A 字）、手指、腳踝都對上遊戲的。腳踝以下壓扁讓腳底貼地（遊戲的腳踝比較低）
 2c. **線條**：收腰（`measure-waist-circ-decr`）、馬甲線、背溝（`BASE_GROOVES`），比較圖 `python miquella_body.py lines ...`
 2b. **臀腿**（2026-10-02，使用者給參考圖修的）：屁股保留體積磨平肌肉起伏（`soften_buttocks`）、臀部體積加大（`buttocks-volume-incr` 0.75）；大腿側面從臀下到膝蓋收成錐形（`taper_thighs`）；細分一次後臀縫從裡面填平（`bridge_cleft`，像布料撐過去），再刻腹股溝摺線（10 mm 寬的細 V 線）和臀下弧線（`BASE_GROOVES`、`carve`）。前後比較圖：`python miquella_body.py hips <MakeHuman data> <ch02_002_0002.mesh> <輸出>`。**之後的長袍、內褲不能把腹股溝線蓋平；長袍在臀部貼身，照這個形狀**。**試過不行的**：腹股溝 6.5 mm 窄線（像刀割、四分之三視角有尖刺）、不細分就刻（尖刺、稜角）、兩條線在正中交會（擠出鼓包）、三角褲款（褲口鋸齒、剪太高，先拿掉，只留四角褲）；臀縫用局部平滑撐平（邊界留下兩條硬豎線）；`flatten_belly` 把正面輪廓壓直（推出怪凸起，`flat` 預設關）。量體型要排除 MakeHuman 沒有面的輔助幾何（褲襪、裙子的散點，`used` 集合），不然會量錯、把腿弄皺
+0. **男女獵人各一套**（2026-10-03 晚上）：使用者的獵人是女的（臉 `ch00_001_0000`、防具 `ch03`），身體之前照男獵人的臉、骨架做。女臉的脖子下緣比男的低 1～2 cm、細 4 mm，女性骨架（內衣 `ch03_002_0002`，711 根）肩膀、手臂每邊窄 2 cm（其他骨頭一樣）→ 身體上緣浮在女臉脖子外面（懷疑就是遊戲裡那圈深色接縫線）。`kit` 看臉的檔名，女臉輸出 `_f`，皮膚材質從同一套內衣的手臂檔抄（男女只差貼圖，共用 `mq_body.mdf2`）；腳本看獵人臉的路徑選（`MiquellaLight_Character` README）
+1b. **胸口**（2026-10-03 晚上，使用者：胸口小凸起）：原本只在乳頭點 3.5 cm 內磨平，留下胸肌的小丘 → 乳頭點周圍 8 cm、朝前的面再磨平（`flatten_chest`，`CHEST`），乳頭本身網格比較密、磨完留一個小凹點 → 把胸前當成高度場，用外圈 2～4.5 cm 擬合二次曲面、裡面設到曲面上（`fill_nipples`）
+3b. **脖子變短**（2026-10-03 晚上，使用者：「這塊 V 字被拉得太長」「脖子明顯太長、有拉伸感」）：臉的脖子正面本來就包到胸骨上方，MakeHuman 的胸口和上背卻在臉下緣下面 5 cm（正面）～9 cm（背面）才開始，中間全是新長的管子 → **脖子根一圈往上提 3 cm**（`raise_neck_base`，`NECK_LIFT`：靠近脖子、越高提越多，肩關節和胸口以下不動），接點縮到 `NECK_DEPTH` 3.5／4／4.05 cm（四個版本 B 2 cm／C 3 cm／D 4 cm 使用者選 C；C 原本正面 2.3 cm 在脖子根折出一圈線，放長到 3.5 cm）。接點那圈再順著磨平（`smooth_neck_foot`，往臉下緣方向一半以上就不動，磨到下緣附近反而在下緣出線）。斜方肌壓低試過（背後起皺），沒用：看起來壯是長脖子管的斜坡造成的
 3. **脖子**（2026-10-03，照原版的接法；使用者：「這個版本不錯」）：遊戲的臉往下包到脖子，下緣是一圈 48 個點（前 1.43、後頸 1.53，內側有一圈內襯 Group_7）。原版內衣 `ch02_002_0002` 的皮膚上緣**就是這 48 個點**（位置差 0.000 mm、法線差 0°、權重完全一樣），所以接縫不會裂、沒有光影線，臉的脖子也不會被動到。我們一樣：**臉完全不動，身體的上緣＝臉下緣那 48 個點**（位置照抄、法線抄臉的自訂法線 `match_face_normals`、權重抄臉的含 `*_HJ_*` `blend_face_weights`）。下緣以下：每個下緣點往外下方瞄一個點（`NECK_SLOPE` 正面 30°／側面 50°／背面 -5°，`NECK_DEPTH` 深 5／7／9 cm），取 MakeHuman 身體上離它最近的點當接點（側面落在斜方肌上，肩頸線比 MakeHuman 原本高、脖子看起來比較短；背面落在 MakeHuman 上背隆起的下方），接點到下緣用三次 Hermite 曲線（接點順著身體表面、下緣順著臉的表面，不會摺）。MakeHuman 沿接點那圈精確切開（`contour_cut`：沿等值線切，只刪連到頭的那塊），以上重新長網格（`neck_tube`：每個下緣點兩欄、12 列，最上一列就是下緣）。**試過不行的**：身體蓋在臉的脖子外面（鼓出一大圈）；接點固定在下緣下方 3 cm（MakeHuman 的脖子比臉的細 2 cm，側面被迫往內縮 → 摺痕）；照抄原版內衣下緣以下的形狀（側面是立起來的襯衫領內襯，像兩道牆）。檢查：`CHECK rim` 0.0000 mm、臉（含內襯）沒有穿出
 4. **內褲**：0.78～0.99 m 的帶狀區域另一個材質（先水平切出邊緣，邊緣整齊）。長袍之後蓋在上面
 5. **權重**：MakeHuman 的骨頭對到遊戲的**主要骨頭**（`bone_map`：脊椎依高度分段、手指一對一、`lowerleg` → `Shin`、腳趾 → `Toe`），每點最多 6 根、正規化；遊戲的 `*_HJ_*` 輔助骨頭（扭轉、膝肘體積）先沒用，**在遊戲裡看關節變形**，不好再加
@@ -19,7 +22,8 @@
 
 ```
 python miquella_body.py preview <MakeHuman data> <ch02_002_0002.mesh> <輸出> [<ch00_000_0000.mesh> [其他內衣 .mesh...]]
-python miquella_body.py kit <MakeHuman data> <ch02_002_0002.mesh> <ch00_000_0000.mesh> <這個資料夾> <雙劍 wp_miquella_db.mdf2.45>
+python miquella_body.py kit <MakeHuman data> <ch02_002_0002.mesh> <ch00_000_0000.mesh> <這個資料夾> <雙劍 wp_miquella_db.mdf2.45>   # 男獵人
+python miquella_body.py kit <MakeHuman data> <ch03_002_0002.mesh> <ch00_001_0000.mesh> <這個資料夾> <雙劍 wp_miquella_db.mdf2.45>   # 女獵人（_f）
 ```
 MakeHuman 資料放在 repo 外：`C:\Users\anton\MiquellaTools\makehuman`（`git clone --depth 1 --filter=blob:none --sparse`，sparse 只取 `makehuman/data/3dobjs`、`rigs`、`targets/{macrodetails,torso,breast,stomach,hip,neck,...}`）。預覽（含遊戲模型，不進 repo）：`MiquellaTools\work\previews\body\body_variants_sheet.png`、`neck_closeups.png`
 

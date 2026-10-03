@@ -50,7 +50,12 @@ local SKIN_TONES = {
 local SKIN_NAMES = {}
 for i, t in ipairs(SKIN_TONES) do SKIN_NAMES[i] = t[1] end
 local BODY_SHAPES = { "A slender", "B youthful", "C soft" }
-local BODY_MESHES = { DIR .. "mq_body_a.mesh", DIR .. "mq_body_b.mesh", DIR .. "mq_body_c.mesh" }
+local BODY_MESHES = { DIR .. "mq_body_a", DIR .. "mq_body_b", DIR .. "mq_body_c" }
+-- Each sex of hunter has its own body meshes (miquella_body.py kit; Miquella's shape is the same):
+-- the female face (ch00_001) has a lower, thinner neck for the body to meet and the female
+-- skeleton narrower shoulders. Female ones end in _f; which one is read off the face's mesh path.
+local hunterFemale = nil     -- nil until the face is found
+local function body_mesh(shape) return BODY_MESHES[shape] .. (hunterFemale and "_f" or "") .. ".mesh" end
 PIECES[2].mesh = nil   -- set below, once config is read
 local CHECK_AFTER = 1.0      -- s after attaching: is the circlet at the head?
 local OFF_HEAD = 0.30        -- m from the Head joint: the parent joint did not hold
@@ -86,7 +91,7 @@ if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 3 then
 end
 config.skinVersion = 3
 local function save_config() json.dump_file(CONFIG_PATH, config) end
-PIECES[2].mesh = function() return BODY_MESHES[config.bodyShape] end
+PIECES[2].mesh = function() return body_mesh(config.bodyShape) end
 local function piece_on(p)
     if not config.enabled then return false end
     if p.key == "circlet" then return config.circlet end
@@ -119,7 +124,10 @@ end
 -- Load now, so the first spawn has them ready.
 for _, p in ipairs(PIECES) do holder("via.render.MeshMaterialResource", p.mdf2) end
 holder("via.render.MeshResource", PIECES[1].mesh())
-for _, m in ipairs(BODY_MESHES) do holder("via.render.MeshResource", m) end
+for _, m in ipairs(BODY_MESHES) do
+    holder("via.render.MeshResource", m .. ".mesh")
+    holder("via.render.MeshResource", m .. "_f.mesh")
+end
 
 local function resource_path(res)
     local s = res and try(function() return res:ToString() end)
@@ -421,6 +429,7 @@ function face_mesh(hxf)
         local go = try(function() return child:call("get_GameObject") end)
         local path = go and mesh_path(go)
         if path and path:find("character/ch00/", 1, true) then
+            hunterFemale = path:find("ch00_001", 1, true) ~= nil
             return try(function() return go:call("getComponent(System.Type)", sdk.typeof(MESH)) end)
         end
         child = try(function() return child:call("get_Next") end)
@@ -461,7 +470,10 @@ local function update_piece(p, hxf, hgo, now)
             set_model(p)
         end
     end
-    if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked
+    if p.key == "body" and s.sexOf ~= address(hxf) and face_mesh(hxf) then
+        s.sexOf = address(hxf)          -- face_mesh set hunterFemale
+    end
+    if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked, or the hunter's sex found
     if s.parentAddr ~= address(hxf) then attach(p, hxf, now) end
     if not s.renderMatched and now >= (s.renderAt or 0) then
         s.renderAt = now + 1
@@ -487,8 +499,9 @@ local function update_piece(p, hxf, hgo, now)
         s.info = string.format("on: %s  (%s)  %s cm from the %s joint", s.follow and "following every frame"
             or p.joint .. " joint", s.jointCall or "?", d and string.format("%.1f", d * 100) or "?", p.joint)
     else
-        s.info = string.format("on the skeleton (%s), %s; render: %s; skin %s", s.jointCall or "?",
-            BODY_SHAPES[config.bodyShape], s.render or "not matched yet",
+        s.info = string.format("on the skeleton (%s), %s for a %s hunter; render: %s; skin %s", s.jointCall or "?",
+            BODY_SHAPES[config.bodyShape], hunterFemale == nil and "?" or hunterFemale and "female" or "male",
+            s.render or "not matched yet",
             (s.tinted and SKIN_NAMES[config.skinTone] or "not tinted")
             .. (s.copied == 1 and ", face skin tone copied" or ", face skin tone not found"))
     end

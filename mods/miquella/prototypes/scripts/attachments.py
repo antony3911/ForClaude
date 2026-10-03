@@ -8,6 +8,7 @@ it, beyond the devices already in the game (the Wyrmstake needle, the Wyvernblas
               so the heavy bowgun shows one too; when exactly is to be checked in the game)
   hbg_shield  heavy bowgun guard: every heavy bowgun in Wilds carries a shield that unfolds to
               guard (auto-guard from the front); ours has none
+  hbg_guard   the guard again, second round: the gun's own rings slide back and widen into it
   tracer      bow Tracer arrow: stuck in the monster, the next arrows home in on it, then it
               bursts (the earlier single proposal is version A)
   piercer     heavy bowgun Wyvernpiercer Ignition: a round that drills through the monster (the
@@ -19,7 +20,7 @@ breaking out of the hide for the piercer. Built from the same motifs as the weap
 strands, gold light, halos, scrolls, floating light drops); every part is solid (the game has no
 see-through weapon material).
 
-Usage: python attachments.py <item> <out_dir> [test] [A B C D]
+Usage: python attachments.py <item> <out_dir> [test] [A B C D]   (item: a key of ITEMS)
 """
 import math
 import os
@@ -66,6 +67,14 @@ def charge_up(mats):
     st.set_blade(mats["blade"], "#FFA828", "#FF8000", 7.0)
     st.set_glow(mats["core"], "#FFB030", 8.0)
     c.set_emission_strength(mats["phial_lit"], 8.0)
+
+
+def charge_level(mats, k):
+    """Between resting (0) and charge_up (1), for animations."""
+    st.set_glow(mats["light"], "#FF9A10", 2.5 + 4.5 * k)
+    st.set_blade(mats["blade"], "#FFA828", "#FF8000", 2.2 + 4.8 * k)
+    st.set_glow(mats["core"], "#FFB030", 3.0 + 5.0 * k)
+    c.set_emission_strength(mats["phial_lit"], 3.0 + 5.0 * k)
 
 
 def polar(axis_pt, axis, phi, r):
@@ -536,6 +545,122 @@ def shield_d(mats, rng, open_):
     return objs
 
 
+# ================================================================== heavy bowgun: guard from its own rings
+# The user turned down the four hinged shields: "use the rings; pull them back to where the shield
+# goes and let them expand into it". The gun's two accelerator rings and its double muzzle ring
+# slide back down the barrel (t 0 -> 0.6) and widen (t 0.35 -> 1) at SY; the three light drops
+# over the barrel fly out to its rim. In the game: each ring on bones round its circumference
+# pushed outward (scaling a ring would thicken it), the fill grown from small like the lily.
+
+RINGS0 = ((0.34, 0.1, 0.0042), (0.56, 0.094, 0.0038), (0.85, 0.078, 0.003), (0.88, 0.105, 0.008))
+PHIALS0 = (0.2, 0.32, 0.44)               # the barrel drops (y; z 0.18)
+SY = 0.40
+SC = V(0, SY, 0.03)
+
+
+def ring_motion(t):
+    return smoothstep(t / 0.6), smoothstep((t - 0.35) / 0.65)
+
+
+def strip_gun_rings():
+    for o in list(bpy.data.objects):
+        if o.name.startswith(("Conduit_Halo_", "Muzzle_Halo", "Barrel_Phial")):
+            bpy.data.objects.remove(o, do_unlink=True)
+
+
+def moving_rings(mats, t, targets, prefix="S2"):
+    """The gun's four rings between their places on the barrel and `targets` [(y, r)]; while
+    they slide, faint copies trail behind them."""
+    slide, grow = ring_motion(t)
+    ghost = m.veil_material(f"{prefix}_Ghost", 0.22, 1.2)
+    objs, now = [], []
+    for k, ((y0, r0, minor), (y1, r1)) in enumerate(zip(RINGS0, targets)):
+        y, r = y0 + (y1 - y0) * slide, r0 + (r1 - r0) * grow
+        now.append((y, r))
+        objs += m.halo(f"{prefix}_Ring_{k}", (0, y, 0.03), r, max(minor, 0.0036), (0, 1, 0), mats["light"])
+        if 0.05 < slide < 0.95:
+            for j, f in enumerate((0.35, 0.65)):
+                yg = y0 + (y - y0) * f
+                objs += m.halo(f"{prefix}_Ghost_{k}_{j}", (0, yg, 0.03), r0 + (r - r0) * f, 0.0022, (0, 1, 0), ghost)
+    _, grow = ring_motion(t)
+    for i, y0 in enumerate(PHIALS0):          # the three drops fly to the rim
+        a = PI / 2 + 2 * PI * i / 3
+        rim = SC + V(math.cos(a), 0.01, math.sin(a)) * (targets[-1][1] + 0.035) + V(0, 0, 0)
+        p = V(0, y0, 0.18).lerp(rim, smoothstep((t - 0.2) / 0.8))
+        d = (V(0, -0.15, 1) * (1 - grow) + V(math.cos(a), 0, math.sin(a)) * grow).normalized()
+        objs += m.floating_phials(f"{prefix}_Drop_{i}", [p], d, V(1, 0, 0.25).lerp(V(0, 1, 0), grow), mats,
+                                  size=0.018 - 0.006 * grow)
+    return objs, now
+
+
+def guard_a(mats, rng, t):
+    """Concentric: the four rings settle into one plane as concentric rims; spokes of light run
+    out between them."""
+    objs, now = moving_rings(mats, t, [(SY + 0.004 * k, r) for k, r in enumerate((0.075, 0.135, 0.2, 0.27))])
+    _, grow = ring_motion(t)
+    if grow > 0.02:
+        for k in range(12):
+            phi = 2 * PI * k / 12
+            radial = V(math.cos(phi), 0, math.sin(phi))
+            r1 = 0.075 + (now[-1][1] - 0.075) * grow
+            spoke = [SC + V(0, 0.006, 0) + radial * (0.075 + (r1 - 0.075) * i / 11) for i in range(12)]
+            objs.append(c.curve_tube(f"GA_Spoke_{k}", spoke, [1.0 - 0.4 * i / 11 for i in range(12)], mats["light"],
+                                     bevel=0.0022, resolution=1))
+    return objs
+
+
+def guard_b(mats, rng, t):
+    """Sigil: the muzzle's double ring becomes the rim and the shield's tree sigil of light grows
+    inside it from the barrel (the sword and shield's emblem)."""
+    objs, _ = moving_rings(mats, t, [(SY + 0.01, 0.06), (SY + 0.008, 0.1), (SY + 0.003, 0.255), (SY, 0.275)])
+    _, grow = ring_motion(t)
+    if grow > 0.05:
+        objs += devices.small_sigil(mats, SC + V(0, 0.012, 0), 0.9 * grow)
+    return objs
+
+
+def guard_c(mats, rng, t):
+    """Dome: ivory ribs strung through the four rings; on the barrel they are a long cage, sliding
+    back the rings gather them into a dome bulging toward the monster, scrolls at the rim."""
+    targets = [(SY + 0.085, 0.075), (SY + 0.062, 0.145), (SY + 0.032, 0.21), (SY, 0.27)]
+    objs, now = moving_rings(mats, t, targets)
+    _, grow = ring_motion(t)
+    for k in range(8):
+        phi = 2 * PI * k / 8 + PI / 8
+        radial = V(math.cos(phi), 0, math.sin(phi))
+        pts = [V(0, y, 0.03) + radial * (r + 0.004) for y, r in reversed(now)]
+        path = gd.smooth_path(pts, 40)
+        objs.append(c.curve_tube(f"GC_Rib_{k}", path, [0.55 + 0.45 * i / 39 for i in range(40)][::-1],
+                                 mats["ivory"], bevel=0.0034, resolution=2))
+        if grow > 0.3:
+            tan = (path[0] - path[3]).normalized()
+            plane = m.plane_mapper(path[0], tan, radial)
+            objs += m.tendril(f"GC_Scroll_{k}", plane, (0, 0), 30, 0.05 * grow, -1.3, 0.003, mats, strands=2,
+                              curl_start=0.35)
+    if grow > 0.5:
+        objs += m.droplet("GC_Heart", V(0, now[0][0] + 0.02, 0.03 + 0.06), 0.011, (0, 1, 0), mats["phial_lit"],
+                          stretch=1.2)
+    return objs
+
+
+def guard_d(mats, rng, t):
+    """Radiant: the rings close into a narrow rim and a crown of light rays shoots out of it,
+    long and short in turn, like a halo of Miquella's light."""
+    objs, now = moving_rings(mats, t, [(SY + 0.012, 0.06), (SY + 0.009, 0.1), (SY + 0.004, 0.19), (SY, 0.225)])
+    _, grow = ring_motion(t)
+    if grow > 0.05:
+        for k in range(24):
+            phi = 2 * PI * k / 24
+            radial = V(math.cos(phi), 0, math.sin(phi))
+            length = (0.1 if k % 2 == 0 else 0.06) * grow
+            r0 = now[-1][1] + 0.012
+            path = [SC + radial * r0, SC + radial * (r0 + length)]
+            objs += m.path_blade(f"GD_Ray_{k}", path, (0, 1, 0),
+                                 lambda t2, w=0.016 if k % 2 == 0 else 0.012: w * math.sin(PI * min(t2 / 0.98, 1) ** 0.6) ** 0.8,
+                                 lambda t2: 0.0025, mats["blade"], samples=24)
+    return objs
+
+
 # ================================================================== bow: tracer arrow
 # The hide's top face is z 0; the arrow went in at the origin.
 
@@ -753,6 +878,10 @@ ITEMS = {
                    {"A": ("A 聖樹紋章", shield_a), "B": ("B 光翼", shield_b), "C": ("C 百合", shield_c),
                     "D": ("D 玫瑰窗", shield_d)},
                    [("・平時", "folded"), ("・防禦", "open")]),
+    "hbg_guard": ("重弩防禦盾・第二輪：光環往後拉、擴大成盾（上：平時　中：往後拉　下：防禦）",
+                  {"A": ("A 同心光環", guard_a), "B": ("B 樹紋光環", guard_b), "C": ("C 光環穹頂", guard_c),
+                   "D": ("D 光輪", guard_d)},
+                  [("・平時", "rest"), ("・往後拉", "slide"), ("・防禦", "open")]),
     "tracer": ("弓追蹤箭：四個版本（上：剛插上　下：打夠了、快爆開）",
                {"A": ("A 樹紋光環", tracer_a), "B": ("B 光花綻放", tracer_b), "C": ("C 光環準星", tracer_c),
                 "D": ("D 金藤蔓生", tracer_d)},
@@ -791,6 +920,17 @@ def build_scene(key, state):
         if state == "open":
             return (0, 0.32, 0.03), 1.5, 150, 10, (640, 520)
         return (0, 0.5, 0.03), 0.95, 104, 18, (640, 520)
+    if ITEM == "hbg_guard":
+        heavy_bowgun()
+        strip_gun_rings()
+        mats = materials()
+        t = {"rest": 0.0, "slide": 0.5, "open": 1.0}[state] if state in ("rest", "slide", "open") else float(state)
+        if state == "open":
+            charge_up(mats)
+        elif state not in ("rest", "slide"):
+            charge_level(mats, ring_motion(t)[1])
+        builder(mats, rng, t)
+        return (0, 0.36, 0.03), 1.6, 138, 12, (640, 480)
     if ITEM == "tracer":
         c.reset_scene()
         mats = materials()
@@ -832,8 +972,51 @@ def render_one(key, state):
     return c.render_views(OUT, f"{ITEM}_{key}_{state}", target, dist, [("v", az, el)], lens=50)[0]
 
 
+def render_gif(frames=14, res=(480, 360)):
+    """The versions side by side (2 x 2) going from rest to guarding and back, as a GIF."""
+    from PIL import Image, ImageDraw, ImageFont
+    title, versions, _ = ITEMS[ITEM]
+    grid = {}
+    for key in PICK:
+        for i in range(frames):
+            t = i / (frames - 1)
+            target, dist, az, el, _ = build_scene(key, f"{t:.4f}")
+            st.stage_lights(target, dist, res=res)
+            bpy.context.scene.cycles.samples = 16
+            grid[(key, i)] = c.render_views(OUT, f"{ITEM}_{key}_f{i:02d}", target, dist, [("v", az, el)], lens=50)[0]
+            print("frame", key, i, flush=True)
+    w, h = res
+    band, head = 44, 56
+    cols = 2 if len(PICK) > 1 else 1
+    rows = (len(PICK) + cols - 1) // cols
+    f_title = ImageFont.truetype(st.FONT, 26)
+    f_label = ImageFont.truetype(st.FONT, 24)
+    out_frames = []
+    for i in range(frames):
+        sheet = Image.new("RGB", (w * cols, head + rows * (h + band)), (14, 14, 18))
+        draw = ImageDraw.Draw(sheet)
+        text = title.split("（")[0]
+        draw.text(((sheet.width - draw.textlength(text, font=f_title)) / 2, 14), text, font=f_title,
+                  fill=(240, 220, 170))
+        for j, key in enumerate(PICK):
+            x, y = (j % cols) * w, head + (j // cols) * (h + band)
+            sheet.paste(Image.open(grid[(key, i)]).convert("RGB"), (x, y + band))
+            label = versions[key][0]
+            draw.text((x + (w - draw.textlength(label, font=f_label)) / 2, y + 8), label, font=f_label,
+                      fill=(235, 235, 235))
+        out_frames.append(sheet.quantize(colors=200, method=Image.Quantize.MEDIANCUT))
+    seq = out_frames + out_frames[::-1]
+    durations = [700] + [90] * (frames - 2) + [1100] + [1100] + [90] * (frames - 2) + [700]
+    out = os.path.join(OUT, f"{ITEM}.gif")
+    seq[0].save(out, save_all=True, append_images=seq[1:], duration=durations, loop=0, optimize=True)
+    print("WROTE", out, flush=True)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    if "gif" in FLAGS:
+        render_gif()
+        return
     title, versions, rows = ITEMS[ITEM]
     paths, labels = [], []
     for row_label, state in rows:

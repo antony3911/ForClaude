@@ -67,6 +67,8 @@ TEST = "test" in FLAGS
 LOOP = "loop" in FLAGS
 FRAME = "frame" in FLAGS
 ONE = "one" in FLAGS
+GOLD = "gold" in FLAGS                   # A with the braid's (D's) gold wound round it (user's pick)
+ONE = ONE or GOLD
 PICK = [f for f in FLAGS if f in ("O", "A", "B", "C", "D")] or ["O", "A", "B", "C", "D"]
 
 import bpy                               # noqa: E402
@@ -88,6 +90,9 @@ if FRAME:
 if ONE:
     NAMES = {"O": "現在（槍托＋握把）", "A": "A 一體・大拇指孔", "B": "B 一體・小拇指孔", "C": "C 一體・鏤空編織",
              "D": "D 一體・編髮"}
+if GOLD:
+    NAMES = {"O": "現在（槍托＋握把）", "A": "A（選的）", "B": "A1 ＋金絲・留洞邊金線", "C": "A2 ＋金絲・拿掉洞邊金線",
+             "D": "A3 ＋金絲雙向交叉"}
 TOP = V(0, -0.08, -0.03)                 # where the grip met the receiver
 _KEYS = ("STOCK_END", "WRIST", "RECEIVER_END", "MUZZLE", "CONDUIT_R", "CONDUIT_Z")
 HBG = {k: getattr(hb, k) for k in _KEYS}
@@ -305,6 +310,24 @@ def one_piece(opt, gun, mats, rng):
     frame = HBG if gun == "hbg" else LBG
     kw = dict(wrist=frame["WRIST"], stock_len=frame["WRIST"] - frame["STOCK_END"])
     ivory, light = mats["ivory"], mats["light"]
+    if GOLD:
+        # Gold the colour of the game's MiquellaGlow (the gun's own light material is near white).
+        light = bpy.data.materials.get("Gold_Thread") or c.make_material(
+            "Gold_Thread", c.PALETTE["glow"], roughness=0.15, emission=c.PALETTE["glow"], strength=2.2)
+        fr = op.ring_frames(gun, **kw)
+        weave_bevel = 0.0042 if gun == "hbg" else 0.0031
+        objs = [op.ring_core("One_Core", fr, ivory)]
+        objs += op.ring_strands("One_Weave", fr, ivory, 40, 2.2, weave_bevel, rng=rng)
+        if opt in ("A", "B"):
+            objs += op.hole_inlay("One_Inlay", fr, light)
+        if opt != "A":
+            lift = weave_bevel + 0.0035
+            objs += op.ring_strands("One_Gold", fr, light, 3, 9.0, 0.0021, scale=1.03, cross=opt == "D",
+                                    phase=PI / 3, lift=lift)
+            if opt == "D":
+                objs += op.ring_strands("One_Gold2", fr, light, 3, 9.0, 0.0021, scale=1.03, cross=False,
+                                        phase=PI / 3 + PI / 3, lift=lift)
+        return objs
     if opt in ("A", "B"):
         fr = op.ring_frames(gun, hole_scale=1.0 if opt == "A" else 0.62, **kw)
         objs = [op.ring_core("One_Core", fr, ivory)]
@@ -394,7 +417,8 @@ def main():
             ("lbg", 1, "輕弩・背後（玩家視角）")]
     sheet = Image.new("RGB", (W * len(PICK), head + H * len(rows)), (20, 20, 24))
     d = ImageDraw.Draw(sheet)
-    title = ("輕弩、重弩：槍托和握把一體成形（編織沿著拇指孔繞一圈，沒有接縫）" if ONE else
+    title = ("輕弩、重弩：一體 A ＋編髮版的螺旋金絲" if GOLD else
+             "輕弩、重弩：槍托和握把一體成形（編織沿著拇指孔繞一圈，沒有接縫）" if ONE else
              "輕弩、重弩握把：重新設計一個從機匣繞回槍托的框（不用原本的握把）" if FRAME else
              "輕弩、重弩握把：底部繞回去跟槍托合體（像拇指孔槍托）" if LOOP else
              "輕弩、重弩握把：人物不會去握，換成不像把手的東西")
@@ -405,7 +429,7 @@ def main():
             sheet.paste(Image.open(tiles[(gun, opt)][vi]), (ci * W, head + ri * H))
             if ci == 0:
                 d.text((10, head + ri * H + 8), label, fill=(200, 200, 200), font=font)
-    out = os.path.join(OUT, "grip_onepiece_options.png" if ONE else "grip_frame_options.png" if FRAME else "grip_loop_options.png" if LOOP else "grip_options.png")
+    out = os.path.join(OUT, "grip_onepiece_gold.png" if GOLD else "grip_onepiece_options.png" if ONE else "grip_frame_options.png" if FRAME else "grip_loop_options.png" if LOOP else "grip_options.png")
     sheet.save(out)
     print("WROTE", out, flush=True)
 

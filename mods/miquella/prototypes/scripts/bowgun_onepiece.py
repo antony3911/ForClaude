@@ -125,7 +125,8 @@ def loop_length(frames):
     return sum((frames[(i + 1) % len(frames)][0] - frames[i][0]).length for i in range(len(frames)))
 
 
-def ring_strands(name, frames, mat, count, per_m, bevel, scale=1.03, cross=True, rng=None, phase=0.0, radius=1.0):
+def ring_strands(name, frames, mat, count, per_m, bevel, scale=1.03, cross=True, rng=None, phase=0.0, radius=1.0,
+                 lift=0.0):
     """Strands round the ring's section, turning per_m radians per metre along it (alternate
     strands the other way when cross: a weave), closed (whole turns round the loop)."""
     L = loop_length(frames)
@@ -139,6 +140,8 @@ def ring_strands(name, frames, mat, count, per_m, bevel, scale=1.03, cross=True,
         th0 = phase + 2 * PI * k / count + (rng.uniform(-0.1, 0.1) if rng else 0.0)
         sign = (1 if k % 2 == 0 else -1) if cross else 1
         pts = [ring_point(f, th0 + sign * rate * s, scale, scale) for f, s in zip(frames, s_acc)]
+        if lift:                         # stand out of the weave by `lift` (gold wound over it)
+            pts = [p + (p - f[0]).normalized() * lift for p, f in zip(pts, frames)]
         pts.append(pts[0])
         objs.append(c.curve_tube(f"{name}_{k}", pts, [radius] * len(pts), mat, bevel=bevel, resolution=2))
     return objs

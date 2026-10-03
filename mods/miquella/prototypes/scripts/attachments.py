@@ -405,7 +405,7 @@ def shield_a(mats, rng, open_):
     grows across them (folded, the sigil shrinks to a drop of light at the collar)."""
     objs = shield_collar(mats)
     for k in range(6):
-        objs += rib(f"A_Rib_{k}", PI / 2 + 2 * PI * k / 6, open_, mats, length=0.24)[0]
+        objs += rib(f"A_Rib_{k}", PI / 2 + 2 * PI * k / 6, open_, mats, length=0.19)[0]
     if open_:
         objs += devices.small_sigil(mats, AX + V(0, 0.035, 0), 0.95)
     else:
@@ -421,9 +421,9 @@ def shield_b(mats, rng, open_):
     objs = shield_collar(mats)
     for s in (-1, 1):
         side = "L" if s < 0 else "R"
-        if open_:
-            ctrl = [AX + V(s * 0.05, 0.012, 0.0), AX + V(s * 0.09, 0.02, 0.028), AX + V(s * 0.13, 0.026, 0.026),
-                    AX + V(s * 0.16, 0.03, 0.0)]
+        if open_:                        # the arm is the wing's leading edge: up and out from the collar
+            ctrl = [AX + V(s * 0.05, 0.012, 0.012), AX + V(s * 0.085, 0.02, 0.085), AX + V(s * 0.15, 0.026, 0.135),
+                    AX + V(s * 0.215, 0.03, 0.15)]
         else:
             ctrl = [AX + V(s * 0.05, 0.0, 0.0), AX + V(s * 0.064, -0.05, 0.014), AX + V(s * 0.068, -0.1, 0.014),
                     AX + V(s * 0.066, -0.15, 0.004)]
@@ -431,40 +431,42 @@ def shield_b(mats, rng, open_):
         objs.append(c.curve_tube(f"B_Arm_{side}", arm, [1 - 0.5 * i / 49 for i in range(50)], mats["ivory"],
                                  bevel=0.0075, resolution=3))
         objs += m.wound_cord(f"B_Arm_Vine_{side}", arm, 0.0083, 3.0, 0.0013, mats, strand_mat="light", taper=0.5)
-        n = 7
-        for i in range(n):
-            f = i / (n - 1)
-            p0 = arm[int((0.3 + 0.7 * (1 - abs(2 * f - 1))) * 49)]
-            length = 0.11 + 0.08 * math.sin(PI * f) ** 0.6
-            if open_:
-                th = math.radians(78 - 156 * f)         # fanned from straight up to straight down
-                d = V(s * math.cos(th), 0.1, math.sin(th)).normalized()
-                normal = V(0, 1, 0)
-                bow = V(0, 0.012, 0)
-            else:
-                d = V(s * 0.08, -1, 0.05 * (f - 0.5)).normalized()
-                normal = V(s, 0, 0)
-                bow = V(s * 0.006, 0, 0)
-                p0 = p0 + V(s * 0.003 * i, 0, 0)
-            path = [p0, p0 + d * (0.5 * length) + bow, p0 + d * length]
-            width = 0.036
+        n = 8
+        for row, (mat, scale, width, dy) in enumerate(((mats["blade"], 1.0, 0.046, 0.0), (mats["ivory"], 0.58, 0.04,
+                                                                                            0.008))):
+            for i in range(n):
+                f = i / (n - 1)
+                p0 = arm[int((0.12 + 0.88 * f) * 49)]
+                length = (0.15 + 0.11 * f) * scale
+                if open_:                # hanging from the arm: straight down at the root, out at the tip
+                    th = math.radians(-96 + 112 * f)
+                    d = V(s * math.cos(th), 0.08, math.sin(th)).normalized()
+                    normal, bow = V(0, 1, 0), V(0, 0.01, 0)
+                    p0 = p0 + V(0, dy, 0)
+                else:
+                    d = V(s * 0.08, -1, 0.05 * (f - 0.5)).normalized()
+                    normal, bow = V(s, 0, 0), V(s * 0.006, 0, 0)
+                    p0 = p0 + V(s * (0.003 * i + 0.006 * row), 0, 0)
+                path = [p0, p0 + d * (0.5 * length) + bow, p0 + d * length]
 
-            def w(t, width=width):
-                return width * math.sin(PI * min(t / 0.985, 1) ** 0.5) ** 0.75
+                def w(t, width=width):
+                    return width * math.sin(PI * min(t / 0.985, 1) ** 0.5) ** 0.75
 
-            name = f"B_Feather_{side}_{i}"
-            objs += m.path_blade(name, path, normal, w, lambda t: 0.004 * (1 - 0.7 * t), mats["blade"])
-            rach = gd.smooth_path(path, 30)
-            objs += gd.tube(name + "_Rachis", rach[:27], mats["core"], 0.0014, (1.0, 0.3))
-            if open_ and i % 2 == 0:
-                objs += m.floating_phials(f"B_Drop_{side}_{i}", [path[-1] + d * 0.02], d, (0, 1, 0), mats,
-                                          size=0.0085)
-        for j in range(9):               # ivory coverts along the arm
-            p = arm[int((0.15 + 0.09 * j) * 49)]
-            d = (V(0, 0.02, 1) if open_ else V(0, -1, 0.15)).normalized()
-            objs += m.droplet(f"B_Covert_{side}_{j}", p + d * 0.006, 0.0075, d, mats["ivory"], stretch=1.8)
-    objs += m.droplet("B_Heart", AX + V(0, 0.03, 0.06), 0.011, (0, 1, 0), mats["phial_lit"], stretch=1.2)
-    objs += m.halo("B_Heart_Halo", AX + V(0, 0.036, 0.06), 0.02, 0.0022, (0, 1, 0), mats["light"])
+                name = f"B_Feather_{side}_{row}_{i}"
+                objs += m.path_blade(name, path, normal, w, lambda t: 0.004 * (1 - 0.7 * t), mat,
+                                     offset_fn=lambda t, w=w: s * 0.2 * w(t))
+                rach = gd.smooth_path(path, 30)
+                objs += gd.tube(name + "_Rachis", rach[:27], mats["core"] if row == 0 else mats["light"], 0.0014,
+                                (1.0, 0.3))
+                if open_ and row == 0 and i % 2 == 1:
+                    objs += m.floating_phials(f"B_Drop_{side}_{i}", [path[-1] + d * 0.02], d, (0, 1, 0), mats,
+                                              size=0.0085)
+        for j in range(10):              # ivory coverts along the arm
+            p = arm[int((0.1 + 0.09 * j) * 49)]
+            d = (V(s * 0.2, 0.03, -1) if open_ else V(0, -1, 0.15)).normalized()
+            objs += m.droplet(f"B_Covert_{side}_{j}", p + d * 0.006, 0.0085, d, mats["ivory"], stretch=1.8)
+    objs += m.droplet("B_Heart", AX + V(0, 0.03, 0.065), 0.011, (0, 1, 0), mats["phial_lit"], stretch=1.2)
+    objs += m.halo("B_Heart_Halo", AX + V(0, 0.036, 0.065), 0.02, 0.0022, (0, 1, 0), mats["light"])
     return objs
 
 
@@ -548,6 +550,15 @@ def tracer_arrow(mats):
     return objs
 
 
+def dark_hide():
+    """The devices' slab of hide, darker so the gold reads at this close range."""
+    block = devices.hide_block()
+    ramp = next(n for n in block.data.materials[0].node_tree.nodes if n.type == "VALTORGB")
+    ramp.color_ramp.elements[0].color = c.hex_to_linear("#0C0807")
+    ramp.color_ramp.elements[1].color = c.hex_to_linear("#2A1D16")
+    return block
+
+
 def surface_plane(z=0.0015):
     return m.plane_mapper(V(0, 0, z), (1, 0, 0), (0, 1, 0))
 
@@ -626,9 +637,9 @@ def tracer_d(mats, rng, charged):
     for k in range(6):
         heading = 60 * k + rng.uniform(-12, 12)
         o = (0.01 * math.cos(math.radians(heading)), 0.01 * math.sin(math.radians(heading)))
-        turns = 1.3 * (1 if k % 2 else -1)
+        turns = 1.8 * (1 if k % 2 else -1)
         objs += m.tendril(f"D_Vine_{k}", plane, o, heading, reach * rng.uniform(0.85, 1.15), turns, 0.0042, mats,
-                          strands=2, gold=False, strand_mat="light", curl_start=0.55,
+                          strands=2, gold=False, strand_mat="light", curl_start=0.45,
                           offshoots=[(0.35, 1 if k % 2 else -1, 0.45, -turns * 0.8)])
         if charged:
             h = math.radians(heading)
@@ -762,7 +773,7 @@ def build_scene(key, state):
         mats = materials()
         builder(mats, rng)
         if state == "mounted":
-            return (0, 0.06, -0.03), 1.1, 74, 4, (640, 480)
+            return (0, 0.07, -0.03), 1.3, 74, 4, (640, 480)
         return tuple(DRUM_C + V(0, 0, 0.004)), 0.4, 68, 8, (640, 480)
     if ITEM == "hbg_mag":
         heavy_bowgun()
@@ -778,17 +789,17 @@ def build_scene(key, state):
             charge_up(mats)
         builder(mats, rng, state == "open")
         if state == "open":
-            return (0, 0.3, 0.03), 1.55, 142, 12, (640, 520)
-        return (0, 0.32, 0.03), 1.3, 104, 16, (640, 520)
+            return (0, 0.32, 0.03), 1.5, 150, 10, (640, 520)
+        return (0, 0.5, 0.03), 0.95, 104, 18, (640, 520)
     if ITEM == "tracer":
         c.reset_scene()
         mats = materials()
         if state == "charged":
             charge_up(mats)
-        devices.hide_block()
+        dark_hide()
         tracer_arrow(mats)
         builder(mats, rng, state == "charged")
-        return (0.0, 0.0, 0.07), 0.62, 8, 26, (640, 520)
+        return (0.0, 0.0, 0.09), 0.66, 8, 24, (640, 520)
     if ITEM == "piercer":
         c.reset_scene()
         mats = materials()
@@ -796,7 +807,7 @@ def build_scene(key, state):
             builder(mats, 0.16, V(0.08, 0, 0.12), V(1, 0, 0), "Round")
             return (0, 0, 0.12), 0.36, 12, 10, (640, 400)
         charge_up(mats)
-        devices.hide_block()
+        dark_hide()
         d = V(0.55, -0.1, 1).normalized()
         builder(mats, 0.16, d * 0.22, d, "Round")
         glow = c.make_material("Crack_Light", c.PALETTE["glow"], roughness=0.2, emission=c.PALETTE["glow"],

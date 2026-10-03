@@ -1216,11 +1216,16 @@ def smooth_spots(obj, points):
 # saw-toothed leg openings, and were cut up to the waist at the sides. Leg openings: from a
 # gusset between the legs up along the groin fold in front and, behind, diagonally up across the
 # lower buttocks (user: following under the buttocks wrapped the tops of the thighs like boxers),
-# out to the side of the hip at 0.91 m, leaving a band 6 cm wide there: a plain brief, not high-cut.
+# out to the side of the hip at 0.955 m, leaving a band 2 cm wide there (6, then 3.5 cm; user: thinner).
+# The gusset is the crotch's underside only, |x| < 1.5 cm (the crotch bottoms out at 0.825 m and
+# from 1.5-2 cm out falls away into the inner thighs): reaching 3-4 cm out, the first briefs
+# took in the tops of the inner thighs and read as starting from the thighs (user 2026-10-03).
 # Polylines (|x|, z) in m, front and back blended by depth.
 BRIEF = {"top": 0.975, "half": 0.22,
-         "front": [(0.0, 0.755), (0.024, 0.79), (0.045, 0.845), (0.08, 0.885), (0.125, 0.905), (0.2, 0.91)],
-         "back": [(0.0, 0.755), (0.03, 0.805), (0.06, 0.845), (0.10, 0.88), (0.14, 0.905), (0.2, 0.915)]}
+         "front": [(0.0, 0.80), (0.014, 0.805), (0.022, 0.822), (0.04, 0.852), (0.06, 0.878), (0.09, 0.901),
+                   (0.12, 0.925), (0.15, 0.948), (0.2, 0.955)],
+         "back": [(0.0, 0.81), (0.015, 0.815), (0.022, 0.832), (0.035, 0.85), (0.06, 0.865), (0.10, 0.89),
+                  (0.13, 0.918), (0.16, 0.947), (0.2, 0.955)]}
 
 
 def line_z(pts, x):

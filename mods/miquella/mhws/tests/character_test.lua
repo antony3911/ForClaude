@@ -235,9 +235,12 @@ else
   check(body.drawSelf == true and innerwear.drawSelf == false, "body on again")
   frames(60, 1 / 60)
   if mode == "nojoint" then
-    check(xf.followed and math.abs(xf.world.y - 1.57) < 1e-6, "circlet: parent joint failed: follows the Head joint every frame")
+    check(xf.followed and math.abs(xf.world.y - (1.57 + 0.128 * 0.15)) < 1e-6,
+      "circlet: parent joint failed: follows the Head joint every frame (size 0.85 about the head's middle)")
   else
     check(xf.joint == "Head" and not xf.followed, "circlet: on the Head joint, no per-frame follow")
+    check(xf.ls and math.abs(xf.ls.x - 0.85) < 1e-6 and math.abs(xf.lp.y - 0.128 * 0.15) < 1e-6,
+      "circlet: size 0.85 by default, about the head's middle")
   end
   local dbg = dumps["MiquellaLight/circlet_debug.json"]
   check(dbg and dbg.head and math.abs(dbg.head[2] - 1.57) < 1e-6 and dbg.mode, "circlet: where it is written for Claude")

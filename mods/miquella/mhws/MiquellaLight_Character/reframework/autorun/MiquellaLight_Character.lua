@@ -61,6 +61,9 @@ local CHECK_AFTER = 1.0      -- s after attaching: is the circlet at the head?
 local OFF_HEAD = 0.30        -- m from the Head joint: the parent joint did not hold
 local REFRESH_AT = { 1.0, 3.0 }   -- s after spawning: set the model again (a resource made that frame may not be loaded)
 local MODES = { "Auto", "Head joint", "Follow every frame" }
+-- The circlet's size on the head (the user 2026-10-03: the model's own size is a little big on
+-- their hunter, 0.8 to 0.9 all look good, not decided yet -> a slider over just that range).
+local SIZE_MIN, SIZE_MAX, SIZE_DEFAULT = 0.8, 0.9, 0.85
 local OUTFIT_PATHS = { "character/ch02/", "character/ch03/" }   -- armor and innerwear (lower case)
 local OUTFIT_SCAN = 0.5      -- s between looks for the hunter's outfit objects
 local SCAN_DEPTH = 6
@@ -69,7 +72,7 @@ local config = {
     enabled = true,
     circlet = true,
     glow = 1.0,
-    size = 1.0,
+    size = SIZE_DEFAULT,
     offset = { 0.0, 0.0, 0.0 },   -- cm: left, up, forward (the head's own axes)
     mode = 1,
     body = true,
@@ -83,6 +86,7 @@ if type(saved) == "table" then
     for k, v in pairs(saved) do config[k] = v end
 end
 if type(config.offset) ~= "table" then config.offset = { 0.0, 0.0, 0.0 } end
+if type(config.size) ~= "number" or config.size < SIZE_MIN or config.size > SIZE_MAX then config.size = SIZE_DEFAULT end
 if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
@@ -636,7 +640,7 @@ re.on_draw_ui(function()
     c, config.circlet = imgui.checkbox("Circlet (halo)", config.circlet); changed = changed or c
     c, config.glow = imgui.slider_float("Glow", config.glow, 0.0, 5.0); changed = changed or c
     if c then apply_glow(PIECES[1]) end
-    c, config.size = imgui.slider_float("Size", config.size, 0.8, 1.3); changed = changed or c
+    c, config.size = imgui.slider_float("Size", config.size, SIZE_MIN, SIZE_MAX); changed = changed or c
     if c then PIECES[1].st.parentAddr = nil end
     local labels = { "Left / right (cm)", "Up / down (cm)", "Forward / back (cm)" }
     for i = 1, 3 do
@@ -648,7 +652,7 @@ re.on_draw_ui(function()
     if c then PIECES[1].st.parentAddr, PIECES[1].st.autoFollow = nil, nil end
     changed = changed or c
     if imgui.button("Reset position") then
-        config.offset, config.size, PIECES[1].st.parentAddr = { 0.0, 0.0, 0.0 }, 1.0, nil
+        config.offset, config.size, PIECES[1].st.parentAddr = { 0.0, 0.0, 0.0 }, SIZE_DEFAULT, nil
         changed = true
     end
     local s = PIECES[1].st

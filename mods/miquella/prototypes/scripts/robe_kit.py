@@ -20,7 +20,9 @@ skeleton, spawned by MiquellaLight_Character.lua like the body (SameJointsConstr
 - a woven ivory cloth tiled at TILE, UVs per part (torso and skirt around the body's axis, sleeves
   around the arm's) shifted by whole tiles in blocks: the UVs are half floats in the file.
 
-Usage: bpy45 python robe_kit.py <smooth|lines> <female|male> [preview <out dir>]
+Usage: bpy45 python robe_kit.py <smooth|lines|drape|cinch> <female|male> [preview <out dir>]
+The drapes (drape: sash loose on the hips, cinch: at the waist) carry the gold of version D and the
+broad collar (robe_designs.gold_work, collar "strands") as a second sub-mesh, MiquellaRobeGold.
 Writes mq_robe_<fit>_c[_f].mesh and mq_robe.mdf2 (+ tex) into MiquellaLight_Character_kit.
 """
 import math
@@ -56,6 +58,11 @@ ARM_REACH = 0.085     # m from the arm's bones: sleeve (UV mapped around the arm
 ROBE_RGB = (230, 221, 199)   # sRGB ivory ("米白")
 ROBE_ROUGH = 0.82
 MATERIAL = "MiquellaRobe"
+GOLD = "MiquellaRobeGold"          # the drapes' jewellery: gold metal (ALBD alpha 0, as the devices' gold)
+GOLD_RGB = (226, 176, 74)          # sRGB, the devices' gold
+GOLD_ROUGH = 0.27
+GOLD_FACES = 60000                 # triangles at most (the collar's strands are many tubes)
+DRAPES = ("drape", "cinch")
 SOURCE_MATERIAL = "MiquellaGrip"   # the dual blades' weapon shader, as the briefs (proven in game)
 
 
@@ -240,6 +247,75 @@ def weave_images():
     return [(MATERIAL, "ALBD", albd), (MATERIAL, "NRRO", nrro)]
 
 
+def gold_images():
+    """Flat gold metal: ALBD alpha 0 = metal (the devices' gold zone reads so), polished."""
+    albd = np.zeros((64, 64, 4), dtype=np.uint8)
+    albd[..., :3] = GOLD_RGB
+    nrro = np.full((64, 64, 4), [round(GOLD_ROUGH * 255), 128, 255, 128], dtype=np.uint8)
+    return [(GOLD, "ALBD", albd), (GOLD, "NRRO", nrro)]
+
+
+def name_of(fit_name, female):
+    return f"mq_robe_{fit_name}_c{'_f' if female else ''}"
+
+
+def gold_object(objs, bm, per_vert, name):
+    """robe_designs' gold work (curves and meshes) as one triangulated mesh, decimated to
+    GOLD_FACES, each vertex on the weights of the nearest vertex of the cloth (the collar follows
+    the chest, the cords and drops the skirt's front), UVs all in the middle (a flat texture)."""
+    from mathutils import kdtree
+    dg = bpy.context.evaluated_depsgraph_get()
+    gb = bmesh.new()
+    for o in objs:
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+        me.transform(o.matrix_world)
+        gb.from_mesh(me)
+        bpy.data.meshes.remove(me)
+        bpy.data.objects.remove(o, do_unlink=True)
+    bmesh.ops.triangulate(gb, faces=gb.faces[:])
+    n0 = len(gb.faces)
+    me = bpy.data.meshes.new(name + "_gold")
+    gb.to_mesh(me)
+    gb.free()
+    ob = bpy.data.objects.new(name + "_gold", me)
+    bpy.context.scene.collection.objects.link(ob)
+    if n0 > GOLD_FACES:
+        mod = ob.modifiers.new("Decimate", "DECIMATE")
+        mod.ratio = GOLD_FACES / n0
+        dg = bpy.context.evaluated_depsgraph_get()
+        dec = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+        ob.modifiers.remove(mod)
+        ob.data = dec
+        me = dec
+        tb = bmesh.new()
+        tb.from_mesh(me)
+        bmesh.ops.triangulate(tb, faces=tb.faces[:])
+        tb.to_mesh(me)
+        tb.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    uv = me.uv_layers.new(name="UV")
+    for lp in uv.data:
+        lp.uv = (0.5, 0.5)
+    me.materials.clear()
+    me.materials.append(bpy.data.materials.get(GOLD) or bpy.data.materials.new(GOLD))
+    verts = list(bm.verts)
+    kd = kdtree.KDTree(len(verts))
+    for i, v in enumerate(verts):
+        kd.insert(v.co, i)
+    kd.balance()
+    groups = {}
+    for v in me.vertices:
+        _, i, _ = kd.find(v.co)
+        for b, w in per_vert[verts[i]]:
+            if b not in groups:
+                groups[b] = ob.vertex_groups.new(name=b)
+            groups[b].add([v.index], w, "REPLACE")
+    ob.color = (0.85, 0.6, 0.15, 1)
+    log(f"gold: {len(objs)} pieces, {n0} -> {len(me.polygons)} triangles, {len(me.vertices)} verts")
+    return ob
+
+
 def write_robe_mdf(path, textures):
     import copy
     from re_mesh_editor.modules.mdf.file_re_mdf import readMDF, writeMDF
@@ -251,11 +327,16 @@ def write_robe_mdf(path, textures):
         if t.textureType in textures[MATERIAL]:
             t.texturePath = textures[MATERIAL][t.textureType]
     new.flags.flagValues.BaseTwoSideEnable = 1
-    template.materialList = [new]
+    gold = copy.deepcopy(src)
+    gold.materialName = GOLD
+    for t in gold.textureList:
+        if t.textureType in textures[GOLD]:
+            t.texturePath = textures[GOLD][t.textureType]
+    template.materialList = [new, gold]
     writeMDF(template, path)
-    back = readMDF(path).materialList[0]
-    log("mdf:", back.materialName, "two-sided", bool(back.flags.flagValues.BaseTwoSideEnable),
-        [t.texturePath for t in back.textureList if "MiquellaLight" in t.texturePath])
+    for back in readMDF(path).materialList:
+        log("mdf:", back.materialName, "two-sided", bool(back.flags.flagValues.BaseTwoSideEnable),
+            [t.texturePath for t in back.textureList if "MiquellaLight" in t.texturePath])
 
 
 # ------------------------------------------------------------------ UVs
@@ -419,9 +500,19 @@ def build(fit_name, female, preview_dir=None):
     # (Removed now: removing a layer remakes the BMVerts, keys of the tables below.)
     for layer in list(bm.verts.layers.deform.values()):
         bm.verts.layers.deform.remove(layer)
-    grid, ang, center = rd.build_skirt(bm, fit, random.Random(7), style="hip")
+    style = fit_name if fit_name in DRAPES else "hip"
+    grid, ang, center = rd.build_skirt(bm, fit, random.Random(7), style=style)
     if fit_name != "lines":
         rd.soften_waist(bm, fit)
+    if style != "hip":
+        # as the previews: the clearance search's 2 mm steps left ripples across the hanging cloth
+        skirt = [v for row in grid[1:-1] for v in row]
+        for _ in range(2):
+            rd.taubin(skirt, 25)
+            fit.push_out(skirt, rd.GAP)
+        bm.normal_update()
+    # the drapes' gold (before the winding is settled below: gold_work recalculates the normals)
+    gold_objs = rd.gold_work("D", bm, grid, fit, collar_kind="strands") if style != "hip" else []
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     out = sum((f.normal.to_2d().dot((f.calc_center_median() - center).to_2d()) for f in bm.faces
                if {v for v in f.verts} <= set(grid[len(grid) // 2])) or [0.0])
@@ -430,6 +521,15 @@ def build(fit_name, female, preview_dir=None):
     skirt_rc = {v: (i, j) for i, row in enumerate(grid) for j, v in enumerate(row)}
     rows, cols = len(grid) - 1, len(grid[0])
     log(f"robe: {len(bm.verts)} verts, {len(bm.faces)} faces; skirt {rows + 1} x {cols}")
+    # Where the chains start, per column: the skirt's top on the fitted robes; on the drapes the
+    # hanging cloth starts at the chest, and down to the hips (the fitted robes' skirt line) it
+    # follows the torso on the body's weights, the chains taking over below
+    def chain_top(j):
+        if style == "hip":
+            return 0
+        z = rd.angle_blend(ang[j], *rd.SKIRT_TOP)
+        return min(range(rows + 1), key=lambda i: abs(grid[i][j].co.z - z))
+    top_row = [chain_top(j) for j in range(cols)]
 
     # the skirt chains onto our skirt
     chains = []
@@ -438,7 +538,8 @@ def build(fit_name, female, preview_dir=None):
         p0 = J[bones[0]]
         a = math.atan2(p0.x - center.x, -(p0.y - center.y)) % (2 * math.pi)
         j = min(range(cols), key=lambda k: abs(math.remainder(ang[k] - a, 2 * math.pi)))
-        jr = [round(k * rows / (len(bones) - 1)) for k in range(len(bones))]
+        r0 = top_row[j]
+        jr = [r0 + round(k * (rows - r0) / (len(bones) - 1)) for k in range(len(bones))]
         move_chain(arm, bones, [grid[r][j].co for r in jr])
         chains.append((a, name, bones, jr, j))
     chains.sort()
@@ -463,8 +564,11 @@ def build(fit_name, female, preview_dir=None):
         acc = {}
         for c, wc in ((chains[k], 1 - t), (chains[(k + 1) % n], t)):
             _, _, bones, jr, _ = c
-            seg = max(s for s in range(len(jr) - 1) if jr[s] <= i)
-            s = (i - jr[seg]) / (jr[seg + 1] - jr[seg])
+            if i <= jr[0]:
+                seg, s = 0, 0.0
+            else:
+                seg = max(s for s in range(len(jr) - 1) if jr[s] <= i)
+                s = (i - jr[seg]) / (jr[seg + 1] - jr[seg])
             if seg == 0:
                 # the top segment hugs the hips: rows above CH_01 turn about it (inward when the
                 # skirt swings out, into the hips, 13 mm at 20 degrees on straight lerp): kept
@@ -472,16 +576,19 @@ def build(fit_name, female, preview_dir=None):
                 s = s ** 3
             for bone, w in ((bones[seg], 1 - s), (bones[seg + 1], s)):
                 acc[bone] = acc.get(bone, 0.0) + wc * w
-        dz = grid[0][j].co.z - v.co.z
+        dz = grid[top_row[j]][j].co.z - v.co.z
         beta = 1 - mb.smoothstep(0.0, TOP_BLEND, dz)
         if beta > 0:
             acc = mix(acc, body_w(v.co), beta)
         per_vert[v] = top_weights(acc)
 
+    gold = None
+    if style != "hip":
+        gold = gold_object(gold_objs, bm, per_vert, name_of(fit_name, female))
     mapper = Mapper(fit, J)
     unwrap(bm, mapper, skirt_rc, grid, ang)
     bm.verts.index_update()
-    name = f"mq_robe_{fit_name}_c{suffix}"
+    name = name_of(fit_name, female)
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     robe = bpy.data.objects.new(name, me)
@@ -525,7 +632,7 @@ def build(fit_name, female, preview_dir=None):
     if preview_dir:
         global DEBUG_PER_VERT
         DEBUG_PER_VERT = [per_vert[v] for v in bm.verts]
-        preview(robe, body, arm, chains, preview_dir, name)
+        preview(robe, body, arm, chains, preview_dir, name, gold)
 
     # export
     for o in body:
@@ -543,14 +650,26 @@ def build(fit_name, female, preview_dir=None):
     mb.position_colors(robe.data)
     robe.modifiers.new("Armature", "ARMATURE").object = arm
     robe.parent = arm
+    if gold:
+        gold.name = f"Group_0_Sub_1__{GOLD}"
+        for col in list(gold.users_collection):
+            col.objects.unlink(gold)
+        mesh_col.objects.link(gold)
+        for m in list(gold.modifiers):
+            gold.modifiers.remove(m)
+        split_by_uv(gold)
+        mb.position_colors(gold.data)
+        gold.modifiers.new("Armature", "ARMATURE").object = arm
+        gold.parent = arm
     path = os.path.join(NATIVES, f"{name}.mesh{mb.MESH_EXT}")
     ok = exportREMeshFile(path, {"targetCollection": mesh_col.name, "selectedOnly": False,
                                  "exportAllLODs": False, "exportBlendShapes": False, "rotate90": True,
                                  "useBlenderMaterialName": False, "preserveBoneMatrices": True,
                                  "exportBoundingBoxes": False, "autoSolveRepeatedUVs": True,
                                  "preserveSharpEdges": False})
-    log(f"export {name}: {ok} ({os.path.getsize(path)} bytes), {len(robe.data.vertices)} verts")
-    textures = mb.images_to_tex(KIT, weave_images())
+    log(f"export {name}: {ok} ({os.path.getsize(path)} bytes), {len(robe.data.vertices)} verts"
+        + (f" + gold {len(gold.data.vertices)}" if gold else ""))
+    textures = mb.images_to_tex(KIT, weave_images() + gold_images())
     write_robe_mdf(os.path.join(NATIVES, f"mq_robe.mdf2{mb.MDF_EXT}"), textures)
     verify(path, chains)
 
@@ -588,7 +707,7 @@ def verify(path, chains):
 
 # ------------------------------------------------------------------ preview
 
-def preview(robe, body, arm, chains, out, name):
+def preview(robe, body, arm, chains, out, name, gold=None):
     """Workbench renders: rest pose, and the skirt chains swung (CH_01 turned 25 degrees outward,
     the back ones forward) to see the weights carry the cloth."""
     os.makedirs(out, exist_ok=True)
@@ -602,6 +721,8 @@ def preview(robe, body, arm, chains, out, name):
         o.color = (0.80, 0.52, 0.42, 1)
     mod = robe.modifiers.new("Armature", "ARMATURE")
     mod.object = arm
+    if gold:
+        gold.modifiers.new("Armature", "ARMATURE").object = arm
     for o in body:
         m = o.modifiers.new("Armature", "ARMATURE")
         m.object = arm

@@ -1097,6 +1097,79 @@ def heavy_bowgun():
     }
 
 
+# Bowgun add-ons (user's picks 2026-10-03, attachments.py): written over the game's own item
+# files, which every light / heavy bowgun shares (each weapon's prefab points to the same
+# it1x99 "common" part), so they need no script. Measured on the extracted originals (file space
+# of the weapon: +Z muzzle, +Y up; the originals' feed pieces end at the gun's middle, x 0):
+#   it1399_0000_0, the light bowgun's Rapid Fire drum: a drum 0.30 across on the gun's -X side,
+#     its axis along the barrel through (-0.25, -0.219); bones Base (the shell), center (the
+#     rounds and spokes) and axis (the hub, 0.136 behind center).
+#   it1299_0000_0, the heavy bowgun's magazine: a canister 0.2 thick on the -X side, leaning down
+#     toward the muzzle along (0.22, -0.78, 0.59) (its Piston bone's -Y), middle near
+#     (-0.20, -0.16, 0.02); Piston and EnergyStick at its upper rear end.
+DRUM_AT, DRUM_K = Vector((-0.25, -0.219, 0.035)), 2.3
+MAG_AT, MAG_K = Vector((-0.205, -0.15, 0.02)), 2.4
+MAG_AXIS = Vector((0.22, -0.78, 0.59)).normalized()
+
+
+def attachment_parts(fn):
+    import attachments as at
+    mats = at.materials()
+    fn(mats, random.Random(7))
+    bpy.context.view_layer.update()
+    return mats, [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")]
+
+
+def lbg_drum():
+    """Rapid Fire drum A, the ivory lantern. The prototype's drum (axis X, its neck rising +Z to
+    the gun) turned so its axis runs along the barrel and the neck reaches in toward the gun."""
+    import attachments as at
+    _, objs = attachment_parts(at.drum_a)
+    turn = Matrix(((0, 0, 1, 0), (0, -1, 0, 0), (1, 0, 0, 0), (0, 0, 0, 1)))    # x->z, y->-y, z->x
+    to_file = Matrix.Translation(DRUM_AT) @ Matrix.Scale(DRUM_K, 4) @ turn @ Matrix.Translation(-at.DRUM_C)
+
+    def bone(o, _center):
+        if o.name.startswith("A_Hub"):
+            return "axis"
+        if o.name.startswith(("A_Rib", "A_Round", "A_Girdle", "A_Lyre")):
+            return "center"
+        return "Base"
+
+    return placed("it1399_0000_0", "Art/Model/Item/it13/99/0000", objs, to_file, {}, bone_fn=bone)
+
+
+def hbg_mag():
+    """Magazine C, the reliquary: the prototype's casket (hanging along (0, 0.2, -1)) leaned
+    along the original canister, its middle on the canister's, an ivory neck in to the gun; a
+    light at its upper end rides the EnergyStick bone."""
+    import attachments as at
+    import motifs
+    mats, objs = attachment_parts(at.mag_c)
+    p_axis = Vector((0, 0.2, -1)).normalized()
+    p_side = Vector((0, 1, 0.2)).normalized()
+    f_x = (Vector((1, 0, 0)) - MAG_AXIS.x * MAG_AXIS).normalized()
+    f_side = f_x.cross(MAG_AXIS)
+    proto = Matrix((Vector((1, 0, 0)), p_side, p_axis)).transposed().to_4x4()   # columns
+    game = Matrix((f_x, f_side, MAG_AXIS)).transposed().to_4x4()
+    top = at.MAG_TOP + p_axis * 0.005
+    middle = top + p_axis * 0.1
+    to_file = Matrix.Translation(MAG_AT) @ Matrix.Scale(MAG_K, 4) @ game @ proto.inverted() @ Matrix.Translation(-middle)
+    to_proto = to_file.inverted()
+    # The neck in to the gun from the casket's inner face, and the light on its upper end.
+    inner = to_proto @ (MAG_AT + f_x * 0.06 * MAG_K / 2)
+    objs += motifs.woven_tube("Mag_Neck", [inner, to_proto @ Vector((-0.04, MAG_AT.y, MAG_AT.z))], 0.011,
+                              mats["ivory"], random.Random(3))
+    objs += motifs.droplet("Mag_Cap", top - p_axis * 0.012, 0.0075, -p_axis, mats["phial_lit"], stretch=1.4)
+    objs += motifs.halo("Mag_Cap_Halo", top - p_axis * 0.006, 0.011, 0.0016, p_axis, mats["light"])
+    bpy.context.view_layer.update()
+    objs = [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")]
+
+    def bone(o, _center):
+        return "EnergyStick" if o.name.startswith("Mag_Cap") else "Base"
+
+    return placed("it1299_0000_0", "Art/Model/Item/it12/99/0000", objs, to_file, {}, bone_fn=bone)
+
+
 # The circlet ("halo", character groundwork 2026-10-02): circlet.py's v10 in the Head joint's
 # space. Measured on the game's head (ch00_000_0000 face, ch01_000_0001 hair; bind pose, Head
 # joint at (0, 1.573, -0.010) with no rotation to speak of): at the brow (y 1.69) the bare head
@@ -1131,7 +1204,7 @@ WEAPONS = {"great_sword": great_sword, "light_bowgun": light_bowgun, "long_sword
            "switch_axe": switch_axe, "charge_blade": charge_blade, "charge_blade_shield": charge_blade_shield,
            "insect_glaive": insect_glaive, "kinsect": kinsect, "kinsect_outline": kinsect_outline, "bow": bow,
            "bow_quiver_a": lambda: bow_quiver("a"), "bow_quiver_b": lambda: bow_quiver("b"), "arrow": arrow, "heavy_bowgun": heavy_bowgun,
-           "circlet": circlet}
+           "circlet": circlet, "lbg_drum": lbg_drum, "hbg_mag": hbg_mag}
 
 
 # Parts of one mode only (switch axe, charge blade): Miquella<Set><Blade|Glow|Ivory>, so the

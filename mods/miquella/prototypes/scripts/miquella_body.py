@@ -139,6 +139,12 @@ def macro_targets(p):
                     out[f"macrodetails/universal-{g}-{a}-{m}-{w}"] = wg * wa * wm * ww
             for r, wr in RACES.items():
                 out[f"macrodetails/{r}-{g}-{a}"] = wr * wg * wa
+    # Miquella is male; the female share of the macro (for a softer figure) came with MakeHuman's
+    # average breasts, which read as small breasts in game (user 2026-10-03). Its breast size
+    # slider at 0 (smallest cup), as MakeHuman weights it: female share x muscle x weight.
+    for m, wm in muscle.items():
+        for w, ww in weight.items():
+            out[f"breast/female-young-{m}-{w}-mincup-averagefirmness"] = gender["female"] * wm * ww
     out.update({name: w for name, w in COMMON_DETAILS + p["details"]})
     return {k: w for k, w in out.items() if w > 1e-4}
 
@@ -1618,6 +1624,77 @@ def blend_face_weights(obj, G, neck, tree, face_ws):
     log(f"  face weights blended into {n} neck vertices")
 
 
+# Below the waist the body takes the game's own innerwear legs' weights (user 2026-10-03, in game:
+# lumps like knotted muscle on the inner thighs, smooth in the bind pose). The game skins its legs
+# almost wholly to helper joints it drives itself (ThighTwist_HJ_00..02, Hip_HJ_00, Spine_0_HJ_00,
+# Knee_HJ_00, KneeRX_HJ_00: the main Thigh joint has 2 k of 29 k weights), which spread the thigh's
+# twist and keep the groin's volume; on the main joints alone the top of the thigh twisted as one
+# piece and bunched up. Nearest point on the legs' surface, its triangle's weights interpolated;
+# full below LEG_W[0], fading out by LEG_W[1] (the shirt's region), and fading where the
+# innerwear stands far off the skin (LEG_FAR).
+LEG_W = (0.96, 1.04)
+LEG_FAR = (0.03, 0.06)
+
+
+def leg_weights(leg_objs, arm):
+    """The innerwear legs' surface (BVH, world space) and each of its vertices' weights."""
+    from mathutils.bvhtree import BVHTree
+    verts, polys, ws = [], [], []
+    for o in leg_objs:
+        if "fur" in o.name.lower() or any("fur" in m.name.lower() for m in o.data.materials if m):
+            continue
+        base = len(verts)
+        names = {g.index: g.name for g in o.vertex_groups}
+        for v in o.data.vertices:
+            verts.append(o.matrix_world @ v.co)
+            acc = {}
+            for ge in v.groups:
+                b = names[ge.group]
+                if ge.weight > 0 and b in arm.data.bones:
+                    acc[b] = acc.get(b, 0.0) + ge.weight
+            ws.append(acc)
+        polys += [[base + i for i in p.vertices] for p in o.data.polygons]
+    log(f"  legs weights: {len(verts)} vertices, bones {len({b for w in ws for b in w})}")
+    return BVHTree.FromPolygons(verts, polys), verts, polys, ws
+
+
+def blend_leg_weights(obj, legs):
+    from mathutils.interpolate import poly_3d_calc
+    bvh, verts, polys, ws = legs
+    me = obj.data
+    groups = {g.name: g for g in obj.vertex_groups}
+    names = {g.index: g.name for g in obj.vertex_groups}
+    n = 0
+    for v in me.vertices:
+        if v.co.z > LEG_W[1] or abs(v.co.x) > 0.35:
+            continue
+        loc, _, fi, dist = bvh.find_nearest(v.co, LEG_FAR[1])
+        if loc is None:
+            continue
+        w = (1 - smoothstep(LEG_W[0], LEG_W[1], v.co.z)) * (1 - smoothstep(LEG_FAR[0], LEG_FAR[1], dist))
+        if w <= 0:
+            continue
+        corners = polys[fi]
+        bary = poly_3d_calc([verts[i] for i in corners], loc)
+        acc = {}
+        for k, i in zip(bary, corners):
+            for b, x in ws[i].items():
+                acc[b] = acc.get(b, 0.0) + w * k * x
+        for ge in v.groups:
+            acc[names[ge.group]] = acc.get(names[ge.group], 0.0) + (1 - w) * ge.weight
+        top = sorted(acc.items(), key=lambda kv: -kv[1])[:MAX_WEIGHTS]
+        total = sum(x for _, x in top) or 1.0
+        for ge in list(v.groups):
+            groups[names[ge.group]].remove([v.index])
+        for b, x in top:
+            if b not in groups:
+                groups[b] = obj.vertex_groups.new(name=b)
+                names[groups[b].index] = b
+            groups[b].add([v.index], x / total, "REPLACE")
+        n += 1
+    log(f"  innerwear leg weights blended into {n} vertices")
+
+
 MESH_EXT, MDF_EXT = ".241111606", ".45"
 REL = "Art/Model/MiquellaLight/Character"
 # Our material -> (game material name, dual blades material it is copied from).
@@ -1770,8 +1847,13 @@ def kit(data, game_body, face, kit_dir, template_mdf):
     face_pts = face_geometry(face_objs)
     neck = FaceNeck(G, face_pts)
     tree, face_ws = face_neck_weights(face_objs, arm)
+    # The innerwear's legs sit next to its body: .../000/2/ch0X_002_0002 -> .../000/4/ch0X_002_0004
+    legs_path = os.path.join(os.path.dirname(os.path.dirname(game_body)), "4",
+                             os.path.basename(game_body).replace("_0002.", "_0004."))
+    _, leg_objs = import_game(legs_path, keep_meshes=True)
+    legs = leg_weights(leg_objs, arm)
     for o in list(bpy.data.objects):
-        if o.type == "ARMATURE" and o is not arm or o in face_objs:
+        if o.type == "ARMATURE" and o is not arm or o in face_objs or o in leg_objs:
             bpy.data.objects.remove(o, do_unlink=True)
     base = load_base(data)
     skin = bpy.data.materials.new("Skin")
@@ -1787,6 +1869,7 @@ def kit(data, game_body, face, kit_dir, template_mdf):
         name = f"mq_body_{key.lower()}{suffix}"
         body = make_body(data, base, params, G, name, skin, cloth, face_pts)
         game_weights(body, base[3], G)
+        blend_leg_weights(body, legs)
         blend_face_weights(body, G, neck, tree, face_ws)
         mesh_col = bpy.data.collections.new(f"{name}.mesh")
         bpy.context.scene.collection.children.link(mesh_col)

@@ -321,7 +321,8 @@
 **人物（2026-10-03 早上本機 session 整理；下一個 session 從這裡接）**
 - **現況**（都已裝進遊戲，選單「MiquellaLight: Character」；**使用者的獵人是女獵人**（米凱拉本身是男性、體型不分男女），目前選 C 款）：
   - **男女獵人各一套身體**（2026-10-03 晚上）：`mq_body_*.mesh`（男臉 `ch00_000`、骨架 `ch02_002_0002`）、`mq_body_*_f.mesh`（女臉 `ch00_001`、骨架 `ch03_002_0002`），腳本看獵人臉的路徑選，狀態列寫 `for a female hunter`。之前只有男的：女臉脖子下緣低 1～2 cm、細 4 mm，女骨架肩膀、手臂每邊窄 2 cm → 身體上緣浮在脖子外面（懷疑是接縫線）、肩膀被擠
-  - **脖子變短**（2026-10-03 晚上，使用者看預覽：正面「V 字拉太長」、背面「脖子明顯太長、有拉伸感」）：脖子根一圈提高 3 cm（`NECK_LIFT`）、脖子管正面 3.5／側面 4／背面 4 cm（原本 5／7／9）；四版 B 2 cm／C 3 cm／D 4 cm 使用者選 C（D 肩線太平太方）。**胸口**磨平（`flatten_chest`＋`fill_nipples`）
+  - **脖子變短**（2026-10-03 晚上，使用者看預覽：正面「V 字拉太長」、背面「脖子明顯太長、有拉伸感」）：脖子根一圈提高 3 cm（`NECK_LIFT`）、脖子管正面 3.5／側面 4／背面 4 cm（原本 5／7／9）；四版 B 2 cm／C 3 cm／D 4 cm 使用者選 C（D 肩線太平太方）。**胸口**磨平（`flatten_chest`＋`fill_nipples`）。**肚臍**做成內凹（MakeHuman `stomach-navel-in` 1.0，三版選 B）
+  - **之後的貼圖**（使用者：先把形狀做對，以後再畫）：身體現在是單色、平的法線；之後畫凹處陰影（肚臍、鎖骨窩、腹股溝）、膚色層次、細小凹凸。使用者說的「性感」是**體態健康的美感**，不是情色元素。MakeHuman 的 UV 本來就整齊，等膚色跟臉對上再畫
   - 頭冠 v10：腳本掛到 `Head`；還沒專門實測位置（遊戲裡看得到、在額頭附近）
   - 身體三款 A／B／C（`Body shape`），藏獵人防具和內衣。**腳掌已修**：原本對準遊戲 Instep 陷地 5 cm 再壓扁 → 保留 MakeHuman 腳角度、`shorten_feet` 縮到 24.5 cm（`FOOT`）
   - **光照已修**：腳本生成的 Mesh `StencilValue` 是 0（陰影處全黑）→ 從臉的 Mesh 複製 `StencilValue`、`ShadowCastMode`（`MATCH_RENDER`）
@@ -340,7 +341,7 @@
 - **工具**（這次新增）：`MiquellaLight_Scout/reframework/autorun/MiquellaLight_MeshDiff.lua`（比對臉和我們物件的 Mesh 設定，用完要從遊戲移除）、`prototypes/scripts/decode_wilds_tex.py`（解 .tex 看數值）；用 computer-use 截遊戲畫面（要授權 `monsterhunterwilds.exe`；不能按鍵進遊戲，Reset scripts 請使用者按）。pak 遊戲開著時放 `work\install`、背景跑 `install_when_closed.sh`
 - **文件**：做法、參數、指令、試過不行的 → `mhws/MiquellaLight_Character_kit/README.md`；腳本、選單、測試 → `mhws/MiquellaLight_Character/README.md`；遊戲獵人身體的量測 → 研究筆記第 18 節；已決定的方向 → `notes/two-account-handoff-plan.md`「米凱拉風格角色」
 - **下一步**（照順序）：
-  1. **使用者進遊戲看**（Reset scripts 就好，pak 已經裝了）：狀態列要寫 `for a female hunter`；脖子長度和接縫線、胸口、斜方肌、膚色 → 用 computer-use 自己截圖比對
+  1. **使用者進遊戲看**（肚臍版 pak 遊戲開著時放進 `work\install`，背景等遊戲關了才裝；下次開遊戲才是肚臍版）：狀態列要寫 `for a female hunter`；脖子長度和接縫線、胸口、斜方肌、膚色 → 用 computer-use 自己截圖比對
   2. 膚色依結果調 `SKIN_BASE` 或改走上面的備案；內褲顏色（改完重建 kit：男女各跑一次 `miquella_body.py kit ...`，指令見 kit README）
   3. 長袍：上半身和臀部貼身（照身體形狀，腹股溝線不能蓋平）、下擺擺動（學內衣的 `chain2`）
   4. **頭髮（設計定案 2026-10-03，使用者：「這樣蠻好的」）**：以遊戲髮型 **512** 為底（**使用者的獵人是女獵人，遊戲裡用的是 `ch01_001_0512`＝女性版，做進遊戲要用這個**；預覽用的是 `ch01_000_0512`，頭型不同要重新對）（使用者發現它就是左右兩股往後合成大編髮＋中分長波浪到腰；結構見研究筆記第 14 節「遊戲髮型 512／513」）。定案內容（規格寫進 `DESIGN.md`「髮型」）：

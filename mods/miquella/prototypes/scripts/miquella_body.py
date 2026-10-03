@@ -48,6 +48,7 @@ COMMON_DETAILS = [
     # (no slender neck: it has to meet the game face's neck, which is a man's)
     ("buttocks/buttocks-volume-incr", 0.75),      # round buttocks (user 2026-10-02: they read square)
     ("measure/measure-waist-circ-decr", 0.6),     # a waist, curving out to the hips (LINE_OPTIONS)
+    ("stomach/stomach-navel-in", 1.0),            # an innie navel (user 2026-10-03: B of 0 / 1 / 1.5)
 ]
 VARIANTS = {
     "A": {"label": "A 纖細中性", "gender": 0.62, "muscle": 0.28, "weight": 0.30, "details": []},

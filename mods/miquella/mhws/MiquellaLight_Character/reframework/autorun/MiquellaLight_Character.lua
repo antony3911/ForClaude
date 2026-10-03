@@ -38,16 +38,22 @@ local PIECES = {
     },
     {
         key = "robe", name = "MiquellaLight_Robe", attach = "skeleton",
-        mesh = nil, mdf2 = DIR .. "mq_robe.mdf2",
+        mesh = nil, mdf2 = DIR .. "mq_robe.mdf2",   -- material() picks the outfit's
         chain = "Art/Model/Character/ch03/025/001/5/ch03_025_0015.chain2",
+        -- the drapes' gold: metal alone reads brown in game (2026-10-04), so a gold glow on top
+        -- (its EmissiveMap is white, robe_kit.py), on the "Gold glow" slider
+        glow = { MiquellaRobeGold = 1.0 }, glowKey = "goldGlow",
+        emitColor = { 1.0, 0.72, 0.30, 1.0 },
     },
 }
 -- Outfits over the body (robe_kit.py): one mesh per fit and hunter sex, fitted to body shape C
 -- (the other shapes wear C's for now). covers: the body's materials under it, switched off.
+-- mdf2: the fitted robes' own (cloth only): a mesh does not link an mdf2 with materials it lacks,
+-- and renders black (2026-10-04).
 local OUTFITS = {
     { name = "None" },
-    { name = "Robe, plain", fit = "smooth", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
-    { name = "Robe, body lines", fit = "lines", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
+    { name = "Robe, plain", fit = "smooth", mdf2 = "mq_robe_cloth.mdf2", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
+    { name = "Robe, body lines", fit = "lines", mdf2 = "mq_robe_cloth.mdf2", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
     -- the drapes hang away from the body below the chest: only the chest and arms are covered
     { name = "Robe, drape, loose sash", fit = "drape", covers = { "MiquellaSkinChest" } },
     { name = "Robe, drape, cinched", fit = "cinch", covers = { "MiquellaSkinChest" } },
@@ -97,6 +103,7 @@ local config = {
     enabled = true,
     circlet = true,
     glow = 1.0,
+    goldGlow = 1.0,
     size = SIZE_DEFAULT,
     offset = { 0.0, 0.0, 0.0 },   -- cm: left, up, forward (the head's own axes)
     mode = 1,
@@ -124,10 +131,13 @@ config.skinVersion = 3
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return body_mesh(config.bodyShape) end
 local lastFit = "smooth"
+local lastMdf2 = "mq_robe.mdf2"
 PIECES[3].mesh = function()
-    lastFit = OUTFITS[config.outfit].fit or lastFit
+    local o = OUTFITS[config.outfit]
+    if o.fit then lastFit, lastMdf2 = o.fit, o.mdf2 or "mq_robe.mdf2" end
     return DIR .. "mq_robe_" .. lastFit .. "_c" .. (hunterFemale and "_f" or "") .. ".mesh"
 end
+PIECES[3].material = function() return DIR .. lastMdf2 end
 local function piece_on(p)
     if not config.enabled then return false end
     if p.key == "circlet" then return config.circlet end
@@ -169,6 +179,7 @@ for _, o in ipairs(OUTFITS) do
     if o.fit then
         holder("via.render.MeshResource", DIR .. "mq_robe_" .. o.fit .. "_c.mesh")
         holder("via.render.MeshResource", DIR .. "mq_robe_" .. o.fit .. "_c_f.mesh")
+        if o.mdf2 then holder("via.render.MeshMaterialResource", DIR .. o.mdf2) end
     end
 end
 holder("via.motion.Chain2Resource", PIECES[3].chain)
@@ -264,6 +275,7 @@ local function glow_slots(p)
             for j = 0, vars - 1 do
                 local name = try(function() return mesh:getMaterialVariableName(i, j) end)
                 if name == "Emissive_Intensity" then slot.var = j
+                elseif name == "Emissive_Color" and p.emitColor then slot.color = j
                 elseif name and EMIT_ON[name] then slot.on[j] = EMIT_ON[name] end
             end
             if slot.var then slots[#slots + 1] = slot end
@@ -276,8 +288,12 @@ local function apply_glow(p)
     if not (p.glow and p.st.mesh) then return end
     p.st.glowSlots = p.st.glowSlots or glow_slots(p)
     for _, s in ipairs(p.st.glowSlots) do
-        try(function() p.st.mesh:setMaterialFloat(s.mat, s.var, s.base * config.glow) end)
+        try(function() p.st.mesh:setMaterialFloat(s.mat, s.var, s.base * config[p.glowKey or "glow"]) end)
         for j, v in pairs(s.on) do try(function() p.st.mesh:setMaterialFloat(s.mat, j, v) end) end
+        if s.color then
+            local c = p.emitColor
+            try(function() p.st.mesh:setMaterialFloat4(s.mat, s.color, Vector4f.new(c[1], c[2], c[3], c[4])) end)
+        end
     end
 end
 
@@ -362,7 +378,7 @@ end
 local function set_model(p)
     local path = p.mesh()
     local m = holder("via.render.MeshResource", path)
-    local d = holder("via.render.MeshMaterialResource", p.mdf2)
+    local d = holder("via.render.MeshMaterialResource", p.material and p.material() or p.mdf2)
     if not (m and d) then
         p.st.loadError = "could not load " .. path .. " (is MiquellaLight_Character.pak installed?)"
         return false
@@ -843,6 +859,10 @@ re.on_draw_ui(function()
         if r.info then imgui.text("Outfit: " .. r.info) end
         imgui.text(string.format("Body parts under it switched off: %d", b.covered or 0))
         if config.bodyShape ~= 3 then imgui.text("(the robe is fitted to body shape C)") end
+        if not OUTFITS[config.outfit].mdf2 then
+            c, config.goldGlow = imgui.slider_float("Gold glow", config.goldGlow, 0.0, 5.0); changed = changed or c
+            if c then apply_glow(PIECES[3]) end
+        end
     end
     -- Circlet
     c, config.circlet = imgui.checkbox("Circlet (halo)", config.circlet); changed = changed or c

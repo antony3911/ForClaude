@@ -23,7 +23,9 @@ skeleton, spawned by MiquellaLight_Character.lua like the body (SameJointsConstr
 Usage: bpy45 python robe_kit.py <smooth|lines|drape|cinch> <female|male> [preview <out dir>]
 The drapes (drape: sash loose on the hips, cinch: at the waist) carry the gold of version D and the
 broad collar (robe_designs.gold_work, collar "strands") as a second sub-mesh, MiquellaRobeGold.
-Writes mq_robe_<fit>_c[_f].mesh and mq_robe.mdf2 (+ tex) into MiquellaLight_Character_kit.
+Writes mq_robe_<fit>_c[_f].mesh, mq_robe.mdf2 (cloth + gold, the drapes) and mq_robe_cloth.mdf2 (the fitted
+robes: a mesh only links an mdf2 of its own materials) (+ tex) into MiquellaLight_Character_kit.
+`robe_kit.py mdf` writes only the materials.
 """
 import math
 import os
@@ -63,6 +65,7 @@ GOLD_RGB = (226, 176, 74)          # sRGB, the devices' gold
 GOLD_ROUGH = 0.27
 GOLD_FACES = 60000                 # triangles at most (the collar's strands are many tubes)
 DRAPES = ("drape", "cinch")
+GOLD_EMISSIVE_MAP = "systems/rendering/NullWhite.tex"
 SOURCE_MATERIAL = "MiquellaGrip"   # the dual blades' weapon shader, as the briefs (proven in game)
 
 
@@ -332,11 +335,19 @@ def write_robe_mdf(path, textures):
     for t in gold.textureList:
         if t.textureType in textures[GOLD]:
             t.texturePath = textures[GOLD][t.textureType]
-    template.materialList = [new, gold]
-    writeMDF(template, path)
-    for back in readMDF(path).materialList:
-        log("mdf:", back.materialName, "two-sided", bool(back.flags.flagValues.BaseTwoSideEnable),
-            [t.texturePath for t in back.textureList if "MiquellaLight" in t.texturePath])
+        elif t.textureType == "EmissiveMap":
+            # white: the script tints the emission gold and sets how much (metal alone reads brown
+            # in game, 2026-10-04); the source's black map would keep it off whatever the values
+            t.texturePath = GOLD_EMISSIVE_MAP
+    # The fitted robes have no gold: an mdf2 with materials their mesh lacks does not link (the
+    # mesh's get_MaterialLinked fails) and the cloth renders black (2026-10-04, in game)
+    for out, materials in ((path, [new, gold]), (path.replace("mq_robe.", "mq_robe_cloth."), [new])):
+        template.materialList = materials
+        writeMDF(template, out)
+        for back in readMDF(out).materialList:
+            log("mdf:", os.path.basename(out), back.materialName, "two-sided",
+                bool(back.flags.flagValues.BaseTwoSideEnable),
+                [t.texturePath for t in back.textureList if "MiquellaLight" in t.texturePath or t.textureType == "EmissiveMap"])
 
 
 # ------------------------------------------------------------------ UVs
@@ -805,6 +816,10 @@ def preview(robe, body, arm, chains, out, name, gold=None):
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
+    if args[0] == "mdf":   # only the materials (and their textures), no meshes
+        textures = mb.images_to_tex(KIT, weave_images() + gold_images())
+        write_robe_mdf(os.path.join(NATIVES, f"mq_robe.mdf2{mb.MDF_EXT}"), textures)
+        return
     fit_name, sex = args[0], args[1]
     preview_dir = args[args.index("preview") + 1] if "preview" in args else None
     build(fit_name, sex == "female", preview_dir)

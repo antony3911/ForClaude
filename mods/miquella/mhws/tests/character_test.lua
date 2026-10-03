@@ -243,7 +243,7 @@ else
   local robe = made("MiquellaLight_Robe")
   local rmesh = robe and robe.comps["via.render.Mesh"]
   check(rmesh and rmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_robe_smooth_c" .. SFX .. ".mesh"
-    and rmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_robe.mdf2", "robe: the plain robe for this hunter's sex")
+    and rmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_robe_cloth.mdf2", "robe: the plain robe for this hunter's sex, on the cloth-only mdf2")
   local chain = robe and robe.comps["via.motion.Chain2"]
   check(chain and robe.comps["via.motion.ChildSecondary"] and chain.enabled == true and chain.asset
     and chain.asset.path == "Art/Model/Character/ch03/025/001/5/ch03_025_0015.chain2",
@@ -261,6 +261,8 @@ else
   check(rmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_robe_cinch_c" .. SFX .. ".mesh"
     and bmesh.enabled[3] == false and bmesh.enabled[4] == true and bmesh.enabled[1] == true,
     "cinched drape: only the chest and arms switched off")
+  check(rmesh.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_robe.mdf2",
+    "cinched drape: the mdf2 with the gold (the fitted robes' has only the cloth)")
   comboAnswer["Outfit"] = 1; menu(); frames(2, 1 / 60)
   check(robe.drawSelf == false and bmesh.enabled[1] == true and bmesh.enabled[3] == true and bmesh.enabled[4] == true,
     "robe off: hidden, the body whole again")

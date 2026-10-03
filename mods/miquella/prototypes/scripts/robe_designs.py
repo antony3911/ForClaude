@@ -53,7 +53,12 @@ GAP = 0.004           # m between the body and the fitted cloth
 #            showing where the buttocks push it out a little") the "smooth" cloth over the shoulders
 #            and the top of the chest only; from DRAPE_TOP down it falls straight, pushed out only
 #            by what sticks out (buttocks, hips), then flares to the hem
-FITS = {"lines": (40, 3), "smooth": (60, 4), "drape": (60, 4)}   # smoothing steps per round, rounds
+#   "cinch"  (2026-10-04, the user liked D's sash and hem on the drape only) the drape with the sash
+#            pulling the cloth in at the hips: a little blousing above, falling and flaring below.
+#            "drape" with D has the sash resting loose on the hanging cloth, dipping in front
+FITS = {"lines": (40, 3), "smooth": (60, 4), "drape": (60, 4), "cinch": (60, 4)}   # smoothing steps per round, rounds
+BLOUSE = 0.008        # m: how far the cinched cloth puffs out between the chest and the sash
+SASH_LOOSE = (0.835, 0.915, 0.885)   # m: a loose sash on the drape, front (dipping) / side (on the hips) / back
 SMOOTH_GAP = 0.0015   # m: "smooth" / "drape" cloth pushed out only to here
 DRAPE_TOP = (1.31, 1.27, 1.34)   # m: where the cloth leaves the body, front (chest) / side (armpit) / back (shoulder blades)
 DRAPE_X = 0.22        # m: the drape cut only on the torso (the arms hang beyond this)
@@ -269,6 +274,7 @@ class Fit:
         self.bvh_flat = BVHTree.FromBMesh(self.bm_body)
         self.bvh = self.bvh_flat
         self.top = SKIRT_TOP
+        self.waist_z = self.measure_waist()
         rim = max(boundary_loops(self.bm_body), key=lambda lp: sum(v.co.z for v in lp) / len(lp))
         self.neck_c = sum((v.co for v in rim), Vector()) / len(rim)
         self.rim = [(self.theta(v.co), v.co.z) for v in rim]
@@ -276,13 +282,40 @@ class Fit:
         log("rim: %d points, z front %.3f back %.3f, center %s" % (
             len(rim), self.rim_z(0.0), self.rim_z(math.pi), tuple(round(x, 3) for x in self.neck_c)))
 
+    def measure_waist(self):
+        """Height of the narrowest part of the torso (the cinched sash sits there)."""
+        best = None
+        for k in range(48):
+            z = 0.97 + k * 0.005
+            xs = [abs(v.co.x) for v in self.bm_body.verts if abs(v.co.z - z) < 0.003 and abs(v.co.x) < 0.25]
+            if xs:
+                w = max(xs)
+                if best is None or w < best[1]:
+                    best = (z, w)
+        log("waist: z %.3f, half width %.3f" % best)
+        return best[0]
+
     def theta(self, co):
         d = co - self.neck_c
         return math.atan2(d.x, -d.y)   # 0 front, +pi/2 the hunter's left
 
     def rim_z(self, th):
-        best = min(self.rim, key=lambda r: abs(math.remainder(r[0] - th, 2 * math.pi)))
-        return best[1]
+        """The face's neck edge height at angle th, interpolated between its 48 points (taking the
+        nearest point made the collar cut a staircase) and averaged with its neighbours."""
+        if not hasattr(self, "_rim_smooth"):
+            zs = [z for _, z in self.rim]
+            n = len(zs)
+            self._rim_smooth = [sum(zs[(i + k) % n] for k in range(-2, 3)) / 5 for i in range(n)]
+        angs, zs = [a for a, _ in self.rim], self._rim_smooth
+        n = len(angs)
+        th = math.remainder(th, 2 * math.pi)
+        for i in range(n):
+            a0, a1 = angs[i], angs[(i + 1) % n] + (2 * math.pi if i == n - 1 else 0)
+            t = th if th >= a0 else th + 2 * math.pi
+            if a0 <= t <= a1:
+                f = (t - a0) / (a1 - a0) if a1 > a0 else 0.0
+                return zs[i] * (1 - f) + zs[(i + 1) % n] * f
+        return zs[0]
 
     def collar_z(self, th):
         return self.rim_z(th) - angle_blend(th, *COLLAR_DROP)
@@ -310,7 +343,8 @@ class Fit:
                 and self.s_cuff("R", co) < -margin and self.s_skirt(co) < -margin)
 
     def build(self, fit):
-        self.top = DRAPE_TOP if fit == "drape" else SKIRT_TOP
+        self.top = DRAPE_TOP if fit in ("drape", "cinch") else SKIRT_TOP
+        self.style = fit
         # "lines" is made as the user saw it first: from the body itself; the others from the copy
         # with the nipples and navel flattened
         src = self.bm_real if fit == "lines" else self.bm_body
@@ -376,6 +410,35 @@ def drape_profile(need, zs):
     return env
 
 
+def cinch_profile(fit, c, d, zs, zb, r0, rh):
+    """One column of the cinched drape: from the chest to the sash at zb a straight run puffed out
+    by BLOUSE, pulled in to the body at the sash, then a straight line clearing the legs and a bell
+    out to the hem. Returns the radii and the fold amplitude (0..1) per row."""
+    ib = min(range(len(zs)), key=lambda i: abs(zs[i] - zb))
+    raw = []
+    for i, z in enumerate(zs):
+        below = max(zb - z, 0.0)
+        clear = GAP + 0.003 + (LEG_CLEAR - GAP - 0.003) * min(below / 0.10, 1.0) ** 2
+        raw.append(clear_radius(fit, c, d, z, r0 * 0.6, clear) if i else r0)
+    rb = raw[ib]
+    col, amp = [], []
+    for i in range(ib + 1):
+        sb = i / max(ib, 1)
+        col.append(max(r0 + (rb - r0) * sb + BLOUSE * math.sin(math.pi * sb), raw[i]))
+        amp.append(0.35 * sb * sb)
+    # below the sash: over the hips, then falling straight (as the drape), then the bell to the hem
+    # (a straight line from the sash that cleared the hips carried on into a huge cone, 2026-10-04)
+    span = zb - HEM_Z
+    below = [rb] + [raw[i] + FOLD_AMP * ((zb - zs[i]) / span) ** 1.5 for i in range(ib + 1, len(zs))]
+    env = drape_profile(below, zs[ib:])
+    extra = max(rh - env[-1], 0.0)
+    for i in range(ib + 1, len(zs)):
+        u = (zb - zs[i]) / span
+        col.append(env[i - ib] + BELL * extra * u * u)
+        amp.append(0.35 * (1 - u) ** 2 + u ** 1.5)
+    return col, amp
+
+
 def clear_radius(fit, c, d, z, r_min, clear):
     """Smallest distance from the axis along d at height z that is `clear` outside the body.
     A point counts as inside only within 10 cm of where the search started (a face turned the
@@ -391,7 +454,7 @@ def clear_radius(fit, c, d, z, r_min, clear):
     return r
 
 
-def build_skirt(bm, fit, rng, drape=False):
+def build_skirt(bm, fit, rng, style="hip"):
     """Rows hanging from the bodice's bottom edge to the hem; returns the grid of verts (rows x cols)
     and per column the angle around the hips."""
     loops = boundary_loops(bm)
@@ -443,12 +506,17 @@ def build_skirt(bm, fit, rng, drape=False):
         a = ang[j]
         fold = (math.sin(FOLDS * a + ph[0]) * 0.65 + math.sin(FOLDS * 1.9 * a + ph[1]) * 0.25
                 + math.sin(FOLDS * 0.5 * a + ph[2]) * 0.10)
+        if style == "cinch":
+            zb = fit.waist_z   # at the waist (user 2026-10-04: nobody cinches at the buttocks)
+            col, fold_amp = cinch_profile(fit, c, d, zs, zb, r0, rh)
+            R.append((d, [x + FOLD_AMP * fold * f for x, f in zip(col, fold_amp)], fold, v.co.z))
+            continue
         need = [r0]
         for i in range(1, ROWS + 1):
             t = i / ROWS
             clear = GAP + (LEG_CLEAR - GAP) * min(t / 0.2, 1.0) ** 2   # hugging the body at the top
             need.append(clear_radius(fit, c, d, zs[i], r0, clear) + FOLD_AMP * t ** 1.5)
-        if drape:
+        if style == "drape":
             base = drape_profile(need, zs)
         else:
             # the straight line from the top that clears the legs (bind pose), folds included
@@ -557,9 +625,9 @@ def smooth_closed(pts, iters):
 class Band:
     """A strip on the robe along a closed edge: s runs along the edge (m), v away from it into the
     cloth (m), marched over the surface; pt(s, v, lift) is on the cloth."""
-    def __init__(self, edge, inward, width, surf, step=0.004, reach=None):
+    def __init__(self, edge, inward, width, surf, step=0.004, reach=None, smooth=4):
         pts, self.L = resample_closed(edge, step)
-        pts = [surf.snap(p)[0] for p in smooth_closed(pts, 4)]
+        pts = [surf.snap(p)[0] for p in smooth_closed(pts, smooth)]
         self.n, self.W, self.surf = len(pts), width, surf
         reach = max(reach or width, width)
         self.dv = width / max(2, int(width / 0.004))
@@ -749,13 +817,14 @@ def vines(bands, surf, grid):
     return objs
 
 
-def belt(surf, grid):
+def belt(surf, grid, loose=False):
     """D (the user's idea, 2026-10-04): a sash of gold rings where the fitted part meets the skirt,
     so the gathering there reads as the sash's; two cords hang in front, each ending in a gold drop
     held in a small gold ring (the floating-phial motif, in gold: all the jewellery is gold)."""
     objs = []
     c = Vector((0.0, 0.009, 0.0))
-    path = body_ring(surf, c, lambda a: angle_blend(a, *SKIRT_TOP) + 0.004, 0.0045)
+    heights = SASH_LOOSE if loose else (surf.fit.waist_z,) * 3 if surf.fit.style == "cinch" else SKIRT_TOP
+    path = body_ring(surf, c, lambda a: angle_blend(a, *heights) + 0.004, 0.0045)
     path = smooth_closed(path, 3)
     n = len(path)
     for k, ph in enumerate((0.0, math.pi)):   # two twisted cords
@@ -788,7 +857,7 @@ def belt(surf, grid):
     return objs
 
 
-def gold_work(version, bm, grid, fit):
+def gold_work(version, bm, grid, fit, collar_kind=None):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     surf = Surface(bm, fit)
     J = fit.J
@@ -811,7 +880,12 @@ def gold_work(version, bm, grid, fit):
                                           reach=reach.get("cuff"))))
     bands.append(("hem", Band([v.co for v in grid[-1]], lambda p: up, BAND_W["hem"] * sc, surf)))
     objs = []
-    for name, b in bands:
+    if collar_kind:   # the broad collar replaces the collar band
+        objs += broad_collar(collar_kind, bm, fit, surf)
+        bands_drawn = [nb for nb in bands if nb[0] != "collar"]
+    else:
+        bands_drawn = bands
+    for name, b in bands_drawn:
         if version in ("A", "D"):
             objs.append(solid_band(f"{name}_band", b, 0.0, b.W))
             objs.append(rail(f"{name}_edge", b, 0.0, 0.0024))
@@ -823,8 +897,310 @@ def gold_work(version, bm, grid, fit):
     if version == "C":
         objs += vines(bands, surf, grid)
     if version == "D":
-        objs += belt(surf, grid)
+        objs += belt(surf, grid, loose=fit.style == "drape")
     return objs
+
+
+# ------------------------------------------------------------------ broad collar (寬領)
+
+# User 2026-10-04: the collar wants "a big piece of noble gold jewellery" that covers; reference an
+# Egyptian broad collar (usekh: rows of beads, falcon-head terminals, a fringe of drops) "but all
+# gold, not so many colours, the shape is good". So: rows of different gold textures instead of
+# colours; worn as a whole ring round the neck (laid flat a usekh is a crescent, Ranni's sign);
+# the outer fringe of drops answers the circlet's drop.
+#   甲 beads   rows of radial gold tube beads between rails (closest to the reference)
+#   乙 leaves  overlapping gold leaves in rows, like scales (the most covering)
+#   丙 scrolls openwork gold scrolls between rails (lighter)
+#   丁 strands the circlet's motif radiating: strands twisting into bundles that split in three
+COLLARS = {"beads": "甲", "leaves": "乙", "scrolls": "丙", "strands": "丁"}
+# m out from the neckline: front (down the chest) / shoulders / back (user 2026-10-04 on 丁: "smaller,
+# not out toward the armpits" -> this; was 0.125 / 0.085 / 0.075. Tried 0.065 / 0.038 / 0.048 too
+# ("covering part of the collarbones"), the user went back to this one: "this is good")
+YOKE_W = (0.095, 0.055, 0.065)
+YOKE_LIFT = 0.0025               # m the plate sits off the cloth
+
+
+def yoke(bm, fit, surf):
+    """The collar's own (s, f) space: s along the neckline (m), f 0 at the neckline to 1 at the outer
+    edge, marched outward over the robe (round the neck and down)."""
+    loops = [lp for lp in boundary_loops(bm) if len(lp) > 20]
+    collar = max(loops, key=lambda lp: sum(v.co.z for v in lp) / len(lp))
+    nc = fit.neck_c
+
+    def outward(p):
+        r = Vector((p.x - nc.x, p.y - nc.y, 0))
+        if r.length < 1e-6:
+            r = Vector((0, -1, 0))
+        return r.normalized() + Vector((0, 0, -0.55))
+    band = Band([v.co for v in collar], outward, 0.02, surf, reach=max(YOKE_W) + 0.035, smooth=14)
+
+    def wmax(s):
+        p = band.raw(s, 0.0)
+        return angle_blend(fit.theta(p), *YOKE_W)
+
+    def pt(s, f, lift=YOKE_LIFT):
+        return band.pt(s, f * wmax(s), lift)
+
+    def normal(s, f):
+        return surf.snap(band.raw(s, f * wmax(s)))[1]
+    band.wmax, band.fpt, band.fnormal = wmax, pt, normal
+    return band
+
+
+def plate(name, y, f0, f1, lift=YOKE_LIFT, thick=0.002):
+    bm = bmesh.new()
+    K = 14
+    grid = [[bm.verts.new(y.fpt(y.L * i / y.n, f0 + (f1 - f0) * k / K, lift)) for i in range(y.n)] for k in range(K + 1)]
+    for k in range(K):
+        for i in range(y.n):
+            j = (i + 1) % y.n
+            bm.faces.new((grid[k][i], grid[k][j], grid[k + 1][j], grid[k + 1][i]))
+    ob = mesh_object(name, bm, COL["gold"])
+    m = ob.modifiers.new("solid", "SOLIDIFY")
+    m.thickness = thick
+    m.offset = 0.0
+    return ob
+
+
+def yrail(name, y, f, r, lift=YOKE_LIFT):
+    pts = [y.fpt(y.L * i / y.n, f, lift + r * 0.7) for i in range(y.n)]
+    return tube(name, pts, r, COL["gold"], closed=True)
+
+
+def cylinder_into(bm, a, b, r, seg=8):
+    ax = (b - a)
+    if ax.length < 1e-6:
+        return
+    ax.normalize()
+    u = ax.orthogonal().normalized()
+    w = ax.cross(u)
+    ring_a = [bm.verts.new(a + (u * math.cos(t) + w * math.sin(t)) * r) for t in (2 * math.pi * k / seg for k in range(seg))]
+    ring_b = [bm.verts.new(b + (u * math.cos(t) + w * math.sin(t)) * r) for t in (2 * math.pi * k / seg for k in range(seg))]
+    for k in range(seg):
+        bm.faces.new((ring_a[k], ring_a[(k + 1) % seg], ring_b[(k + 1) % seg], ring_b[k]))
+    bm.faces.new(list(reversed(ring_a)))
+    bm.faces.new(ring_b)
+
+
+def bead_row(name, y, f0, f1, pitch, r, lift=YOKE_LIFT):
+    """Gold tube beads lying radially between fractions f0 and f1, one every `pitch` m."""
+    bm = bmesh.new()
+    n = int(y.L / pitch)
+    for k in range(n):
+        s = y.L * k / n
+        a, b = y.fpt(s, f0 + 0.04 * (f1 - f0), lift + r), y.fpt(s, f1 - 0.04 * (f1 - f0), lift + r)
+        cylinder_into(bm, a, b, r)
+    return mesh_object(name, bm, COL["gold"], smooth=False)
+
+
+def drop_fringe(name, y, pitch, length, f=1.0, lift=YOKE_LIFT):
+    """Gold drops hanging off the outer edge, tip up, pointing on outward and down the cloth."""
+    bm = bmesh.new()
+    n = int(y.L / pitch)
+    for k in range(n):
+        s = y.L * (k + 0.5) / n
+        top = y.fpt(s, f, lift + 0.001)
+        p2 = y.pt(s, min(y.wmax(s) + length, y.K * y.dv - 1e-4), lift + 0.0015)
+        ax = (p2 - top)
+        L = ax.length
+        ax.normalize()
+        nrm = y.fnormal(s, f)
+        u = ax.cross(nrm).normalized()
+        sb = bmesh.new()
+        bmesh.ops.create_uvsphere(sb, u_segments=12, v_segments=8, radius=1.0)
+        for v in sb.verts:   # x across, y along (0 = top .. 1 = round end), z off the cloth
+            x, yy, z = v.co
+            t = (1 - yy) / 2          # 0 at the top point, 1 at the round end
+            width = L * 0.30 * math.sin(math.pi * min(t, 0.999) ** 0.75) if t < 0.999 else 0.0
+            v.co = top + ax * (t * L) + u * (x * width) + nrm * (abs(z) * width * 0.55 + 0.0005)
+        me = bpy.data.meshes.new("tmp")
+        sb.to_mesh(me)
+        sb.free()
+        bm.from_mesh(me)
+        bpy.data.meshes.remove(me)
+    return mesh_object(name, bm, COL["gold"])
+
+
+def leaf_rows(name, y, rows, lift=YOKE_LIFT):
+    """Overlapping gold leaves, pointed outward; the inner rows lie over the outer ones."""
+    objs = []
+    for ri, (f0, f1, pitch) in enumerate(rows):
+        bm = bmesh.new()
+        n = int(y.L / pitch)
+        layer = lift + 0.0012 * (len(rows) - ri)
+        for k in range(n):
+            s0 = y.L * (k + 0.5 * (ri % 2)) / n
+            NU, NV = 6, 10
+            grid = []
+            for jv in range(NV + 1):
+                t = jv / NV
+                f = f0 + (f1 - f0) * t
+                half = pitch * 0.40 * math.sin(math.pi * min(t * 0.92 + 0.08, 1.0)) ** 0.7   # gaps between leaves
+                row = []
+                for ju in range(NU + 1):
+                    x = (ju / NU * 2 - 1) * half
+                    bulge = 0.0012 * (1 - (ju / NU * 2 - 1) ** 2) * math.sin(math.pi * t)
+                    row.append(bm.verts.new(y.fpt(s0 + x, f, layer + bulge + 0.0008 * t)))
+                grid.append(row)
+            for jv in range(NV):
+                for ju in range(NU):
+                    bm.faces.new((grid[jv][ju], grid[jv][ju + 1], grid[jv + 1][ju + 1], grid[jv + 1][ju]))
+        ob = mesh_object(f"{name}{ri}", bm, COL["gold"])
+        m = ob.modifiers.new("solid", "SOLIDIFY")
+        m.thickness = 0.0009
+        objs.append(ob)
+        ribs = []
+        for k in range(n):
+            s0 = y.L * (k + 0.5 * (ri % 2)) / n
+            ribs.append(tube(f"{name}{ri}_rib{k}", [y.fpt(s0, f0 + (f1 - f0) * t, layer + 0.0022) for t in (0.1, 0.4, 0.7, 0.92)],
+                             0.0007, COL["gold"]))
+        objs += ribs
+    return objs
+
+
+class FracBand:
+    """A band between two fractions of the yoke, for scroll_run (s in m, v in m across)."""
+    def __init__(self, y, f0, f1):
+        self.y, self.f0, self.f1, self.L, self.n = y, f0, f1, y.L, y.n
+        self.W = 0.02
+
+    def pt(self, s, v, lift=LIFT):
+        f = self.f0 + (self.f1 - self.f0) * min(max(v / self.W, 0.0), 1.0)
+        return self.y.fpt(s, f, lift + YOKE_LIFT)
+
+
+def strand_rays(name, y, n_rays=26, lift=YOKE_LIFT):
+    """The circlet's motif: three strands twisting round each other out from the neckline, the
+    bundle splitting into three prongs that end in buds."""
+    objs = []
+    for k in range(n_rays):
+        s0 = y.L * k / n_rays
+        span = y.L / n_rays
+        for st in range(3):
+            pts, radii = [], []
+            for q in range(36):
+                t = q / 35
+                f = 0.06 + 0.62 * t
+                tw = math.sin(2 * math.pi * (2.2 * t) + st * 2 * math.pi / 3) * span * 0.10
+                pts.append(y.fpt(s0 + tw, f, lift + 0.0016 + 0.0008 * math.cos(2 * math.pi * 2.2 * t + st * 2.1)))
+                radii.append(1.0 - 0.25 * t)
+            for q in range(1, 16):   # the prong
+                t = q / 15
+                f = 0.68 + 0.24 * t
+                fan = (st - 1) * span * 0.32 * math.sin(math.pi / 2 * t)
+                curl = (st - 1) * span * 0.06 * math.sin(math.pi * t)
+                pts.append(y.fpt(s0 + fan + curl, f, lift + 0.0016))
+                radii.append(0.75 - 0.3 * t)
+            objs.append(tube(f"{name}{k}_{st}", pts, 0.0016, COL["gold"], radii=radii))
+            end = pts[-1]
+            objs.append(droplet(f"{name}{k}_{st}_bud", end, 0.0028, COL["gold"]))
+    return objs
+
+
+def broad_collar(kind, bm, fit, surf):
+    y = yoke(bm, fit, surf)
+    objs = [yrail("yk_inner", y, 0.0, 0.0034)]   # the rolled inner edge covers the robe's neckline
+    if kind == "beads":
+        objs.append(plate("yk_plate", y, 0.0, 1.0))
+        for i, (f0, f1) in enumerate(((0.06, 0.26), (0.30, 0.50), (0.54, 0.74), (0.78, 0.96))):
+            objs.append(bead_row(f"yk_beads{i}", y, f0, f1, 0.0125 + 0.002 * i, 0.0024))   # spaced out (user: too dense)
+        for i, f in enumerate((0.28, 0.52, 0.76)):
+            objs.append(yrail(f"yk_rail{i}", y, f, 0.0016))
+        objs.append(yrail("yk_outer", y, 0.985, 0.0022))
+    elif kind == "leaves":
+        objs.append(plate("yk_plate", y, 0.0, 0.5))
+        objs += leaf_rows("yk_leaf", y, ((0.58, 1.0, 0.034), (0.30, 0.72, 0.027), (0.04, 0.44, 0.021)))   # fewer, spaced
+    elif kind == "scrolls":
+        for i, f in enumerate((0.33, 0.66)):
+            objs.append(yrail(f"yk_rail{i}", y, f, 0.0018))
+        objs.append(yrail("yk_outer", y, 0.985, 0.0024))
+        for i, (f0, f1) in enumerate(((0.04, 0.31), (0.35, 0.64), (0.68, 0.96))):
+            objs += scroll_run(f"yk_scroll{i}", FracBand(y, f0, f1), 0.001, 0.019, r=0.0016, lam=0.034 + 0.008 * i)
+    elif kind == "strands":
+        objs.append(plate("yk_plate", y, 0.0, 0.62))
+        objs.append(yrail("yk_rail", y, 0.62, 0.0018))
+        objs += strand_rays("yk_ray", y, n_rays=18)
+    objs.append(drop_fringe("yk_drops", y, 0.0105, 0.016, f=0.99 if kind != "strands" else 0.93))
+    return objs
+
+
+def cycles_materials():
+    """Gold that reads as metal, for the collar close-ups (workbench draws flat colours)."""
+    mats = {}
+    def mat(name, color, metallic, rough, sss=0.0):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        b = m.node_tree.nodes["Principled BSDF"]
+        b.inputs["Base Color"].default_value = color
+        b.inputs["Metallic"].default_value = metallic
+        b.inputs["Roughness"].default_value = rough
+        if sss:
+            b.inputs["Subsurface Weight"].default_value = sss
+        return m
+    mats["gold"] = mat("Gold", (0.95, 0.66, 0.24, 1), 1.0, 0.26)
+    mats["robe"] = mat("Robe", (0.80, 0.74, 0.62, 1), 0.0, 0.85)
+    mats["skin"] = mat("Skin", (0.80, 0.58, 0.48, 1), 0.0, 0.5, 0.15)
+    mats["hair"] = mat("Hair", (0.78, 0.58, 0.26, 1), 0.0, 0.45)
+    mats["circlet"] = mat("Circlet", (0.95, 0.72, 0.36, 1), 0.7, 0.3)
+    return mats
+
+
+def render_collar(out, stem, test):
+    """Cycles close-ups of the neck: front, three-quarter, back three-quarter."""
+    sc = bpy.context.scene
+    mats = cycles_materials()
+    for o in bpy.data.objects:
+        if o.type not in ("MESH", "CURVE"):
+            continue
+        key = min(COL, key=lambda k: sum((a - b) ** 2 for a, b in zip(COL[k], o.color)))
+        key = {"light": "gold"}.get(key, key)
+        o.data.materials.clear()
+        o.data.materials.append(mats[key])
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = 16 if test else 64
+    sc.cycles.use_denoising = True
+    sc.view_settings.view_transform = "Filmic"
+    sc.view_settings.look = "Medium High Contrast"
+    world = bpy.data.worlds.new("W")
+    world.use_nodes = True
+    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.30, 0.28, 0.26, 1)   # for the metal to reflect
+    world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.5
+    sc.world = world
+    lights = []
+    for name, loc, e, size in (("key", (-1.2, -2.2, 2.4), 160, 1.5), ("fill", (1.8, -1.6, 1.4), 50, 2.0),
+                               ("rim", (0.5, 2.5, 2.2), 90, 1.5), ("back", (-1.5, 2.0, 1.6), 40, 2.0)):
+        ld = bpy.data.lights.new(name, "AREA")
+        ld.energy, ld.size = e, size
+        lo = bpy.data.objects.new(name, ld)
+        sc.collection.objects.link(lo)
+        lo.location = loc
+        d = Vector((0, 0, 1.35)) - Vector(loc)
+        lo.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
+        lights.append(lo)
+    s = 300 if test else 800
+    sc.render.resolution_x = sc.render.resolution_y = s
+    cd = bpy.data.cameras.new("cc")
+    cd.type = "ORTHO"
+    cd.ortho_scale = 0.56
+    cam = bpy.data.objects.new("cc", cd)
+    sc.collection.objects.link(cam)
+    sc.camera = cam
+    paths = []
+    for name, az, z in (("front", 0, 1.36), ("front34", 35, 1.37), ("back34", 150, 1.40)):
+        a = math.radians(az)
+        cam.location = (4 * math.sin(a), -4 * math.cos(a), z + 0.35)
+        cam.rotation_euler = (math.radians(85), 0, a)
+        p = os.path.join(out, f"{stem}_{name}.png")
+        sc.render.filepath = p
+        bpy.ops.render.render(write_still=True)
+        paths.append(p)
+    for o in lights + [cam]:
+        bpy.data.objects.remove(o, do_unlink=True)
+    sc.render.engine = "BLENDER_WORKBENCH"
+    sc.view_settings.view_transform = "Standard"
+    sc.view_settings.look = "None"
+    return paths
 
 
 # ------------------------------------------------------------------ main
@@ -884,6 +1260,7 @@ def main():
     test = "test" in args
     versions = [a for a in args[1:] if a in ("A", "B", "C", "D")] or ["A", "B", "C", "D"]
     fits = [a for a in args[1:] if a in FITS] or ["drape"]
+    collars = [a.split(":", 1)[1] for a in args[1:] if a.startswith("collar:")]
     os.makedirs(out, exist_ok=True)
     import addon_utils
     sys.path.append(bpy.utils.user_resource("SCRIPTS", path="addons"))
@@ -899,6 +1276,10 @@ def main():
             log(k, tuple(round(x, 3) for x in J[k]))
     import_mesh(FACE, COL["skin"], drop=("eye", "mouth", "lash", "fakeao", "shadow", "cage", "brow"))
     import_mesh(HAIR, COL["hair"])
+    circ, _ = import_mesh(CIRCLET, COL["circlet"])
+    pivot = Vector((0, 0, 0.128))   # the circlet's size pivot, Head joint space (MiquellaLight_Character.lua)
+    for o in circ:
+        o.data.transform(Matrix.Translation(J["Head"] + pivot) @ Matrix.Scale(0.85, 4) @ Matrix.Translation(-pivot))
     fit = Fit(body, J)
     for o in body:   # the body under the fitted part pokes through the 4 mm gap: hidden here
         bb = bmesh.new()
@@ -910,15 +1291,30 @@ def main():
         for v in versions:
             rng = random.Random(7)
             bm = fit.build(f)
-            grid, ang, center = build_skirt(bm, fit, rng, drape=f == "drape")
+            grid, ang, center = build_skirt(bm, fit, rng, style=f if f in ("drape", "cinch") else "hip")
             if f != "lines":
                 soften_waist(bm, fit)
+            if f in ("drape", "cinch"):
+                # the 2 mm steps of the clearance search left ripples across the hanging cloth
+                skirt = [v for row in grid[1:-1] for v in row]
+                for _ in range(2):
+                    taubin(skirt, 25)
+                    fit.push_out(skirt, GAP)
+                bm.normal_update()
+            # one winding all over (the skirt's faces were made in loop order): mixed windings drew
+            # black seams in Cycles where the skirt meets the fitted part
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
             robe = mesh_object(f"Robe_{v}", bm, COL["robe"])
-            objs = [robe] + gold_work(v, bm, grid, fit)
-            paths = render(out, f"robe_{f}_{v}", test)
-            log("rendered", paths)
-            for o in objs:
-                bpy.data.objects.remove(o, do_unlink=True)
+            for kind in collars or [None]:
+                objs = [robe] + gold_work(v, bm, grid, fit, collar_kind=kind)
+                if kind:
+                    paths = render_collar(out, f"robe_{f}_{v}_collar_{kind}", test)
+                else:
+                    paths = render(out, f"robe_{f}_{v}", test)
+                log("rendered", paths)
+                for o in objs[1:]:
+                    bpy.data.objects.remove(o, do_unlink=True)
+            bpy.data.objects.remove(robe, do_unlink=True)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "robe_designs.blend"))
 
 

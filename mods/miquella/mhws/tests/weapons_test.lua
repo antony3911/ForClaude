@@ -140,6 +140,7 @@ local hunterAction = nil         -- type name of the hunter's current (base) act
 local handlingFields = {}        -- field names the handling lists (the field recorder and rush trace read them)
 local chargeT0 = nil             -- the game's charge timer (great sword, lance, long sword, bow) counts from here
 function chr:call(m)
+  if m == "get_GameObject" and HUNTER_GO then return HUNTER_GO end    -- the grip recorder's hunter
   if m == "get_BaseActionController" then
     return { call = function(_, cm)
       if cm == "get_CurrentAction" and hunterAction then
@@ -1251,5 +1252,23 @@ do
   frames(60, 1 / 60)
   check(dissolve("MiquellaGuardRay") < 1e-3 and math.abs(J["MQ_G2_0"].lp.x - muzzle.r0) < 1e-4
         and math.abs(J["MQ_Halo2"].lp.z - 1.044) < 0.03, "heavy bowgun: folded back, the rings on the barrel")
+  -- The grip recorder: the hunter's joints in the weapon's space (here the weapon sits at the
+  -- origin unturned), per action, saved with the fields.
+  local hand = { x = -0.05, y = -0.3, z = -0.35 }
+  local htf = { call = function(_, m, a)
+    if m == "getJointByName" then
+      return { call = function(_, jm) if jm == "get_Position" then return a == "R_Hand" and hand or { x = 0, y = 0.2, z = -0.5 } end end }
+    end
+  end }
+  HUNTER_GO = { call = function(_, m) if m == "get_Transform" then return htf end end }
+  hunterAction = "app.Wp12Action.cIdle"
+  frames(30, 1 / 60)
+  local grip
+  for path, t in pairs(savedFiles) do if path:match("^MiquellaLight/grip_") then grip = t end end
+  local idle = grip and grip.actions["Wp12Action.cIdle"]
+  local rh = idle and idle.R_Hand
+  check(rh and rh.n > 0 and math.abs(rh.sum[3] / rh.n + 0.35) < 1e-6 and math.abs(rh.min[1] + 0.05) < 1e-6,
+        "heavy bowgun: the grip recorder keeps the hand's place in the weapon's space per action")
+  HUNTER_GO, hunterAction = nil, nil
 end
 print("ALL PASS")

@@ -2653,6 +2653,7 @@ local function update_states(chr)
     if config.recordFields then
         h = try(function() return chr:call("get_WeaponHandling") end)
         record_fields(h, now)
+        GL.record_grip(chr, now)
     end
     for _, entry in pairs(swapped) do
         if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
@@ -2729,6 +2730,59 @@ local function qrot(q, v)
     return vadd(vadd(v, vscale(t, q[4])), cross(u, t))
 end
 local function qconj(q) return { -q[1], -q[2], -q[3], q[4] } end
+
+-- Where the hunter holds the weapon (user 2026-10-03: "the hunter never takes hold of the light
+-- and heavy bowguns' stocks"): every 0.1 s while drawn and the field recorder is on, the hunter's
+-- hands, arms, shoulders and head in the weapon's own space (the file space of its model), per
+-- action: min / mean (sum / n) / max, with the joint the weapon hangs from. Saved every 5 s as
+-- reframework/data/MiquellaLight/grip_<handling type>.json (read by Claude to place the stocks).
+GL.GRIP = { joints = { "R_Hand", "L_Hand", "R_Forearm", "L_Forearm", "R_UpperArm", "L_UpperArm", "R_Shoulder",
+                       "L_Shoulder", "Spine_2", "Neck_0", "Head" }, data = {}, nextRead = 0, nextSave = 0 }
+function GL.record_grip(chr, now)
+    local G = GL.GRIP
+    if not (config.recordFields and isWeaponDrawn and rec.type) or now < G.nextRead then return end
+    G.nextRead = now + 0.1
+    local wgo = try(function() return chr:get_Weapon():get_GameObject() end)
+    local wtf = wgo and try(function() return wgo:call("get_Transform") end)
+    local htf = try(function() return chr:call("get_GameObject"):call("get_Transform") end)
+    local P = wtf and try(function() return wtf:call("get_Position") end)
+    local Q = wtf and try(function() return wtf:call("get_Rotation") end)
+    if not (htf and P and Q) then G.status = "weapon or hunter not readable"; return end
+    if G.type ~= rec.type then G.type, G.data, G.parent = rec.type, {}, nil end
+    G.parent = G.parent or try(function() return tostring(wtf:call("get_ParentJoint"):call("get_Name")) end)
+    local inv = qconj({ Q.x, Q.y, Q.z, Q.w })
+    local key = actionNow ~= "" and actionNow:gsub("app%.", "") or "(none)"
+    local act = G.data[key] or { n = 0 }
+    G.data[key] = act
+    act.n = act.n + 1
+    local seen = 0
+    for _, name in ipairs(G.joints) do
+        local j = try(function() return htf:call("getJointByName", name) end)
+        local p = j and try(function() return j:call("get_Position") end)
+        if p then
+            seen = seen + 1
+            local l = qrot(inv, { p.x - P.x, p.y - P.y, p.z - P.z })
+            local d = act[name]
+            if not d then
+                act[name] = { min = { l[1], l[2], l[3] }, max = { l[1], l[2], l[3] }, sum = { l[1], l[2], l[3] }, n = 1 }
+            else
+                for i = 1, 3 do
+                    d.min[i], d.max[i], d.sum[i] = math.min(d.min[i], l[i]), math.max(d.max[i], l[i]), d.sum[i] + l[i]
+                end
+                d.n = d.n + 1
+            end
+        end
+    end
+    local count = 0
+    for _ in pairs(G.data) do count = count + 1 end
+    G.status = string.format("%s: %d joints, %d actions, hangs from %s", G.type, seen, count, tostring(G.parent))
+    if now >= G.nextSave then
+        G.nextSave = now + 5
+        local safe = G.type:gsub("[^%w_]", "_")
+        try(function() json.dump_file("MiquellaLight/grip_" .. safe .. ".json",
+                                      { type = G.type, parent = G.parent, actions = G.data }) end)
+    end
+end
 local function qaxis(axis, deg)
     local l = vlen(axis)
     if l < 1e-9 or deg == 0 then return { 0, 0, 0, 1 } end
@@ -3307,6 +3361,7 @@ re.on_draw_ui(function()
     changed = changed or c
     if config.recordFields and rec.type then
         imgui.text(string.format("Recording %s: %d samples", rec.type, rec.samples))
+        if GL.GRIP.status then imgui.text("Grip: " .. GL.GRIP.status) end
     end
     c, config.float = imgui.checkbox("Floating rings", config.float)
     changed = changed or c

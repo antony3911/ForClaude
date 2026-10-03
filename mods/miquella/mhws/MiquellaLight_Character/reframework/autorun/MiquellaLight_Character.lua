@@ -43,7 +43,7 @@ local PIECES = {
         -- the drapes' gold: metal alone reads brown in game (2026-10-04), so a gold glow on top
         -- (its EmissiveMap is white, robe_kit.py), on the "Gold glow" slider
         glow = { MiquellaRobeGold = 1.0 }, glowKey = "goldGlow",
-        emitColor = { 1.0, 0.72, 0.30, 1.0 },
+        emitColor = { 1.0, 0.60, 0.16, 1.0 },   -- saturated: the glow whitens it (2026-10-04: 0.72/0.30 read cream)
     },
 }
 -- Outfits over the body (robe_kit.py): one mesh per fit and hunter sex, fitted to body shape C

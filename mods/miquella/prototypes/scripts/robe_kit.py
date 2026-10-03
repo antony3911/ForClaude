@@ -395,6 +395,11 @@ class Mapper:
 
 
 def unwrap(bm, mapper, skirt_rc, grid, ang):
+    # The robe is a copy of the body (fit.build) and came with the body's UVs: left first, they were
+    # the ones exported, the weave spread over the body's UV islands (2026-10-04, in game: threads
+    # centimetres wide, the arms and torso in blocks). Only ours.
+    for old in list(bm.loops.layers.uv):
+        bm.loops.layers.uv.remove(old)
     uv = bm.loops.layers.uv.new("UV")
     cols = len(grid[0])
     # skirt: around by the row's own circumference (whole tiles), down by the column's length

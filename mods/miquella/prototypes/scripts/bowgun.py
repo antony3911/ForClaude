@@ -273,6 +273,37 @@ def conduit_rings(glow_mat):
     return objs
 
 
+# Stock and grip in one piece (user's pick 2026-10-03, A3; the hunter never holds the pistol grip,
+# and a grip and a stock read as two things): behind the wrist the stock and the grip are one woven
+# ring round a thumbhole (bowgun_onepiece.py), its grain running round the hole, with gold wound round
+# it both ways. False: the old stock and pistol grip.
+ONE_PIECE = True
+
+
+def stock_and_body(ivory, gold, rng, gun="hbg", weave_bevel=0.0042):
+    """The body and its strands (from the wrist on, the strands then reach along the barrel), and
+    behind the wrist the one-piece stock (or the old stock and grip)."""
+    global STOCK_END, body_section
+    if not ONE_PIECE:
+        return [loft_body(ivory)] + woven_strands(ivory, rng) + pistol_grip(ivory, rng)
+    import bowgun_onepiece as op
+    full_end, section = STOCK_END, body_section
+    ctr_w, rx_w, rz_w = section(WRIST)
+    STOCK_END = WRIST - 0.03
+    body_section = lambda y: section(y) if y >= WRIST else (Vector((0, y, ctr_w.z)), rx_w, rz_w)
+    try:
+        parts = [loft_body(ivory)] + woven_strands(ivory, rng)
+    finally:
+        STOCK_END, body_section = full_end, section
+    fr = op.ring_frames(gun, wrist=WRIST, stock_len=WRIST - full_end)
+    parts.append(op.ring_core("Stock_Core", fr, ivory))
+    parts += op.ring_strands("Stock_Weave", fr, ivory, 40, 2.2, weave_bevel, rng=rng)
+    lift = weave_bevel + 0.0035
+    parts += op.ring_strands("Stock_Gold", fr, gold, 3, 9.0, 0.0021, cross=True, phase=math.pi / 3, lift=lift)
+    parts += op.ring_strands("Stock_Gold2", fr, gold, 3, 9.0, 0.0021, cross=False, phase=2 * math.pi / 3, lift=lift)
+    return parts
+
+
 def barrel_phials(mats, ys, z, size):
     """Three lit droplets floating in a row above the barrel, forward of the shooter (not
     over the stock, which felt crowding), each in a small halo that faces the side."""
@@ -289,9 +320,7 @@ def build():
                             emission=c.PALETTE["glow"], strength=0.05, subsurface=0.15)
     glow = c.make_material("Light", c.PALETTE["blade_core"], roughness=0.1, coat=0.5,
                            emission=c.PALETTE["blade_core"], strength=0.6)
-    parts = [loft_body(ivory)]
-    parts += woven_strands(ivory, rng)
-    parts += pistol_grip(ivory, rng)
+    parts = stock_and_body(ivory, glow, rng, "hbg", 0.0042)
     parts += conduit(glow)
     parts += muzzle_halo(glow, ivory, rng)
     parts += energy_core(glow, ivory)

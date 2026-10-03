@@ -80,6 +80,7 @@ import motifs as m                       # noqa: E402
 from motifs import V                     # noqa: E402
 from motifs import smoothstep            # noqa: E402
 import bowgun as hb                      # noqa: E402
+hb.ONE_PIECE = False                     # the proposals start from the old stock and grip
 
 PI = math.pi
 NAMES = {"O": "現在（編織握把）", "A": "A 卷草垂飾", "B": "B 光滴垂飾", "C": "C 金絲卷草（無握把）", "D": "D 編髮垂飾"}

@@ -101,9 +101,7 @@ def build():
                            emission=c.PALETTE["glow"], strength=1.0)
     beam = c.make_material("Beam", c.PALETTE["blade_core"], roughness=0.1,
                            emission=c.PALETTE["blade_core"], strength=1.2)
-    parts = [hb.loft_body(ivory)]
-    parts += hb.woven_strands(ivory, rng)
-    parts += hb.pistol_grip(ivory, rng)
+    parts = hb.stock_and_body(ivory, glow, rng, "lbg", 0.0031)
     parts += hb.conduit(beam)
     parts += hb.energy_core(glow, ivory)
     parts += halo_rail(glow)

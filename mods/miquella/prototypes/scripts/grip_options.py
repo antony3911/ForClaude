@@ -30,7 +30,20 @@ part of the stock's openwork rather than a lone handle:
   D  arc of light: the woven grip, a gold arc of light back to the stock, a drop of light in a
      halo floating in the opening
 
-Usage: python grip_options.py <out_dir> [test] [loop] [O A B C D]
+Third set, `frame` (user: "don't build on the old grip, design one that runs back"): no pistol
+grip at all; one designed frame leaves the receiver's underside, sweeps down and back and joins
+the stock's underside, enclosing an opening:
+
+  A  scroll frame: an ivory cord with a gold thread, thick in front, thinning back; a volute
+     curls into the opening off its lower back, a small gold scroll off its front
+  B  branches: three slender twisting strand bundles that part in the middle (an openwork
+     lattice, like branches) and meet again at both ends, a gold thread wound round the middle one
+  C  harp: a smooth ivory arm with a gold inlay, five strings of light from it up to the body
+     (the hunting horn's harp)
+  D  braid: a three-strand braid makes the loop, gold bands at both joints, a drop of light
+     hanging from its lowest point
+
+Usage: python grip_options.py <out_dir> [test] [loop|frame] [O A B C D]
 """
 import math
 import os
@@ -41,6 +54,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else "out/grip"
 FLAGS = sys.argv[2:]
 TEST = "test" in FLAGS
 LOOP = "loop" in FLAGS
+FRAME = "frame" in FLAGS
 PICK = [f for f in FLAGS if f in ("O", "A", "B", "C", "D")] or ["O", "A", "B", "C", "D"]
 
 import bpy                               # noqa: E402
@@ -57,6 +71,8 @@ PI = math.pi
 NAMES = {"O": "現在（編織握把）", "A": "A 卷草垂飾", "B": "B 光滴垂飾", "C": "C 金絲卷草（無握把）", "D": "D 編髮垂飾"}
 if LOOP:
     NAMES = {"O": "現在（編織握把）", "A": "A 編織環", "B": "B 卷草橋", "C": "C 三叉回流", "D": "D 光弧"}
+if FRAME:
+    NAMES = {"O": "現在（編織握把）", "A": "A 卷草框", "B": "B 枝條框", "C": "C 豎琴框", "D": "D 編髮框"}
 TOP = V(0, -0.08, -0.03)                 # where the grip met the receiver
 _KEYS = ("STOCK_END", "WRIST", "RECEIVER_END", "MUZZLE", "CONDUIT_R", "CONDUIT_Z")
 HBG = {k: getattr(hb, k) for k in _KEYS}
@@ -191,9 +207,88 @@ def light_loop(k, mats, rng):
     return objs
 
 
+def body_bottom(y, inset=0.7):
+    ctr, _, rz = hb.body_section(y)
+    return V(0, y, ctr.z - rz * inset)
+
+
+def frame_line():
+    """From the receiver's underside down and back to the stock's underside (a quarter of the
+    way from the butt): the frame's centre line, front to back."""
+    F = body_bottom(-0.05)
+    J = body_bottom(hb.STOCK_END + 0.25 * (hb.WRIST - hb.STOCK_END))
+    pts = [F, F + V(0, -0.025, -0.07), V(0, -0.145, -0.185), V(0, (-0.145 + J.y) / 2 - 0.02, -0.2),
+           J + V(0, 0.04, -0.045), J]
+    return F, J, m.resample(m.catmull(pts, 160), 120)
+
+
+def in_plane_normal(path, i):
+    """The normal in the side (YZ) plane, pointing into the opening (up)."""
+    t = (path[min(i + 1, len(path) - 1)] - path[max(i - 1, 0)]).normalized()
+    n = V(0, -t.z, t.y)
+    return n if n.z > 0 else -n
+
+
+def scroll_frame(k, mats, rng):
+    F, J, path = frame_line()
+    objs = m.rope("FA_Frame", path, 0.015, mats, strands=3, gold=True, taper=0.4, merge=0.99)
+    p = path[78]
+    plane = m.plane_mapper(p, in_plane_normal(path, 78), (0, 1, 0))     # 2D x: into the opening
+    objs += m.tendril("FA_Volute", plane, (0, 0), 25, 0.12, 1.45, 0.0085, mats,
+                      offshoots=((0.38, -1, 0.42, -1.4),))
+    q = path[26]
+    plane = m.plane_mapper(q, in_plane_normal(path, 26), (0, -1, 0))
+    objs += m.tendril("FA_Front", plane, (0, 0), 20, 0.06, 1.6, 0.0045, mats, strands=2, strand_mat="light", gold=False)
+    return objs
+
+
+def branch_frame(k, mats, rng):
+    F, J, path = frame_line()
+    objs = []
+    for j, s in enumerate((-1, 0, 1)):
+        pts = [p + in_plane_normal(path, i) * (s * 0.028 * math.sin(math.pi * i / (len(path) - 1)) ** 1.2)
+               for i, p in enumerate(path)]
+        objs += m.strand_bundle(f"FB_Branch_{j}", pts, 0.0078, mats["ivory"], rng, n=7, twist=9.0,
+                                radius_fn=lambda u: 0.75 + 0.35 * math.sin(math.pi * u), bevel=0.0026, tip_taper=0.05)
+        if s == 0:
+            objs += m.wound_cord("FB_Gold", pts, 0.0095, 7, 0.0016, mats, strand_mat="light")
+    return objs
+
+
+def harp_frame(k, mats, rng):
+    F, J, path = frame_line()
+    n = len(path)
+    radii = [0.75 + 0.45 * math.sin(math.pi * i / (n - 1)) ** 0.8 for i in range(n)]
+    objs = [c.curve_tube("FC_Arm", path, radii, mats["ivory"], bevel=0.0115, resolution=4)]
+    inlay = [p - in_plane_normal(path, i) * 0.0105 * radii[i] for i, p in enumerate(path)]
+    objs.append(c.curve_tube("FC_Inlay", inlay[6:-6], [1.0] * (n - 12), mats["light"], bevel=0.0018, resolution=2))
+    for j in range(5):
+        i = int((0.2 + 0.15 * j) * (n - 1))
+        p = path[i]
+        top = body_bottom(p.y, 0.6)
+        objs.append(c.curve_tube(f"FC_String_{j}", [p + V(0, 0, 0.008), top], [1.0, 1.0], mats["light"],
+                                 bevel=0.0016, resolution=2))
+    return objs
+
+
+def braid_frame(k, mats, rng):
+    F, J, path = frame_line()
+    objs = m.rope("FD_Braid", path, 0.016, mats, strands=3, gold=True, taper=0.25, merge=0.99)
+    for name, i in (("FD_Band_F", 10), ("FD_Band_B", len(path) - 12)):
+        t = (path[i + 2] - path[i - 2]).normalized()
+        objs += m.halo(name, path[i], 0.0165, 0.0026, t, mats["light"])
+    low = min(range(len(path)), key=lambda i: path[i].z)
+    objs += m.halo("FD_Drop_Halo", path[low] + V(0, 0, -0.03), 0.013, 0.0018, (1, 0, 0), mats["light"])
+    objs += m.droplet("FD_Drop", path[low] + V(0, 0, -0.032), 0.01, (0, 0, -1), mats["phial_lit"], stretch=1.5)
+    objs.append(c.curve_tube("FD_Thread", [path[low] + V(0, 0, -0.012), path[low] + V(0, 0, -0.02)], [1, 1],
+                             mats["light"], bevel=0.0012, resolution=2))
+    return objs
+
+
 OPTIONS = {"A": scroll_pendant, "B": light_drop, "C": gold_filigree, "D": braid_pendant}
 SIZE = {"A": 1.7, "B": 1.5, "C": 1.9, "D": 1.35}        # each option about the old grip's size
 LOOPS = {"A": woven_loop, "B": scroll_loop, "C": trident_loop, "D": light_loop}
+FRAMES = {"A": scroll_frame, "B": branch_frame, "C": harp_frame, "D": braid_frame}
 
 
 def build(gun, opt):
@@ -202,7 +297,9 @@ def build(gun, opt):
     if opt == "O":
         hb.pistol_grip = ORIGINAL_GRIP
     else:
-        if LOOP:
+        if FRAME:
+            hb.pistol_grip = lambda material, rng: FRAMES[opt](k, materials(material), rng)
+        elif LOOP:
             hb.pistol_grip = lambda material, rng: LOOPS[opt](k, materials(material), rng)
         else:
             hb.pistol_grip = lambda material, rng: OPTIONS[opt](k * SIZE[opt], materials(material))
@@ -243,15 +340,17 @@ def main():
             ("lbg", 1, "輕弩・背後（玩家視角）")]
     sheet = Image.new("RGB", (W * len(PICK), head + H * len(rows)), (20, 20, 24))
     d = ImageDraw.Draw(sheet)
-    d.text((14, 8), "輕弩、重弩握把：底部繞回去跟槍托合體（像拇指孔槍托）" if LOOP else
-           "輕弩、重弩握把：人物不會去握，換成不像把手的東西", fill=(240, 210, 140), font=font)
+    title = ("輕弩、重弩握把：重新設計一個從機匣繞回槍托的框（不用原本的握把）" if FRAME else
+             "輕弩、重弩握把：底部繞回去跟槍托合體（像拇指孔槍托）" if LOOP else
+             "輕弩、重弩握把：人物不會去握，換成不像把手的東西")
+    d.text((14, 8), title, fill=(240, 210, 140), font=font)
     for ci, opt in enumerate(PICK):
         d.text((ci * W + 14, head - (40 if not TEST else 24)), NAMES[opt], fill=(255, 225, 150), font=font)
         for ri, (gun, vi, label) in enumerate(rows):
             sheet.paste(Image.open(tiles[(gun, opt)][vi]), (ci * W, head + ri * H))
             if ci == 0:
                 d.text((10, head + ri * H + 8), label, fill=(200, 200, 200), font=font)
-    out = os.path.join(OUT, "grip_loop_options.png" if LOOP else "grip_options.png")
+    out = os.path.join(OUT, "grip_frame_options.png" if FRAME else "grip_loop_options.png" if LOOP else "grip_options.png")
     sheet.save(out)
     print("WROTE", out, flush=True)
 

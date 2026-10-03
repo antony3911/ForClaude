@@ -450,7 +450,7 @@ NECK_ROWS = 12                     # rows from the cut up to the rim
 NECK_SMOOTH = 4                    # passes smoothing the profiles around (not at their ends)
 NECK_SAMPLES = 64                  # points along each profile
 NECK_CUT = 1.47          # without the face mesh: a level cut
-UNDERWEAR = (0.78, 0.99, 0.30)   # boxer-brief band: lowest, highest, |x| limit (the hands hang beside it)
+UNDERWEAR = (0.78, 0.99, 0.30)   # boxers (style "boxer", before 2026-10-03): lowest, highest, |x| limit
 
 
 def face_outer(face_objs):
@@ -676,11 +676,9 @@ def curve_at(curve, t):
     return curve[i].lerp(curve[i + 1], f - i)
 
 
-def contour_cut(bm, s_of):
-    """Cut the mesh along the zero line of a scalar on its vertices (edges crossing it are split
-    where it crosses, faces split between those points) and delete the positive side the topmost
-    face is on, and anything left hanging loose: a clean edge instead of a row of whole faces'
-    teeth, and the scalar only has to be right near the cut."""
+def split_along(bm, s_of):
+    """Split the mesh along the zero line of a scalar on its vertices: edges crossing it are split
+    where it crosses, faces split between those points. Returns the scalar per vertex."""
     import bmesh
     s = {v: s_of(v.co) for v in bm.verts}
     zero = set()
@@ -696,6 +694,16 @@ def contour_cut(bm, s_of):
         if len(vs) == 2 and not any(vs[1] in (lp.link_loop_next.vert, lp.link_loop_prev.vert)
                                     for lp in f.loops if lp.vert is vs[0]):
             bmesh.utils.face_split(f, vs[0], vs[1])
+    return s
+
+
+def contour_cut(bm, s_of):
+    """Cut the mesh along the zero line of a scalar on its vertices (edges crossing it are split
+    where it crosses, faces split between those points) and delete the positive side the topmost
+    face is on, and anything left hanging loose: a clean edge instead of a row of whole faces'
+    teeth, and the scalar only has to be right near the cut."""
+    import bmesh
+    s = split_along(bm, s_of)
     positive = {f for f in bm.faces if max(s[v] for v in f.verts) > 0 and min(s[v] for v in f.verts) >= 0}
 
     def spread(start, inside):
@@ -1202,29 +1210,54 @@ def smooth_spots(obj, points):
         me.vertices[i].co = co[i]
 
 
-# Briefs: leg openings along the groin fold in front, along the buttock fold behind.
-BRIEF_TOP = 0.975
-BRIEF_FRONT = [(0.0, 0.80), (0.036, 0.858), (0.076, 0.908), (0.118, 0.975)]
-BRIEF_BACK = [(0.0, 0.79), (0.07, 0.81), (0.12, 0.86), (0.15, 0.94)]
+# Briefs (user 2026-10-03: "the boxers are ugly, an old man's"): the cloth is where brief_s > 0,
+# under the waistband and above the leg openings, and the mesh is cut along its zero line
+# (`split_along`) so the edges run clean -- the first briefs (2026-10-02) painted whole faces,
+# saw-toothed leg openings, and were cut up to the waist at the sides. Leg openings: from a
+# gusset between the legs up along the groin fold in front and, behind, diagonally up across the
+# lower buttocks (user: following under the buttocks wrapped the tops of the thighs like boxers),
+# out to the side of the hip at 0.91 m, leaving a band 6 cm wide there: a plain brief, not high-cut.
+# Polylines (|x|, z) in m, front and back blended by depth.
+BRIEF = {"top": 0.975, "half": 0.22,
+         "front": [(0.0, 0.755), (0.024, 0.79), (0.045, 0.845), (0.08, 0.885), (0.125, 0.905), (0.2, 0.91)],
+         "back": [(0.0, 0.755), (0.03, 0.805), (0.06, 0.845), (0.10, 0.88), (0.14, 0.905), (0.2, 0.915)]}
 
 
 def line_z(pts, x):
+    """Height of a polyline of (|x|, z) at x, as a smooth monotone curve (Fritsch-Carlson cubic:
+    straight segments left corners in the leg openings), level where it starts at x = 0."""
     x = abs(x)
-    for (x0, z0), (x1, z1) in zip(pts, pts[1:]):
-        if x <= x1:
-            return z0 + (z1 - z0) * (x - x0) / max(x1 - x0, 1e-6)
-    return pts[-1][1]
+    if x >= pts[-1][0]:
+        return pts[-1][1]
+    xs, zs = zip(*pts)
+    n = len(pts)
+    d = [(zs[i + 1] - zs[i]) / (xs[i + 1] - xs[i]) for i in range(n - 1)]
+    m = [0.0] + [0.0 if d[i - 1] * d[i] <= 0 else (d[i - 1] + d[i]) / 2 for i in range(1, n - 1)] + [d[-1]]
+    for i in range(n - 1):
+        if d[i] == 0:
+            m[i] = m[i + 1] = 0.0
+            continue
+        a, b = m[i] / d[i], m[i + 1] / d[i]
+        if a * a + b * b > 9:
+            k = 3 / math.sqrt(a * a + b * b)
+            m[i], m[i + 1] = k * a * d[i], k * b * d[i]
+    i = next(i for i in range(n - 1) if x <= xs[i + 1])
+    h = xs[i + 1] - xs[i]
+    t = (x - xs[i]) / h
+    return ((2 * t ** 3 - 3 * t ** 2 + 1) * zs[i] + (t ** 3 - 2 * t ** 2 + t) * h * m[i]
+            + (-2 * t ** 3 + 3 * t ** 2) * zs[i + 1] + (t ** 3 - t ** 2) * h * m[i + 1])
 
 
-def in_brief(c, n):
-    if abs(c.x) > 0.2 or c.z > BRIEF_TOP or c.z < 0.76:
-        return False
-    if abs(c.x) > BRIEF_FRONT[-1][0] and n.y < 0:
-        return c.z > BRIEF_FRONT[-1][1] - 0.002     # the side band at the hip
-    return c.z > line_z(BRIEF_FRONT if c.y < 0 else BRIEF_BACK, c.x)
+def brief_s(co):
+    """> 0 on the briefs (m from the nearest of waistband and leg opening, roughly)."""
+    if abs(co.x) > BRIEF["half"] or co.z < 0.70:
+        return -1.0
+    front = smoothstep(0.03, -0.03, co.y)           # Blender -y is the front
+    leg = line_z(BRIEF["front"], co.x) * front + line_z(BRIEF["back"], co.x) * (1 - front)
+    return min(BRIEF["top"] - co.z, co.z - leg)
 
 
-def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
+def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="brief"):
     me = obj.data
     neck = FaceNeck(G, face_pts) if face_pts else None
     if neck:
@@ -1240,11 +1273,13 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
     if neck:
         neck_tube(bm, G, neck)
-    # Clean horizontal edges for the underwear band.
     low, high, xlim = UNDERWEAR
-    for z in (low, high):
-        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
-        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, z), plane_no=(0, 0, 1))
+    if style == "brief":
+        split_along(bm, brief_s)
+    else:       # clean horizontal edges for the boxers' band
+        for z in (low, high):
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, z), plane_no=(0, 0, 1))
     bm.to_mesh(me)
     bm.free()
     if neck:
@@ -1255,7 +1290,7 @@ def cut_and_paint(obj, G, skin, cloth, face_pts=None, style="boxer"):
     for p in me.polygons:
         c = p.center
         if style == "brief":
-            p.material_index = 1 if in_brief(c, p.normal) else 0
+            p.material_index = 1 if brief_s(c) > 0 else 0
         else:
             p.material_index = 1 if low < c.z < high and abs(c.x) < xlim else 0
     log(f"{obj.name}: {len(me.vertices)} verts, {len(me.polygons)} faces after the cut")
@@ -1456,7 +1491,7 @@ def make_body(data, base, params, G, name, skin, cloth, face_pts=None):
         carve(obj, [g for key in grooves for g in GROOVES[key]])
     for o in [o for o in bpy.data.objects if o.type == "EMPTY" or o is arm]:
         bpy.data.objects.remove(o, do_unlink=True)
-    neck = cut_and_paint(obj, G, skin, cloth, face_pts, params.get("underwear", "boxer"))
+    neck = cut_and_paint(obj, G, skin, cloth, face_pts, params.get("underwear", "brief"))
     if neck:
         match_face_normals(obj, G, neck, face_pts)
     return obj

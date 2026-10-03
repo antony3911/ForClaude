@@ -314,16 +314,28 @@
 
 **武器的說明在哪**：蓄力零件、生長骨頭、型態變形這些機制 → `mhws/MiquellaLight_Weapons/README.md`；每把武器的模型、骨頭、材質、重做指令 → 各 kit 的 README；特效改色 → `mhws/MiquellaLight_Effects/README.md`、`fx_paks.py`、`trail_scan.py`、`recolor_efx.py`；預覽工具 → `preview_grow.py`（蓄力生長）、`preview_morph.py`（變形）、`glaive_charge.py`／`power_states.py`（設計提案）；舊紀錄 → `mods/miquella/WEAPONS_LOG.md`
 
-**人物（第二帳號負責；2026-10-03 整理）**
-- **現況**（都已裝進遊戲，選單「MiquellaLight: Character」）：
-  - 頭冠 v10：腳本生成物件掛到獵人 `Head`（不覆蓋遊戲檔）；**還沒實測**：看在不在額頭、跟不跟頭動，位置用選單滑桿調、數值告訴 Claude 寫回模型；戴頭盔會穿模
-  - 身體三款 A 纖細中性／B 少年感／C 柔和（選單 `Body shape`），開啟時藏獵人的防具和內衣，臉和頭髮保留；**等使用者挑**。已修：骨架對齊（啤酒肚、胯下）、腹股溝 V 線、錐形大腿、圓潤屁股、收腰＋馬甲線＋背溝、脖子（2026-10-03 照原版接法，使用者：「這個版本不錯」，剩下的小變形頭髮擋得住）
-  - 材質暫用雙劍的象牙色（跟臉的膚色不同）
-- **文件**：做法、參數、指令、試過不行的 → `mhws/MiquellaLight_Character_kit/README.md`；腳本、選單、測試 → `mhws/MiquellaLight_Character/README.md`；遊戲獵人身體的量測 → 研究筆記第 18 節；已決定的方向（一件長袍蓋全身、身體不刪減、長袍內側要雙面…）→ `notes/two-account-handoff-plan.md`「米凱拉風格角色」
+**人物（2026-10-03 早上本機 session 整理；下一個 session 從這裡接）**
+- **現況**（都已裝進遊戲，選單「MiquellaLight: Character」；使用者的角色是女性、目前選 C 款）：
+  - 頭冠 v10：腳本掛到 `Head`；還沒專門實測位置（遊戲裡看得到、在額頭附近）
+  - 身體三款 A／B／C（`Body shape`），藏獵人防具和內衣。**腳掌已修**：原本對準遊戲 Instep 陷地 5 cm 再壓扁 → 保留 MakeHuman 腳角度、`shorten_feet` 縮到 24.5 cm（`FOOT`）
+  - **光照已修**：腳本生成的 Mesh `StencilValue` 是 0（陰影處全黑）→ 從臉的 Mesh 複製 `StencilValue`、`ShadowCastMode`（`MATCH_RENDER`）
+  - **斑塊／糊已修**（使用者確認）：遊戲角色模型的**頂點顏色存綁定姿勢位置**（R = x/2+0.5、G = 高度/2、B = 前後/2+0.5、A = 1，raw/255、檔案空間公尺），shader 拿來算濕身／沾沙；我們沒有＝全身又濕又沾沙 → `position_colors` 匯出時寫入
+  - **膚色：最新版裝好了、使用者還沒看**：皮膚＝內衣的 `skin` 材質（SkinEdit shader，`SKIN_SOURCE`），底色＝臉貼圖脖子的顏色 sRGB 161,179,181（`BODY_TEXTURES`），`BlendNormalMap` 換平坦；腳本從臉的 `face` 材質複製 `AddColorUV`（膚色色盤位置），`ColorParam` = `SKIN_BASE` 2.9 × 膚色選項 × `Skin brightness`（選單）。SkinEdit 比臉暗約 3 倍的原因不明（shader 內部），2.9 是用使用者校準的 3.3 換算的
+  - 內褲（`MiquellaCloth`）：武器 shader＋自己的米白貼圖
+- **膚色試過的路（不要重走）**：①抄雙劍象牙材質 → 雙劍 NRRO 壞（見第 0 節給第一帳號的留言），鏡面金屬感、全黑；②自己的膚色貼圖＋武器 shader → 顏色對但糊、有斑（其實是沒頂點顏色＝沾沙）；③SkinEdit＋中性灰 152,152,157 → 深棕，要 ×3.3、偏黃；④**臉的材質直接套身體**（UV 塞進臉貼圖脖子區）→ 更黑而且**模型被扭壞**（臉的 vertex shader 依 UV 做捏臉變形）。如果最新版還是不對：考慮回到②（武器 shader＋自己的膚色貼圖，現在有頂點顏色應該不會斑了），膚色用選單手調
+- **使用者提出、還沒改的問題**（照使用者在意的程度）：
+  1. **膚色**跟臉還有差（看最新版結果）
+  2. **斜方肌太壯**（「練很大才會有的肌肉」）→ 肩頸線條要削（`miquella_body.py` 的肩頸、上背參數）
+  3. **胸口小凸起**：不符合平滑身體原則 → 磨平
+  4. **脖子底部一圈深色接縫線**（臉的脖子邊緣和身體交界）
+  5. 內褲顏色跟膚色太近，要更明顯的米白
+  6. 小瑕疵：新做的脖子管 UV 是退化的（每直排同一個 UV），換貼圖時會影響切線
+  7. 還沒測：關節變形（膝肘肩、手指）、轉頭低頭、使用者還沒挑 A／B／C
+- **工具**（這次新增）：`MiquellaLight_Scout/reframework/autorun/MiquellaLight_MeshDiff.lua`（比對臉和我們物件的 Mesh 設定，用完要從遊戲移除）、`prototypes/scripts/decode_wilds_tex.py`（解 .tex 看數值）；用 computer-use 截遊戲畫面（要授權 `monsterhunterwilds.exe`；不能按鍵進遊戲，Reset scripts 請使用者按）。pak 遊戲開著時放 `work\install`、背景跑 `install_when_closed.sh`
+- **文件**：做法、參數、指令、試過不行的 → `mhws/MiquellaLight_Character_kit/README.md`；腳本、選單、測試 → `mhws/MiquellaLight_Character/README.md`；遊戲獵人身體的量測 → 研究筆記第 18 節；已決定的方向 → `notes/two-account-handoff-plan.md`「米凱拉風格角色」
 - **下一步**（照順序）：
-  0. **2026-10-03 清晨第一次實測（本機 session）**：身體看得到，但**陰影處全黑、亮處灰色像金屬、調色只變明暗** → 兩個原因都修了：①腳本生成的 Mesh 的 `StencilValue` 是 0（獵人自己的是 1，用診斷腳本 `MiquellaLight_Scout/.../MiquellaLight_MeshDiff.lua` 比對臉和身體的 Mesh 設定找到）→ 角色腳本從臉的 Mesh 複製 `StencilValue`、`ShadowCastMode`（選單狀態 `render:`）；②材質抄雙劍的貼圖、NRRO 壞掉（見第 0 節給第一帳號的留言）→ `miquella_body.py` 的 `make_textures` 給身體自己的膚色／布料貼圖（`BODY_TEXTURES`：膚色 sRGB 234,199,172＝使用者要的黃偏白、粗糙度 0.55）；選單 `Skin tone` 五種膚色（`ColorParam` 乘上去）。**腳掌太長**（使用者）：原本把腳轉向遊戲的 Instep、陷地 5 cm 再壓扁到 63 % → 改成保留 MakeHuman 的腳角度、`shorten_feet` 等比例縮到 24.5 cm（`FOOT`）。裝好後膚色 OK，但使用者站在潔瑪旁邊比對：**身體糊、有一塊塊斑**（武器 shader 的雜訊／細節層）→ 皮膚改用**遊戲內衣的 `skin` 材質**（`Base_ATOS_SkinEdit_VFX`，`SKIN_SOURCE`）：中性底色（遊戲身體貼圖的平均 sRGB 152,152,157，不用它的貼圖＝成年男性肌肉、獵人 UV）× 膚色色盤 `SkinMap01` 在 `AddColorUV` 的位置；`BlendNormalMap` 換平坦的。腳本把**臉的 `AddColorUV` 複製到身體**（選單 `Skin tone` 預設 `Match the face`，另外三個在上面再乘 `ColorParam`；狀態列 `face tone x, y`）。裝好後斑塊消失但身體**深棕色**（臉的 `AddColorUV` 有複製成功 (0, 0.627)；測試滑桿：U 往右變深、往左不變＝已在最淺欄；亮度要乘約 4 才接近、而且偏黃）→ **原因：遊戲角色模型的頂點顏色存的是綁定姿勢位置**（raw/255，檔案空間公尺：R = x/2+0.5、G = 高度/2、B = 前後/2+0.5、A = 1；用內衣和臉 100 萬個點擬合，誤差 0.001），shader 拿它算濕身／沾沙的高度線（`Use_VertexColor_Offset`）；我們沒有頂點顏色＝整個身體在地面高度＝又濕又沾沙 → `miquella_body.py` 的 `position_colors` 匯出時寫入（讀回驗證一致），測試滑桿已拿掉。→ 斑塊消失（使用者確認），但 SkinEdit 的皮膚還是比臉深約 3 倍、偏黃（亮度 ×3.3＋分通道校準仍「看得出差別」；臉的底色其實是偏青灰 161,179,181，膚色全來自 SkinMap）→ **改成身體直接用臉的材質**：`SKIN_SOURCE` = 女臉 `ch00_001_0000` 的 `face` 材質（臉的 shader 和貼圖），`face_patch_uvs` 把身體兩組 UV 平面投影到臉貼圖脖子前面一小塊乾淨皮膚 `FACE_PATCH`（u 0.40–0.60、v 0.15–0.22）；角色腳本每 2 秒把獵人臉 `face` 材質的**全部變數**（38 個 float4 依 `FLOAT4_VARS`、其餘 float；跳過 ObjectOffset／BB_Min／BB_Max／Ripple_Emit_Pos）複製到身體，`Skin tone`／`Skin brightness` 乘在臉的 ColorParam 上（config `skinVersion` 2 重設舊值）。→ **失敗、已退回**：更黑，而且模型被扭壞（臉的 vertex shader 依 UV 做捏臉變形，全身 UV 在脖子區就全身套脖子的變形）。**現在**：回到 SkinEdit，底色改成臉貼圖脖子的實際顏色 sRGB 161,179,181（偏青灰；之前的 152,152,157 偏紅才會偏黃），腳本只複製臉的 `AddColorUV`、`ColorParam` = `SKIN_BASE` 2.9（使用者校準 3.3 換算新底色）× 膚色選項 × 亮度。**pak 和腳本在等遊戲關掉才裝**；裝好後請使用者看膚色還沒做：胸口小凸起磨平、脖子底部深色接縫線、內褲顏色跟膚色太近另外：使用者角色是女性，髮型檔是 **`ch01_001_0512`**（女性版），做頭髮要用這個（之前解的是 `ch01_000`）
-  1. 使用者在遊戲裡測：身體有沒有出現、原本的衣服有沒有藏起來、關節變形（膝肘肩不好看 → 權重改用遊戲的 `*_HJ_*` 輔助骨頭）、脖子轉頭／低頭、頭冠位置；挑 A／B／C
-  2. 膚色材質（抄臉的皮膚材質，接縫看不出色差）
+  1. 使用者看最新膚色 → 依結果調 `SKIN_BASE` 或改走上面的備案
+  2. 身體形狀：斜方肌、胸口凸起、脖子接縫線、內褲顏色（改完重建 kit：`miquella_body.py kit ...`，指令見 kit README）
   3. 長袍：上半身和臀部貼身（照身體形狀，腹股溝線不能蓋平）、下擺擺動（學內衣的 `chain2`）
   4. **頭髮（設計定案 2026-10-03，使用者：「這樣蠻好的」）**：以遊戲髮型 **512** 為底（使用者發現它就是左右兩股往後合成大編髮＋中分長波浪到腰；結構見研究筆記第 14 節「遊戲髮型 512／513」）。定案內容（規格寫進 `DESIGN.md`「髮型」）：
      - **512 的長捲髮完全保留**，只加十幾條編髮（使用者：「米凱拉的髮型不是由大量細編髮組成」）

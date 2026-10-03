@@ -1065,11 +1065,41 @@ def arrow():
                   budget={"MiquellaGold": 2400, "MiquellaGlow": 400})
 
 
+# The heavy bowgun's guard, D the radiant halo (user's pick 2026-10-03, attachments.py guard_d):
+# guarding, the gun's four rings slide along the barrel to the guard's plane (prototype y 0.40,
+# in front of the receiver) and close into a narrow rim of concentric rings, 24 rays of light
+# (long and short in turn) shoot out of it and the three barrel drops fly to its rim. Each ring
+# hangs on GUARD_RIM joints round it (children of its floating MQ_Halo bone), so it widens without
+# its line thickening; a ray hangs on Base at its root and on its own joint at its tip, which the
+# weapons script draws out from the root. Rings: prototype name -> (MQ_Halo index, guard y, radius).
+GUARD_RIM = 16
+GUARD_RINGS = {"Conduit_Halo_A": (0, 0.412, 0.06), "Conduit_Halo_B": (1, 0.409, 0.1),
+               "Muzzle_Halo": (2, 0.40, 0.225), "Muzzle_Halo_Inner": (3, 0.404, 0.19)}
+GUARD_SC = Vector((0.0, 0.40, 0.03))
+GUARD_RAYS = 24
+
+
+def guard_rays(mat):
+    import motifs
+    r0 = GUARD_RINGS["Muzzle_Halo"][2] + 0.012
+    ends = []
+    for k in range(GUARD_RAYS):
+        phi = 2 * math.pi * k / GUARD_RAYS
+        radial = Vector((math.cos(phi), 0, math.sin(phi)))
+        length, w = (0.1, 0.016) if k % 2 == 0 else (0.06, 0.012)
+        root, tip = GUARD_SC + radial * r0, GUARD_SC + radial * (r0 + length)
+        motifs.path_blade(f"GD_Ray_{k}", [root, tip], (0, 1, 0),
+                          lambda t, w=w: w * math.sin(math.pi * min(t / 0.98, 1) ** 0.6) ** 0.8,
+                          lambda t: 0.0025, mat, samples=24)
+        ends.append((root, tip))
+    return ends
+
+
 def heavy_bowgun():
     """Like the light bowgun kit (+Y muzzle -> +Z, +Z up -> +Y, bore 0.19 below the origin,
-    0.1 back); scaled 1.3: 1.7 m long like the originals (-0.74..0.96)."""
+    0.1 back); scaled 1.3: 1.7 m long like the originals (-0.74..0.96). With the guard (above)."""
     import bowgun as hb
-    hb.build()
+    _, glow = hb.build()
     # The conduit rings are named by their height (Conduit_Halo_0.34 / _0.56): give them names
     # of their own, each gets a bone.
     for o in [o for o in bpy.data.objects if o.name.startswith("Conduit_Halo_")]:
@@ -1083,10 +1113,53 @@ def heavy_bowgun():
     for i in range(3):
         by_name[f"Barrel_Phial_{i}"] = f"MiquellaGauge{i + 1}"
         by_name[f"Barrel_Phial_Halo_{i}"] = f"MiquellaGauge{i + 1}"
+    ray_ends = [(to_file @ a, to_file @ b) for a, b in guard_rays(glow)]
+    for i in range(GUARD_RAYS):
+        by_name[f"GD_Ray_{i}"] = "MiquellaGuardRay"
+    rings = {}
+    for name, (h, gy, gr) in GUARD_RINGS.items():
+        o = bpy.data.objects[name]
+        center = to_file @ o.matrix_world.translation
+        mesh = o.data
+        radius = sum(((to_file @ o.matrix_world @ v.co) - center).length for v in mesh.vertices) / len(mesh.vertices)
+        guard_center = to_file @ Vector((0, gy, GUARD_SC.z))
+        rings[name] = {"halo": h, "center": center, "r0": radius, "r1": gr * k, "dz": guard_center.z - center.z}
+    rims = {}
+    parents = {}
+    for name, ring in rings.items():
+        for j in range(GUARD_RIM):
+            a = 2 * math.pi * j / GUARD_RIM
+            rims[f"MQ_G{ring['halo']}_{j}"] = ring["center"] + Vector((math.cos(a), math.sin(a), 0)) * ring["r0"]
+            parents[f"MQ_G{ring['halo']}_{j}"] = f"MQ_Halo{ring['halo']}"
+    rays = {f"MQ_Ray{i}": tip for i, (_, tip) in enumerate(ray_ends)}
+
+    def weights(o, p):
+        name = o.name.split(".")[0]
+        if name in rings:
+            ring = rings[name]
+            d = p - ring["center"]
+            f = (math.atan2(d.y, d.x) % (2 * math.pi)) / (2 * math.pi / GUARD_RIM)
+            j, t = int(f) % GUARD_RIM, f - int(f)
+            out = [(f"MQ_G{ring['halo']}_{j}", 1 - t), (f"MQ_G{ring['halo']}_{(j + 1) % GUARD_RIM}", t)]
+            return [(b, w) for b, w in out if w > 1e-4]
+        if name.startswith("GD_Ray_"):
+            i = int(name.split("_")[2])
+            root, tip = ray_ends[i]
+            t = max(0.0, min(1.0, (p - root).dot(tip - root) / (tip - root).length_squared))
+            return [(b, w) for b, w in (("Base", 1 - t), (f"MQ_Ray{i}", t)) if w > 1e-4]
+        return None
+
+    sc = to_file @ GUARD_SC
+    drops = {}
+    for i in range(3):             # the barrel drops fly to the rim (attachments.moving_rings)
+        a = math.pi / 2 + 2 * math.pi * i / 3
+        rim = GUARD_SC + Vector((math.cos(a), 0.01, math.sin(a))) * (GUARD_RINGS["Muzzle_Halo"][2] + 0.035)
+        drops[f"MQ_Phial{i}"] = to_file @ rim
     return {
         "name": "wp_miquella_hbg", "rel": "Art/Model/MiquellaLight/HeavyBowgun",
         "objects": [o for o in bpy.data.objects if o.type in ("MESH", "CURVE")], "to_file": to_file,
-        "bones": {"VFX_Fire": muzzle, "VFX_FirePower": muzzle + Vector((0, 0, 0.38))},
+        "bones": {"VFX_Fire": muzzle, "VFX_FirePower": muzzle + Vector((0, 0, 0.38)),
+                  "VFX_Shield": sc},
         "materials": {"Ivory": "MiquellaIvory", "Light": "MiquellaGlow"},
         # Rings and phials hover like the light bowgun's (user, 2026-10-02).
         "by_name": by_name,
@@ -1094,6 +1167,8 @@ def heavy_bowgun():
                      "Muzzle_Halo_Inner": "MQ_Halo3",
                      **{f"Barrel_Phial_{i}": f"MQ_Phial{i}" for i in range(3)},
                      **{f"Barrel_Phial_Halo_{i}": f"MQ_Phial{i}" for i in range(3)}},
+        "file_pivots": {**rims, **rays}, "bone_parents": parents, "weight_fn": weights,
+        "guard": {"rings": rings, "rays": ray_ends, "drops": drops, "center": sc},
     }
 
 
@@ -1217,7 +1292,7 @@ BUDGET = {"MiquellaBlade": 8000, "MiquellaGlow": 12000, "MiquellaIvory": 24000, 
           "MiquellaChargeTip": 2000, **{f"MiquellaGrow{b}": 3000 for b in range(1, GROW_MAX + 1)},
           **{f"MiquellaExtractGrow{b}": 3000 for b in range(1, GROW_MAX + 1)},
           "MiquellaLilyLight": 9000, "MiquellaLeafLight": 6000, "MiquellaBudLight": 6000, "MiquellaFireHalo": 1500,
-          "MiquellaThroat1": 500, "MiquellaThroat2": 600, "MiquellaThroat3": 800}
+          "MiquellaThroat1": 500, "MiquellaThroat2": 600, "MiquellaThroat3": 800, "MiquellaGuardRay": 4000}
 GAUGE_BUDGET = 1500
 
 # Material copied from the dual blades kit for each of our game materials.
@@ -1226,7 +1301,7 @@ MDF_SOURCE = {"MiquellaBlade": "MiquellaBlade", "MiquellaGlow": "MiquellaGlow",
               "MiquellaGauge1": "MiquellaGlow", "MiquellaGauge2": "MiquellaGlow",
               "MiquellaGauge3": "MiquellaGlow", "MiquellaGauge4": "MiquellaGlow", "MiquellaGauge5": "MiquellaGlow",
               "MiquellaCharge1": "MiquellaGlow", "MiquellaCharge2": "MiquellaGlow", "MiquellaCharge3": "MiquellaGlow",
-              "MiquellaChargeTip": "MiquellaBlade",
+              "MiquellaChargeTip": "MiquellaBlade", "MiquellaGuardRay": "MiquellaBlade",
               "MiquellaExtractRed": "MiquellaGlow", "MiquellaExtractWhite": "MiquellaGlow",
               "MiquellaExtractOrange": "MiquellaGlow", "MiquellaCore": "MiquellaGlow", "MiquellaGold": "MiquellaGlow",
               "MiquellaFilament": "MiquellaGlow",
@@ -1247,7 +1322,7 @@ UV_BANDS = {"MiquellaGold": 0}
 # Charge parts start hidden (Dissolve 0) so they stay hidden if the weapons script is not running.
 HIDDEN_AT_START = ("MiquellaCharge", "MiquellaExtract", "MiquellaSaw", "MiquellaFilament", "MiquellaArmillary",
                    "MiquellaTiming", "MiquellaBurst", "MiquellaGrow", "MiquellaLilyLight", "MiquellaLeafLight",
-                   "MiquellaBudLight", "MiquellaThroat", "MiquellaFireHalo")
+                   "MiquellaBudLight", "MiquellaThroat", "MiquellaFireHalo", "MiquellaGuardRay")
 
 
 # Translucent light films (test, 2026-10-02): our weapon shaders only cut out, but some
@@ -1684,6 +1759,32 @@ def write_bloom(kit, name, bloom, names):
 
 # ------------------------------------------------------------------ main
 
+def write_guard(kit, guard):
+    """The heavy bowgun guard's rig for the weapons script (pasted into its HeavyBowgun kit as
+    `guard`): the rings' slide along the barrel and radii, each rim joint's direction from its
+    ring's centre (its parent MQ_Halo bone sits there), the rays' roots and tips, the drops' places
+    on the rim. File space."""
+    f3 = lambda v: "{ %.4f, %.4f, %.4f }" % (v.x, v.y, v.z)
+    out = ["-- From build_weapon_kit.py heavy_bowgun (the guard, D the radiant halo).", "{"]
+    out.append("    center = %s," % f3(guard["center"]))
+    out.append("    rings = {")
+    for name, r in sorted(guard["rings"].items(), key=lambda kv: kv[1]["halo"]):
+        out.append('        { halo = "MQ_Halo%d", dz = %.4f, r0 = %.4f, r1 = %.4f },  -- %s'
+                   % (r["halo"], r["dz"], r["r0"], r["r1"], name))
+    out.append("    },")
+    out.append("    rim = %d," % GUARD_RIM)
+    out.append("    rays = {")
+    for i, (root, tip) in enumerate(guard["rays"]):
+        out.append('        { name = "MQ_Ray%d", root = %s, tip = %s },' % (i, f3(root), f3(tip)))
+    out.append("    },")
+    out.append("    drops = { %s }," % ", ".join(f"{n} = {f3(v)}" for n, v in sorted(guard["drops"].items())))
+    out.append("}")
+    path = os.path.join(kit, "wp_miquella_hbg_guard.lua")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(out) + "\n")
+    log(f"guard rig -> {path}")
+
+
 def enable_addon():
     """After the prototype is built: its factory reset unregisters add-ons, and the importer
     crashes without its registered properties."""
@@ -1745,6 +1846,8 @@ def main():
         write_grow(kit, spec, pivots)
     if spec.get("bloom"):
         write_bloom(kit, spec["name"], spec["bloom"], names)
+    if spec.get("guard"):
+        write_guard(kit, spec["guard"])
     morph = spec.get("morph")
     hidden = set()
     if morph:

@@ -67,6 +67,9 @@ local function newMesh(meshPath)
       return { "MiquellaCharge1", "MiquellaCharge2", "MiquellaCharge3", "MiquellaGlow", "MiquellaIvory",
                "MiquellaArmillary1", "MiquellaArmillary2", "MiquellaArmillary3" }
     end
+    if self.mdfPath:match("wp_miquella_hbg%.") then
+      return { "MiquellaGauge1", "MiquellaGauge2", "MiquellaGauge3", "MiquellaGlow", "MiquellaGuardRay", "MiquellaIvory" }
+    end
     if self.mdfPath:match("wp_miquella_gs") then
       return withGrow({ "MiquellaBlade", "MiquellaGlow", "MiquellaIvory", "MiquellaTemper", "MiquellaCharge3" }, 24)
     end
@@ -1210,4 +1213,43 @@ check(grown(24) == 24 and weaponMesh.matEnabled["MiquellaCharge3"] == true and w
 extract._FinishChargeLevel, chargeT0 = 0, nil
 frames(30, 1 / 60)
 check(grown(24) == 0, "lance: the strands go after the thrust")
+-- Heavy bowgun, the guard (D, the radiant halo, user's pick 2026-10-03): an action with "Guard" in
+-- its name slides the four rings back to the guard's plane and widens them on their rim joints,
+-- the rays shoot out (faded in), the drops fly to the rim; it folds back after the hold.
+do
+  local rig
+  local f = io.open("../MiquellaLight_HeavyBowgun_kit/wp_miquella_hbg_guard.lua", "r")
+  if f then local src = f:read("a"); f:close(); rig = load("return " .. src:gsub("^%-%-[^\n]*\n", ""))() end
+  check(rig ~= nil and #rig.rings == 4 and #rig.rays == 24, "heavy bowgun: the kit's guard rig (4 rings, 24 rays)")
+  weaponMesh = newMesh("Art/Model/Item/it12/00/0000/it1200_0000_0.mesh")
+  weaponGO = newGO("Wp12", 9101, weaponMesh, nil)
+  subGO = newGO("Wp12_Sub", 9102, newMesh("Art/Model/Item/it12/00/0000/it1200_0000_1.mesh"), nil)
+  insectGO, extract, hunterAction = nil, {}, nil
+  frames(20, 1 / 60)
+  comboPick = { slot = "Weapon", name = "HeavyBowgun" }; onDraw()
+  frames(40, 1 / 60)
+  check(weaponMesh.meshPath == "Art/Model/MiquellaLight/HeavyBowgun/wp_miquella_hbg.mesh", "heavy bowgun: model swapped")
+  local J = weaponGO.tf.joints
+  local muzzle = rig.rings[3]
+  check(dissolve("MiquellaGuardRay") < 1e-3 and J["MQ_G2_0"] and J["MQ_G2_0"].lp
+        and math.abs(J["MQ_G2_0"].lp.x - muzzle.r0) < 1e-4, "heavy bowgun: at rest no rays, the rims at the rings' own radius")
+  hunterAction = "app.Wp12Action.cGuardStart"
+  frames(45, 1 / 60)
+  local halo = J["MQ_Halo2"].lp
+  local ray = J["MQ_Ray0"].lp
+  local drop = J["MQ_Phial0"].lp
+  check(dissolve("MiquellaGuardRay") > 0.99 and math.abs(J["MQ_G2_0"].lp.x - muzzle.r1) < 1e-4
+        and math.abs(J["MQ_G2_4"].lp.y - muzzle.r1) < 1e-4,
+        string.format("heavy bowgun: guarding, the muzzle ring widened to %.3f and the rays shown", J["MQ_G2_0"].lp.x))
+  check(halo and math.abs(halo.z - (1.044 + muzzle.dz)) < 0.03, string.format("heavy bowgun: the ring slid back to the guard (z %.3f)", halo.z))
+  check(ray and math.abs(ray.x - rig.rays[1].tip[1]) < 1e-4, "heavy bowgun: the rays drawn out to their tips")
+  check(drop and math.abs(drop.y - rig.drops.MQ_Phial0[2]) < 0.03 and math.abs(drop.z - rig.drops.MQ_Phial0[3]) < 0.03,
+        "heavy bowgun: the drops flew to the rim")
+  hunterAction = nil
+  frames(30, 1 / 60)                       -- within the hold: still open
+  check(dissolve("MiquellaGuardRay") > 0.99, "heavy bowgun: held open a moment after the guard")
+  frames(60, 1 / 60)
+  check(dissolve("MiquellaGuardRay") < 1e-3 and math.abs(J["MQ_G2_0"].lp.x - muzzle.r0) < 1e-4
+        and math.abs(J["MQ_Halo2"].lp.z - 1.044) < 0.03, "heavy bowgun: folded back, the rings on the barrel")
+end
 print("ALL PASS")

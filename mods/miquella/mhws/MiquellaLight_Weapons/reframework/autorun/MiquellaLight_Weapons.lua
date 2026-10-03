@@ -1043,6 +1043,49 @@ local KITS = {
             { name = "MQ_Phial0", pos = { 0.0, 0.0087, 0.1588 } },
             { name = "MQ_Phial1", pos = { 0.0, 0.0087, 0.3148 } },
             { name = "MQ_Phial2", pos = { 0.0, 0.0087, 0.4708 } } } },
+        -- The guard, D the radiant halo (user's pick 2026-10-03): guarding (an action with "Guard"
+        -- in its name, held `hold` s after it, or the menu's test switch), the four rings slide along
+        -- the barrel to the guard's plane and widen on their rim joints, rays of light shoot out of
+        -- the outer one, the three drops fly to the rim (GL.update_guard / GL.apply_guard). Rig from
+        -- build_weapon_kit.py heavy_bowgun (<kit>/wp_miquella_hbg_guard.lua); open / close: seconds.
+        guard = {
+            hold = 0.5, open = 0.3, close = 0.45, rays = "MiquellaGuardRay",
+            center = { 0.0000, -0.1940, 0.4200 },
+            rings = {
+                { halo = "MQ_Halo0", dz = 0.0936, r0 = 0.1301, r1 = 0.0780 },  -- Conduit_Halo_A
+                { halo = "MQ_Halo1", dz = -0.1963, r0 = 0.1222, r1 = 0.1300 },  -- Conduit_Halo_B
+                { halo = "MQ_Halo2", dz = -0.6240, r0 = 0.1367, r1 = 0.2925 },  -- Muzzle_Halo
+                { halo = "MQ_Halo3", dz = -0.5798, r0 = 0.1014, r1 = 0.2470 },  -- Muzzle_Halo_Inner
+            },
+            rim = 16,
+            rayJoints = {
+                { name = "MQ_Ray0", root = { -0.3081, -0.1940, 0.4200 }, tip = { -0.4381, -0.1940, 0.4200 } },
+                { name = "MQ_Ray1", root = { -0.2976, -0.1143, 0.4200 }, tip = { -0.3729, -0.0941, 0.4200 } },
+                { name = "MQ_Ray2", root = { -0.2668, -0.0400, 0.4200 }, tip = { -0.3794, 0.0250, 0.4200 } },
+                { name = "MQ_Ray3", root = { -0.2179, 0.0239, 0.4200 }, tip = { -0.2730, 0.0790, 0.4200 } },
+                { name = "MQ_Ray4", root = { -0.1540, 0.0728, 0.4200 }, tip = { -0.2191, 0.1854, 0.4200 } },
+                { name = "MQ_Ray5", root = { -0.0797, 0.1036, 0.4200 }, tip = { -0.0999, 0.1789, 0.4200 } },
+                { name = "MQ_Ray6", root = { -0.0000, 0.1141, 0.4200 }, tip = { -0.0000, 0.2441, 0.4200 } },
+                { name = "MQ_Ray7", root = { 0.0797, 0.1036, 0.4200 }, tip = { 0.0999, 0.1789, 0.4200 } },
+                { name = "MQ_Ray8", root = { 0.1540, 0.0728, 0.4200 }, tip = { 0.2191, 0.1854, 0.4200 } },
+                { name = "MQ_Ray9", root = { 0.2179, 0.0239, 0.4200 }, tip = { 0.2730, 0.0790, 0.4200 } },
+                { name = "MQ_Ray10", root = { 0.2668, -0.0400, 0.4200 }, tip = { 0.3794, 0.0250, 0.4200 } },
+                { name = "MQ_Ray11", root = { 0.2976, -0.1143, 0.4200 }, tip = { 0.3729, -0.0941, 0.4200 } },
+                { name = "MQ_Ray12", root = { 0.3081, -0.1940, 0.4200 }, tip = { 0.4381, -0.1940, 0.4200 } },
+                { name = "MQ_Ray13", root = { 0.2976, -0.2737, 0.4200 }, tip = { 0.3729, -0.2939, 0.4200 } },
+                { name = "MQ_Ray14", root = { 0.2668, -0.3480, 0.4200 }, tip = { 0.3794, -0.4130, 0.4200 } },
+                { name = "MQ_Ray15", root = { 0.2179, -0.4119, 0.4200 }, tip = { 0.2730, -0.4670, 0.4200 } },
+                { name = "MQ_Ray16", root = { 0.1540, -0.4608, 0.4200 }, tip = { 0.2191, -0.5734, 0.4200 } },
+                { name = "MQ_Ray17", root = { 0.0797, -0.4916, 0.4200 }, tip = { 0.0999, -0.5669, 0.4200 } },
+                { name = "MQ_Ray18", root = { 0.0000, -0.5021, 0.4200 }, tip = { 0.0000, -0.6321, 0.4200 } },
+                { name = "MQ_Ray19", root = { -0.0797, -0.4916, 0.4200 }, tip = { -0.0999, -0.5669, 0.4200 } },
+                { name = "MQ_Ray20", root = { -0.1540, -0.4608, 0.4200 }, tip = { -0.2191, -0.5734, 0.4200 } },
+                { name = "MQ_Ray21", root = { -0.2179, -0.4119, 0.4200 }, tip = { -0.2730, -0.4670, 0.4200 } },
+                { name = "MQ_Ray22", root = { -0.2668, -0.3480, 0.4200 }, tip = { -0.3794, -0.4130, 0.4200 } },
+                { name = "MQ_Ray23", root = { -0.2976, -0.2737, 0.4200 }, tip = { -0.3729, -0.2939, 0.4200 } },
+            },
+            drops = { MQ_Phial0 = { -0.0000, 0.1440, 0.4234 }, MQ_Phial1 = { 0.2927, -0.3630, 0.4234 }, MQ_Phial2 = { -0.2927, -0.3630, 0.4234 } },
+        },
     },
 }
 -- Second-model looks (names with "_Shield" or "_Quiver") go on a weapon's shield or quiver
@@ -1083,6 +1126,8 @@ local config = {
     -- Floating rings (great sword spine, light bowgun beam): on/off and how lively.
     float = true,
     floatStrength = 1.0,
+    -- Hold the heavy bowgun's guard open (to look at it without being hit).
+    guardTest = false,
     -- The bow's charge field counts from 0 (level 1 = 0): set in the menu if the rings light late.
     bowFrom0 = false,
     -- While drawing, the bow's rings move onto the drawn arrow's line (found in the scene).
@@ -2006,6 +2051,94 @@ local function update_gunlance(entry, mesh, h, dt, now)
         .. "  action: " .. (actionNow ~= "" and actionNow or "not readable")
 end
 
+-- The heavy bowgun's guard (kit.guard): its progress follows the guard actions (or the menu's test
+-- switch); the slide leads and the widening follows (attachments.py ring_motion), the rays fade in
+-- with the widening, the gun's light brightens with it.
+function GL.update_guard(entry, mesh, dt, now)
+    local G = entry.kit.guard
+    local guarding = actionNow:find("Guard", 1, true) ~= nil
+    if guarding then
+        entry.guardSeen = now
+        if not entry.wasGuard then gl_event("guard: " .. actionNow) end
+    end
+    entry.wasGuard = guarding
+    local hold = config.guardTest or (entry.guardSeen ~= nil and now - entry.guardSeen < G.hold)
+    entry.guardP = approach(entry.guardP or 0, (hold and isWeaponDrawn) and 1 or 0, dt, G.open, G.close)
+    local p = entry.guardP
+    local function sm(x) x = math.max(0, math.min(1, x)); return x * x * (3 - 2 * x) end
+    entry.guardSlide, entry.guardGrow = sm(p / 0.6), sm((p - 0.35) / 0.65)
+    set_alpha(entry, mesh, G.rays, entry.guardGrow)
+    entry.mul = entry.mul or {}
+    entry.mul.MiquellaGlow = lerp(1.0, 1.8, entry.guardGrow)
+    stateInfo.guard = string.format("%.2f (slide %.2f, widen %.2f)%s  action: %s", p, entry.guardSlide,
+                                    entry.guardGrow, config.guardTest and "  TEST" or "",
+                                    actionNow ~= "" and actionNow or "not readable")
+end
+
+-- A floating ring or drop of the guard (step_floaters): rings slide by their dz, drops fly to the rim.
+function GL.guard_float(entry, s)
+    local G, g = entry.kit.guard, entry.guardSlide
+    for _, r in ipairs(G.rings) do
+        if r.halo == s.name then s.pos = { s.pos[1], s.pos[2], s.pos[3] + r.dz * g } end
+    end
+    local to = G.drops[s.name]
+    if to then s.pos = lerp3(s.pos, to, g) end
+end
+
+-- The guard's rim joints (children of their ring's MQ_Halo bone, at its centre) at the ring's
+-- radius, and the rays' tip joints drawn out from their roots. At rest they are set once.
+function GL.apply_guard(entry)
+    local G = entry.kit.guard
+    if not config.enabled then return end
+    local js = entry.guardJoints
+    if not js or (js.missing and os.clock() >= js.retryAt) then
+        local tf = try(function() return entry.go:call("get_Transform") end)
+        if not tf then return end
+        js = js or { rims = {}, rays = {} }
+        js.missing = false
+        local function find(name)
+            local j = try(function() return tf:call("getJointByName", name) end)
+            if not j then js.missing = true end
+            return j
+        end
+        for ri, r in ipairs(G.rings) do
+            js.rims[ri] = js.rims[ri] or {}
+            for j = 1, G.rim do
+                js.rims[ri][j] = js.rims[ri][j] or find("MQ_G" .. r.halo:match("%d+") .. "_" .. (j - 1))
+            end
+        end
+        for i, ray in ipairs(G.rayJoints) do js.rays[i] = js.rays[i] or find(ray.name) end
+        js.retryAt = os.clock() + 1.0
+        entry.guardJoints = js
+    end
+    local grow = entry.guardGrow or 0
+    if grow <= 0 and js.atRest then return end
+    local found, total = 0, 0
+    for ri, r in ipairs(G.rings) do
+        local rad = lerp(r.r0, r.r1, grow)
+        for j = 1, G.rim do
+            total = total + 1
+            local jt = js.rims[ri][j]
+            if jt then
+                found = found + 1
+                local a = 2 * math.pi * (j - 1) / G.rim
+                try(function() jt:call("set_LocalPosition", Vector3f.new(math.cos(a) * rad, math.sin(a) * rad, 0)) end)
+            end
+        end
+    end
+    for i, ray in ipairs(G.rayJoints) do
+        total = total + 1
+        local jt = js.rays[i]
+        if jt then
+            found = found + 1
+            local q = lerp3(ray.root, ray.tip, grow)
+            try(function() jt:call("set_LocalPosition", Vector3f.new(q[1], q[2], q[3])) end)
+        end
+    end
+    js.atRest = grow <= 0
+    GL.guardInfo = string.format("%d/%d", found, total)
+end
+
 -- Growing with the charge (user, 2026-10-03: the spirals came a level's piece at a time, "abstract";
 -- "a spiral should grow slowly, that is what makes it look good"; the bow opened two flowers at
 -- once). The kit's growing parts are cut into bands by when they appear (MiquellaGrow1..bands). The
@@ -2523,7 +2656,8 @@ local function update_states(chr)
     end
     for _, entry in pairs(swapped) do
         if entry.kit.charge or entry.kit.gauge or entry.kit.bow or entry.kit.extracts or entry.kit.gunlance
-            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts or entry.kit.timing or entry.kit.grow then
+            or entry.kit.mode or entry.kit.gauges or entry.kit.boosts or entry.kit.timing or entry.kit.grow
+            or entry.kit.guard then
             local mesh = component(entry.go, MESH)
             h = h or try(function() return chr:call("get_WeaponHandling") end)
             if mesh then
@@ -2536,6 +2670,7 @@ local function update_states(chr)
                 if entry.kit.mode then update_mode(entry, mesh, h, dt) end
                 if entry.kit.gauges or entry.kit.boosts then update_gauges(entry, mesh, h, dt) end
                 if entry.kit.timing then update_timing(entry, mesh, h, dt, now) end
+                if entry.kit.guard then GL.update_guard(entry, mesh, dt, now) end
                 apply_tuning(entry, mesh)
             end
         end
@@ -2710,6 +2845,7 @@ end
 -- which work without it.
 local function rings_active(entry)
     return config.enabled and (config.float or entry.kit.bow ~= nil or entry.kit.gunlance ~= nil or entry.kit.timing ~= nil
+                               or entry.kit.guard ~= nil
                                or (entry.kit.floaters and (entry.kit.floaters.orbit or entry.kit.floaters.flap
                                                            or entry.kit.floaters.spin)) ~= nil)
 end
@@ -2927,6 +3063,7 @@ local function step_floaters()
                         if s.slide then s.pos[3] = s.pos[3] + (entry.slide or 0) end
                         if blend > 0.001 then ring_on_arrow(s, entry.arrowLine, blend) end
                     end
+                    if entry.kit.guard and (entry.guardSlide or 0) > 0 then GL.guard_float(entry, s) end
                 end
             end
         end
@@ -3035,7 +3172,10 @@ end
 
 local function apply_floaters(phase)
     floatInfo.phases[phase] = true
-    for _, entry in pairs(swapped) do apply_morph(entry); apply_lily(entry) end
+    for _, entry in pairs(swapped) do
+        apply_morph(entry); apply_lily(entry)
+        if entry.kit.guard then GL.apply_guard(entry) end
+    end
     -- Growth chains: the front's bone in every pass, a bone back at rest once.
     for _, entry in pairs(swapped) do
         local gj = config.enabled and entry.growJoints
@@ -3193,6 +3333,12 @@ re.on_draw_ui(function()
             end
         end
         if entry.kit.timing and stateInfo.timing then imgui.text("Perfect Rush: " .. stateInfo.timing) end
+        if entry.kit.guard then
+            local cg
+            cg, config.guardTest = imgui.checkbox("Hold the guard open (test)", config.guardTest)
+            changed = changed or cg
+            imgui.text("Guard: " .. (stateInfo.guard or "-") .. "  joints found: " .. (GL.guardInfo or "-"))
+        end
         if stateInfo.gauges and stateInfo.gauges[entry.kit] then imgui.text("Gauges: " .. stateInfo.gauges[entry.kit]) end
         if entry.kit.mode and stateInfo.mode then
             imgui.text("Mode: " .. stateInfo.mode)

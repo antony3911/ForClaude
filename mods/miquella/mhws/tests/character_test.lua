@@ -254,6 +254,9 @@ else
   check(dumps["MiquellaLight/robe_debug.json"] and dumps["MiquellaLight/robe_debug.json"].chainSet == true,
     "robe: status written for Claude")
   check(menu():find("Robe, plain", 1, true) ~= nil, "robe: status in the menu")
+  comboAnswer["Outfit"] = 3; menu(); frames(2, 1 / 60)
+  check(rmesh.meshRes.path == "Art/Model/MiquellaLight/Character/mq_robe_lines_c" .. SFX .. ".mesh"
+    and count("MiquellaLight_Robe") == 1 and bmesh.enabled[3] == false, "robe with body lines: same object, other model")
   comboAnswer["Outfit"] = 1; menu(); frames(2, 1 / 60)
   check(robe.drawSelf == false and bmesh.enabled[1] == true and bmesh.enabled[3] == true and bmesh.enabled[4] == true,
     "robe off: hidden, the body whole again")

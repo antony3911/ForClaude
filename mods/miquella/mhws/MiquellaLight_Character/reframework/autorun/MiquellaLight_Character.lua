@@ -47,6 +47,7 @@ local PIECES = {
 local OUTFITS = {
     { name = "None" },
     { name = "Robe, plain", fit = "smooth", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
+    { name = "Robe, body lines", fit = "lines", covers = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" } },
 }
 local OUTFIT_NAMES = {}
 for i, o in ipairs(OUTFITS) do OUTFIT_NAMES[i] = o.name end

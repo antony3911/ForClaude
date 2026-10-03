@@ -92,9 +92,9 @@ def heavy_bowgun():
 # Prototype axes: muzzle +Y, up +Z. The drum hangs under the receiver in front of the grip,
 # its faces to the sides (axis X).
 
-DRUM_C = V(0, 0.035, -0.112)
-DRUM_R = 0.058
-DRUM_W = 0.021
+DRUM_C = V(0, 0.035, -0.12)
+DRUM_R = 0.064
+DRUM_W = 0.023
 NECK_TOP = V(0, 0.035, -0.02)
 
 
@@ -275,19 +275,19 @@ def mag_b(mats, rng):
     length = 0.19
     objs = []
     for k in range(8):
-        objs += gd.capsule(f"B_Disc_{k}", top + axis * (0.016 + 0.021 * k), 0.022 - 0.0008 * k, 0.0085, axis,
+        objs += gd.capsule(f"B_Disc_{k}", top + axis * (0.016 + 0.021 * k), 0.027 - 0.0009 * k, 0.011, axis,
                            mats["phial_lit"])
     u0, v0, _ = m.basis(axis)
     for j in range(3):
         pts, radii = [], []
         for i in range(120):
             t = i / 119
-            r = 0.031 * (1 - smoothstep((t - 0.78) / 0.22) * 0.97)
-            a = 2 * PI * j / 3 + 2 * PI * 1.1 * t
+            r = 0.036 * (1 - smoothstep((t - 0.78) / 0.22) * 0.97)
+            a = 2 * PI * j / 3 + 2 * PI * 0.75 * t
             pts.append(top + axis * (length * t) + (u0 * math.cos(a) + v0 * math.sin(a)) * r)
             radii.append(1.0 - 0.6 * t)
-        objs += m.rope(f"B_Strand_{j}", pts, 0.0058, mats, strands=2, gold=(j == 0), taper=0.5, merge=0.999)
-    for k, (t, r) in enumerate(((0.0, 0.036), (0.78, 0.03))):
+        objs += m.rope(f"B_Strand_{j}", pts, 0.0046, mats, strands=2, gold=(j == 0), taper=0.5, merge=0.999)
+    for k, (t, r) in enumerate(((0.0, 0.041), (0.78, 0.034))):
         objs += m.halo(f"B_Collar_{k}", top + axis * (length * t), r, 0.0028, axis, mats["light"],
                        tilt_deg=6 * (-1) ** k, tilt_axis=(1, 0, 0))
     objs += m.droplet("B_Point", top + axis * (length + 0.012), 0.0085, axis, mats["phial_lit"], stretch=1.8)
@@ -415,19 +415,56 @@ def shield_a(mats, rng, open_):
 
 
 def shield_b(mats, rng, open_):
-    """Wings: two ivory wings (the gunlance's winged proposal) folded back along the barrel;
-    guarding, they sweep out across the front, primaries of light, drops at their tips."""
+    """Wings: two ivory wings folded back along the sides of the barrel; guarding, they swing
+    out across the front and fan their feathers of light up and down into a round guard,
+    a light drop at the tip of every other feather."""
     objs = shield_collar(mats)
-    built = []
     for s in (-1, 1):
-        built += gd.wing(s, mats, open_)
-    root = m.group("B_Wings", built)
-    root.rotation_euler = (-PI / 2, 0, 0)
-    root.scale = (0.62, 0.62, 0.62)
-    root.location = AX + V(0, -gd.D_ROOT * 0.62, 0) + V(0, 0.02 if open_ else 0.0, 0)
-    objs += [root] + st.descendants(root)
-    objs += m.droplet("B_Heart", AX + V(0, 0.03, 0), 0.012, (0, 1, 0), mats["phial_lit"], stretch=1.2)
-    objs += m.halo("B_Heart_Halo", AX + V(0, 0.035, 0), 0.03, 0.0026, (0, 1, 0), mats["light"])
+        side = "L" if s < 0 else "R"
+        if open_:
+            ctrl = [AX + V(s * 0.05, 0.012, 0.0), AX + V(s * 0.09, 0.02, 0.028), AX + V(s * 0.13, 0.026, 0.026),
+                    AX + V(s * 0.16, 0.03, 0.0)]
+        else:
+            ctrl = [AX + V(s * 0.05, 0.0, 0.0), AX + V(s * 0.064, -0.05, 0.014), AX + V(s * 0.068, -0.1, 0.014),
+                    AX + V(s * 0.066, -0.15, 0.004)]
+        arm = gd.smooth_path(ctrl, 50)
+        objs.append(c.curve_tube(f"B_Arm_{side}", arm, [1 - 0.5 * i / 49 for i in range(50)], mats["ivory"],
+                                 bevel=0.0075, resolution=3))
+        objs += m.wound_cord(f"B_Arm_Vine_{side}", arm, 0.0083, 3.0, 0.0013, mats, strand_mat="light", taper=0.5)
+        n = 7
+        for i in range(n):
+            f = i / (n - 1)
+            p0 = arm[int((0.3 + 0.7 * (1 - abs(2 * f - 1))) * 49)]
+            length = 0.11 + 0.08 * math.sin(PI * f) ** 0.6
+            if open_:
+                th = math.radians(78 - 156 * f)         # fanned from straight up to straight down
+                d = V(s * math.cos(th), 0.1, math.sin(th)).normalized()
+                normal = V(0, 1, 0)
+                bow = V(0, 0.012, 0)
+            else:
+                d = V(s * 0.08, -1, 0.05 * (f - 0.5)).normalized()
+                normal = V(s, 0, 0)
+                bow = V(s * 0.006, 0, 0)
+                p0 = p0 + V(s * 0.003 * i, 0, 0)
+            path = [p0, p0 + d * (0.5 * length) + bow, p0 + d * length]
+            width = 0.036
+
+            def w(t, width=width):
+                return width * math.sin(PI * min(t / 0.985, 1) ** 0.5) ** 0.75
+
+            name = f"B_Feather_{side}_{i}"
+            objs += m.path_blade(name, path, normal, w, lambda t: 0.004 * (1 - 0.7 * t), mats["blade"])
+            rach = gd.smooth_path(path, 30)
+            objs += gd.tube(name + "_Rachis", rach[:27], mats["core"], 0.0014, (1.0, 0.3))
+            if open_ and i % 2 == 0:
+                objs += m.floating_phials(f"B_Drop_{side}_{i}", [path[-1] + d * 0.02], d, (0, 1, 0), mats,
+                                          size=0.0085)
+        for j in range(9):               # ivory coverts along the arm
+            p = arm[int((0.15 + 0.09 * j) * 49)]
+            d = (V(0, 0.02, 1) if open_ else V(0, -1, 0.15)).normalized()
+            objs += m.droplet(f"B_Covert_{side}_{j}", p + d * 0.006, 0.0075, d, mats["ivory"], stretch=1.8)
+    objs += m.droplet("B_Heart", AX + V(0, 0.03, 0.06), 0.011, (0, 1, 0), mats["phial_lit"], stretch=1.2)
+    objs += m.halo("B_Heart_Halo", AX + V(0, 0.036, 0.06), 0.02, 0.0022, (0, 1, 0), mats["light"])
     return objs
 
 
@@ -541,9 +578,9 @@ def tracer_b(mats, rng, charged):
         a = math.radians(open_deg)
         out = radial * math.sin(a) + V(0, 0, 1) * math.cos(a)
         base = radial * 0.012 + V(0, 0, 0.002)
-        path = [base + out * (0.07 * f) + V(0, 0, 0.012 * math.sin(PI * f)) for f in (0, 0.25, 0.5, 0.75, 1.0)]
+        path = [base + out * (0.09 * f) + V(0, 0, 0.014 * math.sin(PI * f)) for f in (0, 0.25, 0.5, 0.75, 1.0)]
         petal, rims, mid = gd.sheet(f"B_Petal_{k}", path, circ,
-                                    lambda t: 0.045 * math.sin(PI * min(t / 0.98, 1) ** 0.7) ** 0.7,
+                                    lambda t: 0.055 * math.sin(PI * min(t / 0.98, 1) ** 0.7) ** 0.7,
                                     mats["ivory"], cup=0.15, thick=0.002, samples=40)
         objs += petal
         for e, rim in enumerate(rims):
@@ -585,12 +622,12 @@ def tracer_d(mats, rng, charged):
     hit grows them; charged, they reach out and buds of light swell at their ends."""
     plane = surface_plane()
     objs = []
-    reach = 0.12 if charged else 0.07
+    reach = 0.17 if charged else 0.1
     for k in range(6):
         heading = 60 * k + rng.uniform(-12, 12)
         o = (0.01 * math.cos(math.radians(heading)), 0.01 * math.sin(math.radians(heading)))
         turns = 1.3 * (1 if k % 2 else -1)
-        objs += m.tendril(f"D_Vine_{k}", plane, o, heading, reach * rng.uniform(0.85, 1.15), turns, 0.0032, mats,
+        objs += m.tendril(f"D_Vine_{k}", plane, o, heading, reach * rng.uniform(0.85, 1.15), turns, 0.0042, mats,
                           strands=2, gold=False, strand_mat="light", curl_start=0.55,
                           offshoots=[(0.35, 1 if k % 2 else -1, 0.45, -turns * 0.8)])
         if charged:
@@ -725,22 +762,24 @@ def build_scene(key, state):
         mats = materials()
         builder(mats, rng)
         if state == "mounted":
-            return (0, 0.04, -0.03), 1.15, 62, 6, (640, 480)
-        return tuple(DRUM_C + V(0, 0, 0.012)), 0.34, 66, 10, (640, 480)
+            return (0, 0.06, -0.03), 1.1, 74, 4, (640, 480)
+        return tuple(DRUM_C + V(0, 0, 0.004)), 0.4, 68, 8, (640, 480)
     if ITEM == "hbg_mag":
         heavy_bowgun()
         mats = materials()
         builder(mats, rng)
         if state == "mounted":
-            return (0, 0.12, -0.06), 1.75, 62, 4, (640, 480)
-        return tuple(MAG_TOP + V(0, 0.045, -0.1)), 0.55, 62, 6, (640, 480)
+            return (0, 0.16, -0.06), 1.6, 72, 4, (640, 480)
+        return tuple(MAG_TOP + V(0, 0.05, -0.115)), 0.62, 66, 6, (640, 480)
     if ITEM == "hbg_shield":
         heavy_bowgun()
         mats = materials()
         if state == "open":
             charge_up(mats)
         builder(mats, rng, state == "open")
-        return (0, 0.2, 0.0), 1.95, 128, 12, (640, 520)
+        if state == "open":
+            return (0, 0.3, 0.03), 1.55, 142, 12, (640, 520)
+        return (0, 0.32, 0.03), 1.3, 104, 16, (640, 520)
     if ITEM == "tracer":
         c.reset_scene()
         mats = materials()
@@ -749,7 +788,7 @@ def build_scene(key, state):
         devices.hide_block()
         tracer_arrow(mats)
         builder(mats, rng, state == "charged")
-        return (0.0, 0.0, 0.08), 0.78, 8, 24, (640, 520)
+        return (0.0, 0.0, 0.07), 0.62, 8, 26, (640, 520)
     if ITEM == "piercer":
         c.reset_scene()
         mats = materials()
@@ -758,16 +797,17 @@ def build_scene(key, state):
             return (0, 0, 0.12), 0.36, 12, 10, (640, 400)
         charge_up(mats)
         devices.hide_block()
-        d = V(0.45, -0.1, 1).normalized()
-        builder(mats, 0.16, d * 0.12, d, "Round")
+        d = V(0.55, -0.1, 1).normalized()
+        builder(mats, 0.16, d * 0.22, d, "Round")
         glow = c.make_material("Crack_Light", c.PALETTE["glow"], roughness=0.2, emission=c.PALETTE["glow"],
                                strength=6.0)
         devices.gold_cracks("Exit_Crack", V(0, 0, 0.001), 8, 0.06, glow, seed=5)
         devices.wound_glow("Exit_Glow", V(0, 0, 0.0012), 0.05, strength=1.6)
-        m.halo("Exit_Ring", V(0, 0, 0.004), 0.07, 0.0025, (0, 0, 1), mats["light"])
-        m.halo("Exit_Ring_2", d * 0.06, 0.05, 0.002, d, mats["light"])
-        pf.burst_strands("Exit_Burst", V(0, 0, 0.01), 0.05, count=120, strength=1.4, seed=11, lift=1.6)
-        return (0.03, -0.01, 0.07), 0.62, 14, 16, (640, 400)
+        m.halo("Exit_Ring", V(0, 0, 0.004), 0.06, 0.0025, (0, 0, 1), mats["light"])
+        for k in range(2):               # rings left in its wake as it breaks out
+            m.halo(f"Exit_Wake_{k}", d * (0.012 + 0.022 * k), 0.034 - 0.008 * k, 0.0018, d, mats["light"])
+        pf.burst_strands("Exit_Burst", V(0, 0, 0.004), 0.03, count=40, strength=0.9, seed=11, lift=0.5)
+        return (0.07, -0.01, 0.1), 0.6, 14, 14, (640, 400)
     raise SystemExit(f"unknown item {ITEM}")
 
 

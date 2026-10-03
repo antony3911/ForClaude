@@ -1,0 +1,186 @@
+"""Bowgun grip options (user, 2026-10-03: the hunter never takes hold of the light / heavy
+bowguns' grips -> "make it look right without being held; give me some options").
+
+The woven pistol grip under the receiver reads as a handle, so an empty hand next to it looks
+wrong. Each option replaces it with something that is plainly not a handle:
+
+  O  now: the woven pistol grip, raked back (for comparison)
+  A  scroll pendant: an ivory cord with a gold thread drops from under the receiver and rolls
+     back into a volute, a smaller side branch curling the other way
+  B  light drop: no handle; a short ivory stem under the receiver ends in a small halo holding
+     a lit drop that floats below it (the floating-drop motif)
+  C  gold filigree: no grip at all; two thin gold-wire scrolls of different sizes hug the
+     underside of the receiver, a small drop of light between them
+  D  braid pendant: a short three-strand braid (Miquella's braids) hangs from under the
+     receiver, swaying back, a gold band and a drop of light at its end
+
+Prototype axes: +Y muzzle, +Z up (the grip ran from (0, -0.08, -0.03) down to (0, -0.15, -0.17)).
+Renders the heavy and light bowgun from the side and from behind over the shoulder (the
+player's view), the options side by side; only our model.
+
+Usage: python grip_options.py <out_dir> [test] [O A B C D]
+"""
+import math
+import os
+import random
+import sys
+
+OUT = sys.argv[1] if len(sys.argv) > 1 else "out/grip"
+FLAGS = sys.argv[2:]
+TEST = "test" in FLAGS
+PICK = [f for f in FLAGS if f in ("O", "A", "B", "C", "D")] or ["O", "A", "B", "C", "D"]
+
+import bpy                               # noqa: E402
+
+sys.path.insert(0, os.path.dirname(__file__))
+sys.argv = [sys.argv[0], OUT]
+import common as c                       # noqa: E402
+import motifs as m                       # noqa: E402
+from motifs import V                     # noqa: E402
+import bowgun as hb                      # noqa: E402
+
+PI = math.pi
+NAMES = {"O": "現在（編織握把）", "A": "A 卷草垂飾", "B": "B 光滴垂飾", "C": "C 金絲卷草（無握把）", "D": "D 編髮垂飾"}
+TOP = V(0, -0.08, -0.03)                 # where the grip met the receiver
+_KEYS = ("STOCK_END", "WRIST", "RECEIVER_END", "MUZZLE", "CONDUIT_R", "CONDUIT_Z")
+HBG = {k: getattr(hb, k) for k in _KEYS}
+HBG["section"], HBG["branch"] = hb.body_section, hb.branch_center
+ORIGINAL_GRIP = hb.pistol_grip
+import light_bowgun as lb                # noqa: E402  (sets the bowgun module to its slim frame)
+LBG = {k: getattr(hb, k) for k in _KEYS}
+LBG["section"], LBG["branch"] = hb.body_section, hb.branch_center
+
+
+def use(frame):
+    for k in _KEYS:
+        setattr(hb, k, frame[k])
+    hb.body_section, hb.branch_center = frame["section"], frame["branch"]
+
+
+def materials(ivory):
+    """The prototype's own ivory and light (made before the grip in hb.build), a lit drop."""
+    light = bpy.data.materials.get("Light")
+    lit = bpy.data.materials.get("Phial_Lit") or c.make_material(
+        "Phial_Lit", c.PALETTE["glow"], roughness=0.1, emission=c.PALETTE["glow"], strength=3.0)
+    return {"ivory": ivory, "light": light, "phial_lit": lit}
+
+
+def under(body_top=None):
+    """The receiver's underside just above the old grip's top (the body's lowest point there)."""
+    ctr, _, rz = hb.body_section(TOP.y)
+    return V(0, TOP.y, ctr.z - rz * 0.8) if body_top is None else body_top
+
+
+def scroll_pendant(k, mats):
+    root = under()
+    side = m.plane_mapper(root, (0, 0, -1), (0, -1, 0))        # 2D x: down, y: back
+    objs = m.tendril("GA_Scroll", side, (0, 0), 14, 0.17 * k, 1.35, 0.012 * k, mats,
+                     offshoots=((0.4, -1, 0.42, -1.3),))
+    objs += m.halo("GA_Band", root + V(0, 0, -0.012 * k), 0.012 * k, 0.0022 * k, (0, 0, 1), mats["light"])
+    return objs
+
+
+def light_drop(k, mats):
+    root = under()
+    tip = root + V(0, -0.012, -0.05) * k
+    objs = [c.curve_tube("GB_Stem", [root + V(0, 0, 0.01), root + V(0, -0.004, -0.025) * k, tip],
+                         [1.0, 0.8, 0.5], mats["ivory"], bevel=0.0065 * k, resolution=3)]
+    drop = tip + V(0, -0.006, -0.05) * k
+    objs += m.halo("GB_Halo", drop + V(0, 0, 0.004 * k), 0.022 * k, 0.0024 * k, (0, 1, 0.25), mats["light"])
+    objs += m.droplet("GB_Drop", drop, 0.014 * k, (0, 0, -1), mats["phial_lit"], stretch=1.6)
+    for s in (-1, 1):
+        cur = m.plane_mapper(root + V(s * 0.006 * k, 0, -0.004), (0, 0, -1), (0, -s, 0))
+        objs += m.tendril(f"GB_Curl_{s}", cur, (0, 0), 50, 0.04 * k, 1.5, 0.0035 * k, mats, strands=2,
+                          strand_mat="light", gold=False)
+    return objs
+
+
+def gold_filigree(k, mats):
+    root = under()
+    objs = []
+    for s, (length, turns) in ((1, (0.09, 1.4)), (-1, (0.065, 1.6))):
+        plane = m.plane_mapper(root + V(0, s * 0.012 * k, -0.002), (0, s, 0), (0, 0, -1))   # along the belly
+        objs += m.tendril(f"GC_Wire_{s}", plane, (0, 0), 12, length * k, -turns, 0.0042 * k, mats, strands=2,
+                          strand_mat="light", gold=False, offshoots=((0.45, 1, 0.4, turns * 0.9),))
+    objs += m.droplet("GC_Drop", root + V(0, 0, -0.012 * k), 0.008 * k, (0, 0, -1), mats["phial_lit"], stretch=1.4)
+    return objs
+
+
+def braid_pendant(k, mats):
+    root = under()
+    pts = [root + V(0, 0, 0.01), root + V(0, -0.012, -0.05) * k, root + V(0, -0.04, -0.1) * k,
+           root + V(0, -0.075, -0.135) * k]
+    center = m.resample(m.catmull(pts, 120), 100)
+    objs = m.rope("GD_Braid", center, 0.011 * k, mats, strands=3, gold=True, taper=0.45, merge=0.97)
+    tan = (center[-6] - center[-12]).normalized()
+    objs += m.halo("GD_Band", center[-10], 0.0085 * k, 0.0019 * k, tan, mats["light"])
+    objs += m.droplet("GD_Drop", center[-1] + tan * 0.01 * k, 0.0095 * k, tan, mats["phial_lit"], stretch=1.5)
+    return objs
+
+
+OPTIONS = {"A": scroll_pendant, "B": light_drop, "C": gold_filigree, "D": braid_pendant}
+SIZE = {"A": 1.7, "B": 1.5, "C": 1.9, "D": 1.35}        # each option about the old grip's size
+
+
+def build(gun, opt):
+    use(HBG if gun == "hbg" else LBG)
+    k = 1.0 if gun == "hbg" else 0.85
+    if opt == "O":
+        hb.pistol_grip = ORIGINAL_GRIP
+    else:
+        hb.pistol_grip = lambda material, rng: OPTIONS[opt](k * SIZE[opt], materials(material))
+    if gun == "hbg":
+        _, glow = hb.build()
+    else:
+        _, glow, _ = lb.build()
+    c.set_emission_strength(glow, 2.5)
+    for name in ("Phial_Lit",):
+        if bpy.data.materials.get(name):
+            c.set_emission_strength(bpy.data.materials[name], 4.0)
+
+
+def main():
+    os.makedirs(OUT, exist_ok=True)
+    res = (420, 300) if TEST else (760, 520)
+    tiles = {}
+    for gun in ("hbg", "lbg"):
+        for opt in PICK:
+            build(gun, opt)
+            c.setup_render(samples=8 if TEST else 28, res=res, world_hex="#0E0E12", world_strength=0.3, glare=True)
+            c.add_light("key", "AREA", (1.0, -0.6, 1.0), 120, size=1.0, target=(0, -0.1, -0.05))
+            c.add_light("fill", "AREA", (-1.0, 0.2, 0.4), 40, size=1.0, target=(0, -0.1, -0.05))
+            c.add_light("rim", "AREA", (0.0, 1.4, 0.9), 70, size=0.8, target=(0, -0.1, -0.05))
+            dist = 1.35 if gun == "hbg" else 1.1
+            paths = c.render_views(OUT, f"{gun}_{opt}", (0, -0.02, -0.07), dist,
+                                   [("side", 90, 4), ("back", 28, 12)], lens=50)
+            tiles[(gun, opt)] = paths
+    from PIL import Image, ImageDraw, ImageFont
+    font = None
+    for f in (os.environ.get("MIQUELLA_FONT"), "C:/Windows/Fonts/msjh.ttc", "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"):
+        if f and os.path.exists(f):
+            font = ImageFont.truetype(f, 26 if not TEST else 16)
+            break
+    W, H = res
+    head = 96 if not TEST else 60
+    rows = [("hbg", 0, "重弩・側面"), ("hbg", 1, "重弩・背後（玩家視角）"), ("lbg", 0, "輕弩・側面"),
+            ("lbg", 1, "輕弩・背後（玩家視角）")]
+    sheet = Image.new("RGB", (W * len(PICK), head + H * len(rows)), (20, 20, 24))
+    d = ImageDraw.Draw(sheet)
+    d.text((14, 8), "輕弩、重弩握把：人物不會去握，換成不像把手的東西", fill=(240, 210, 140), font=font)
+    for ci, opt in enumerate(PICK):
+        d.text((ci * W + 14, head - (40 if not TEST else 24)), NAMES[opt], fill=(255, 225, 150), font=font)
+        for ri, (gun, vi, label) in enumerate(rows):
+            sheet.paste(Image.open(tiles[(gun, opt)][vi]), (ci * W, head + ri * H))
+            if ci == 0:
+                d.text((10, head + ri * H + 8), label, fill=(200, 200, 200), font=font)
+    out = os.path.join(OUT, "grip_options.png")
+    sheet.save(out)
+    print("WROTE", out, flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    finally:
+        sys.stdout.flush()
+        os._exit(0)

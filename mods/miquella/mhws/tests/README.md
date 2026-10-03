@@ -8,6 +8,8 @@
 lua5.4 weapons_test.lua ../MiquellaLight_Weapons/reframework/autorun/MiquellaLight_Weapons.lua
 lua5.4 weapons_test.lua ../MiquellaLight_Weapons/reframework/autorun/MiquellaLight_Weapons.lua missing
 lua5.4 scout_test.lua ../MiquellaLight_Scout/reframework/autorun/MiquellaLight_Scout.lua
+lua5.4 character_test.lua ../MiquellaLight_Character/reframework/autorun/MiquellaLight_Character.lua [female|nojoint|nocreate|missing]
+lua5.4 face_test.lua ../MiquellaLight_Face/reframework/autorun/MiquellaLight_Face.lua
 ```
 
 換裝腳本測了：選武器 → 換模型／材質／擺動物理 → 收刀隱藏、拔刀出現 → 遊戲自己換回原版時再換一次 → 同一個物件換成別把武器時不動它 → 取消後還原模型、材質、擺動物理 → 模型檔不存在時顯示錯誤、不隱藏原版武器。

@@ -126,7 +126,7 @@
 
 **目的**：在設計之前，先用數據回答「時間和記憶體到底花在哪」，就像 LightNobel 的 Fig. 3～5。這一步不依賴 FPGA 平台。
 
-**建議做法**（還沒開始做，要先和教授確認範圍）：
+**原本的建議做法**（範圍已在下面定案）：
 
 1. **時間分布**：用 PyTorch profiler（有 GPU 時加 Nsight）跑 HF ESMFold（`facebook/esmfold_v1`），測多個長度（例如 L = 100、300、500、1000……），記錄每種運算（TriMul out／in、TriAttn start／end、seq attention、transition 等）的時間佔比。
 2. **記憶體**：記錄峰值記憶體，以及各中間張量的大小（也可以用形狀公式計算後對照）。
@@ -134,7 +134,25 @@
 4. **資料特性**：沿用 `python/dump_trimul_inputs.py`，它已經能輸出 outlier 統計、`paper_group_C_check`、`rel_l2_grid`（INT8／INT4 × token／channel／tensor）。
 5. **隨 L 的變化**：以上每一項對 L 作圖。
 
-**要先問教授的：** 量整個 ESMFold、只量 Folding Block，還是只量 TriMul？指標要時間、記憶體、數值分布，還是全部？
+**範圍（2026-10-04 與使用者討論後）：** 教授也不確定範圍。使用者的目標是「推導出整個工作流程裡哪裡最值得優化」。決定的做法分三層：
+1. **公式**：每個運算的 FLOPs、bytes、中間張量大小，對所有 L 計算（與平台無關）。
+2. **筆電實測**：短～中長度，量 GPU kernel 時間（profiler，不用 wall-clock）與峰值記憶體；chunk 開、關都量（關 = 對照論文 Fig. 3）。用來**驗證第 1 層的 roofline 模型**，不直接當結論。
+3. **長序列**：引用論文 Fig. 3 ＋ 用模型外推；之後可以申請外部 4 × A100 server 實測。
+
+**為什麼筆電的時間佔比不能直接當結論**（已向使用者解釋）：受算力限制和受頻寬限制的運算，換硬體後的加速倍數不同（H100 對筆電 4070：算力約 3 倍、頻寬約 13 倍），chunk 和 CPU 負載也不是等比影響。記憶體數字和隨 L 的趨勢則與硬體無關。
+
+**環境（2026-10-04 已建好）：**
+- 使用者的筆電：**RTX 4070 Laptop 8 GB ＋ 16 GB RAM**（之前寫的「沒有 GPU」是指學校 server）。
+- git worktree：`C:\Users\anton\ForClaude-lightnobel`（mod 專案的 session 在 `ForClaude` 用另一個分支，**不要在那邊切分支**）。
+- venv：`C:\Users\anton\venvs\lightnobel`（torch 2.11＋cu128、transformers 5.18）。模型在 HF cache（8.44 GB）。
+- 下載要設 `HF_HUB_DISABLE_XET=1`（Xet 下載曾卡在 0 bytes）。
+- `python/smoke_esmfold.py`：ESM-2 放 CPU（FP16，檔案本來就是 FP16），trunk 等放 GPU 並從原檔填回 FP32 權重。直接在 CPU 上做 `.float()` 會 access violation。
+- 實測 L = 100（隨機序列）：參數 ESM-2 2.83 B／其他 0.69 B；GPU 權重 2.77 GB、峰值 2.86 GB；ESM-2（CPU）26.9 s、trunk＋structure 約 5.6 s。當時另一個 session 在裝套件，**時間不能用**，只證明跑得動。
+- 另一個 session 會用同一張 GPU 跑繪圖工具：量測前先看 `nvidia-smi`，電腦閒的時候再量。
+
+**下一步：** 寫量測程式（各運算 GPU 時間＋峰值記憶體，L 由 100 往上到 OOM）與形狀公式。使用者說要等繪圖工具裝完、調高 effort 再寫。
+
+**還要確認：** 實驗室投影片的 TODO 寫的是 gem5 ＋ Ramulator ＋ Garnet/Noxim。10/17 要的「architectural simulation」可能是指這套，跟我們的 HLS ＋ 分析模型路線不同，要找機會問教授。
 
 **可能的結果與意義：**
 - 在關心的長度範圍內，如果 TriMul 的佔比夠高 → 選題有數據支撐。

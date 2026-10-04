@@ -466,7 +466,7 @@ FLANGE_HEIGHT = (0.006, 0.006, 0.006)   # m above the rim: front, sides, back
 FLANGE_TALL = ((0.1, 0.2, 0.35, 0.5, 0.7, 0.85, 1.0), (0.036, 0.045, 0.006))
 if os.environ.get("MIQUELLA_FLANGE") == "tall":
     FLANGE, FLANGE_HEIGHT = FLANGE_TALL
-FLANGE_LIFT = 0.0003               # m off the face's surface
+FLANGE_LIFT = 0.0006               # m off the face's surface (0.3 mm: the face poked through between columns, up to 0.16 mm)
 # The face's rim turns sharply at the corners of its V (front to sides): our tube's top folds
 # there (up to 85 degrees between faces, the "V" crease the user saw on 2026-10-03, and a line in
 # game). Smoothing the shape there pulled the tube off the rim's normals (a line at the rim), so

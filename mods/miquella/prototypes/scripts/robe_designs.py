@@ -65,6 +65,11 @@ FITS = {"lines": (40, 3), "smooth": (60, 4), "drape": (60, 4), "cinch": (60, 4)}
 BLOUSE = 0.008        # m: how far the cinched cloth puffs out between the chest and the sash
 SASH_LOOSE = (0.835, 0.915, 0.885)   # m: a loose sash on the drape, front (dipping) / side (on the hips) / back
 SMOOTH_GAP = 0.0015   # m: "smooth" / "drape" cloth pushed out only to here
+# "smooth" in game (2026-10-04): the crotch and one side of the chest still showed through ("no
+# lines" should show none): pushing the cloth back out of the body copies its bumps back. After
+# that, smoothing that only ever moves the cloth out (never in) so it spans the hollows like
+# stretched cloth: the groin's V, the dips round the chest.
+INFLATE = {"smooth": 400}
 DRAPE_TOP = (1.31, 1.27, 1.34)   # m: where the cloth leaves the body, front (chest) / side (armpit) / back (shoulder blades)
 DRAPE_X = 0.22        # m: the drape cut only on the torso (the arms hang beyond this)
 DRAPE_SOFT = 0.08     # m: profile smoothing (the cloth's stiffness) over the buttocks
@@ -74,6 +79,9 @@ CUFF_T = 0.96         # along forearm -> wrist joint, where the sleeve ends
 # m: the skirt hangs from here, front / side / back: fitted over the hips above (the crotch is at ~0.83;
 # low in front so the groin lines show, at the widest of the hips at the sides and the buttocks behind)
 SKIRT_TOP = (0.86, 0.90, 0.88)
+# "smooth" ("no lines"): the skirt from above the groin in front, so the crotch is under hanging
+# cloth, not under the fitted part (its V showed in game, 2026-10-04)
+SKIRT_TOP_SMOOTH = (0.93, 0.92, 0.88)
 HEM_Z = 0.095         # m: hem at the ankles
 HEM_R = (0.43, 0.35)  # m: hem half-widths (x, y) before the folds
 BELL = 1.0            # share of the extra width (beyond the straight line that clears the legs) put in as a bell
@@ -348,7 +356,8 @@ class Fit:
                 and self.s_cuff("R", co) < -margin and self.s_skirt(co) < -margin)
 
     def build(self, fit):
-        self.top = DRAPE_TOP if fit in ("drape", "cinch") else SKIRT_TOP
+        self.top = (DRAPE_TOP if fit in ("drape", "cinch") else SKIRT_TOP_SMOOTH if fit == "smooth"
+                    else SKIRT_TOP)
         self.style = fit
         # "lines" is made as the user saw it first: from the body itself; the others from the copy
         # with the nipples and navel flattened
@@ -366,6 +375,7 @@ class Fit:
         for v in bm.verts:
             v.co += v.normal * GAP
         steps, rounds = FITS[fit]
+        inflate_passes = INFLATE.get(fit, 0)
         for _ in range(rounds):
             if fit != "lines":
                 taubin(bm.verts, steps)
@@ -378,6 +388,8 @@ class Fit:
                                           use_axis_z=True)
             self.push_out(bm.verts, GAP)
         bm.normal_update()
+        if inflate_passes:
+            inflate(bm, inflate_passes)
         return bm
 
     def skirt_z(self, co):
@@ -395,6 +407,28 @@ class Fit:
 
 
 # ------------------------------------------------------------------ the skirt
+
+def inflate(bm, passes):
+    """Smoothing that only moves vertices outward (along their normal): the cloth bridges hollows
+    and never sinks into one; the edges (collar, cuffs, skirt top) stay put."""
+    verts = [v for v in bm.verts if not v.is_boundary]
+    moved = 0
+    for k in range(passes):
+        if k % 4 == 0:
+            bm.normal_update()
+        moves = []
+        for v in verts:
+            nb = [e.other_vert(v).co for e in v.link_edges]
+            avg = sum(nb, Vector()) / len(nb)
+            d = avg - v.co
+            if d.dot(v.normal) > 1e-7:
+                moves.append((v, avg))
+        for v, a in moves:
+            v.co = a
+        moved = len(moves)
+    bm.normal_update()
+    log(f"inflate: {passes} passes, {moved} vertices still moving out at the end")
+
 
 def drape_profile(need, zs):
     """Cloth falling straight down from the top, pushed out by whatever sticks out above (never back

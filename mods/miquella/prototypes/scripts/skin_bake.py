@@ -780,6 +780,29 @@ def preview(stm, our_mesh, bake_dir, out):
     return shots
 
 
+TONE_REF = (164, 179, 180)   # the baked albedo by the neck seam (SKIN_MATCH was measured on it)
+TONE_KEEP = 0.25             # share of the game albedo's own hue left in (2026-10-04, in game: belly
+                             # and thighs olive, chest and shoulders red under the strong SKIN_MATCH tint)
+
+
+def even_tone(rgba):
+    """Every texel the neck's hue, keeping its own lightness: the game's grey-cyan albedo drifts
+    green, blue and purple over the body (the SkinEdit shader evens that out; our ColorParam
+    tint only multiplies, so it turns the drift into olive and red patches)."""
+    import numpy as np
+    srgb = rgba[..., :3].astype(float) / 255
+    lin = np.where(srgb <= 0.04045, srgb / 12.92, ((srgb + 0.055) / 1.055) ** 2.4)
+    ref = np.array(TONE_REF, float) / 255
+    ref = ((ref + 0.055) / 1.055) ** 2.4
+    w = np.array((0.2126, 0.7152, 0.0722))
+    even = ref * ((lin @ w) / (ref @ w))[..., None]
+    lin = even + TONE_KEEP * (lin - even)
+    srgb = np.where(lin <= 0.0031308, lin * 12.92, 1.055 * np.clip(lin, 0, None) ** (1 / 2.4) - 0.055)
+    out = rgba.copy()
+    out[..., :3] = np.clip(srgb * 255 + 0.5, 0, 255).astype(np.uint8)
+    return out
+
+
 def stage(bake_dir, kit_dir, stage_dir):
     """The character kit's natives with the baked skin over our flat one, ready for
     make_patch_pak.py (the baked textures never go into the kit in the repo)."""
@@ -793,6 +816,7 @@ def stage(bake_dir, kit_dir, stage_dir):
     shutil.copytree(os.path.join(kit_dir, "natives"), dst)
     images = [("MiquellaSkin", kind, np.asarray(Image.open(os.path.join(bake_dir, f"MiquellaSkin_{kind}.png")).convert("RGBA")))
               for kind in ("ALBD", "NRRO")]
+    images[0] = images[0][:2] + (even_tone(images[0][2]),)
     log(mb.images_to_tex(stage_dir, images))
 
 

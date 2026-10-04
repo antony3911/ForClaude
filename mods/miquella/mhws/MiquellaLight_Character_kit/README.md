@@ -10,6 +10,23 @@
 
 `bpy45\Scripts\python robe_kit.py <smooth|lines|drape|cinch> female`（女）／`... male`（男），加 `preview <資料夾>` 出靜止、下擺擺動、跨步的檢查圖。要先有身體 kit（從 `mq_body_c[_f].mesh` 讀身體和權重）。做法、權重、擺動、碰撞的現況見 HANDOFF 第 9 節「人物」第 3 項。身體配合長袍拆了三個材質（`MiquellaSkinChest`、`MiquellaSkinWaist`、`MiquellaClothWaist`，`miquella_body.py` 的 `mark_covered`），穿長袍時腳本關掉。
 
+## 皮膚貼圖（2026-10-04，C 方案）
+
+身體原本是單色底色（`MiquellaSkin_ALBD` 整張 161,179,181）、平的法線，在遊戲裡像雕塑；臉有膚質。現在把**遊戲女性身體的皮膚貼圖**（`ch03/CommonTextures/skin/f_body_base_{ALBD,NRRO}`）烘到我們的 UV 上（A），形狀對不上的地方用自己的補（B）：`prototypes/scripts/skin_bake.py`。
+- **來源**：沒有一件遊戲模型帶整副皮膚（內衣的腿是布）。220 件女性部位用到這張貼圖，`survey` 挑出蓋最多的：遊戲內部的無防具身體 `ch03_000_0002`（軀幹）、`ch03_000_0004`（腿）＋內衣手臂 `ch03_002_0001`＋`ch03_042_0012`，合起來蓋滿貼圖的 77%（其餘是留白）
+- **A**：我們每個貼圖格 → 身體上的點 → 最近的遊戲皮膚點 → 遊戲 UV → 遊戲貼圖。法線只轉「繞法線的角度」，不抄遊戲身體的形狀。法線的解碼照 RE Mesh Editor（G、A 是轉 45° 的兩個分量開根號帶號），用「法線場要像高度場的斜率」驗過（旋度／散度 0.2～0.4，反向 0.7～0.9）
+- **B**（`MATCH`、`NAVEL_R`、`GROIN_R`、`CHEST_BAND`）：遊戲身體曲線多（胸、臀、大腿寬 2～4 cm），差 3～6 cm 以上才換；胸口（遊戲乳房的陰影）、兩個肚臍（我們的在 1.047 m、遊戲的 1.073 m）、腹股溝（遊戲的陰影會投到我們的大腿內側）、脖子管（UV 退化，會拉出直紋）。B＝A 的顏色從周圍沿網格填進來＋A 自己比 3 格細的紋理（皮膚的質地、不帶遊戲身體的特徵）＋肚臍和脖子管用淡淡的 3D 雜訊＋我們自己的遮蔽
+- **一張貼圖給所有身體**（A／B／C、男女同一套 MakeHuman UV），在 C 女上烘
+- **烘出來的貼圖是卡普空貼圖的衍生物：不進 repo**（kit 裡的 `MiquellaSkin_*` 還是舊的單色）。放在 `MiquellaTools\work\skin_bake3\`，打包時疊上去；能不能發布到時使用者決定
+
+```
+python skin_bake.py bake <extracted natives/stm> <這個資料夾>/natives/STM/Art/Model/MiquellaLight/Character/mq_body_c_f.mesh.241111606 <MiquellaTools>/work/skin_bake/v4
+python skin_bake.py preview <extracted natives/stm> <同上的 mesh> <MiquellaTools>/work/skin_bake/v4 <MiquellaTools>/work/previews/skin   # 對照圖（含卡普空模型，不進 repo）
+python skin_bake.py stage <MiquellaTools>/work/skin_bake/v4 <這個資料夾> <MiquellaTools>/work/stage_Character
+python make_patch_pak.py <MiquellaTools>/work/stage_Character MiquellaLight_Character.pak <RE Asset Library 所在資料夾>
+```
+**之後打包角色 pak 一律從 `stage_Character` 打**（先跑 `stage`）：直接打這個資料夾，皮膚會變回單色。身體重建後（`miquella_body.py kit`）要重烘。遊戲檔：`extract_game_files.py` 解 `ch03/**/ch03_*.mdf2`、各部位的 `.mesh`（含 `streaming/` 的高精度版）、兩張皮膚貼圖。
+
 ## 身體（2026-10-02 深夜）
 
 遊戲沒有裸身模型（內衣是整套衣服，研究筆記第 18 節），所以用 **MakeHuman 的基礎人體（CC0，github.com/makehumancommunity/makehuman，可自由修改發布）**：
@@ -42,7 +59,8 @@ MakeHuman 資料放在 repo 外：`C:\Users\anton\MiquellaTools\makehuman`（`gi
 
 ```
 python build_weapon_kit.py circlet <這個資料夾> <it0100_0002_0.mesh.241111606> <雙劍 wp_miquella_db.mdf2.45>
-python make_patch_pak.py <這個資料夾> MiquellaLight_Character.pak <RE Asset Library 所在資料夾>
+python skin_bake.py stage <MiquellaTools>/work/skin_bake/v4 <這個資料夾> <MiquellaTools>/work/stage_Character   # 皮膚貼圖疊上去（上面「皮膚貼圖」）
+python make_patch_pak.py <MiquellaTools>/work/stage_Character MiquellaLight_Character.pak <RE Asset Library 所在資料夾>
 ```
 
 **座標**：檔案空間＝獵人 `Head` 骨頭的空間（綁定姿勢）：+Y 上、+Z 臉的前方、+X 獵人的左手邊，原點是 `Head`（綁定姿勢在 (0, 1.573, -0.010)，幾乎沒有旋轉）。骨架借片手劍原版的（只當載體，全部頂點在 `Base`），由 `MiquellaLight_Character.lua` 把物件掛到 `Head` 上。

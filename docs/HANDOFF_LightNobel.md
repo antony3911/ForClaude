@@ -159,7 +159,7 @@
 - 泛素與 PDB 1UBQ 的 CA RMSD 0.84 Å（模型正確）。
 - 量測坑：Windows 驅動會偷借系統 RAM（要設記憶體上限）；profiler 要用 GPU 時間軸歸屬 kernel。
 
-**下一步：** 使用者想完整理解論文（2026-10-04 在對話中解釋過，可考慮整理進手冊）。之後可用外部 A100 跑 `profile_block.py` 驗證長序列；把「不轉置／融合」版 TriMul 的搬運量算出來。
+**下一步：** 見 7.5 節的「明天的計畫」。之後可用外部 A100 跑 `profile_block.py` 驗證長序列；把「不轉置／融合」版 TriMul 的搬運量算出來。
 
 **還要確認：** 實驗室投影片的 TODO 寫的是 gem5 ＋ Ramulator ＋ Garnet/Noxim。10/17 要的「architectural simulation」可能是指這套，跟我們的 HLS ＋ 分析模型路線不同，要找機會問教授。
 
@@ -170,6 +170,24 @@
 **其他待辦：**
 - 使用者 server 上跑 `make hls-all`、`make hls-sweep`，拿到 v3、v4 和不同 tile 大小的數字，用來驗證分析模型。
 - 確認比賽對使用 AI 工具有沒有揭露規定。
+
+## 7.5 論文逐步討論的進度（2026-10-05）
+
+**模式**：使用者要先確認自己真的讀懂論文，**只在對話裡討論**；不改手冊、不做 PDF，沒被要求不寫程式。每個運算都講五件事：吃什麼、吐什麼、**每個數字的來源**（標【定義】【模型設定】【舉例】【推導】）、算得出來的小例子、為什麼有用。每次只講一小段，講完確認再往下；他抱怨過「太急」。論文沒寫的要標明是我們的推論。
+
+**已講完**：步驟 0 前半（FP32／FP16／INT、二補數、浮點欄位）；步驟 1（字母→兩套編號→ESM-2 的 embedding、36 層、LayerNorm、attention、head、rotary、FFN→`s`、`z` 初值）；步驟 2 全部（block 的 9 個運算，TriMul 的 a、b、einsum、GPU 的 3 次轉置 copy，TriAttn 的 L³ logits 與 8 次讀寫、分塊、token-wise attention）。
+
+**他卡過、已釐清的點**：ESMFold（整個流程）≠ ESM-2（第一塊）；ESM-2 的 36 層沒有 `z`，trunk 的 48 個 block 才有；128／64 是「個數」不是 bit，64 是向量維度不是把胺基酸分兩半；`z` 是模型的猜測不是量測，所以要看三角形；計算順序可以自由安排（每個輸出獨立）；容量、搬運量、計算量是三種不同的開銷。
+
+**討論中的結論**：TriAttn 73% 是**重現**論文 Fig. 3，不是新發現，不能說成「我們發現」；我們自己的新東西是「TriMul 在 GPU 上 einsum 只佔 6%、轉置 copy 佔 57%」與 roofline 的解釋。專題要從「einsum 很慢」改成「TriMul 浪費在資料搬移，用專用資料流與融合消除」。他提過「用前幾個 bit 篩掉不重要的 k」（動態稀疏性），已說明在 TriMul 上要先用數據證明夠稀疏，TriAttn 較有希望。他以為「沒有 GPU 的 server 更能反映 FPGA」，已反駁：CPU 跟 GPU 一樣逐運算執行，FPGA 的比例取決於自己的設計。
+
+**還沒講**：步驟 0 後半（量化、scale 何時能最後乘）；步驟 3（recycling、structure module）；步驟 4（LightNobel 硬體逐運算對應，需要他提供原文段落）。
+
+**明天的計畫**（他要求設計簡單、還不到優化階段）：
+1. server 先跑 `nvidia-smi; nproc; free -g` 確認硬體（依紀錄沒有 GPU）。
+2. FPGA 版 roofline：把 `python/char/results/counts_block.csv` 的運算量／搬運量代入板子規格（PYNQ-Z2 約 220 DSP、512 MB；U55C 約 9,000 DSP、HBM 約 460 GB/s，使用前要查證）。
+3. server 跑 `make hls-all`（現成指令）。CPU 版 ESMFold 量測只當第三個驗證點，優先度最低。
+4. 教他我們做了什麼：`python/char/` 各檔案的作用與結果檔怎麼讀，讓他自己在筆電上跑一次 `profile_e2e.py`（泛素）；可選：一起寫一個他看得懂的 30 行「每個運算前後掐碼錶」簡化版。
 
 ---
 

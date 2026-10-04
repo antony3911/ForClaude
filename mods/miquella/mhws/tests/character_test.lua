@@ -187,7 +187,7 @@ imgui = {
     if comboAnswer[label] then local a = comboAnswer[label]; comboAnswer[label] = nil; return true, a end
     return false, v
   end,
-  button = function() return false end,
+  button = function() return false end, same_line = function() end,
   text = function(t) texts[#texts + 1] = t end,
 }
 local savedCfg
@@ -237,6 +237,10 @@ else
   check(tint and math.abs(tint.x - 2.9) < 1e-6 and math.abs(tint.y - 2.9) < 1e-6 and bmesh.float4["3.0"]
         and bmesh.float4["4.0"] and bmesh.float4["0.0"] == nil and bmesh.float4["1.0"] == nil,
         "body: skin tone tint on the skin materials' ColorParam (MiquellaSkin, -Chest, -Waist) only")
+  sliderAnswer["Skin red"] = 1.2; menu()
+  tint = bmesh.float4["2.0"]
+  check(tint and math.abs(tint.x - 2.9 * 1.2) < 1e-5 and math.abs(tint.y - 2.9) < 1e-6, "Skin red: ColorParam's red only")
+  sliderAnswer["Skin red"] = 1.0; menu()
   check(made("MiquellaLight_Robe") == nil, "no outfit by default: no robe object")
   -- Outfit: the plain robe
   comboAnswer["Outfit"] = 2; menu(); frames(70, 1 / 60)

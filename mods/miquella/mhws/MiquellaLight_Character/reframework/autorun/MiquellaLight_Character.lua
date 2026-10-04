@@ -71,6 +71,13 @@ local SWING_JOINT = "L_B_Skirt_CH_end"   -- the back skirt's hem: how far it swi
 -- shader mangled the body.)
 local FACE_MATERIAL = "face"
 local COPY_VARS = { AddColorUV = true }
+-- Copied as one float (x): the game sets Stain_ID on its own skin materials at run time (the
+-- hunter's stain slot; 2026-10-04: game 378, ours 0). The other three floats a float4 read gives
+-- are the next variables, laid out differently in the face's material.
+local COPY_X = { Stain_ID = true }
+-- The user's skin defaults ("Save skin as default"): brightness and the red / green / blue
+-- multipliers, matched by eye to the face at the neck (the face looks lit apart from the body).
+local SKIN_DEFAULTS_PATH = "MiquellaLight/Character_skin_defaults.json"
 local SKIN_BASE = 2.9
 local SKIN_TONES = {
     { "Match the face", nil },
@@ -112,6 +119,7 @@ local config = {
     hideOutfit = true,
     skinTone = 1,
     skinBrightness = 1.0,   -- ColorParam multiplier on top of the face's
+    skinRGB = { 1.0, 1.0, 1.0 },   -- and per channel (Skin red / green / blue)
     outfit = 1,
 }
 local saved = json.load_file(CONFIG_PATH)
@@ -128,6 +136,16 @@ if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 3 then
     config.skinBrightness, config.skinTone = 1.0, 1   -- earlier values were for other materials
 end
 config.skinVersion = 3
+local skinDefaults = { skinBrightness = 1.0, skinRGB = { 1.0, 1.0, 1.0 } }
+local savedSkin = json.load_file(SKIN_DEFAULTS_PATH)
+if type(savedSkin) == "table" then
+    if type(savedSkin.skinBrightness) == "number" then skinDefaults.skinBrightness = savedSkin.skinBrightness end
+    if type(savedSkin.skinRGB) == "table" and #savedSkin.skinRGB == 3 then skinDefaults.skinRGB = savedSkin.skinRGB end
+    if type(saved) ~= "table" or saved.skinRGB == nil then
+        config.skinBrightness, config.skinRGB = skinDefaults.skinBrightness, { table.unpack(skinDefaults.skinRGB) }
+    end
+end
+if type(config.skinRGB) ~= "table" or #config.skinRGB ~= 3 then config.skinRGB = { 1.0, 1.0, 1.0 } end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
 PIECES[2].mesh = function() return body_mesh(config.bodyShape) end
 local lastFit = "smooth"
@@ -326,6 +344,7 @@ local function apply_tint(p)
     end
     local tone = SKIN_TONES[config.skinTone][2] or { 1.0, 1.0, 1.0 }
     local b = config.skinBrightness * SKIN_BASE
+    local rgb = config.skinRGB
     local copied, tinted = 0, false
     for _, name in ipairs(p.tint) do
         local t = s.tintMats[name]
@@ -344,9 +363,16 @@ local function apply_tint(p)
                         return true
                     end) then copied = copied + 1 end
                 end
+                for vname in pairs(COPY_X) do
+                    local j, k = s.faceVars[vname], t.vars[vname]
+                    local v = j and k and try(function() return face:getMaterialFloat4(s.faceMat, j) end)
+                    if v and try(function() mesh:setMaterialFloat(t.mat, k, v.x); return true end) then
+                        copied = copied + 1
+                    end
+                end
             end
             tinted = (t.vars.ColorParam and try(function()
-                mesh:setMaterialFloat4(t.mat, t.vars.ColorParam, Vector4f.new(tone[1] * b, tone[2] * b, tone[3] * b, 1.0))
+                mesh:setMaterialFloat4(t.mat, t.vars.ColorParam, Vector4f.new(tone[1] * b * rgb[1], tone[2] * b * rgb[2], tone[3] * b * rgb[3], 1.0))
                 return true
             end)) or tinted
         end
@@ -845,6 +871,23 @@ re.on_draw_ui(function()
     if c then
         changed = true
         apply_tint(PIECES[2])
+    end
+    for i, label in ipairs({ "Skin red", "Skin green", "Skin blue" }) do
+        c, config.skinRGB[i] = imgui.slider_float(label, config.skinRGB[i], 0.5, 1.5)
+        if c then
+            changed = true
+            apply_tint(PIECES[2])
+        end
+    end
+    if imgui.button("Skin defaults") then
+        config.skinBrightness, config.skinRGB = skinDefaults.skinBrightness, { table.unpack(skinDefaults.skinRGB) }
+        changed = true
+        apply_tint(PIECES[2])
+    end
+    imgui.same_line()
+    if imgui.button("Save skin as default") then
+        skinDefaults = { skinBrightness = config.skinBrightness, skinRGB = { table.unpack(config.skinRGB) } }
+        json.dump_file(SKIN_DEFAULTS_PATH, skinDefaults)
     end
     c, config.hideOutfit = imgui.checkbox("Hide the hunter's armor and innerwear", config.hideOutfit)
     changed = changed or c

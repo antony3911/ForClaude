@@ -453,6 +453,13 @@ NECK_DEPTH = (0.035, 0.04, 0.0405)  # how far below the rim the profiles meet th
                                   # rises to meet it (NECK_LIFT, option C of four). 2.3 / 3.2 cm in
                                   # front and at the sides bent into a crease round the neck's base.
 NECK_ROWS = 12                     # rows from the cut up to the rim
+# A flange over the face's rim (2026-10-04, in game): the face's neck ends in a darker strip 3-4 mm
+# wide (under the armour's collar in the game), which showed as a line round the base of the neck
+# once the skin colours matched. Rows of ours carry on up the face's neck this far above the rim,
+# FLANGE_LIFT off its surface, with the face's weights and normals, and cover the strip (unlike the
+# 2026-10-03 cover from outside, a bulging ring: this one is 0.3 mm thick).
+FLANGE = (0.003, 0.006)            # m above the rim, per row
+FLANGE_LIFT = 0.0003               # m off the face's surface
 NECK_SMOOTH = 4                    # passes smoothing the profiles around (not at their ends)
 NECK_SAMPLES = 64                  # points along each profile
 NECK_CUT = 1.47          # without the face mesh: a level cut
@@ -854,6 +861,24 @@ def neck_tube(bm, G, neck):
         a, b, c = top[2 * k], top[2 * k + 1], top[(2 * k + 2) % (2 * m)]
         made += [bm.faces.new((a, b, rim[k])), bm.faces.new((b, rim[(k + 1) % m], rim[k])),
                  bm.faces.new((b, c, rim[(k + 1) % m]))]
+    # the flange over the face's rim (FLANGE): each rim vertex's column carries on up the face
+    below = rim
+    for h in FLANGE:
+        ring = []
+        for (a, p, nrm), v0 in zip(neck.rim, rim):
+            z = p.z + h
+            hit = ray_hit(neck.bvh, G, a, z)
+            if hit:
+                r, (tr, tz) = hit
+                d = Vector((math.sin(math.radians(a)), -math.cos(math.radians(a)), 0.0))
+                co = neck.to_world(a, r, z) + (d * tz - Vector((0, 0, 1)) * tr).normalized() * FLANGE_LIFT
+            else:                               # no face there (should not happen): straight up
+                co = p + Vector((0, 0, h)) + nrm * FLANGE_LIFT
+            ring.append(new_vert(co, a))
+            vert_uv[ring[-1]] = vert_uv[v0]
+        for k in range(m):
+            made.append(bm.faces.new((below[k], below[(k + 1) % m], ring[(k + 1) % m], ring[k])))
+        below = ring
     if uv:
         for f in made:
             for lp in f.loops:
@@ -913,19 +938,33 @@ def rim_lookup(neck):
 def match_face_normals(obj, G, neck, face):
     """Shading across the seam: on the rim our vertices take the face's own normals there (custom
     normals, which the exporter writes), as the game's innerwear does, so no line shows."""
+    from mathutils import kdtree
     me = obj.data
     me.update()
     kd = rim_lookup(neck)
-    out, n = [], 0
+    fkd = kdtree.KDTree(len(face["pts"]))           # the flange (FLANGE): the face's normals under it
+    for i, p in enumerate(face["pts"]):
+        fkd.insert(p, i)
+    fkd.balance()
+    out, n, nf = [], 0, 0
     for v in me.vertices:
         normal = v.normal.copy()
         _, i, d = kd.find(v.co)
         if d < 1e-6:
             normal = neck.rim[i][2].copy()
             n += 1
+        else:
+            ang, r, _ = polar(G, v.co)
+            if r < 0.15 and neck.edge(ang) + 1e-4 < v.co.z < neck.edge(ang) + FLANGE[-1] + 1e-3:
+                near = fkd.find_n(v.co, 3)
+                acc = Vector()
+                for _, j, dj in near:
+                    acc += Vector(face["normals"][j]) / max(dj, 1e-5)
+                normal = acc.normalized()
+                nf += 1
         out.append(normal)
     me.normals_split_custom_set_from_vertices(out)
-    log(f"  neck: {n} rim normals are the face's")
+    log(f"  neck: {n} rim normals and {nf} on the flange are the face's")
 
 
 def face_neck_weights(face_objs, arm):

@@ -165,6 +165,13 @@ CHEST_GROW = 4                                  # extra steps over the chest: th
 AO = {"rays": 24, "dist": 0.025, "strength": 0.4}   # our own occlusion, in the B parts only
 GROIN_R = (0.05, 0.09)                          # m from the crotch: the game body's groin shading
 NECK_GROW = 3                                   # steps around our neck tube (its UVs are degenerate)
+# m: how far the nearest game point lies off our normal (sideways). Past the game skin's open
+# edges (our neck base stands 3 cm above the game's, NECK_LIFT) every point lands on the same edge
+# and its texels smear out in streaks like wood grain (2026-10-04, in game): B there, no A detail
+# (only round the neck and shoulders, SLIDE_ABOVE up: elsewhere the game body's other curves
+# shift the nearest point sideways too, harmlessly)
+SLIDE = (0.006, 0.015)
+SLIDE_ABOVE = 1.25
 DETAIL_R = 3                                    # texels: B keeps A's detail finer than this
 PORES = {"scale": 0.0012, "albedo": 0.02, "normal": 0.10}    # 3D noise where A's detail is no good
 FILL_STEPS = 300
@@ -468,8 +475,13 @@ def bake(stm, our_mesh, out, size="2048"):
     gnor = interp(S["nor"], vidx, gb)
     gnor /= np.linalg.norm(gnor, axis=1, keepdims=True)
     cosn = (gnor * vnor).sum(1)
-    bad = np.maximum(smoothstep(MATCH["near"], MATCH["far"], np.abs(off)),
-                     smoothstep(MATCH["cos_near"], MATCH["cos_far"], cosn))
+    slide = np.linalg.norm((vloc - wverts) - off[:, None] * vnor, axis=1)
+    slide_v = smoothstep(SLIDE[0], SLIDE[1], slide) * (wverts[:, 2] > SLIDE_ABOVE)
+    up = wverts[:, 2] > SLIDE_ABOVE
+    log("slide (mm) p50/p90/p99: neck and shoulders " + "/".join(f"{np.percentile(slide[up], q) * 1000:.1f}" for q in (50, 90, 99))
+        + ", below " + "/".join(f"{np.percentile(slide[~up], q) * 1000:.1f}" for q in (50, 90, 99)))
+    bad = np.maximum.reduce([smoothstep(MATCH["near"], MATCH["far"], np.abs(off)),
+                             smoothstep(MATCH["cos_near"], MATCH["cos_far"], cosn), slide_v])
     y = wverts[:, 2]                                       # Blender z = file y (up)
     chest = (y > CHEST_BAND[0]) & (y < CHEST_BAND[1]) & (wverts[:, 1] < 0)   # front: Blender -y
     for _ in range(MATCH["grow"]):
@@ -501,17 +513,25 @@ def bake(stm, our_mesh, out, size="2048"):
     neck_v[tri_w[ratio < 0.02 * np.median(ratio)].ravel()] = 1
     for _ in range(NECK_GROW):
         neck_v = graph.max(neck_v)
+    for _ in range(MATCH["grow"]):
+        slide_v = graph.max(slide_v)
     for _ in range(MATCH["soften"]):
         bad = 0.5 * bad + 0.5 * graph.mean(bad)
         navel_v = 0.5 * navel_v + 0.5 * graph.mean(navel_v)
         neck_v = 0.5 * neck_v + 0.5 * graph.mean(neck_v)
+        slide_v = 0.5 * slide_v + 0.5 * graph.mean(slide_v)
+    neck_v = np.maximum(neck_v, slide_v)
     # softening must not let the game's navel back in (2026-10-04: a faint slit 3 cm above ours)
     navel_v = np.maximum(navel_v, smoothstep(NAVEL_R[0], NAVEL_R[0] * 0.6, dn))
     wA_v = (1 - bad) * (1 - navel_v) * (1 - neck_v) * (1 - groin_v)
     plain_v = np.maximum.reduce([navel_v, neck_v, groin_v])    # no A detail at all: our pores instead
+    # ...but not round the neck: each column of the neck tube reads one texel by the cut, so any
+    # grain there runs up the tube and out over the shoulders as streaks (2026-10-04, in game):
+    # smooth colour and a flat normal only
+    pores_v = plain_v * (1 - neck_v)
     detail_v = 1 - plain_v
     log(f"navel ours {np.round(navel, 3)}, game's {np.round(gnavel, 3)}; crotch {np.round(crotch, 3)}; "
-        f"neck tube {int((ratio < 0.02 * np.median(ratio)).sum())} triangles; A on {np.mean(wA_v > 0.5):.2f} of the vertices")
+        f"neck tube {int((ratio < 0.02 * np.median(ratio)).sum())} triangles; projection slid off on {np.mean(slide_v > 0.5):.3f}; A on {np.mean(wA_v > 0.5):.2f} of the vertices")
     ao = occlusion(wverts, vnor, tri_w)
 
     # --- per texel
@@ -537,7 +557,7 @@ def bake(stm, our_mesh, out, size="2048"):
 
     wA = np.clip(tex_of(wA_v), 0, 1)[:, None]
     detail = np.clip(tex_of(detail_v), 0, 1)[:, None]
-    plain = np.clip(tex_of(plain_v), 0, 1)[:, None]
+    plain = np.clip(tex_of(pores_v), 0, 1)[:, None]
     known = np.zeros((size, size), bool)
     known[row, col] = True
     # B = A's colour and roughness from around (per vertex, filled into the B parts over the

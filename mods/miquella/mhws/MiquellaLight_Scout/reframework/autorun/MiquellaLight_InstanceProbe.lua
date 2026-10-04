@@ -164,6 +164,17 @@ end
 local function experiment(hxf)
     local all, status = {}, { set = {} }
     walk(hxf, 0, all)
+    -- "set": {"Name": value} sets a literal value on our meshes
+    for key, v in pairs(type(cmd.set) == "table" and cmd.set or {}) do
+        for _, go in ipairs(all) do
+            local name = str(try(function() return go:call("get_Name") end))
+            local mesh = OURS[name] and get_mesh(go)
+            if mesh then
+                local ok = pcall(function() mesh:call("set_" .. key, v) end)
+                status.set[name .. "." .. key] = { to = v, ok = ok, now = str(try(function() return mesh:call("get_" .. key) end)) }
+            end
+        end
+    end
     local src = find_source(all, cmd.from or "Player_Face")
     status.source = src and mesh_path(src) or "not found: " .. tostring(cmd.from)
     if not src then return status end
@@ -289,7 +300,9 @@ local function run_twin(hxf, status)
         twin.key = nil
     end
     local key = tostring(want.mesh) .. "|" .. tostring(want.mdf2)
-    if twin.key ~= key and twin.mesh then
+    local empty = twin.mesh and (try(function() return twin.mesh:get_MaterialNum() end) or 0) == 0
+    if twin.mesh and (twin.key ~= key or empty) and os.clock() >= (twin.retryAt or 0) then
+        twin.retryAt = os.clock() + 1   -- a resource the game has not loaded yet comes in later
         local m = holder("via.render.MeshResource", want.mesh)
         local d = holder("via.render.MeshMaterialResource", want.mdf2)
         if m and d then
@@ -320,9 +333,33 @@ local function run_twin(hxf, status)
         end
     end
     local face = face_of(all)
-    for _, name in ipairs({ "StencilValue", "ShadowCastMode" }) do
+    for _, name in ipairs({ "StencilValue", "ShadowCastMode", "BeautyMaskFlag", "UserParamPerInstance" }) do
         local v = face and try(function() return face:call("get_" .. name) end)
         if v ~= nil then try(function() twin.mesh:call("set_" .. name, v) end) end
+    end
+    -- the skin tone and stain slot the game sets on its own skin materials, from the face (as the
+    -- character script does for our body)
+    local fm, fvars = nil, {}
+    local fn = face and (try(function() return face:get_MaterialNum() end) or 0) or 0
+    for i = 0, fn - 1 do
+        if try(function() return face:getMaterialName(i) end) == "face" then fm = i end
+    end
+    if fm then
+        for j = 0, (try(function() return face:getMaterialVariableNum(fm) end) or 0) - 1 do
+            fvars[try(function() return face:getMaterialVariableName(fm, j) end) or ""] = j
+        end
+        for i = 0, (try(function() return twin.mesh:get_MaterialNum() end) or 0) - 1 do
+            for j = 0, (try(function() return twin.mesh:getMaterialVariableNum(i) end) or 0) - 1 do
+                local vn = try(function() return twin.mesh:getMaterialVariableName(i, j) end)
+                local fj = vn and fvars[vn]
+                local v = fj and try(function() return face:getMaterialFloat4(fm, fj) end)
+                if v and vn == "AddColorUV" then
+                    try(function() twin.mesh:setMaterialFloat4(i, j, Vector4f.new(v.x, v.y, v.z, v.w)) end)
+                elseif v and vn == "Stain_ID" then
+                    try(function() twin.mesh:setMaterialFloat(i, j, v.x) end)
+                end
+            end
+        end
     end
     status.twin = {
         mesh = mesh_path(twin.mesh), loaded = twin.key == key,
@@ -348,6 +385,25 @@ re.on_frame(function()
     end
     local st = cmd.on and experiment(hxf) or {}
     run_twin(hxf, st)
+    -- "faceParts": {"7": false}: the face mesh's parts (mesh groups) on / off; status lists 0..15
+    if type(cmd.faceParts) == "table" then
+        local all = {}
+        walk(hxf, 0, all)
+        local face = face_of(all)
+        if face then
+            for k, v in pairs(cmd.faceParts) do
+                local i = tonumber(k)
+                local ok = pcall(function() face:call("setPartsEnable(System.UInt64, System.Boolean)", i, v) end)
+                    or pcall(function() face:setPartsEnable(i, v) end)
+                st["setPart" .. k] = ok
+            end
+            local parts = {}
+            for i = 0, 15 do
+                parts[i + 1] = tostring(try(function() return face:getPartsEnable(i) end))
+            end
+            st.faceParts = table.concat(parts, " ")
+        end
+    end
     if now - statusAt > 1 then statusAt = now; json.dump_file(STATUS, st) end
 end)
 

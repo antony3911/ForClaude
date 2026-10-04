@@ -27,6 +27,8 @@ python make_patch_pak.py <MiquellaTools>/work/stage_Character MiquellaLight_Char
 ```
 **膚色（2026-10-04 中午）**：在遊戲裡偏暗、偏紅的原因找到了，是腳本生成的 Mesh 沒開 `BeautyMaskFlag`（`MiquellaLight_Character` README），不是貼圖。修好後 ColorParam 用遊戲的 1，脖子接縫身體／臉＝紅 1.00、綠 0.93、藍 0.96（夜晚營地）。`stage` 裡的 `even_tone`（色相統一成脖子的，只留 `TONE_KEEP` 0.25 的原色差）是在倍數放大色塊時加的，現在可能不需要，等使用者看
 
+**下午（2026-10-04）**：膚色照原版防具的肩膀校正（`SKIN_MATCH`，角色腳本 README）；脖子翻邊（`miquella_body.py` 的 `FLANGE`：身體沿臉的脖子再往上 6 mm、離臉 0.3 mm，蓋住臉下緣的暗邊）；烘焙：脖子管一帶不加毛孔（每直排只讀切口上一個貼圖點，雜訊會拉成放射狀紋）、投影滑出遊戲皮膚邊界的肩頸不取遊戲細節（`SLIDE`、`SLIDE_ABOVE`）。現在的烘焙在 `work\skin_bake5`，還原點 `work\skin_bake\checkpoints6-10-04_flange`
+
 **之後打包角色 pak 一律從 `stage_Character` 打**（先跑 `stage`）：直接打這個資料夾，皮膚會變回單色。身體重建後（`miquella_body.py kit`）要重烘。遊戲檔：`extract_game_files.py` 解 `ch03/**/ch03_*.mdf2`、各部位的 `.mesh`（含 `streaming/` 的高精度版）、兩張皮膚貼圖。
 
 ## 身體（2026-10-02 深夜）

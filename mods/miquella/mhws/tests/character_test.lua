@@ -240,14 +240,14 @@ else
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
   local tint = bmesh.float4["2.0"]
-  local B = 1.0   -- SKIN_BASE x the default brightness, red and green 1 (SKIN_MATCH: the game's own ColorParam)
-  check(tint and math.abs(tint.x - B) < 1e-4 and math.abs(tint.y - B) < 1e-4 and bmesh.float4["3.0"]
+  local B = 1.0   -- SKIN_BASE x the default brightness; red 1.21, green 1.44 (SKIN_MATCH)
+  check(tint and math.abs(tint.x - B * 1.21) < 1e-4 and math.abs(tint.y - B * 1.44) < 1e-4 and bmesh.float4["3.0"]
         and bmesh.float4["4.0"] and bmesh.float4["0.0"] == nil and bmesh.float4["1.0"] == nil,
         "body: skin tone tint on the skin materials' ColorParam (MiquellaSkin, -Chest, -Waist) only")
   sliderAnswer["Skin red"] = 1.2; menu()
   tint = bmesh.float4["2.0"]
-  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B) < 1e-4, "Skin red: ColorParam's red only")
-  sliderAnswer["Skin red"] = 1.0; menu()
+  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B * 1.44) < 1e-4, "Skin red: ColorParam's red only")
+  sliderAnswer["Skin red"] = 1.21; menu()
   local r = bmesh.render or {}
   check(r.StencilValue == 1 and r.ShadowCastMode == 2 and r.BeautyMaskFlag == true and r.UserParamPerInstance == 26953,
     "body: the face's render settings copied (StencilValue, ShadowCastMode, BeautyMaskFlag, UserParamPerInstance)")

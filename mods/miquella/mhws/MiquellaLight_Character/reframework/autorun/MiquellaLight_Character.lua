@@ -78,8 +78,12 @@ local COPY_X = { Stain_ID = true }
 -- The user's skin defaults ("Save skin as default"): brightness and the red / green / blue
 -- multipliers, matched by eye to the face at the neck (the face looks lit apart from the body).
 local SKIN_DEFAULTS_PATH = "MiquellaLight/Character_skin_defaults.json"
--- Built in: the game's own skin values (ColorParam 1) since the BeautyMaskFlag fix (2026-10-04).
-local SKIN_MATCH = { brightness = 1.0, rgb = { 1.0, 1.0, 1.0 } }
+-- Built in (2026-10-04 afternoon): with BeautyMaskFlag on, our skin under the game's ColorParam 1
+-- was still darker and more orange than the game's own (an armour's bare shoulder matches the
+-- chin, ours did not; a spawned copy of the game's own body is off the same way, so the cause is
+-- in spawned objects, not our mesh). Matched to that shoulder per channel; ColorParam acts
+-- linearly now. The face's pale lower neck (under armour collars in the game) blends in with it.
+local SKIN_MATCH = { brightness = 1.0, rgb = { 1.21, 1.44, 1.62 } }
 local SKIN_BASE = 1.0
 local SKIN_TONES = {
     { "Match the face", nil },
@@ -134,11 +138,11 @@ if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 if not OUTFITS[config.outfit] then config.outfit = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
-if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 7 then
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 8 then
     -- earlier values were for other materials, or before the skin was matched to the face
     config.skinBrightness, config.skinTone, config.skinRGB = SKIN_MATCH.brightness, 1, { table.unpack(SKIN_MATCH.rgb) }
 end
-config.skinVersion = 7
+config.skinVersion = 8
 local skinDefaults = { skinBrightness = SKIN_MATCH.brightness, skinRGB = { table.unpack(SKIN_MATCH.rgb) } }
 local savedSkin = json.load_file(SKIN_DEFAULTS_PATH)
 if type(savedSkin) == "table" then

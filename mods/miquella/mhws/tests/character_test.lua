@@ -18,6 +18,7 @@ local function resource(path) return { ToString = function() return "Resource[" 
 local function outfitGO(path)
   local g = { drawSelf = true, path = path }
   local mesh = { getMesh = function() return resource(path) end }
+  g.mesh = mesh
   function g:call(m, a)
     if m == "set_DrawSelf" then self.drawSelf = a
     elseif m == "getComponent(System.Type)" and a.name == "via.render.Mesh" then return mesh end
@@ -30,6 +31,9 @@ local armorLeg = outfitGO("Art/Model/Character/ch03/021/001/4/ch03_021_0014.mesh
 local face = outfitGO(mode == "female" and "Art/Model/Character/ch00/001/0000/ch00_001_0000.mesh"
   or "Art/Model/Character/ch00/000/0000/ch00_000_0000.mesh")
 local SFX = mode == "female" and "_f" or ""
+-- the face's render settings our meshes copy (MATCH_RENDER)
+local faceRender = { get_StencilValue = 1, get_ShadowCastMode = 2, get_BeautyMaskFlag = true, get_UserParamPerInstance = 26953 }
+function face.mesh:call(m) return faceRender[m] end
 local hair = outfitGO("Art/Model/Character/ch01/000/0/001/ch01_000_0001.mesh")
 local weapon = outfitGO("Art/Model/Item/it02/00/0002/it0200_0002_0.mesh")
 local function childXf(go, child, nxt)
@@ -105,7 +109,9 @@ local function newObject(name)
       end
       local mesh = { floats = {}, float4 = {}, enabled = {} }
       function mesh:add_ref() return self end
-      function mesh:call() end
+      function mesh:call(m, v)
+        if type(m) == "string" and m:sub(1, 4) == "set_" then self.render = self.render or {}; self.render[m:sub(5)] = v end
+      end
       function mesh:setMesh(r) self.meshRes = r end
       function mesh:set_Material(r) self.mdfRes = r end
       local function body(m) return m.mdfRes and m.mdfRes.path:find("mq_body", 1, true) end
@@ -234,14 +240,17 @@ else
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
   local tint = bmesh.float4["2.0"]
-  local B = 2.9 * 1.693   -- SKIN_BASE x the matched brightness; red 1.542, green 0.727 (SKIN_MATCH)
-  check(tint and math.abs(tint.x - B * 1.542) < 1e-4 and math.abs(tint.y - B * 0.727) < 1e-4 and bmesh.float4["3.0"]
+  local B = 1.0   -- SKIN_BASE x the default brightness, red and green 1 (SKIN_MATCH: the game's own ColorParam)
+  check(tint and math.abs(tint.x - B) < 1e-4 and math.abs(tint.y - B) < 1e-4 and bmesh.float4["3.0"]
         and bmesh.float4["4.0"] and bmesh.float4["0.0"] == nil and bmesh.float4["1.0"] == nil,
         "body: skin tone tint on the skin materials' ColorParam (MiquellaSkin, -Chest, -Waist) only")
   sliderAnswer["Skin red"] = 1.2; menu()
   tint = bmesh.float4["2.0"]
-  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B * 0.727) < 1e-4, "Skin red: ColorParam's red only")
-  sliderAnswer["Skin red"] = 1.542; menu()
+  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B) < 1e-4, "Skin red: ColorParam's red only")
+  sliderAnswer["Skin red"] = 1.0; menu()
+  local r = bmesh.render or {}
+  check(r.StencilValue == 1 and r.ShadowCastMode == 2 and r.BeautyMaskFlag == true and r.UserParamPerInstance == 26953,
+    "body: the face's render settings copied (StencilValue, ShadowCastMode, BeautyMaskFlag, UserParamPerInstance)")
   check(made("MiquellaLight_Robe") == nil, "no outfit by default: no robe object")
   -- Outfit: the plain robe
   comboAnswer["Outfit"] = 2; menu(); frames(70, 1 / 60)

@@ -307,6 +307,8 @@ xf:set_SameJointsConstraint(true)
 - 遊戲自己的零件長這樣（同一次記錄）：會擺動的防具／髮型帶 `app.ChainSetting`、`via.motion.Chain2`、`via.motion.ChildSecondary`、`via.motion.JointConstraints`、`app.UnderWaterChain`；**有一件腿部防具（`ch03_042_0015`）的裙子是 `via.dynamics.GpuCloth`＋`app.ClothSetting`＋`app.SkirtBatchProcessing`（GPU 布料模擬）**，是另一條路，還沒研究。女獵人的眉毛也在 `ch01` 底下（`ch01_001_1003`，沒有 chain），找頭髮要挑有 chain2 的那個
 - **長裙怎麼擺（2026-10-04，長袍遊戲版查的）**：女防具的長裙大多是 **GPU 布料**（骨頭名稱 `*_GCJ_*`，有 `.gpuc`：`ch03_032_0015`、`042_0015`、`059_0115`、`066_0015`、`027_0015`…）；用骨鏈的長裙少，`ch03_025_0015`（腿部防具，到小腿）最完整：`HipJiggle_CH_00`（掛 `Hip_HJ_00`）底下 12 條 `*_Skirt*_CH_00～04`＋`_CH_end` 繞一圈，男版 `ch02_025_0015` 沒有 chain2。**chain2 用骨鏈末端骨頭名稱的 murmur3（UTF-16，seed 0xFFFFFFFF；`*_CH_end`）找鏈**，檔案裡沒有其他骨頭名稱、也沒有碰撞 → 骨鏈的位置來自模型的骨架，可以把骨頭搬到自己的裙子上再引用原本的 chain2（`robe_kit.py`）。**碰撞**在每個部位的 `.clsp`（魔數 `CLSP`、每個膠囊 112 位元組、兩端骨頭的雜湊＋過濾旗標；內衣褲 `ch03_002_0004.clsp`：左右大腿 `Thigh→Knee`、小腿 `Shin→Foot`、腳 `Foot→Toe`、`Hip_HJ_00`；身體 `ch03_002_0002.clsp`：脊椎、上臂、前臂），應該是部位的 `app.ChainSetting` 登記給同一個角色的鏈用；腳本生成的物件吃不吃得到還不知道（`robe_debug.json` 會記 Chain2／ChainSetting 的成員）
 
+- **生成的 Mesh 要從獵人自己的部位抄四個設定，不然光照、膚色會錯（2026-10-03～04 實測）**：`StencilValue`（生成的是 0、獵人部位 1：只吃得到太陽、陰影處全黑）、`ShadowCastMode`、**`BeautyMaskFlag`**（獵人每個部位都是 true，生成的讀不到＝沒開：皮膚材質在遊戲自己的 ColorParam 1 下近乎全黑／深咖啡；用同樣方法生出遊戲自己的內衣模型＋原版 mdf2 也一樣暗，打開這個旗標就正常——之前身體膚色要 ×2.9～×7.6 補的就是它）、`UserParamPerInstance`（＝`app.MeshSetting._GlobalMaterialParamIndex`，遊戲給每個部位一格「全域材質參數」：濕身、沾沙、透明淡出這類值，生成的是 0＝讀到別人那格；我們抄臉的）。`set_` 都有效。查法：`MiquellaLight_Scout/.../MiquellaLight_InstanceProbe.lua`
+
 **2. 武器換裝（Transmog）**
 
 ```lua

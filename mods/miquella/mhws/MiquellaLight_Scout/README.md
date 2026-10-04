@@ -27,4 +27,5 @@
 ## 其他測試腳本（用完要從遊戲移除）
 
 - `MiquellaLight_MeshDiff.lua`：比對臉和我們物件的 Mesh 設定（2026-10-03，找出 StencilValue）
+- `MiquellaLight_InstanceProbe.lua`：每個部位的每物件設定（`UserParamPerInstance`、`app.*` 元件的欄位）寫進 `instance_probe.json`；實驗：從遊戲部位複製設定到我們的物件，或用我們的方法生出遊戲自己的部位（`MiquellaLight_Twin`）跟原版比（`twin_diff.json`）。指令在檔頭（`instance_test.json`）。2026-10-04 用它找出 **`BeautyMaskFlag`**（膚色太暗的真正原因）。**會改場景**
 - `MiquellaLight_ChainProbe.lua`：腳本生成的物件能不能有擺動物理（2026-10-03）。複製獵人的頭髮三份、各加不同的元件，記錄髮尾晃動到 `reframework/data/MiquellaLight/chain_probe.json`。**結論：`Chain2`＋`ChildSecondary` 就會跟真頭髮一樣甩**（研究筆記第 15 節）。**會改場景**（生成物件、可以藏掉真頭髮），不是唯讀的

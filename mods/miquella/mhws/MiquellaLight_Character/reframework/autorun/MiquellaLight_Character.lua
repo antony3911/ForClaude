@@ -62,13 +62,13 @@ local OUTFIT_NAMES = {}
 for i, o in ipairs(OUTFITS) do OUTFIT_NAMES[i] = o.name end
 local COVERABLE = { "MiquellaSkinChest", "MiquellaSkinWaist", "MiquellaClothWaist" }
 local SWING_JOINT = "L_B_Skirt_CH_end"   -- the back skirt's hem: how far it swings (menu, robe_debug.json)
--- Skin of the body: the game's own skin material (SkinEdit) over a flat albedo of the face
--- texture's neck colour (miquella_body.py). The face's skin tone (AddColorUV of its "face"
--- material, set in character creation) is copied onto it; the SkinEdit skin still comes out ~3x
--- darker than the face, hence SKIN_BASE on ColorParam (calibrated in game 2026-10-03: 3.3 over
--- a warmer albedo; the face's neck colour is ~15 % lighter). The tone choices tint on top.
--- (Tried and dropped the same day: the face's own material on the body -- darker, and its vertex
--- shader mangled the body.)
+-- Skin of the body: the game's own skin material (SkinEdit) over the game body's skin textures
+-- baked onto ours (skin_bake.py). The face's skin tone (AddColorUV of its "face" material, set in
+-- character creation) is copied onto it; ColorParam as the game's own skin (1), the tone choices
+-- tint on top. (2026-10-03..04 the skin came out ~3x darker and browner than the face and was
+-- pushed up with ColorParam -- SKIN_BASE 2.9, then per channel; the cause was the mesh's
+-- BeautyMaskFlag, see MATCH_RENDER. Tried and dropped: the face's own material on the body --
+-- darker, and its vertex shader mangled the body.)
 local FACE_MATERIAL = "face"
 local COPY_VARS = { AddColorUV = true }
 -- Copied as one float (x): the game sets Stain_ID on its own skin materials at run time (the
@@ -78,14 +78,9 @@ local COPY_X = { Stain_ID = true }
 -- The user's skin defaults ("Save skin as default"): brightness and the red / green / blue
 -- multipliers, matched by eye to the face at the neck (the face looks lit apart from the body).
 local SKIN_DEFAULTS_PATH = "MiquellaLight/Character_skin_defaults.json"
--- Built in: matched to the face across the neck seam by measuring screenshots in game (2026-10-04,
--- by the campfire at night): ColorParam (7.57, 3.57, 4.39) = SKIN_BASE x brightness x rgb.
--- Our flat albedo is a little cyan, hence green and blue below red. (2026-10-04, baked skin: the
--- seam re-measured to 1.146 / 1.547, 0.691, 0.938 came out very red -- ColorParam does not act
--- linearly here -- so back to these; with ColorParam 1 like the game's own skin, ours is dark
--- brown where the game's is fine: the real cause is still open, see HANDOFF.)
-local SKIN_MATCH = { brightness = 1.693, rgb = { 1.542, 0.727, 0.894 } }
-local SKIN_BASE = 2.9
+-- Built in: the game's own skin values (ColorParam 1) since the BeautyMaskFlag fix (2026-10-04).
+local SKIN_MATCH = { brightness = 1.0, rgb = { 1.0, 1.0, 1.0 } }
+local SKIN_BASE = 1.0
 local SKIN_TONES = {
     { "Match the face", nil },
     { "Fairer", { 1.05, 1.08, 1.12 } },
@@ -139,11 +134,11 @@ if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 if not OUTFITS[config.outfit] then config.outfit = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
-if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 6 then
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 7 then
     -- earlier values were for other materials, or before the skin was matched to the face
     config.skinBrightness, config.skinTone, config.skinRGB = SKIN_MATCH.brightness, 1, { table.unpack(SKIN_MATCH.rgb) }
 end
-config.skinVersion = 6
+config.skinVersion = 7
 local skinDefaults = { skinBrightness = SKIN_MATCH.brightness, skinRGB = { table.unpack(SKIN_MATCH.rgb) } }
 local savedSkin = json.load_file(SKIN_DEFAULTS_PATH)
 if type(savedSkin) == "table" then
@@ -618,10 +613,17 @@ end
 
 -- ------------------------------------------------------------------ frame
 
--- Render settings copied from the hunter's own face mesh onto ours. A created via.render.Mesh
--- has StencilValue 0 where the hunter's meshes have 1: ours got the sun but no ambient light,
--- black in the shade (2026-10-03, found with MiquellaLight_MeshDiff.lua).
-local MATCH_RENDER = { "StencilValue", "ShadowCastMode" }
+-- Render settings copied from the hunter's own face mesh onto ours (again every RENDER_RECHECK s).
+-- A created via.render.Mesh has StencilValue 0 where the hunter's meshes have 1: ours got the sun
+-- but no ambient light, black in the shade (2026-10-03, found with MiquellaLight_MeshDiff.lua).
+-- BeautyMaskFlag: on for every hunter part, off (unreadable) on a created mesh; without it the
+-- skin came out near black / dark brown under the game's own ColorParam -- a spawned copy of the
+-- game's innerwear with its own mdf2 too, until the flag was set (2026-10-04,
+-- MiquellaLight_InstanceProbe.lua). UserParamPerInstance: the slot of per-object material values
+-- the game keeps for each part (app.MeshSetting's _GlobalMaterialParamIndex: wet, sand, fade...);
+-- ours was 0, someone else's slot: share the face's.
+local MATCH_RENDER = { "StencilValue", "ShadowCastMode", "BeautyMaskFlag", "UserParamPerInstance" }
+local RENDER_RECHECK = 5
 
 function face_mesh(hxf)
     local child = try(function() return hxf:call("get_Child") end)
@@ -770,8 +772,8 @@ local function update_piece(p, hxf, hgo, now)
     end
     if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked, or the hunter's sex found
     if s.parentAddr ~= address(hxf) then attach(p, hxf, now) end
-    if not s.renderMatched and now >= (s.renderAt or 0) then
-        s.renderAt = now + 1
+    if now >= (s.renderAt or 0) then
+        s.renderAt = now + (s.renderMatched and RENDER_RECHECK or 1)
         match_render(p, hxf)
     end
     if p.attach == "joint" then

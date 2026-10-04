@@ -15,6 +15,8 @@ REFramework 腳本 `reframework/autorun/MiquellaLight_Character.lua`，**不覆�
 
 **頭冠的兩個坑（2026-10-03 修好、遊戲裡確認）**：①**REFramework 的 `Quaternion.new` 參數是 (w, x, y, z)**（glm），寫成 `new(0, 0, 0, 1)` 是繞 Z 轉半圈 → 頭冠上下顛倒掛在 `Head` 上、正面在頭下方 13 cm＝脖子根一圈黑色帶子；現在用 `identity_quat()`（跟換裝腳本一樣先檢查順序）。②頭冠的 `MiquellaHalo` 抄自雙劍象牙，象牙的 **`Emissive_Power` 是 0＝發光整個關掉**（遊戲裡像純金屬）→ 腳本在發光材質上設 `EMIT_ON`（`Emissive_Power` 1、`UseCounterExposureEmit` 1、`CounterExposureEmit_Blend` 0.8，抄雙劍發光材質），`build_weapon_kit.py` 的 `HALO_EMIT_ON` 也改了，下次重建 `.mdf2` 就會帶著。**診斷**：腳本每秒把頭冠和 `Head`／`Neck_0` 骨頭的世界位置、旋轉、頭冠正面在頭骨頭座標的位置寫進 `reframework/data/MiquellaLight/circlet_debug.json`（`frontInHead` 應該約 (0, +0.128×Size, +0.113×Size)），Claude 不用截圖就能確認位置。
 
+**光照、膚色要抄的 Mesh 設定**（`MATCH_RENDER`，從臉抄、每 5 秒再對一次）：`StencilValue`、`ShadowCastMode`、`BeautyMaskFlag`、`UserParamPerInstance`。**`BeautyMaskFlag` 沒開，皮膚會近乎全黑／深咖啡**（2026-10-04 找到；之前用 ColorParam ×2.9～×7.6 補，現在跟遊戲一樣是 1：`SKIN_BASE`、`SKIN_MATCH` 都是 1，`skinVersion` 7 載入時重設）。研究筆記第 15 節
+
 **其他**：遊戲換區域把物件刪掉會自動重做；Reset scripts 時先藏起來，新的一輪接手同一個物件（`findGameObject`）；獵人被隱藏時一起藏。
 
 **測試**：`mhws/tests/character_test.lua`（`python run_lua.py character_test.lua <腳本> [female|nojoint|nocreate|missing]`；`female` 是女臉的獵人）。

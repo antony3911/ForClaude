@@ -234,14 +234,14 @@ else
   frames(40, 1 / 60)
   check(innerwear.drawSelf == false and armorLeg.drawSelf == false, "body: the hunter's innerwear and armor hidden")
   local tint = bmesh.float4["2.0"]
-  local B = 2.9 * 1.146   -- SKIN_BASE x the matched brightness; red 1.547, green 0.691 (SKIN_MATCH)
-  check(tint and math.abs(tint.x - B * 1.547) < 1e-4 and math.abs(tint.y - B * 0.691) < 1e-4 and bmesh.float4["3.0"]
+  local B = 2.9 * 1.693   -- SKIN_BASE x the matched brightness; red 1.542, green 0.727 (SKIN_MATCH)
+  check(tint and math.abs(tint.x - B * 1.542) < 1e-4 and math.abs(tint.y - B * 0.727) < 1e-4 and bmesh.float4["3.0"]
         and bmesh.float4["4.0"] and bmesh.float4["0.0"] == nil and bmesh.float4["1.0"] == nil,
         "body: skin tone tint on the skin materials' ColorParam (MiquellaSkin, -Chest, -Waist) only")
   sliderAnswer["Skin red"] = 1.2; menu()
   tint = bmesh.float4["2.0"]
-  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B * 0.691) < 1e-4, "Skin red: ColorParam's red only")
-  sliderAnswer["Skin red"] = 1.547; menu()
+  check(tint and math.abs(tint.x - B * 1.2) < 1e-4 and math.abs(tint.y - B * 0.727) < 1e-4, "Skin red: ColorParam's red only")
+  sliderAnswer["Skin red"] = 1.542; menu()
   check(made("MiquellaLight_Robe") == nil, "no outfit by default: no robe object")
   -- Outfit: the plain robe
   comboAnswer["Outfit"] = 2; menu(); frames(70, 1 / 60)

@@ -80,9 +80,11 @@ local COPY_X = { Stain_ID = true }
 local SKIN_DEFAULTS_PATH = "MiquellaLight/Character_skin_defaults.json"
 -- Built in: matched to the face across the neck seam by measuring screenshots in game (2026-10-04,
 -- by the campfire at night): ColorParam (7.57, 3.57, 4.39) = SKIN_BASE x brightness x rgb.
--- Our flat albedo is a little cyan, hence green and blue below red. Re-measured with the baked
--- skin (2026-10-04, in the camp tent, tight pairs across the seam): the body was ~1.5x the face.
-local SKIN_MATCH = { brightness = 1.146, rgb = { 1.547, 0.691, 0.938 } }
+-- Our flat albedo is a little cyan, hence green and blue below red. (2026-10-04, baked skin: the
+-- seam re-measured to 1.146 / 1.547, 0.691, 0.938 came out very red -- ColorParam does not act
+-- linearly here -- so back to these; with ColorParam 1 like the game's own skin, ours is dark
+-- brown where the game's is fine: the real cause is still open, see HANDOFF.)
+local SKIN_MATCH = { brightness = 1.693, rgb = { 1.542, 0.727, 0.894 } }
 local SKIN_BASE = 2.9
 local SKIN_TONES = {
     { "Match the face", nil },
@@ -137,11 +139,11 @@ if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 if not OUTFITS[config.outfit] then config.outfit = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
-if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 5 then
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 6 then
     -- earlier values were for other materials, or before the skin was matched to the face
     config.skinBrightness, config.skinTone, config.skinRGB = SKIN_MATCH.brightness, 1, { table.unpack(SKIN_MATCH.rgb) }
 end
-config.skinVersion = 5
+config.skinVersion = 6
 local skinDefaults = { skinBrightness = SKIN_MATCH.brightness, skinRGB = { table.unpack(SKIN_MATCH.rgb) } }
 local savedSkin = json.load_file(SKIN_DEFAULTS_PATH)
 if type(savedSkin) == "table" then

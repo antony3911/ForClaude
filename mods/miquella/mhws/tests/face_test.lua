@@ -71,13 +71,14 @@ re = { on_frame = function(f) onFrame[#onFrame + 1] = f end,
        on_application_entry = function(name, f) phases[#phases + 1] = f end,
        on_pre_application_entry = function(name, f) phases[#phases + 1] = f end,
        on_draw_ui = function(f) onUI = f end, on_script_reset = function(f) onReset = f end }
-local sliderAnswer, comboAnswer, checkAnswer, texts = {}, {}, {}, {}
+local sliderAnswer, comboAnswer, checkAnswer, buttonAnswer, texts = {}, {}, {}, {}, {}
 imgui = {
   tree_node = function() return true end, tree_pop = function() end,
   checkbox = function(l, v) if checkAnswer[l] ~= nil then local a = checkAnswer[l]; checkAnswer[l] = nil; return true, a end; return false, v end,
   slider_float = function(l, v) if sliderAnswer[l] then local a = sliderAnswer[l]; sliderAnswer[l] = nil; return true, a end; return false, v end,
   combo = function(l, v) if comboAnswer[l] then local a = comboAnswer[l]; comboAnswer[l] = nil; return true, a end; return false, v end,
-  button = function() return false end, text = function(t) texts[#texts + 1] = t end,
+  button = function(l) if buttonAnswer[l] then buttonAnswer[l] = nil; return true end; return false end,
+  same_line = function() end, text = function(t) texts[#texts + 1] = t end,
 }
 local dumps = {}
 json = { load_file = function() return nil end, dump_file = function(p, t) dumps[p] = t end }
@@ -95,31 +96,39 @@ dofile(arg[1])
 frames(5)
 local o = joints.L_OuterEyeJ_LOD02
 -- head turned 90 degrees about Y: the head's down (0, -d, -0.27 d) is the parent's own down/back
-check(close(o.lp.x, 0.045) and close(o.lp.y, 0.05 - 0.0022) and close(o.lp.z, 0.08 - 0.27 * 0.0022),
+check(close(o.lp.x, 0.045) and close(o.lp.y, 0.05 - 0.002744) and close(o.lp.z, 0.08 - 0.27 * 0.002744),
   string.format("droop: outer eye corner down and back once (%.5f %.5f %.5f)", o.lp.x, o.lp.y, o.lp.z))
 frames(20)
-check(close(o.lp.y, 0.05 - 0.0022), "no piling up over many passes")
+check(close(o.lp.y, 0.05 - 0.002744), "no piling up over many passes")
 local r = joints.R_cornerLip_LOD02
 local l = joints.L_cornerLip_LOD02
-check(l.lp.y > -0.01 + 0.0025 and l.lp.x > 0.024 and r.lp.x < -0.024 and r.lp.y < l.lp.y,
+check(l.lp.y > -0.01 + 0.0023 and l.lp.x > 0.024 and r.lp.x < -0.024 and r.lp.y < l.lp.y,
   "smile: the left corner up and out, the right a little (mirrored outward)")
 local lid = joints.L_UpEyeLidJ_LOD02
 local ang = 2 * math.acos(math.min(1, lid.lr.w)) * 180 / math.pi
-check(close(ang, 11.0, 1e-4) and close(lid.lr.x, math.sin(11 * math.pi / 360), 1e-6),
-  string.format("upper lid turned 11 degrees about the head's left axis (%.3f)", ang))
+check(close(ang, 6.74, 1e-4) and close(lid.lr.x, math.sin(6.74 * math.pi / 360), 1e-6),
+  string.format("upper lid turned 6.74 degrees about the head's left axis (%.3f)", ang))
 local lo = joints.R_LoEyeLidJ_LOD02
-check(lo.lr.x < 0 and close(2 * math.acos(lo.lr.w) * 180 / math.pi, 5.0, 1e-4), "lower lid raised 5 degrees (both sides same way)")
+check(lo.lr.x < 0 and close(2 * math.acos(lo.lr.w) * 180 / math.pi, 2.31, 1e-4), "lower lid raised 2.31 degrees (both sides same way)")
 -- the game animates a joint: its new pose becomes the base
 o.lp = { x = 0.045, y = 0.06, z = 0.08 }
 frames(1)
-check(close(o.lp.y, 0.06 - 0.0022), "the game's new pose is the base")
+check(close(o.lp.y, 0.06 - 0.002744), "the game's new pose is the base")
 local info = menu()
 check(info:find("14 / 14 joints", 1, true) ~= nil, "menu: joints found")
 check(dumps["MiquellaLight/face_debug.json"] and dumps["MiquellaLight/face_debug.json"].found == 14, "debug written for Claude")
 -- smile side to the right
 comboAnswer["Smile side"] = 2; menu(); frames(70)
 check(r.lp.y > l.lp.y and r.lp.x < -0.024, "smile side right: the right corner up")
-check(close(l.lp.y, -0.01 + 0.27 * 0.0026, 1e-6), "the left corner back to the small share")
+check(close(l.lp.y, -0.01 + 0.27 * 0.002355, 1e-6), "the left corner back to the small share")
+-- "Save as default" writes the current values; "Defaults" goes back to them
+sliderAnswer["Droopy eyes (mm)"] = 3.5; menu()
+buttonAnswer["Save as default"] = true; menu()
+local fd = dumps["MiquellaLight/Face_defaults.json"]
+check(fd and close(fd.droop, 3.5, 1e-6) and close(fd.lids, 6.74, 1e-6) and fd.smileSide == 2, "Save as default: the current values written")
+sliderAnswer["Droopy eyes (mm)"] = 1.0; menu()
+buttonAnswer["Defaults"] = true; local t = menu()
+check(close(dumps["MiquellaLight/Face.json"].droop, 3.5, 1e-6) and t:find("eyes 3.50", 1, true) ~= nil, "Defaults: back to the saved defaults")
 -- switched off: the game's pose back
 checkAnswer["Enabled"] = false; menu(); frames(3)
 check(close(o.lp.y, 0.06) and close(lid.lr.w, 1.0, 1e-9), "off: joints back to the game's pose")

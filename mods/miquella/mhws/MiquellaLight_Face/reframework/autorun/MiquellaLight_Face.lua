@@ -22,19 +22,30 @@
 -- STATUS: untested in game (2026-10-04). Every game call is wrapped in pcall. Visual only.
 
 local CONFIG_PATH = "MiquellaLight/Face.json"
+local DEFAULTS_PATH = "MiquellaLight/Face_defaults.json"   -- the user's own defaults ("Save as default")
 local DEBUG_PATH = "MiquellaLight/face_debug.json"
 local MESH = "via.render.Mesh"
 local SIDES = { "Left", "Right" }
 
-local config = {
-    enabled = true,
-    droop = 2.2,      -- mm: outer eye corners down
-    lids = 11.0,      -- degrees: upper lids lowered
-    squint = 5.0,     -- degrees: lower lids raised
-    smile = 2.6,      -- mm: one mouth corner up (and back)
+-- The tuning values. Built in: the user's pick in game (2026-10-04); "Save as default" writes the
+-- current ones to DEFAULTS_PATH, which then stands in for these; "Defaults" goes back to them.
+local TUNING = { "droop", "lids", "squint", "smile", "smileSide", "brow" }
+local defaults = {
+    droop = 2.744,    -- mm: outer eye corners down
+    lids = 6.74,      -- degrees: upper lids lowered
+    squint = 2.31,    -- degrees: lower lids raised
+    smile = 2.355,    -- mm: one mouth corner up (and back)
     smileSide = 1,    -- the hunter's left / right
     brow = 0.0,       -- mm: the smile side's outer brow lifted
 }
+local userDefaults = json.load_file(DEFAULTS_PATH)
+if type(userDefaults) == "table" then
+    for _, k in ipairs(TUNING) do
+        if type(userDefaults[k]) == type(defaults[k]) then defaults[k] = userDefaults[k] end
+    end
+end
+local config = { enabled = true }
+for _, k in ipairs(TUNING) do config[k] = defaults[k] end
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
     for k, v in pairs(saved) do if config[k] ~= nil and type(v) == type(config[k]) then config[k] = v end end
@@ -281,9 +292,16 @@ re.on_draw_ui(function()
     c, config.smileSide = imgui.combo("Smile side", config.smileSide, SIDES); changed = changed or c
     c, config.brow = imgui.slider_float("Brow lift (mm)", config.brow, 0.0, 3.0); changed = changed or c
     if imgui.button("Defaults") then
-        config.droop, config.lids, config.squint, config.smile, config.smileSide, config.brow = 2.2, 11.0, 5.0, 2.6, 1, 0.0
+        for _, k in ipairs(TUNING) do config[k] = defaults[k] end
         changed = true
     end
+    imgui.same_line()
+    if imgui.button("Save as default") then
+        for _, k in ipairs(TUNING) do defaults[k] = config[k] end
+        json.dump_file(DEFAULTS_PATH, defaults)
+    end
+    imgui.text(string.format("Default: eyes %.2f, upper lids %.1f, lower lids %.1f, smile %.2f %s, brow %.2f",
+        defaults.droop, defaults.lids, defaults.squint, defaults.smile, SIDES[defaults.smileSide] or "?", defaults.brow))
     if changed then
         if config.smileSide ~= st.side then   -- other joints for the smile and brow: back to the
             st.side = config.smileSide           -- game's pose, then look them up (state kept: a fresh

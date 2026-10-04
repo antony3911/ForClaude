@@ -30,6 +30,7 @@ local config = {
     yaw = 0.0,          -- degrees added to the view's
     height = 0.0,       -- cm added to the target's height
     plusZ = false,      -- the camera looks along its +Z (RE Engine: -Z, it seems; flip if it looks away)
+    fov = 0,            -- degrees; 0: the game's
 }
 local st = { applied = 0, err = nil, lastCmd = nil, cmdAt = 0 }
 
@@ -106,6 +107,7 @@ local function place()
     local cx, cy, cz = tx + ox * d, ty, tz + oz * d
     local rot = look_rotation(tx - cx, ty - cy, tz - cz)
     if not rot then return end
+    st.placed = { cx, cy, cz }
     try(function() cxf:call("set_Position", v3(cx, cy, cz)) end)
     try(function() cxf:call("set_Rotation", rot) end)
     st.applied = st.applied + 1
@@ -113,6 +115,11 @@ end
 
 local function read_command()
     local now = os.clock()
+    if now - (st.statusAt or 0) > 2 then
+        st.statusAt = now
+        json.dump_file(STATUS, { view = VIEWS[config.view].key, applied = st.applied, phases = st.phases,
+            heldCm = st.heldCm, fov = config.fov, err = st.err })
+    end
     if now - st.cmdAt < 0.5 then return end
     st.cmdAt = now
     local cmd = json.load_file(CMD_PATH)
@@ -126,19 +133,44 @@ local function read_command()
     if type(cmd.yaw) == "number" then config.yaw = cmd.yaw end
     if type(cmd.height) == "number" then config.height = cmd.height end
     if type(cmd.plusZ) == "boolean" then config.plusZ = cmd.plusZ end
+    if type(cmd.fov) == "number" then config.fov = cmd.fov end
     json.dump_file(STATUS_PATH, { view = VIEWS[config.view].key, distance = config.distance, yaw = config.yaw,
-        height = config.height, plusZ = config.plusZ, applied = st.applied, err = st.err })
+        height = config.height, plusZ = config.plusZ, fov = config.fov, applied = st.applied, err = st.err })
 end
 
--- After the game's own camera update, before the frame is drawn.
-local hooked = {}
-for _, phase in ipairs({ "LateUpdateBehavior", "BeginRendering" }) do
-    if re.on_pre_application_entry then
-        hooked[phase] = pcall(re.on_pre_application_entry, phase, function() place() end)
+-- After the game's own camera update, before the frame is drawn. 2026-10-04: pre-LateUpdateBehavior
+-- and pre-BeginRendering alone did not move the view (written over, or too late), so every phase
+-- in between too, counted per phase; on_frame reads the camera back to see whether ours held.
+st.phases = {}
+local function hook(pre, phase)
+    local f = pre and re.on_pre_application_entry or re.on_application_entry
+    if not f then return end
+    local tag = (pre and "pre " or "post ") .. phase
+    pcall(f, phase, function()
+        if VIEWS[config.view] and VIEWS[config.view].key ~= "off" then
+            st.phases[tag] = (st.phases[tag] or 0) + 1
+            place()
+        end
+    end)
+end
+hook(false, "LateUpdateBehavior")
+hook(true, "UpdateMotion")
+hook(false, "UpdateMotion")
+hook(true, "PrepareRendering")
+hook(true, "BeginRendering")
+
+re.on_frame(function()
+    read_command()
+    if VIEWS[config.view] and VIEWS[config.view].key ~= "off" and st.placed then
+        local cam = sdk.get_primary_camera()
+        local p = cam and try(function() return cam:call("get_GameObject"):call("get_Transform"):call("get_Position") end)
+        if p then
+            local d = math.sqrt((p.x - st.placed[1]) ^ 2 + (p.y - st.placed[2]) ^ 2 + (p.z - st.placed[3]) ^ 2)
+            st.heldCm = math.floor(d * 1000 + 0.5) / 10   -- cm between where we put it and where it is
+        end
+        if config.fov and config.fov > 0 and cam then try(function() cam:call("set_FOV", config.fov) end) end
     end
-end
-
-re.on_frame(function() read_command() end)
+end)
 
 re.on_draw_ui(function()
     if not imgui.tree_node("MiquellaLight: Booth") then return end

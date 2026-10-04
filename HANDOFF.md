@@ -10,7 +10,7 @@
 ## 0. 兩個帳號之間的留言
 
 **人物 session → 下一個 session（2026-10-04 下午，最新）**：使用者在場、Claude 操作遊戲。
-- **還原點（使用者要求「越修越爛至少可以調回現在這樣」）**：這次的 commit（訊息開頭 `Skin: calibrated to the game's bare shoulder`）＋卡普空衍生物備份在 `MiquellaTools\work\skin_bake\checkpoints6-10-04_flange\`（烘好的 PNG、`MiquellaLight_Character.pak`、當時的 `MiquellaLight_Character.lua`）。**還原**：`git checkout <那個 commit> -- mods/miquella`，把備份的 pak 複製到遊戲 `pak_mods\`（遊戲要關著）、lua 複製到 `reframeworkutorun\`
+- **還原點（使用者要求「越修越爛至少可以調回現在這樣」）**：commit `7261528`＋卡普空衍生物備份在 `MiquellaTools\work\skin_bake\checkpoints6-10-04_flange\`（烘好的 PNG、`MiquellaLight_Character.pak`、當時的 `MiquellaLight_Character.lua`）。**還原**：`git checkout <那個 commit> -- mods/miquella`，把備份的 pak 複製到遊戲 `pak_mods\`（遊戲要關著）、lua 複製到 `reframeworkutorun\`
 - **更正中午那則**：「脖子接縫量起來身體／臉 1.00／0.93／0.96」是錯的（低解析度截圖、取樣壓到陰影），使用者截圖一看接縫很明顯。`BeautyMaskFlag` 只修了「近乎全黑」
 - **膚色校正**：拿原版防具露出的肩膀當標準（原版肩膀／下巴＝1.02／1.01／1.00），我們的身體比原版暗、偏橘 → `SKIN_MATCH` 紅 1.21、綠 1.44、藍 1.62（`skinVersion` 8；開了旗標後 ColorParam 是線性的）。使用者：「這個很棒」。原因還不知道：**用腳本生成的物件，連遊戲原檔（`ch03_002_0001` 原封不動、旗標全抄）都比獵人身上真正的部件暗**（手／臉 0.68／0.51／0.75 vs 0.87／0.65／0.76），所以不是我們模型的問題
 - **使用者的點子：直接用遊戲的女性身體改形狀** → 測了：`ch03_000_0002` 其實是遊戲**預設的衣服**（只有領口、手臂露皮膚），原封不動複製到我們的路徑讀不進來（串流模型，腳本生成的物件沒有串流元件）；走過我們流程（Blender 讀進來再匯出）的版本讀得進來，**一樣偏暗、偏橘、一樣有接縫** → 換模型不解決膚色，沒換

@@ -203,6 +203,7 @@ holder("via.render.MeshResource", PIECES[1].mesh())
 for _, m in ipairs(BODY_MESHES) do
     holder("via.render.MeshResource", m .. ".mesh")
     holder("via.render.MeshResource", m .. "_f.mesh")
+    holder("via.render.MeshResource", m .. "_f_tall.mesh")
 end
 for _, o in ipairs(OUTFITS) do
     if o.fit then
@@ -424,6 +425,12 @@ local function set_model(p)
     try(function() p.st.mesh:setMesh(m) end)
     try(function() p.st.mesh:set_Material(d) end)
     local n = try(function() return p.st.mesh:get_MaterialNum() end) or 0
+    if n == 0 then
+        -- a mesh first used just now (2026-10-04: switching to the tall-neck body) is not loaded
+        -- yet: no materials, the body drawn empty. meshPath stays as it was, so it is set again.
+        p.st.retryAt = os.clock() + 0.5
+        return false
+    end
     for i = 0, n - 1 do try(function() p.st.mesh:setMaterialsEnable(i, true) end) end
     try(function() p.st.mesh:set_Enabled(true) end)
     p.st.meshPath = path
@@ -778,7 +785,7 @@ local function update_piece(p, hxf, hgo, now)
     if p.key == "body" and s.sexOf ~= address(hxf) and face_mesh(hxf) then
         s.sexOf = address(hxf)          -- face_mesh set hunterFemale
     end
-    if s.meshPath ~= p.mesh() then set_model(p) end      -- another body shape picked, or the hunter's sex found
+    if s.meshPath ~= p.mesh() and now >= (s.retryAt or 0) then set_model(p) end   -- another body shape picked, the hunter's sex found
     if s.parentAddr ~= address(hxf) then attach(p, hxf, now) end
     if now >= (s.renderAt or 0) then
         s.renderAt = now + (s.renderMatched and RENDER_RECHECK or 1)

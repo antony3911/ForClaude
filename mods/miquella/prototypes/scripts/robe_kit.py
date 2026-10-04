@@ -50,6 +50,13 @@ SKIRT_ARMOR = EXTRACTED + "/ch03/025/001/5/ch03_025_0015.mesh.241111606"
 CHAINS = ["L_F_Skirt", "L_SF_Skirt1", "L_SF_Skirt2", "L_SB_Skirt1", "L_SB_Skirt2", "L_B_Skirt",
           "R_B_Skirt", "R_SB_Skirt2", "R_SB_Skirt1", "R_SF_Skirt2", "R_SF_Skirt1", "R_F_Skirt"]
 TOP_BLEND = 0.06      # m below the skirt's top: the body's weights hand over to the chains
+# The legs came out through the skirt in game (2026-10-04): the chains' gravity pulls the hem in to a
+# straight tube narrower than a standing hunter's legs. The skirt also follows the legs this much
+# (the weights at the leg's axis at that height, left and right by the angle round: half each at
+# the front and back), reaching it LEG_RAMP below the chains' top: the hem is carried apart with
+# the legs, the chains still swing the rest.
+LEG_MIX = 0.4
+LEG_RAMP = 0.08
 TILE = 0.024          # m of cloth per texture tile (16 threads: 1.5 mm threads)
 TEX = 512             # px
 THREADS = 16
@@ -203,6 +210,18 @@ def top_weights(acc):
     top = sorted(acc.items(), key=lambda kv: -kv[1])[:mb.MAX_WEIGHTS]
     total = sum(x for _, x in top) or 1.0
     return [(b, x / total) for b, x in top if x > 1e-4]
+
+
+def leg_point(J, side, z):
+    """On the leg's axis (hip, knee, ankle joints) at height z."""
+    pts = [J[f"{side}_Thigh"], J[f"{side}_Knee"], J[f"{side}_Foot"]]
+    if z >= pts[0].z:
+        return pts[0].copy()
+    for a, b in zip(pts, pts[1:]):
+        if a.z >= z >= b.z:
+            t = (a.z - z) / max(a.z - b.z, 1e-6)
+            return a.lerp(b, t)
+    return pts[-1].copy()
 
 
 def mix(a, b, t):
@@ -596,6 +615,11 @@ def build(fit_name, female, preview_dir=None):
         beta = 1 - mb.smoothstep(0.0, TOP_BLEND, dz)
         if beta > 0:
             acc = mix(acc, body_w(v.co), beta)
+        lm = LEG_MIX * mb.smoothstep(0.0, LEG_RAMP, dz)
+        if lm > 0:
+            for side, f in (("L", (1 + math.sin(a)) / 2), ("R", (1 - math.sin(a)) / 2)):
+                if f * lm > 0.01:
+                    acc = mix(acc, body_w(leg_point(J, side, v.co.z)), f * lm)
         per_vert[v] = top_weights(acc)
 
     gold = None

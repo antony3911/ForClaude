@@ -136,7 +136,12 @@
 | **Preferred Networks（PFN）** | 東京的 AI 公司，**自 2016 年起和神戶大學合作開發 MN-Core 系列 AI 晶片**；2024/12 募資約 US$1.26 億開發 **MN-Core L1000**（專做生成式 AI 推論，把記憶體和邏輯 3D 堆疊，記憶體頻寬比現在的 HBM 更高）；約 450 名員工、估值約 US$20 億，2026 年傳出 IPO 計畫 | **日本最接近「AI 加速器 + 數位 IC 設計」的公司**；和你的研究方向最對口 |
 | **EdgeCortix** | 2019 年成立的東京新創（在美國、印度也有據點），做邊緣 AI 加速器 **SAKURA-II**；累計募資超過 US$1.1 億；下一代 **SAKURA-X** 預計 2026 年底送樣 | 小團隊、軟硬整合；有美國據點 |
 | **JASM（TSMC 熊本）** | 晶圓製造 | 招募不限國籍，但**工程師要求日語 N2 以上**；以製程為主，和數位設計的關聯較低 |
-| **Sony、Renesas、Rapidus、Kioxia** | 影像感測器、車用與 MCU、2nm 晶圓代工、記憶體 | 日本半導體復興的主力；多數職位需要日語 |
+| **Sony、Renesas、Rapidus、Kioxia** | 影像感測器、車用與 MCU、2nm 晶圓代工、記憶體 | 日本半導體復興的主力；多數職位需要日語，但有例外（見下） |
+
+**不需要日語的入口（2026-10 補充）**
+- **Sony 的 Global Careers**：給 STEM 學生的實習與正職（東京一帶），**面試用英文、不要求日語**，公司協助辦簽證（來源是 Sony 在美國大學辦的徵才說明會）
+- **Preferred Networks**：被英語求職網站列為對英語使用者友善的公司，部分職位不要求日語；實習要求日語**或**英語流利。MN-Core 的工作包括 RTL 實作（例如深度學習與 HPC 用的記憶體相關設計）。**實際的硬體職缺與語言要求，要直接看 PFN 的徵才頁**
+- **Rapidus**：資深職位年薪約 ¥1,200–1,500 萬（第三方整理）；和北海道大學合作培育人才
 
 **薪資的現實**
 - Glassdoor 上日本碩士畢業工程師的平均年薪約 **¥378 萬**；半導體工程師有 1–3 年經驗的平均約 ¥689 萬（SalaryExpert，不同來源差異很大，僅供參考）
@@ -145,7 +150,7 @@
 
 **高度專門職簽證（Highly Skilled Professional）：日本對人才的快速通道**
 - 用點數計算，**70 點以上**就符合資格；另外年收入至少要 ¥300 萬
-- 點數範例：**博士 30 點、碩士 20 點**；年收入 ¥600 萬以上 20 點、¥800 萬以上 30 點、¥1,000 萬以上 40 點；另有年齡、經歷、日語能力、畢業於日本大學等加分
+- 點數範例：**博士 30 點、碩士 20 點**；年收入 ¥600 萬以上 20 點、¥800 萬以上 30 點、¥1,000 萬以上 40 點；**日語 N2 程度約 10 點**、**畢業於指定的頂尖大學 10 點**（JETRO 等整理）；另有年齡、經歷等加分
 - **70 點可以 3 年、80 點可以 1 年就申請永久居留**，是已開發國家裡最快的之一
 - 例如：碩士（20）+ 30 歲以下（15）+ 年收 ¥600 萬（20），再加上日本大學畢業、日語能力等加分項，就可能達到 70 點（年齡與加分項的點數依我的理解整理，**以出入國在留管理廳的公告為準**）
 
@@ -211,5 +216,6 @@
 - 在台外商：[Taipei Times：NVIDIA 北投士林總部簽約（2026/02）](https://www.taipeitimes.com/News/taiwan/archives/2026/02/11/2003852161)、[Tech Times：NVIDIA Constellation 動工（2026/05）](https://www.techtimes.com/articles/317324/20260528/nvidia-pledges-150-billion-year-taiwan-constellation-campus-breaks-ground.htm)、[NVIDIA：ASIC Design Verification Engineer - New College Grad 2026](https://jobs.nvidia.com/careers/job/893392585259)、[Levels.fyi：NVIDIA Hardware Engineer Taiwan](https://www.levels.fyi/companies/nvidia/salaries/hardware-engineer/locations/taiwan)、[Google Blog：Taipei hardware engineering hub](https://blog.google/around-the-globe/google-asia/taipei-engineering-hub/)、[DIGITIMES：Google Taipei AI infrastructure center（2025/11）](https://www.digitimes.com/news/a20251121PD205/google-infrastructure-hardware-taipei-development.html)、[DIGITIMES：Google 擴大台北中心（2026/09）](https://www.digitimes.com/news/a20260903PR200/google-infrastructure-taiwan-taipei-development.html)、[AMD：US$10B Taiwan ecosystem investments（2026/05）](https://www.amd.com/en/newsroom/press-releases/2026-5-20-amd-announces-more-than-10-billion-in-taiwan-ecos.html)、[TrendForce：AMD 矽光子研發中心](https://www.trendforce.com/news/2025/10/21/news-amd-reportedly-to-set-up-silicon-photonics-rd-center-in-southern-taiwan-with-nt8-64b-investment/)、[Tom's Hardware：AMD Taiwan R&D centers](https://www.tomshardware.com/tech-industry/amd-is-in-talks-with-the-taiwan-government-to-set-up-two-randd-centers-the-chipmakers-investment-amounts-to-dollar270m)、[CTWANT：外商卡位台灣 IC 設計人才](https://www.ctwant.com/article/246961/)
 - 內轉經驗：[PTT：半導體設備外商內轉到矽谷 HQ 分享](https://www.pttweb.cc/bbs/Tech_Job/M.1735448384.A.FAD)、[PTT：科技公司是否比較好辦 L1 簽證？](https://www.ptt.cc/bbs/Tech_Job/M.1689449240.A.34A.html)、[換日線：跨國企業人資談留美工作的方法](https://crossing.cw.com.tw/article/14187)
 - 日本：[Preferred Networks：AI Chips](https://www.preferred.jp/en/business/chips)、[PFN：MN-Core L1000 開發](https://www.preferred.jp/en/news/pr20241115)、[Wikipedia：Preferred Networks](https://en.wikipedia.org/wiki/Preferred_Networks)、[Cryptonomist：PFN AI chips IPO（2026/09）](https://en.cryptonomist.ch/2026/09/07/preferred-networks-ai-chips-ipo/)、[EdgeCortix](https://www.edgecortix.com/en/)、[Business Wire：EdgeCortix 新一輪投資（2026/04）](https://www.businesswire.com/news/home/20260414508226/en/EdgeCortix-Announces-New-Investment-from-Axiro-Semiconductor-and-MPower-Partners-to-Advance-Next-Generation-Edge-AI-Platforms)、[Tracxn：EdgeCortix](https://tracxn.com/d/companies/edgecortix/__Fe2PPLWdaNTsDyGR4EcLPqRV-UsA_t_Kkp4D5iKXZwo)、[風傳媒：JASM 徵才](https://www.storm.mg/lifestyle/5035970)、[Glassdoor：Graduate Engineer Master（Japan）](https://www.glassdoor.com/Salaries/jap%C3%A3o-graduate-engineer-master-salary-SRCH_IL.0,5_IN123_KO6,30.htm)、[SalaryExpert：Semiconductor Engineer Japan](https://www.salaryexpert.com/salary/job/semiconductor-engineer/japan)、[Japan Dev：Software Developer Salaries in Japan](https://japan-dev.com/blog/software-developer-salaries-in-japan-the-ultimate-guide)、[ACROSEED：HSP 點數計算](https://english.visajapan.jp/koudo_items.html)、[Japan Visa：HSP Points System 2026](https://japan-visa.com/visas/highly-skilled-professional)、[Hello World Japan：HSP 與 1 年永久居留](https://helloworldjapan.com/en/articles/japan-hsp-visa-shortcut-to-pr)
+- 日本（2026-10 補充）：[JETRO：Points-based preferential immigration treatment](https://www.jetro.go.jp/en/invest/setting_up/section2/page11.html)、[ACROSEED：HSP 與永久居留](https://english.visajapan.jp/koudo.html)、[University of Michigan：Meet Global Sony Engineers](https://events.umich.edu/event/112930)、[Japan Dev：Preferred Networks](https://japan-dev.com/companies/preferred-networks)、[PFN：Careers](https://www.preferred.jp/en/careers)、[PFN：Internship](https://www.preferred.jp/en/careers/internship)、[MailMate：High Demand Jobs in Japan for Foreigners 2026](https://mailmate.jp/blog/jobs-in-japan-for-foreigners)、[Rapidus：與北海道大學合作](https://www.rapidus.inc/en/news_topics/information/rapidus-signs-comprehensive-collaboration-agreement-with-hokkaido-university-en/)
 - [Singapore EP 2026](https://www.pilotoasia.com/guide/singapore-employment-pass)、[Envoy：Singapore EP 2027](https://www.envoyglobal.com/news-alert/singapore-updated-employment-pass-eligibility-criteria-for-2027/)
 - 各國畢業後工作權的來源見 [02](02-study-abroad-by-country.md#來源)

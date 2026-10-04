@@ -17,6 +17,8 @@ REFramework 腳本 `reframework/autorun/MiquellaLight_Character.lua`，**不覆�
 
 **光照、膚色要抄的 Mesh 設定**（`MATCH_RENDER`，從臉抄、每 5 秒再對一次）：`StencilValue`、`ShadowCastMode`、`BeautyMaskFlag`、`UserParamPerInstance`。**`BeautyMaskFlag` 沒開，皮膚會近乎全黑／深咖啡**（2026-10-04 找到；之前用 ColorParam ×2.9～×7.6 補，現在跟遊戲一樣是 1：`SKIN_BASE`、`SKIN_MATCH` 都是 1，`skinVersion` 7 載入時重設）。研究筆記第 15 節
 
+**頭髮**（2026-10-04，還沒在遊戲裡看過）：物件 `MiquellaLight_Hair`，512＋米凱拉編髮（kit README「頭髮」），掛骨架（SameJointsConstraint）＋`Chain2`（遊戲自己的 `Art/Model/Character/ch01/001/0/512/ch01_001_0512.chain2`）＋`ChildSecondary`。**只在獵人戴著女版 512 時生成**（`HAIR_PATH`，掃獵人底下的物件）；我們的讀完（材質數 > 0）才把獵人自己的 512 藏起來（`set_DrawSelf(false)`），關掉或沒讀到就顯示回來。選單 `Hair: 512 with Miquella's braids`（`config.hair`，預設開）、狀態行、`Gold glow (ties)`。戴頭盔時遊戲會藏頭髮，這版還沒跟著藏（要在遊戲裡看）
+
 **其他**：遊戲換區域把物件刪掉會自動重做；Reset scripts 時先藏起來，新的一輪接手同一個物件（`findGameObject`）；獵人被隱藏時一起藏。
 
 **測試**：`mhws/tests/character_test.lua`（`python run_lua.py character_test.lua <腳本> [female|nojoint|nocreate|missing]`；`female` 是女臉的獵人）。

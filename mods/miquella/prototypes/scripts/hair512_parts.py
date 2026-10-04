@@ -21,7 +21,9 @@ def main():
     addon_utils.modules_refresh()
     addon_utils.enable("re_mesh_editor", default_set=True)
     from re_mesh_editor.modules.mesh.blender_re_mesh import importREMeshFile
-    importREMeshFile(f"{ROOT}/ch01/000/0/512/ch01_000_0512.mesh.241111606", OPTS)
+    # MIQUELLA_HAIR_SEX=f: the female hunter's 512 (ch01_001_0512; the user's hunter is female)
+    sex = "001" if os.environ.get("MIQUELLA_HAIR_SEX") == "f" else "000"
+    importREMeshFile(f"{ROOT}/ch01/{sex}/0/512/ch01_{sex}_0512.mesh.241111606", OPTS)
     for o in bpy.data.objects:
         print("OBJ", o.name, o.type, len(o.data.vertices) if o.type == "MESH" else "",
               [m.name for m in o.data.materials] if o.type == "MESH" else "")
@@ -64,7 +66,7 @@ def main():
     idx = [x.index for p in mit for x in p[4]]
     bm.free()
     vg.add(idx, 1.0, "REPLACE")
-    bpy.ops.wm.save_as_mainfile(filepath=f"{OUT}/hair512.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=f"{OUT}/hair512{'_f' if sex == '001' else ''}.blend")
     print("saved", len(idx), "braid verts", flush=True)
 
 

@@ -91,11 +91,21 @@ class Neck:
 
 
 def front_drop(neck, name):
-    """A small ring under the band's front and the circlet's drop hanging from it."""
-    p, nrm = neck.at(0.0, neck.low_at(0.0) + 0.001, CLEAR + 0.0015)
-    c = p + Vector((0, 0, -0.0058)) + nrm * 0.001
-    objs = [rd.ring(f"{name}_ring", c, 0.0055, nrm, 0.0009, rd.COL["gold"])]
-    objs.append(rd.droplet(f"{name}_drop", c + Vector((0, 0, -0.0055 - DROP * 0.9)) + nrm * 0.0015, DROP * 0.62, rd.COL["gold"]))
+    """A small ring hanging from the band's front point and the circlet's drop under it, both whole
+    and clear of the chest (it leans forward under the neck: hung straight down they sank into
+    it, and the ring half hidden by the band read as a crescent -- no crescents)."""
+    def front_surface(z):
+        loc = neck.bvh.ray_cast(Vector((0.0, -1.0, z)), Vector((0.0, 1.0, 0.0)), 2.0)[0]
+        return loc.y if loc is not None else -0.06
+    p, nrm = neck.at(0.0, neck.low_at(0.0), CLEAR)
+    r = 0.0050
+    zc = p.z - 0.0012 - r                       # the ring's top just under the band's edge
+    ring_y = min(p.y, front_surface(zc)) - 0.0022
+    c = Vector((0.0, ring_y, zc))
+    objs = [rd.ring(f"{name}_ring", c, r, Vector((0.0, -1.0, 0.25)), 0.0009, rd.COL["gold"])]
+    zd = zc - r - DROP * 0.95
+    drop_y = min(ring_y, front_surface(zd) - 0.0035)
+    objs.append(rd.droplet(f"{name}_drop", Vector((0.0, drop_y, zd)), DROP * 0.62, rd.COL["gold"]))
     return objs
 
 

@@ -28,13 +28,16 @@ end
 local innerwear = outfitGO("Art/Model/Character/ch02/002/000/2/ch02_002_0002.mesh")
 local armorLeg = outfitGO("Art/Model/Character/ch03/021/001/4/ch03_021_0014.mesh")
 -- "female": the female face (ch00_001), whose hunters get the _f body meshes
-local face = outfitGO(mode == "female" and "Art/Model/Character/ch00/001/0000/ch00_001_0000.mesh"
+-- "hair512": a female hunter wearing hairstyle 512 (ours replaces it)
+local female = mode == "female" or mode == "hair512"
+local face = outfitGO(female and "Art/Model/Character/ch00/001/0000/ch00_001_0000.mesh"
   or "Art/Model/Character/ch00/000/0000/ch00_000_0000.mesh")
-local SFX = mode == "female" and "_f" or ""
+local SFX = female and "_f" or ""
 -- the face's render settings our meshes copy (MATCH_RENDER)
 local faceRender = { get_StencilValue = 1, get_ShadowCastMode = 2, get_BeautyMaskFlag = true, get_UserParamPerInstance = 26953 }
 function face.mesh:call(m) return faceRender[m] end
-local hair = outfitGO("Art/Model/Character/ch01/000/0/001/ch01_000_0001.mesh")
+local hair = outfitGO(mode == "hair512" and "Art/Model/Character/ch01/001/0/512/ch01_001_0512.mesh"
+  or "Art/Model/Character/ch01/000/0/001/ch01_000_0001.mesh")
 local weapon = outfitGO("Art/Model/Item/it02/00/0002/it0200_0002_0.mesh")
 local function childXf(go, child, nxt)
   return { call = function(_, m)
@@ -217,6 +220,20 @@ if mode == "nocreate" then
   check(#created == 0 and menu():find("could not create", 1, true), "no GameObject.create: says so in the menu")
 elseif mode == "missing" then
   check(menu():find("MiquellaLight_Character.pak", 1, true) ~= nil, "missing model: names the pak in the menu")
+elseif mode == "hair512" then
+  frames(80, 1 / 60)
+  local h = made("MiquellaLight_Hair")
+  local hm = h and h.comps["via.render.Mesh"]
+  check(hm and hm.meshRes.path == "Art/Model/MiquellaLight/Character/mq_hair512_f.mesh"
+    and hm.mdfRes.path == "Art/Model/MiquellaLight/Character/mq_hair512.mdf2", "hair: our 512 with braids, its own mdf2")
+  local ch = h and h.comps["via.motion.Chain2"]
+  check(ch and h.comps["via.motion.ChildSecondary"] and ch.asset
+    and ch.asset.path == "Art/Model/Character/ch01/001/0/512/ch01_001_0512.chain2", "hair: 512's own chain2 and ChildSecondary")
+  check(h.xf.parent == hunterXf and h.xf.sameJoints == true and h.drawSelf == true, "hair: on the skeleton, shown")
+  check(hair.drawSelf == false, "hair: the hunter's own 512 hidden")
+  check(menu():find("the hunter's own 512 hidden", 1, true) ~= nil, "hair: status in the menu")
+  checkAnswer["Hair: 512 with Miquella's braids"] = false; menu(); frames(5, 1 / 60)
+  check(h.drawSelf == false and hair.drawSelf == true, "hair off: ours hidden, the hunter's own back")
 else
   -- Circlet
   local go = made("MiquellaLight_Circlet")

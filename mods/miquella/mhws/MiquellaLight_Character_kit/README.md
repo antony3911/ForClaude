@@ -31,6 +31,23 @@ python make_patch_pak.py <MiquellaTools>/work/stage_Character MiquellaLight_Char
 
 **之後打包角色 pak 一律從 `stage_Character` 打**（先跑 `stage`）：直接打這個資料夾，皮膚會變回單色。身體重建後（`miquella_body.py kit`）要重烘。遊戲檔：`extract_game_files.py` 解 `ch03/**/ch03_*.mdf2`、各部位的 `.mesh`（含 `streaming/` 的高精度版）、兩張皮膚貼圖。
 
+## 頭髮（2026-10-04，遊戲版第一版，還沒在遊戲裡看過）
+
+髮型 512（女獵人的 `ch01_001_0512`）＋米凱拉的編髮（設計定案的 A 款：背後 10 條細編髮、肩前兩條粗編髮、大編髮加長，原本的髮圈和髮尾移到新末端）：`prototypes/scripts/hair_kit.py`。角色腳本生成它來取代獵人自己的 512（我們的讀完才藏原本的），掛獵人骨架、用 512 自己的 chain2 擺動（跟長袍一樣 `Chain2`＋`ChildSecondary`）。
+
+- 512 原本的部件保留權重；新加或移動的（編髮、細編髮的金髮圈和髮尾、移到新末端的 512 髮尾和髮圈）抄 512 原版最近的點的權重和頂點顏色，沿著每股平滑 → 細編髮跟著它所在的 `back_hair` 鏈擺，加長的大編髮跟著周圍的頭髮擺
+- 編髮減面：每 3 mm 一圈、每圈 6 點（預覽是 1 mm、12 點）；UV：V 沿著每股（每 12 cm 鏡像一次，不會出現髮尾），U 繞一圈取一窄條，貼 512 自己頭髮貼圖左邊最密的髮絲
+- 材質 `scalp`、`acc`、`hair`（512 的，引用遊戲的貼圖）＋`MiquellaRobeGold`（細編髮的金髮圈，跟長袍的金一樣、吃 Gold glow）；mdf2 只放模型有的材質（多了會連不上材質）
+- **模型含卡普空的 512、mdf2 抄它的材質：都不進 repo**，輸出到 `MiquellaTools\work\hair_kit\`，打包前複製進 `work\stage_Character`（跟烘焙的皮膚一樣）；發布時算灰色地帶，使用者到時決定
+- 點數：頭髮子模型 85,718 點（原版 512 約 4.4 萬），進遊戲看效能再減
+
+```
+MIQUELLA_HAIR_SEX=f python hair512_parts.py
+MIQUELLA_HAIR_SEX=f python hair512_braids.py A <MiquellaTools>/work/previews/hair_mq
+python hair_kit.py <extracted natives/stm> <MiquellaTools>/work/previews/hair_mq/hair_mq_A_f.blend <MiquellaTools>/work/hair_kit <這個資料夾>
+# 打包：stage 之後把 work/hair_kit/natives 的兩個檔複製進 work/stage_Character/natives，再 make_patch_pak.py
+```
+
 ## 身體（2026-10-02 深夜）
 
 遊戲沒有裸身模型（內衣是整套衣服，研究筆記第 18 節），所以用 **MakeHuman 的基礎人體（CC0，github.com/makehumancommunity/makehuman，可自由修改發布）**：

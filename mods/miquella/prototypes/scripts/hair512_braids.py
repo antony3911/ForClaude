@@ -7,9 +7,12 @@ from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 
 ROOT = "C:/Users/anton/MiquellaTools/extracted/natives/stm/art/model/character"
+# MIQUELLA_HAIR_SEX=f: on the female hunter (the user's): her 512, face and our body C for her
+FEMALE = os.environ.get("MIQUELLA_HAIR_SEX") == "f"
 BODY = ("C:/Users/anton/ForClaude/mods/miquella/mhws/MiquellaLight_Character_kit/natives/STM/Art/"
-        "Model/MiquellaLight/Character/mq_body_a.mesh.241111606")
-W512 = "C:/Users/anton/MiquellaTools/work/hair512/hair512.blend"
+        "Model/MiquellaLight/Character/" + ("mq_body_c_f" if FEMALE else "mq_body_a") + ".mesh.241111606")
+W512 = "C:/Users/anton/MiquellaTools/work/hair512/hair512" + ("_f" if FEMALE else "") + ".blend"
+FACE = ROOT + ("/ch00/001/0000/ch00_001_0000" if FEMALE else "/ch00/000/0000/ch00_000_0000") + ".mesh.241111606"
 VARIANT = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else "C:/Users/anton/MiquellaTools/work/previews/hair_mq"
 os.makedirs(OUT, exist_ok=True)
@@ -300,7 +303,7 @@ def main():
     acc = bpy.data.objects["Group_1_Sub_0__acc"]
     scalp = bpy.data.objects["Group_0_Sub_0__scalp"]
     before = set(bpy.data.objects)
-    importREMeshFile(f"{ROOT}/ch00/000/0000/ch00_000_0000.mesh.241111606", OPTS)
+    importREMeshFile(FACE, OPTS)
     face = flatten_new(before, SKIN_COL)
     before = set(bpy.data.objects)
     importREMeshFile(BODY, OPTS)
@@ -511,7 +514,7 @@ def main():
             out_objs += braid(f"f{n}", pts, outs, w, HAIR_COL, seed=40 + n,
                               root_len=root_length(pts, 1.615) if root else 0.0)
 
-    bpy.ops.wm.save_as_mainfile(filepath=f"{OUT}/hair_mq_{VARIANT}.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=f"{OUT}/hair_mq_{VARIANT}{'_f' if FEMALE else ''}.blend")
     render(out_objs, [hair, acc, scalp, tail512] + face + body)
 
 

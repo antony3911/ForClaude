@@ -45,7 +45,20 @@ local PIECES = {
         glow = { MiquellaRobeGold = 1.0 }, glowKey = "goldGlow",
         emitColor = { 1.0, 0.60, 0.16, 1.0 },   -- saturated: the glow whitens it (2026-10-04: 0.72/0.30 read cream)
     },
+    {
+        -- Hairstyle 512 as the female hunter wears it, with Miquella's braids (hair_kit.py,
+        -- 2026-10-04): in place of the hunter's own 512 (hidden once ours has loaded), on the
+        -- hunter's skeleton, swinging by 512's own chain2 like the robe. Only when the hunter
+        -- wears 512 (HAIR_PATH); the braids' gold ties take the robe's gold and its glow.
+        key = "hair", name = "MiquellaLight_Hair", attach = "skeleton",
+        mesh = function() return DIR .. "mq_hair512_f.mesh" end, mdf2 = DIR .. "mq_hair512.mdf2",
+        chain = "Art/Model/Character/ch01/001/0/512/ch01_001_0512.chain2",
+        glow = { MiquellaRobeGold = 1.0 }, glowKey = "goldGlow",
+        emitColor = { 1.0, 0.60, 0.16, 1.0 },
+    },
 }
+local HAIR_PATH = "ch01/001/0/512/ch01_001_0512.mesh"   -- the hunter's own 512 (lower case)
+local hairState = { go = nil, nextScan = 0, hidden = false }
 -- Outfits over the body (robe_kit.py): one mesh per fit and hunter sex, fitted to body shape C
 -- (the other shapes wear C's for now). covers: the body's materials under it, switched off.
 -- mdf2: the fitted robes' own (cloth only): a mesh does not link an mdf2 with materials it lacks,
@@ -131,6 +144,7 @@ local config = {
     skinBrightness = SKIN_MATCH.brightness,   -- ColorParam multiplier on top of the face's
     skinRGB = { table.unpack(SKIN_MATCH.rgb) },   -- and per channel (Skin red / green / blue)
     outfit = 1,
+    hair = true,
 }
 local saved = json.load_file(CONFIG_PATH)
 if type(saved) == "table" then
@@ -171,6 +185,7 @@ local function piece_on(p)
     if not config.enabled then return false end
     if p.key == "circlet" then return config.circlet end
     if p.key == "robe" then return config.body and OUTFITS[config.outfit].fit ~= nil end
+    if p.key == "hair" then return config.hair and hairState.go ~= nil end
     return config.body
 end
 
@@ -213,6 +228,8 @@ for _, o in ipairs(OUTFITS) do
     end
 end
 holder("via.motion.Chain2Resource", PIECES[3].chain)
+holder("via.motion.Chain2Resource", PIECES[4].chain)
+holder("via.render.MeshResource", PIECES[4].mesh())
 
 local function resource_path(res)
     local s = res and try(function() return res:ToString() end)
@@ -626,6 +643,44 @@ local function update_outfit(hxf, now)
     end
 end
 
+-- The hunter's own hairstyle 512: found under the hunter (it is a part of its own), hidden while
+-- ours is shown and loaded, shown again otherwise.
+local function scan_hair(xf, depth)
+    if depth > SCAN_DEPTH then return nil end
+    local child = try(function() return xf:call("get_Child") end)
+    while child do
+        local go = try(function() return child:call("get_GameObject") end)
+        local path = go and mesh_path(go)
+        if path and path:find(HAIR_PATH, 1, true) then return go end
+        local found = scan_hair(child, depth + 1)
+        if found then return found end
+        child = try(function() return child:call("get_Next") end)
+    end
+    return nil
+end
+
+local function update_hair(hxf, now)
+    if now >= hairState.nextScan then
+        hairState.nextScan = now + OUTFIT_SCAN
+        local go = scan_hair(hxf, 1)
+        if go ~= hairState.go and hairState.go and hairState.hidden then
+            try(function() hairState.go:call("set_DrawSelf", true) end)
+            hairState.hidden = false
+        end
+        hairState.go = go
+    end
+    local p = PIECES[4]
+    local ready = p.st.go ~= nil and piece_on(p)
+        and (try(function() return p.st.mesh:get_MaterialNum() end) or 0) > 0
+    if hairState.go and ready then
+        try(function() hairState.go:call("set_DrawSelf", false) end)
+        hairState.hidden = true
+    elseif hairState.go and hairState.hidden then
+        try(function() hairState.go:call("set_DrawSelf", true) end)
+        hairState.hidden = false
+    end
+end
+
 -- ------------------------------------------------------------------ frame
 
 -- Render settings copied from the hunter's own face mesh onto ours (again every RENDER_RECHECK s).
@@ -825,6 +880,10 @@ local function update_piece(p, hxf, hgo, now)
             s.debugAt = now + 2
             write_robe_debug(p, hxf)
         end
+    elseif p.key == "hair" then
+        s.info = string.format("512 with Miquella's braids on the skeleton (%s); chain: %s, asset %s; the hunter's own 512 %s",
+            s.jointCall or "?", s.chainComps or "none", s.chainSet and "set" or "NOT set",
+            hairState.hidden and "hidden" or "shown")
     else
         s.info = string.format("on the skeleton (%s), %s for a %s hunter; render: %s; skin %s", s.jointCall or "?",
             BODY_SHAPES[config.bodyShape], hunterFemale == nil and "?" or hunterFemale and "female" or "male",
@@ -855,6 +914,7 @@ local function update(now)
     local robe = PIECES[3]
     apply_cover(PIECES[2], piece_on(robe) and robe.st.go ~= nil and robe.st.loadError == nil)
     update_outfit(hxf, now)
+    update_hair(hxf, now)
 end
 
 re.on_frame(function()
@@ -932,6 +992,21 @@ re.on_draw_ui(function()
         if not OUTFITS[config.outfit].mdf2 then
             c, config.goldGlow = imgui.slider_float("Gold glow", config.goldGlow, 0.0, 5.0); changed = changed or c
             if c then apply_glow(PIECES[3]) end
+        end
+    end
+    -- Hair
+    c, config.hair = imgui.checkbox("Hair: 512 with Miquella's braids", config.hair == true); changed = changed or c
+    local h = PIECES[4].st
+    if config.hair then
+        if not hairState.go then
+            imgui.text("(the hunter does not wear hairstyle 512 of a female hunter)")
+        else
+            if h.loadError then imgui.text(h.loadError) end
+            if h.info then imgui.text("Hair: " .. h.info) end
+            if not (config.outfit > 1 and not OUTFITS[config.outfit].mdf2) then
+                c, config.goldGlow = imgui.slider_float("Gold glow (ties)", config.goldGlow, 0.0, 5.0); changed = changed or c
+                if c then apply_glow(PIECES[4]) end
+            end
         end
     end
     -- Circlet

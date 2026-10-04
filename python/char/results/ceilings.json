@@ -1,0 +1,8 @@
+{
+ "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+ "fp32_matmul_tflops": 9.53,
+ "fp16_matmul_tflops": 35.92,
+ "bandwidth_gbs": 216.8,
+ "min_kernel_us": 9.71,
+ "clocks_after": "2460 MHz, 8001 MHz, 45.17 W, 60"
+}

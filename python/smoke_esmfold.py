@@ -3,9 +3,14 @@ import glob, os, random, sys, time
 import torch
 from transformers import EsmForProteinFolding
 
-L = int(sys.argv[1]) if len(sys.argv) > 1 else 100
-random.seed(0)
-seq = "".join(random.choice("ACDEFGHIKLMNPQRSTVWY") for _ in range(L))
+# 用法：smoke_esmfold.py 100（長度 100 的隨機序列）或 smoke_esmfold.py MQIFVK...（真的序列）
+arg = sys.argv[1] if len(sys.argv) > 1 else "100"
+if arg.isdigit():
+    random.seed(0)
+    seq = "".join(random.choice("ACDEFGHIKLMNPQRSTVWY") for _ in range(int(arg)))
+else:
+    seq = arg.upper()
+L = len(seq)
 
 ckpt = glob.glob(os.path.expanduser("~/.cache/huggingface/hub/models--facebook--esmfold_v1/snapshots/*/pytorch_model.bin"))[0]
 m = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1", torch_dtype=torch.float16, low_cpu_mem_usage=True)

@@ -78,6 +78,10 @@ local COPY_X = { Stain_ID = true }
 -- The user's skin defaults ("Save skin as default"): brightness and the red / green / blue
 -- multipliers, matched by eye to the face at the neck (the face looks lit apart from the body).
 local SKIN_DEFAULTS_PATH = "MiquellaLight/Character_skin_defaults.json"
+-- Built in: matched to the face across the neck seam by measuring screenshots in game (2026-10-04,
+-- by the campfire at night): ColorParam (7.57, 3.57, 4.39) = SKIN_BASE x brightness x rgb.
+-- Our flat albedo is a little cyan, hence green and blue below red.
+local SKIN_MATCH = { brightness = 1.693, rgb = { 1.542, 0.727, 0.894 } }
 local SKIN_BASE = 2.9
 local SKIN_TONES = {
     { "Match the face", nil },
@@ -118,8 +122,8 @@ local config = {
     bodyShape = 1,
     hideOutfit = true,
     skinTone = 1,
-    skinBrightness = 1.0,   -- ColorParam multiplier on top of the face's
-    skinRGB = { 1.0, 1.0, 1.0 },   -- and per channel (Skin red / green / blue)
+    skinBrightness = SKIN_MATCH.brightness,   -- ColorParam multiplier on top of the face's
+    skinRGB = { table.unpack(SKIN_MATCH.rgb) },   -- and per channel (Skin red / green / blue)
     outfit = 1,
 }
 local saved = json.load_file(CONFIG_PATH)
@@ -132,11 +136,12 @@ if not BODY_MESHES[config.bodyShape] then config.bodyShape = 1 end
 if not SKIN_TONES[config.skinTone] then config.skinTone = 1 end
 if not OUTFITS[config.outfit] then config.outfit = 1 end
 config.skinShift, config.skinBright = nil, nil   -- test sliders of 2026-10-03, gone
-if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 3 then
-    config.skinBrightness, config.skinTone = 1.0, 1   -- earlier values were for other materials
+if type(config.skinBrightness) ~= "number" or config.skinVersion ~= 4 then
+    -- earlier values were for other materials, or before the skin was matched to the face
+    config.skinBrightness, config.skinTone, config.skinRGB = SKIN_MATCH.brightness, 1, { table.unpack(SKIN_MATCH.rgb) }
 end
-config.skinVersion = 3
-local skinDefaults = { skinBrightness = 1.0, skinRGB = { 1.0, 1.0, 1.0 } }
+config.skinVersion = 4
+local skinDefaults = { skinBrightness = SKIN_MATCH.brightness, skinRGB = { table.unpack(SKIN_MATCH.rgb) } }
 local savedSkin = json.load_file(SKIN_DEFAULTS_PATH)
 if type(savedSkin) == "table" then
     if type(savedSkin.skinBrightness) == "number" then skinDefaults.skinBrightness = savedSkin.skinBrightness end
@@ -867,13 +872,13 @@ re.on_draw_ui(function()
         changed = true
         apply_tint(PIECES[2])
     end
-    c, config.skinBrightness = imgui.slider_float("Skin brightness", config.skinBrightness, 0.5, 1.5)
+    c, config.skinBrightness = imgui.slider_float("Skin brightness", config.skinBrightness, 0.5, 2.5)
     if c then
         changed = true
         apply_tint(PIECES[2])
     end
     for i, label in ipairs({ "Skin red", "Skin green", "Skin blue" }) do
-        c, config.skinRGB[i] = imgui.slider_float(label, config.skinRGB[i], 0.5, 1.5)
+        c, config.skinRGB[i] = imgui.slider_float(label, config.skinRGB[i], 0.3, 2.0)
         if c then
             changed = true
             apply_tint(PIECES[2])

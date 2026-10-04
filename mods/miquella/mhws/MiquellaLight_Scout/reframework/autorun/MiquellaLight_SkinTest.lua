@@ -1,6 +1,6 @@
 -- MiquellaLight_SkinTest: experiment. Every frame sets variables on our body's skin materials
 -- (MiquellaSkin, -Chest, -Waist) from reframework/data/MiquellaLight/skin_test.json, e.g.
---   {"on": true, "colorParam": 1.0, "stain": true, "normalBlend": 0.0}
+--   {"on": true, "colorParam": 1.0, "stain": true, "normalBlend": 0.0}   or "rgb": [r, g, b] (ColorParam as is)
 -- stain: Stain_ID copied from the face's material (the game sets it at run time; ours is 0).
 -- Status (what it set) to skin_test_status.json.
 -- Why (2026-10-04): our skin vs the game's own "skin" material differs only in ColorParam (ours
@@ -66,9 +66,10 @@ local function apply(test)
     for i = 0, n - 1 do
         local name = try(function() return body:getMaterialName(i) end)
         if SKINS[name] then
-            if cmd.colorParam then
+            if cmd.colorParam or cmd.rgb then
+                local c = cmd.rgb or { cmd.colorParam, cmd.colorParam, cmd.colorParam }
                 local j = var_index(body, i, "ColorParam")
-                if j then try(function() body:setMaterialFloat4(i, j, Vector4f.new(cmd.colorParam, cmd.colorParam, cmd.colorParam, 1.0)) end) end
+                if j then try(function() body:setMaterialFloat4(i, j, Vector4f.new(c[1], c[2], c[3], 1.0)) end) end
             end
             if stain then
                 local j = var_index(body, i, "Stain_ID")

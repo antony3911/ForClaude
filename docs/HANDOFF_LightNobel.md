@@ -150,7 +150,16 @@
 - 實測 L = 100（隨機序列）：參數 ESM-2 2.83 B／其他 0.69 B；GPU 權重 2.77 GB、峰值 2.86 GB；ESM-2（CPU）26.9 s、trunk＋structure 約 5.6 s。當時另一個 session 在裝套件，**時間不能用**，只證明跑得動。
 - 另一個 session 會用同一張 GPU 跑繪圖工具：量測前先看 `nvidia-smi`，電腦閒的時候再量。
 
-**下一步：** 寫量測程式（各運算 GPU 時間＋峰值記憶體，L 由 100 往上到 OOM）與形狀公式。使用者說要等繪圖工具裝完、調高 effort 再寫。
+**第一輪已完成（2026-10-04）：** 結果、方法、限制都在 `docs/characterization.md`，程式與原始數據在 `python/char/`。重點：
+- 長序列時 TriAttn 佔 block 時間 54%→73%（L = 256→1410），受頻寬限制（L³ logits 讀寫約 8 次）；TriMul 20～26%。
+- **TriMul 在 GPU 上只有 6% 是 einsum，57% 是 permute 後的轉置複製**（約 15 GB/s，頻寬的 7%）→ 選 TriMul 的新理由：浪費在資料排列與搬移，正是空間加速器能改善的。
+- 240 個 block 佔端到端 98.3%（L = 512）；ESM-2、structure module 各 < 1%。
+- 分塊：時間不變、記憶體降 4 倍（L = 512）。
+- roofline 推 H100 與論文 Fig. 3 趨勢一致，差 5～8 個百分點。
+- 泛素與 PDB 1UBQ 的 CA RMSD 0.84 Å（模型正確）。
+- 量測坑：Windows 驅動會偷借系統 RAM（要設記憶體上限）；profiler 要用 GPU 時間軸歸屬 kernel。
+
+**下一步：** 使用者想完整理解論文（2026-10-04 在對話中解釋過，可考慮整理進手冊）。之後可用外部 A100 跑 `profile_block.py` 驗證長序列；把「不轉置／融合」版 TriMul 的搬運量算出來。
 
 **還要確認：** 實驗室投影片的 TODO 寫的是 gem5 ＋ Ramulator ＋ Garnet/Noxim。10/17 要的「architectural simulation」可能是指這套，跟我們的 HLS ＋ 分析模型路線不同，要找機會問教授。
 

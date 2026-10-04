@@ -122,7 +122,7 @@ def gpu_breakdown(prof, reps):
     return t
 
 
-def run_trunk(m, seq, esm_s, chunk, reps=2):
+def run_trunk(m, seq, esm_s, chunk, reps=1):
     m.trunk.set_chunk_size(chunk)
     cached = esm_s.cuda()
     m.compute_language_model_representations = lambda esmaa: cached

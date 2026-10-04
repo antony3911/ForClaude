@@ -99,7 +99,11 @@ local BODY_MESHES = { DIR .. "mq_body_a", DIR .. "mq_body_b", DIR .. "mq_body_c"
 -- the female face (ch00_001) has a lower, thinner neck for the body to meet and the female
 -- skeleton narrower shoulders. Female ones end in _f; which one is read off the face's mesh path.
 local hunterFemale = nil     -- nil until the face is found
-local function body_mesh(shape) return BODY_MESHES[shape] .. (hunterFemale and "_f" or "") .. ".mesh" end
+-- tall: the test option for the face's pale lower neck (2026-10-04, option A): a body whose neck
+-- carries on 3.5-4.5 cm up over the face's neck (built with MIQUELLA_FLANGE=tall), female only.
+local function body_mesh(shape, tall)
+    return BODY_MESHES[shape] .. (hunterFemale and (tall and "_f_tall" or "_f") or "") .. ".mesh"
+end
 PIECES[2].mesh = nil   -- set below, once config is read
 local CHECK_AFTER = 1.0      -- s after attaching: is the circlet at the head?
 local OFF_HEAD = 0.30        -- m from the Head joint: the parent joint did not hold
@@ -154,7 +158,7 @@ if type(savedSkin) == "table" then
 end
 if type(config.skinRGB) ~= "table" or #config.skinRGB ~= 3 then config.skinRGB = { 1.0, 1.0, 1.0 } end
 local function save_config() json.dump_file(CONFIG_PATH, config) end
-PIECES[2].mesh = function() return body_mesh(config.bodyShape) end
+PIECES[2].mesh = function() return body_mesh(config.bodyShape, config.tallNeck) end
 local lastFit = "smooth"
 local lastMdf2 = "mq_robe.mdf2"
 PIECES[3].mesh = function()
@@ -904,6 +908,8 @@ re.on_draw_ui(function()
         json.dump_file(SKIN_DEFAULTS_PATH, skinDefaults)
     end
     c, config.hideOutfit = imgui.checkbox("Hide the hunter's armor and innerwear", config.hideOutfit)
+    changed = changed or c
+    c, config.tallNeck = imgui.checkbox("Tall neck: cover the face's pale lower neck (test)", config.tallNeck == true)
     changed = changed or c
     local b = PIECES[2].st
     if b.loadError then imgui.text(b.loadError) end

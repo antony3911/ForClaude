@@ -458,8 +458,22 @@ NECK_ROWS = 12                     # rows from the cut up to the rim
 # once the skin colours matched. Rows of ours carry on up the face's neck this far above the rim,
 # FLANGE_LIFT off its surface, with the face's weights and normals, and cover the strip (unlike the
 # 2026-10-03 cover from outside, a bulging ring: this one is 0.3 mm thick).
-FLANGE = (0.003, 0.006)            # m above the rim, per row
+FLANGE = (0.5, 1.0)                # rows, as shares of the flange's height
+FLANGE_HEIGHT = (0.006, 0.006, 0.006)   # m above the rim: front, sides, back
+# Option A for the face's pale lower neck (2026-10-04, not chosen yet): the face's texture fades
+# to a pale cool grey over its lowest 3.5 cm in front, 5 cm at the sides (made to lie under
+# armour collars); a tall flange covers it. MIQUELLA_FLANGE=tall builds that.
+FLANGE_TALL = ((0.1, 0.2, 0.35, 0.5, 0.7, 0.85, 1.0), (0.036, 0.045, 0.006))
+if os.environ.get("MIQUELLA_FLANGE") == "tall":
+    FLANGE, FLANGE_HEIGHT = FLANGE_TALL
 FLANGE_LIFT = 0.0003               # m off the face's surface
+# The face's rim turns sharply at the corners of its V (front to sides): our tube's top folds
+# there (up to 85 degrees between faces, the "V" crease the user saw on 2026-10-03, and a line in
+# game). Smoothing the shape there pulled the tube off the rim's normals (a line at the rim), so
+# only the shading: this far below the rim our normals blend into the rim's (the face's).
+NECK_TOP_BLEND = 0.012
+NECK_NORMAL_SMOOTH = (0.03, 0.008)  # and up to this far below the rim, each normal is the mean of its
+                                    # neighbours' within this radius (the fold reaches ~2 cm down)
 NECK_SMOOTH = 4                    # passes smoothing the profiles around (not at their ends)
 NECK_SAMPLES = 64                  # points along each profile
 NECK_CUT = 1.47          # without the face mesh: a level cut
@@ -863,9 +877,10 @@ def neck_tube(bm, G, neck):
                  bm.faces.new((b, c, rim[(k + 1) % m]))]
     # the flange over the face's rim (FLANGE): each rim vertex's column carries on up the face
     below = rim
-    for h in FLANGE:
+    for share in FLANGE:
         ring = []
         for (a, p, nrm), v0 in zip(neck.rim, rim):
+            h = share * around(a, *FLANGE_HEIGHT)
             z = p.z + h
             hit = ray_hit(neck.bvh, G, a, z)
             if hit:
@@ -946,25 +961,44 @@ def match_face_normals(obj, G, neck, face):
     for i, p in enumerate(face["pts"]):
         fkd.insert(p, i)
     fkd.balance()
-    out, n, nf = [], 0, 0
+    out, n, nf, nb = [], 0, 0, 0
+    vkd = kdtree.KDTree(len(me.vertices))
+    for v in me.vertices:
+        vkd.insert(v.co, v.index)
+    vkd.balance()
+    reach, rad = NECK_NORMAL_SMOOTH
     for v in me.vertices:
         normal = v.normal.copy()
+        ang, r, _ = polar(G, v.co)
+        if r < 0.15 and neck.edge(ang) - reach < v.co.z <= neck.edge(ang) + 1e-4:
+            acc = Vector()
+            for co, j, d in vkd.find_range(v.co, rad):
+                acc += me.vertices[j].normal * (1 - d / rad)
+            if acc.length > 0:
+                normal = acc.normalized()
         _, i, d = kd.find(v.co)
         if d < 1e-6:
             normal = neck.rim[i][2].copy()
             n += 1
         else:
             ang, r, _ = polar(G, v.co)
-            if r < 0.15 and neck.edge(ang) + 1e-4 < v.co.z < neck.edge(ang) + FLANGE[-1] + 1e-3:
+            edge = neck.edge(ang)
+            if r < 0.15 and edge + 1e-4 < v.co.z < edge + around(ang, *FLANGE_HEIGHT) + 1e-3:
                 near = fkd.find_n(v.co, 3)
                 acc = Vector()
                 for _, j, dj in near:
                     acc += Vector(face["normals"][j]) / max(dj, 1e-5)
                 normal = acc.normalized()
                 nf += 1
+            elif r < 0.15 and edge - NECK_TOP_BLEND < v.co.z <= edge + 1e-4:
+                k0, k1, t = neck.bracket(ang)
+                rim_n = (neck.rim[k0][2] * (1 - t) + neck.rim[k1][2] * t).normalized()
+                w = smoothstep(edge - NECK_TOP_BLEND, edge, v.co.z)
+                normal = (normal * (1 - w) + rim_n * w).normalized()
+                nb += 1
         out.append(normal)
     me.normals_split_custom_set_from_vertices(out)
-    log(f"  neck: {n} rim normals and {nf} on the flange are the face's")
+    log(f"  neck: {n} rim normals and {nf} on the flange are the face's, {nb} below the rim blend into them")
 
 
 def face_neck_weights(face_objs, arm):

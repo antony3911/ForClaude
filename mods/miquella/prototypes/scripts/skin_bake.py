@@ -583,7 +583,10 @@ def bake(stm, our_mesh, out, size="2048"):
     albB = fill[:, :3] + high[:, :3] + (PORES["albedo"] * noise[:, None] * plain) * fill[:, :3]
     vB = np.concatenate([high[:, 3:5] - k * np.stack([dh_t, dh_b], 1), np.ones((len(P), 1))], 1)
     vB /= np.linalg.norm(vB, axis=1, keepdims=True)
-    occl = 1 - AO["strength"] * (1 - tex_of(ao))[:, None] * (1 - wA)
+    # not round the neck: its hollows took our occlusion once the neck went to B (2026-10-04),
+    # and the skin under the face's pale lower neck came out darker than it
+    neck_t = np.clip(tex_of(neck_v), 0, 1)[:, None]
+    occl = 1 - AO["strength"] * (1 - tex_of(ao))[:, None] * (1 - wA) * (1 - neck_t)
 
     albedo = (wA * alb[:, :3] + (1 - wA) * albB) * occl
     vn = wA * vA + (1 - wA) * vB

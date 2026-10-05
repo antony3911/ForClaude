@@ -1,17 +1,19 @@
 # 交接筆記：給接手的助理
 
 > 這份文件是給「另一個 Claude 帳號／對話」看的，讓你不用重讀整段對話，就能接手指導這位使用者。
-> 最後更新：2026-10-04。倉庫：`antony3911/ForClaude`，分支 `claude/lightnobel-memory-optimization-yhokyc`（PR #1）。
+> 最後更新：2026-10-05。倉庫：`antony3911/ForClaude`，分支 `claude/lightnobel-memory-optimization-yhokyc`（PR #1）。
+> 同一個倉庫裡還有一個**不相關的專案**（遊戲 mod，分支 `claude/two-account-handoff-plan`，交接檔叫 `HANDOFF.md`）。不要動那個分支，也不要把兩份交接檔搞混；這份才是 LightNobel 的。
 
 ---
 
 ## 0. 建議閱讀順序
 
-1. 本文件（全部）
-2. `docs/report/summary_zh.md`（或 `summary_en.md`）：目前最精簡、已核對過的技術摘要，約 12～16 頁
-3. `docs/manual/`：教科書式手冊（約 150 頁，`manual.pdf`），需要細節時查
-4. `docs/PROJECT_LOG.md`：時間軸、已取得的數據、更正紀錄
-5. `docs/three_week_plan.md`、`docs/competition_directions.md`：比賽策略（部分內容已過時，見第 6 節）
+1. 本文件（全部），**特別是 7.5 節：目前和使用者討論到哪、下一步做什麼**
+2. `docs/characterization.md`：2026-10-04 做的 workload characterization（方法、數據、結論、限制）
+3. `docs/report/summary_zh.md`（或 `summary_en.md`）：目前最精簡、已核對過的技術摘要，約 12～16 頁
+4. `docs/manual/`：教科書式手冊（約 150 頁，`manual.pdf`），需要細節時查
+5. `docs/PROJECT_LOG.md`：時間軸、已取得的數據、更正紀錄
+6. `docs/three_week_plan.md`、`docs/competition_directions.md`：比賽策略（部分內容已過時，見第 6 節）
 
 ---
 
@@ -26,7 +28,9 @@
   - 回答要直接，不要繞，也不要灌水。
 - **他常卡住的地方**（之前都解釋過，答案見第 4 節）：多維陣列攤平成一維的索引、`a·bᵀ` 為什麼要轉置、v1 的重用發生在哪個迴圈、burst 是怎麼來的、512-bit 加寬到底加寬了什麼、C 為什麼能變成硬體。
 - **他很在意誠實**：哪些是實測、哪些是估算、哪些是推測，一定要講清楚。他也意識到「程式是 AI 寫的，但上台答辯的是自己」，所以**幫他理解比幫他多做功能更重要**。
-- 改完手冊之後，他希望你**主動附上新的 PDF**。
+- **目前（2026-10-05 起）只在對話裡討論**：他說 PDF 不方便討論，所以不改手冊、不做 PDF，沒被要求也不寫程式。解釋格式和節奏見 7.5 節。（舊規則「改完手冊主動附 PDF」暫停。）
+- **他要的是真正的反駁**，不是附和；他的想法有問題就直說並給理由。
+- **電腦**：Windows 11 筆電，RTX 4070 Laptop（8 GB）、16 GB RAM、C 槽剩餘空間有限（另一個繪圖工具也在用，裝東西前先估大小）。
 
 ---
 
@@ -219,3 +223,14 @@
 | `fpga/trimul/scripts/perf_model.py` | 分析模型、DSE、容量模型 |
 | `python/dump_trimul_inputs.py` | 從 HF ESMFold 擷取 a、b 並做統計 |
 | `docs/PROJECT_LOG.md` | 時間軸、數據、更正紀錄 |
+| `docs/characterization.md` | workload characterization 的結果與方法 |
+| `python/char/count_ops.py` | 用 meta tensor 數每個運算的 FLOPs、搬運量（任何 L，不用 GPU） |
+| `python/char/ceilings.py` | 量這台 GPU 的實際算力、頻寬 |
+| `python/char/profile_block.py` | 一個 block 的逐運算 GPU 時間與峰值記憶體（主要數據） |
+| `python/char/profile_e2e.py` | 完整 ESMFold 的時間分布、泛素正確性檢查（RMSD） |
+| `python/char/compare.py` | roofline 預測 vs 實測、推 H100 對照論文 Fig. 3，畫圖 |
+| `python/char/diagnose.py` | TriMul 內部逐 kernel 的時間（找到 copy 佔 57% 的那支） |
+| `python/char/results/` | 上面程式的輸出（csv、log、`share_vs_L.png`） |
+| `python/smoke_esmfold.py` | 最簡單的試跑：確認模型載得起來、跑得動 |
+
+筆電環境：git worktree `C:\Users\anton\ForClaude-lightnobel`、venv `C:\Users\anton\venvs\lightnobel`。跑之前設 `HF_HUB_OFFLINE=1`（模型已在快取）；重新下載要設 `HF_HUB_DISABLE_XET=1`。

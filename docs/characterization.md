@@ -136,7 +136,7 @@ ESM-2 另外放 GPU（FP16）計時；trunk 與 structure module 用 profiler �
 
 ### 3.9 第三個平台：server CPU，完整流程（實測，2026-10-05）
 
-**設定：** 學校 server（64 核、125 GB RAM、無 GPU；當時負載 0），`python/char/run_cpu.py`：整個 ESMFold 用 FP32 放 CPU、不分塊、不暖機、跑一次，32 執行緒。CPU 同步執行，所以在每個模組前後掐碼錶（forward hook ＋ `time.perf_counter`）就是它實際花的時間；類別互不重疊，加總等於總時間。環境：Python 3.9（server 只有這版），torch／transformers 版本待記錄。原始數字：`results/measured_cpu.csv`；分析：`analyze_cpu.py`。
+**設定：** 學校 server（2 × Intel Xeon Gold 6526Y，每顆 16 核，共 32 實體核／64 執行緒，支援 AVX-512 與 AMX；125 GB RAM；無 GPU；當時負載 0），`python/char/run_cpu.py`：整個 ESMFold 用 FP32 放 CPU、不分塊、不暖機、跑一次，32 執行緒。CPU 同步執行，所以在每個模組前後掐碼錶（forward hook ＋ `time.perf_counter`）就是它實際花的時間；類別互不重疊，加總等於總時間。環境：Python 3.9（server 只有這版）、torch 2.8.0+cpu、transformers 4.57.6。原始數字：`results/measured_cpu.csv`；分析：`analyze_cpu.py`。
 
 **正確性：** 泛素 CA RMSD = 0.83 Å（筆電 GPU 版 0.84）。
 
@@ -159,7 +159,7 @@ ESM-2 加 structure module：L = 76 時 10.6%，L ≥ 256 時 < 3%。峰值記�
 | TriMul（out、in 各） | 10.5 → 22.4 | 125 → 537 | 12 → 24 |
 | TriAttn（start、end 各） | 5.5 → 3.7 | 630 → 230～280 | 114 → 57～78 |
 
-- pair transition 在各長度都穩定在約 1 TFLOP/s，當作這台 CPU（32 執行緒）矩陣乘法實際做得到的上限（推估；CPU 規格上限待查）。
+- pair transition 在各長度都穩定在約 1 TFLOP/s，是這次量測中效率最高的運算，暫時拿來當參考。但它**不是**硬體上限：照規格粗估（32 核 × 每週期 64 個 FP32 運算〔2 組 AVX-512 FMA，待查證〕× 2.8 GHz）約 5.7 TFLOP/s。實際天花板用 `ceilings_cpu.py` 量（待跑）。
 - **TriMul 兩頭都沒碰到上限**：算術強度與 pair transition 相近，算力只有它的 15～55%；頻寬只有 TriAttn 的 1/4～1/5。不受算力也不受頻寬限制卻慢，與 GPU 上「copy 佔 57%」的現象一致。CPU 上是否同樣是 copy 造成，要用 `diagnose_cpu.py` 驗證（筆電 CPU、L = 64 的試跑：copy_ ＋ clone 佔 tri_mul_out 的 34%，bmm 只佔 12%）。
 - **TriAttn 受頻寬限制**：每 byte 只有約 4 次運算，而且 L 越大，達到的頻寬越低（資料掉出快取）。
 
@@ -171,7 +171,7 @@ ESM-2 加 structure module：L = 76 時 10.6%，L ≥ 256 時 < 3%。峰值記�
 | 256 → 512 | 1.97 | 2.32 | **3.32** | 2.53 | 2.70 |
 | 512 → 1024 | **1.47** | 2.49 | 2.55 | 2.69 | 2.82 |
 
-TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 → 537 GFLOP/s：大矩陣比較能填滿 32 核，固定開銷相對變小），不是工作變少。TriAttn 在 256 → 512 成長得比運算量和搬運量都快，符合工作集在這個區間超出快取。
+TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 → 537 GFLOP/s：大矩陣比較能填滿 32 核，固定開銷相對變小），不是工作變少。TriAttn 在 256 → 512 成長得比運算量和搬運量都快。原本推測是資料掉出快取，但 L3 只有數十 MB，L = 256 時一份 logits 就有 268 MB，這個解釋站不住。另一個候選：PyTorch 在 CPU 上每個運算的大輸出都向作業系統要新記憶體，第一次寫入要付分頁的代價，張量越大越明顯。`ceilings_cpu.py` 的第 4 項會量這個代價。
 
 **未解釋：** L = 1024 時 tri_att_end 比 tri_att_start 慢 25%（609 vs 488 s），L ≤ 512 時兩者相同。end 會先轉置 pair 張量，推測是轉置後不連續的排列造成額外的複製，待 `diagnose_cpu.py` 確認。
 
@@ -193,12 +193,12 @@ TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 �
 - 論文的 GPU 型號細節與精度設定未知，V5 的對照只能說趨勢一致、差距在 5～8 個百分點。
 - 只量了推論、batch = 1、單一 GPU。
 - 端到端與單一 block 相差 17～18%（3.8），原因未查明。
-- server CPU：每個長度只跑一次、沒有暖機；CPU 的上限是用 pair transition 推的，不是規格值；共用 server，雖然當時負載為 0，仍可能受他人影響。
+- server CPU：每個長度只跑一次、沒有暖機；共用 server，雖然當時負載為 0，仍可能受他人影響；32 個執行緒橫跨 2 顆 CPU，沒有控制執行緒放在哪個核心（可能有兩個執行緒共用一個實體核，也有跨 CPU 存取記憶體的代價）。
 
 ## 6. 下一步（建議）
 
+- server 上跑 `ceilings_cpu.py --threads 32`：量矩陣乘法、連續複製、permute 複製、新配置記憶體的實際速度（筆電 CPU 試跑：permute 複製 3 GB/s，只有連續複製 29 GB/s 的 1/10）。
 - server 上跑 `diagnose_cpu.py --L 512 1024 --threads 32`：確認 CPU 上 TriMul 是否也被 copy 拖慢，以及 tri_att_end 為什麼比 start 慢。
-- 查 server 的 CPU 型號（`lscpu`），算出規格上的算力與頻寬上限，補完 CPU 的 roofline。
 - 若能用外部 A100：同一支 `profile_block.py` 跑不分塊的 L = 1024～2000，直接驗證長序列的推估。
 - 加入「融合／不轉置」版本 TriMul 的理論搬運量，量化可省下多少。
 
@@ -218,6 +218,7 @@ server CPU（`~/venv-ln`，Python 3.9、CPU 版 torch）：
 ```
 HF_HUB_OFFLINE=1 python python/char/run_cpu.py --L 76 256 512 1024 --threads 32
 HF_HUB_OFFLINE=1 python python/char/diagnose_cpu.py --L 512 1024 --threads 32
+python python/char/ceilings_cpu.py --threads 32
 python python/char/analyze_cpu.py   # 讀 results/measured_cpu.csv，筆電上即可跑
 ```
 注意：舊版 transformers 第一次載入只有 `.bin` 的模型時，會在背景另外下載 safetensors 版（約 8 GB），程式算完也要等它下載完才結束；模型下載好之後一律設 `HF_HUB_OFFLINE=1`。

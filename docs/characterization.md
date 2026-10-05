@@ -160,7 +160,7 @@ ESM-2 加 structure module：L = 76 時 10.6%，L ≥ 256 時 < 3%。峰值記�
 | TriAttn（start、end 各） | 5.5 → 3.7 | 630 → 230～280 | 114 → 57～78 |
 
 - pair transition 在各長度都穩定在約 1 TFLOP/s，是這次量測中效率最高的運算，暫時拿來當參考。但它**不是**硬體上限：照規格粗估（32 核 × 每週期 64 個 FP32 運算〔2 組 AVX-512 FMA，待查證〕× 2.8 GHz）約 5.7 TFLOP/s。實際天花板用 `ceilings_cpu.py` 量（待跑）。
-- **TriMul 兩頭都沒碰到上限**：算術強度與 pair transition 相近，算力只有它的 15～55%；頻寬只有 TriAttn 的 1/4～1/5。不受算力也不受頻寬限制卻慢，與 GPU 上「copy 佔 57%」的現象一致。CPU 上是否同樣是 copy 造成，要用 `diagnose_cpu.py` 驗證（筆電 CPU、L = 64 的試跑：copy_ ＋ clone 佔 tri_mul_out 的 34%，bmm 只佔 12%）。
+- **TriMul 兩頭都沒碰到上限**：算術強度與 pair transition 相近，算力只有它的 15～55%；頻寬只有 TriAttn 的 1/4～1/5。不受算力也不受頻寬限制卻慢，與 GPU 上「copy 佔 57%」的現象一致。`diagnose_cpu.py` 證實 CPU 上同樣是 copy 造成（見下方）。
 - **TriAttn 受頻寬限制**：每 byte 只有約 4 次運算，而且 L 越大，達到的頻寬越低（資料掉出快取）。
 
 **隨 L 的成長（時間 ∝ L^p）：**
@@ -173,7 +173,31 @@ ESM-2 加 structure module：L = 76 時 10.6%，L ≥ 256 時 < 3%。峰值記�
 
 TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 → 537 GFLOP/s：大矩陣比較能填滿 32 核，固定開銷相對變小），不是工作變少。TriAttn 在 256 → 512 成長得比運算量和搬運量都快。原本推測是資料掉出快取，但 L3 只有數十 MB，L = 256 時一份 logits 就有 268 MB，這個解釋站不住。另一個候選：PyTorch 在 CPU 上每個運算的大輸出都向作業系統要新記憶體，第一次寫入要付分頁的代價，張量越大越明顯。`ceilings_cpu.py` 的第 4 項會量這個代價。
 
-**未解釋：** L = 1024 時 tri_att_end 比 tri_att_start 慢 25%（609 vs 488 s），L ≤ 512 時兩者相同。end 會先轉置 pair 張量，推測是轉置後不連續的排列造成額外的複製，待 `diagnose_cpu.py` 確認。
+**拆到 aten 運算（`diagnose_cpu.py`，單一 block 0 的子模組、暖機後量 3 次取平均，FP32、不分塊、32 執行緒）：**
+
+| | tri_mul_out L = 512 | tri_mul_out L = 1024 | GPU（3.6，L = 1024） |
+|---|---|---|---|
+| 每次 | 328 ms | 881 ms | — |
+| `copy_`（permute 後轉連續排列） | **57.5%** | **49.5%** | 57.2% |
+| `bmm`（einsum 本身） | 14.3% | 16.9% | 6.3% |
+| `mul`（gating、mask） | 10.2% | 12.0% | 9.4% |
+| `addmm`（6 個 linear） | 8.2% | 10.1% | 12.3% |
+| `sigmoid` | 5.5% | 6.4% | 4.2% |
+| `native_layer_norm` | 3.9% | 4.9% | 10.6% |
+
+tri_mul_in 的分布幾乎相同。**CPU 上 TriMul 也有一半以上的時間在 copy，einsum 只佔 14～17%，與 GPU 一致**：TriMul 慢在資料重排，不是單一硬體的特例。CPU 上 copy_ 每次呼叫 263 次（其中 256 次是逐 channel 的小複製，次數與 L 無關），GPU 上是 3 個 kernel；meta tensor 的計數看不到這些，所以第 3.2 節的搬運量低估了 TriMul 在實際硬體上的搬運。
+
+| | tri_att_start L = 512 | start L = 1024 | tri_att_end L = 1024 |
+|---|---|---|---|
+| 每次 | 295 ms | 1,978 ms | 2,561 ms |
+| `add_`（logits 加兩個 bias，2 次） | 26.0% | 31.1% | **46.6%** |
+| `_softmax` | 23.8% | 28.3% | 21.8% |
+| `bmm`（Q·Kᵀ、attention·V） | 23.8% | 27.0% | 20.5% |
+| `copy_` | 9.5% | 4.8% | 4.4% |
+
+- TriAttn 有 54～68% 的時間花在對 L³ logits 的逐元素運算（`add_`、`_softmax`），矩陣乘法只佔約 1/4。以計數的搬運量換算：`add_` 約 112 GB/s、`_softmax` 約 61 GB/s，L = 512 和 1024 都一樣 → 受頻寬限制，與 GPU 的結論相同。
+- **end 比 start 慢的原因找到了**：L = 1024 時 end 的 `add_` 1,194 ms，是 start 的 2 倍（616 ms），差值 578 ms 幾乎等於兩者總差（583 ms）；L = 512 時兩者的 `add_` 相同。end 先把 pair 張量轉置，算出的 bias 是轉置後的不連續排列，加到 logits 時以跳躍的位址讀取（推測：L = 1024 時 bias 有 16 MB，跳躍讀取不再能被快取吸收）。**又是資料排列的問題。**
+- 單獨量的 TriAttn 比 `run_cpu.py` 完整流程裡的同一個運算快 22～39%（L = 1024／512），TriMul 則一致（差 < 2%）。完整流程裡沒有暖機，而且每個運算前後都有其他大張量的配置與釋放，推測與新配置記憶體的代價有關，待 `ceilings_cpu.py` 第 4 項確認。佔比結論以完整流程為準。
 
 ## 4. 結論：哪裡最值得優化
 
@@ -198,7 +222,6 @@ TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 �
 ## 6. 下一步（建議）
 
 - server 上跑 `ceilings_cpu.py --threads 32`：量矩陣乘法、連續複製、permute 複製、新配置記憶體的實際速度（筆電 CPU 試跑：permute 複製 3 GB/s，只有連續複製 29 GB/s 的 1/10）。
-- server 上跑 `diagnose_cpu.py --L 512 1024 --threads 32`：確認 CPU 上 TriMul 是否也被 copy 拖慢，以及 tri_att_end 為什麼比 start 慢。
 - 若能用外部 A100：同一支 `profile_block.py` 跑不分塊的 L = 1024～2000，直接驗證長序列的推估。
 - 加入「融合／不轉置」版本 TriMul 的理論搬運量，量化可省下多少。
 

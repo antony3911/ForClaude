@@ -1,9 +1,9 @@
-"""端到端：整個 ESMFold 的時間分布（ESM-2 / trunk 的 240 次 block / structure module / 其他），
-並檢查「單一 block × 240」是否等於 trunk 實測（V3），以及預測結構對不對（與 PDB 實驗結構比 RMSD）。
+"""端到端：整個 ESMFold 的時間分布（ESM-2 / trunk 的 192 次 block / structure module / 其他），
+並檢查「單一 block × 192」是否等於 trunk 實測（V3），以及預測結構對不對（與 PDB 實驗結構比 RMSD）。
 
 顯示記憶體放不下全部權重，所以分兩段：
   1. ESM-2（FP16，5.7 GB）放 GPU 算出 embedding，計時；算完移回 CPU
-  2. trunk 與其他部分（FP32，從原檔填回權重）放 GPU，跑完整的 infer（含 4 次 recycling），用 profiler 分段
+  2. trunk 與其他部分（FP32，從原檔填回權重）放 GPU，跑完整的 infer（共 4 輪：HF 預設 max_recycles = 4，不另外加 1），用 profiler 分段
 時間和數值無關，所以長度掃描用隨機序列；正確性用泛素（ubiquitin，76 aa，PDB 1UBQ）。
 
 用法：python profile_e2e.py [--L 256 512] [--chunk 64]
@@ -184,7 +184,7 @@ def main():
             print(f"{name} L={L}: OOM")
             torch.cuda.empty_cache()
             continue
-        nblk = 48 * 5
+        nblk = 48 * 4  # 48 個 block × 4 輪（之前誤寫成 5 輪，run_cpu.py 的探針實測 192 次）
         row = dict(name=name, L=L, chunk=args.chunk, esm_s=t_esm, trunk_wall_s=wall,
                    blocks_s=parts["block"], per_block_s=parts["block"] / nblk,
                    structure_s=parts["structure_module"], other_s=parts["other"], peak_bytes=peak,
@@ -198,7 +198,7 @@ def main():
         rows.append(row)
         tot = t_esm + wall
         print(f"{name} L={L}: ESM-2 {t_esm*1e3:.0f} ms（{100*t_esm/tot:.1f}%）、trunk＋SM {wall*1e3:.0f} ms；"
-              f"其中 240 個 block {parts['block']*1e3:.0f} ms（{100*parts['block']/tot:.1f}%，平均 {row['per_block_s']*1e3:.2f} ms）、"
+              f"其中 192 個 block {parts['block']*1e3:.0f} ms（{100*parts['block']/tot:.1f}%，平均 {row['per_block_s']*1e3:.2f} ms）、"
               f"structure module {parts['structure_module']*1e3:.0f} ms（{100*parts['structure_module']/tot:.1f}%）、"
               f"其他 {parts['other']*1e3:.0f} ms；峰值 +{peak/1e9:.2f} GB；pLDDT {row['plddt']:.3f}"
               + (f"；CA RMSD {row['ca_rmsd_A']:.2f} Å" if "ca_rmsd_A" in row else ""), flush=True)

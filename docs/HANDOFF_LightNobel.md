@@ -157,7 +157,7 @@
 **第一輪已完成（2026-10-04）：** 結果、方法、限制都在 `docs/characterization.md`，程式與原始數據在 `python/char/`。重點：
 - 長序列時 TriAttn 佔 block 時間 54%→73%（L = 256→1410），受頻寬限制（L³ logits 讀寫約 8 次）；TriMul 20～26%。
 - **TriMul 在 GPU 上只有 6% 是 einsum，57% 是 permute 後的轉置複製**（約 15 GB/s，頻寬的 7%）→ 選 TriMul 的新理由：浪費在資料排列與搬移，正是空間加速器能改善的。
-- 240 個 block 佔端到端 98.3%（L = 512）；ESM-2、structure module 各 < 1%。
+- 192 個 block（48 × 4 輪；第一輪誤寫成 240，10-06 已更正）佔端到端 98.3%（L = 512）；ESM-2、structure module 各 < 1%。更正後端到端每個 block 比單獨量的慢 17～18%，原因未查明。
 - 分塊：時間不變、記憶體降 4 倍（L = 512）。
 - roofline 推 H100 與論文 Fig. 3 趨勢一致，差 5～8 個百分點。
 - 泛素與 PDB 1UBQ 的 CA RMSD 0.84 Å（模型正確）。
@@ -194,6 +194,14 @@
 4. 教他我們做了什麼：`python/char/` 各檔案的作用與結果檔怎麼讀，讓他自己在筆電上跑一次 `profile_e2e.py`（泛素）；可選：一起寫一個他看得懂的 30 行「每個運算前後掐碼錶」簡化版。
 
 ---
+
+## 7.6 server CPU 量測（2026-10-05～06）
+
+- server `scd-lab-server63`：64 核、125 GB RAM、無 GPU、只有 Python 3.9。venv `~/venv-ln`（CPU 版 torch），repo 在 `~/ForClaude`，`st` alias 看進度。模型已下載；**一律設 `HF_HUB_OFFLINE=1`**（舊版 transformers 會在背景多下載 safetensors）。
+- `run_cpu.py`（碼錶版，使用者要求「最簡單、只求跑完」）跑完 L = 76／256／512／1024：三角運算 68→90%，TriAttn 11→69%，TriMul 57→22%；泛素 RMSD 0.83 Å。結果與分析在 `characterization.md` 3.9、`analyze_cpu.py`。
+- 結論：三平台趨勢一致、交叉點隨硬體移動；TriMul 在 CPU 上算力和頻寬都只用到一小部分（與 GPU 的 copy 57% 一致，CPU 原因待 `diagnose_cpu.py` 確認）。
+- 待辦：使用者在 server 跑 `diagnose_cpu.py --L 512 1024 --threads 32`、貼 `lscpu` 與 torch／transformers 版本。
+- 使用者已去研討會、目前討論模式仍是「對話為主」，但 10-06 明確要我先做能做的事（寫診斷程式、更新 characterization）。
 
 ## 8. 工作慣例
 

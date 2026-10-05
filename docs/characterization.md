@@ -1,6 +1,6 @@
 # ESMFold Workload Characterization（第一輪）
 
-> 2026-10-04，筆電 RTX 4070 Laptop（8 GB）。程式與原始數據在 `python/char/`，重現方式見第 7 節。
+> 2026-10-04，筆電 RTX 4070 Laptop（8 GB）；3.9 節為 2026-10-05 學校 server CPU 的完整流程量測。程式與原始數據在 `python/char/`，重現方式見第 7 節。
 > 標示說明：**實測**＝這台機器量到的；**計數**＝程式從 HF 實作數出來的（精確）；**推估**＝模型推算的。
 
 ## 1. 目的
@@ -16,7 +16,7 @@
 
 **為什麼可以這樣做：**
 - 時間與記憶體和數值無關（沒有依資料走的分支、沒有稀疏性），所以量時間可以用隨機輸入。
-- trunk 是 48 個結構相同的 block × 5 輪（max_recycles = 4 再加第一輪）= 240 次，量 1 個 block 即可代表（端到端驗證見 3.8）。
+- trunk 是 48 個結構相同的 block × 4 輪（HF 預設 max_recycles = 4；只有手動指定 num_recycles 時才會再加 1）= 192 次，量 1 個 block 即可代表（端到端驗證見 3.8）。**更正（10-06）**：第一輪寫成 5 輪／240 次是錯的；server 上 `run_cpu.py` 的探針直接數到 192 次，HF 原始碼也是如此。
 - 分塊（chunk）只把同樣的工作切開：FLOPs 完全相同、bytes 只多 0.7%（計數），時間也相同（實測，見 3.5）。所以用分塊量測可以代表不分塊、記憶體放不下的長度。
 - 換硬體時，受算力限制和受頻寬限制的運算加速倍數不同，所以 GPU 上的時間佔比不能直接搬到別的平台；要用模型換算。
 
@@ -120,26 +120,70 @@ FP32 的比例相近（L = 512：TriMul 24.4%、TriAttn 63.6%），FP16 約快 2
 
 ESM-2 另外放 GPU（FP16）計時；trunk 與 structure module 用 profiler 依 GPU 時間軸分段。百分比的分母是 ESM-2 ＋ trunk 的總時間（含 GPU 閒置）。
 
-| 序列 | L | ESM-2 | 240 個 block | 平均每個 block | structure module（5 次） | 峰值 |
+| 序列 | L | ESM-2 | 192 個 block | 平均每個 block | structure module（4 次） | 峰值 |
 |---|---|---|---|---|---|---|
-| 泛素 | 76 | 89 ms（3.9%） | 544 ms（23.7%） | 2.27 ms | 32 ms（1.4%） | +0.04 GB |
-| 隨機 | 256 | 94 ms（0.8%） | 11.2 s（94.2%） | 46.6 ms | 125 ms（1.1%） | +0.47 GB |
-| 隨機 | 512 | 155 ms（0.2%） | 66.5 s（98.3%） | 276.9 ms | 454 ms（0.7%） | +1.85 GB |
+| 泛素 | 76 | 89 ms（3.9%） | 544 ms（23.7%） | 2.83 ms | 32 ms（1.4%） | +0.04 GB |
+| 隨機 | 256 | 94 ms（0.8%） | 11.2 s（94.2%） | 58.3 ms | 125 ms（1.1%） | +0.47 GB |
+| 隨機 | 512 | 155 ms（0.2%） | 66.5 s（98.3%） | 346.1 ms | 454 ms（0.7%） | +1.85 GB |
 
-**V3（單一 block × 240 是否等於 trunk）：** 單獨量的 block（FP32、chunk 64）為 49.6 ms（L = 256）、292.3 ms（L = 512），端到端平均每個 block 為 46.6、276.9 ms，差 5～6%（在溫度造成的波動範圍內）。
+（百分比是 profiler 直接量的時間，不受次數更正影響；「平均每個 block」已改成除以 192。）
+
+**V3（單一 block × 192 是否等於 trunk）：** 單獨量的 block（FP32、chunk 64）為 49.6 ms（L = 256）、292.3 ms（L = 512），端到端平均每個 block 為 58.3、346.1 ms，**端到端慢 17～18%**。第一輪寫的「差 5～6%」是用錯的次數（240）算的，錯的次數剛好抵銷了差距。原因尚未查明，候選：端到端連續跑 1 分鐘以上，筆電 GPU 升溫降頻（單獨量 block 是短時間）；端到端裡 block 之間穿插其他運算，快取與記憶體配置器的狀態不同。這個差距不影響時間佔比的結論，但「量 1 個 block × 192 = trunk」要打 0.82～0.85 的折扣。
 
 **正確性：** 泛素的預測結構與 PDB 1UBQ 的 CA RMSD = **0.84 Å**（pLDDT 0.774），模型載入與推論正確。隨機序列的 pLDDT 約 0.21，符合「沒有穩定結構」的預期。
 
 **短序列的 GPU 閒置：** 泛素的 trunk 總時間約 2.2 s，但 GPU kernel 合計只有約 0.58 s，GPU 約 75% 時間在等 CPU 下發 kernel。
+
+### 3.9 第三個平台：server CPU，完整流程（實測，2026-10-05）
+
+**設定：** 學校 server（64 核、125 GB RAM、無 GPU；當時負載 0），`python/char/run_cpu.py`：整個 ESMFold 用 FP32 放 CPU、不分塊、不暖機、跑一次，32 執行緒。CPU 同步執行，所以在每個模組前後掐碼錶（forward hook ＋ `time.perf_counter`）就是它實際花的時間；類別互不重疊，加總等於總時間。環境：Python 3.9（server 只有這版），torch／transformers 版本待記錄。原始數字：`results/measured_cpu.csv`；分析：`analyze_cpu.py`。
+
+**正確性：** 泛素 CA RMSD = 0.83 Å（筆電 GPU 版 0.84）。
+
+**時間分布（佔完整流程）：**
+
+| L | 總時間 | 三角運算 | TriMul | TriAttn | pair transition | 48 個 block 合計 | 峰值記憶體（整個程式） |
+|---|---|---|---|---|---|---|---|
+| 76 | 6.7 s | 67.8% | **56.9%** | 10.9% | 4.6% | 89.4% | 19.9 GB |
+| 256 | 61.2 s | 82.3% | **51.7%** | 30.6% | 6.3% | 96.9% | 22.2 GB |
+| 512 | 354 s | 87.8% | 35.0% | **52.8%** | 4.2% | 98.5% | 27.4 GB |
+| 1024 | 1,596 s | **90.3%** | 21.6% | **68.7%** | 3.2% | 99.0% | 60.7 GB |
+
+ESM-2 加 structure module：L = 76 時 10.6%，L ≥ 256 時 < 3%。峰值記憶體中約 19 GB 是權重與 ESM-2；L = 1024 多出的約 40 GB 主要是不分塊的 TriAttn logits（一份 4 × L³ × 4 bytes = 17 GB）。
+
+**每個運算達到的算力與頻寬**（運算量、搬運量用計數，除以實測時間；搬運量是「每個運算都完整讀寫一次」的名目值，短序列時資料在快取裡，名目頻寬會偏高）：
+
+| 運算 | FLOP/byte | 達到 GFLOP/s（L = 76 → 1024） | 名目 GB/s |
+|---|---|---|---|
+| pair transition（幾乎全是 linear，當作參考） | 22 | 850～1,030 | 38～47 |
+| TriMul（out、in 各） | 10.5 → 22.4 | 125 → 537 | 12 → 24 |
+| TriAttn（start、end 各） | 5.5 → 3.7 | 630 → 230～280 | 114 → 57～78 |
+
+- pair transition 在各長度都穩定在約 1 TFLOP/s，當作這台 CPU（32 執行緒）矩陣乘法實際做得到的上限（推估；CPU 規格上限待查）。
+- **TriMul 兩頭都沒碰到上限**：算術強度與 pair transition 相近，算力只有它的 15～55%；頻寬只有 TriAttn 的 1/4～1/5。不受算力也不受頻寬限制卻慢，與 GPU 上「copy 佔 57%」的現象一致。CPU 上是否同樣是 copy 造成，要用 `diagnose_cpu.py` 驗證（筆電 CPU、L = 64 的試跑：copy_ ＋ clone 佔 tri_mul_out 的 34%，bmm 只佔 12%）。
+- **TriAttn 受頻寬限制**：每 byte 只有約 4 次運算，而且 L 越大，達到的頻寬越低（資料掉出快取）。
+
+**隨 L 的成長（時間 ∝ L^p）：**
+
+| 區間 | TriMul 時間 | TriMul FLOPs | TriAttn 時間 | TriAttn FLOPs | TriAttn bytes |
+|---|---|---|---|---|---|
+| 76 → 256 | 1.74 | 2.16 | 2.67 | 2.31 | 2.47 |
+| 256 → 512 | 1.97 | 2.32 | **3.32** | 2.53 | 2.70 |
+| 512 → 1024 | **1.47** | 2.49 | 2.55 | 2.69 | 2.82 |
+
+TriMul 的時間成長比運算量慢，是因為**效率隨 L 提高**（125 → 537 GFLOP/s：大矩陣比較能填滿 32 核，固定開銷相對變小），不是工作變少。TriAttn 在 256 → 512 成長得比運算量和搬運量都快，符合工作集在這個區間超出快取。
+
+**未解釋：** L = 1024 時 tri_att_end 比 tri_att_start 慢 25%（609 vs 488 s），L ≤ 512 時兩者相同。end 會先轉置 pair 張量，推測是轉置後不連續的排列造成額外的複製，待 `diagnose_cpu.py` 確認。
 
 ## 4. 結論：哪裡最值得優化
 
 1. **長序列（L ≳ 300）：Triangle Attention，而且問題在搬運量，不在運算量。** 它佔 block 時間 54%（L = 256）→ 73%（L = 1410），在任何 GPU 上都受頻寬限制，因為 L³ 的 logits 要來回讀寫約 8 次；不分塊時它也決定峰值記憶體。有效的優化是不把 logits 寫回記憶體（FlashAttention 式／LightNobel 的 token-wise attention），把搬運量從 O(L³) 降到 O(L²)。
 2. **Triangle Multiplication 是第二大（長序列 20～26%；短序列約 33%，是最大項）。** 但在 GPU 上，它的時間主要不是 einsum（只佔 TriMul 的 6%），而是資料重排（57%）與逐元素運算。所以 TriMul 的優化重點是**資料排列與融合**：直接以原本的 `[i][k][c]` 排列計算、不做轉置複製，並把 LayerNorm、linear、gating 和 einsum 串在一起、不寫回中間值。
 3. **短序列（L ≲ 128）：** 運算量太小，GPU 被 kernel 下發的固定開銷限制（筆電上 75% 時間閒置），比例由 kernel 數量主導。這個範圍不是本專題的重點。
-4. ESM-2 與 structure module 佔比很小：L = 512 時合計不到 1%，240 個 block 佔 98.3%（見 3.8）。整條流程的優化重點就在 trunk 的 block 裡。
+4. ESM-2 與 structure module 佔比很小：L = 512 時合計不到 1%，192 個 block 佔 98.3%（見 3.8）。整條流程的優化重點就在 trunk 的 block 裡。
+5. **跨平台（3.9）：** server CPU 上同樣是三角運算佔 82～90%（L ≥ 256）、TriAttn 隨 L 上升（L = 1024 達 69%）。三個平台（論文 H100、筆電 GPU、server CPU）的趨勢一致，只有 TriMul 與 TriAttn 的交叉點隨硬體移動（筆電 GPU 在 L < 256，CPU 在 256～512 之間）：CPU 的算力相對頻寬較弱，所以運算量大的 TriMul 被放大。**跨平台成立的是趨勢，交叉點不是。**
 
-**對本專題的意義：** 選 TriMul 不能用「它最花時間」當理由（TriAttn 才是）。但數據支持另一個理由：TriMul 在 GPU 上浪費在資料搬移與排列，而這正是空間加速器（以 tiling 讀取原始排列、晶片內串接各運算）能直接改善的部分。
+**對本專題的意義：** 選 TriMul 不能用「它最花時間」當理由（TriAttn 才是）。但數據支持另一個理由：TriMul 浪費在資料搬移與排列，而這正是空間加速器（以 tiling 讀取原始排列、晶片內串接各運算）能直接改善的部分。這個現象在 GPU（copy 佔 57%）與 CPU（算力和頻寬都只用到一小部分）上都看得到，不是單一硬體的特例；CPU 上的原因仍待 `diagnose_cpu.py` 確認。
 
 ## 5. 限制
 
@@ -148,9 +192,13 @@ ESM-2 另外放 GPU（FP16）計時；trunk 與 structure module 用 profiler �
 - 模型對單個 kernel 的誤差可達 ±40%（例如 copy 與 softmax），只在加總層級驗證過。
 - 論文的 GPU 型號細節與精度設定未知，V5 的對照只能說趨勢一致、差距在 5～8 個百分點。
 - 只量了推論、batch = 1、單一 GPU。
+- 端到端與單一 block 相差 17～18%（3.8），原因未查明。
+- server CPU：每個長度只跑一次、沒有暖機；CPU 的上限是用 pair transition 推的，不是規格值；共用 server，雖然當時負載為 0，仍可能受他人影響。
 
 ## 6. 下一步（建議）
 
+- server 上跑 `diagnose_cpu.py --L 512 1024 --threads 32`：確認 CPU 上 TriMul 是否也被 copy 拖慢，以及 tri_att_end 為什麼比 start 慢。
+- 查 server 的 CPU 型號（`lscpu`），算出規格上的算力與頻寬上限，補完 CPU 的 roofline。
 - 若能用外部 A100：同一支 `profile_block.py` 跑不分塊的 L = 1024～2000，直接驗證長序列的推估。
 - 加入「融合／不轉置」版本 TriMul 的理論搬運量，量化可省下多少。
 
@@ -165,3 +213,11 @@ python python/char/diagnose.py --L 1024 --dtype fp16 --chunk 64
 python python/char/profile_e2e.py --L 256 512
 ```
 環境：`C:\Users\anton\venvs\lightnobel`（torch 2.11＋cu128、transformers 5.18），需設 `HF_HUB_OFFLINE=1`。
+
+server CPU（`~/venv-ln`，Python 3.9、CPU 版 torch）：
+```
+HF_HUB_OFFLINE=1 python python/char/run_cpu.py --L 76 256 512 1024 --threads 32
+HF_HUB_OFFLINE=1 python python/char/diagnose_cpu.py --L 512 1024 --threads 32
+python python/char/analyze_cpu.py   # 讀 results/measured_cpu.csv，筆電上即可跑
+```
+注意：舊版 transformers 第一次載入只有 `.bin` 的模型時，會在背景另外下載 safetensors 版（約 8 GB），程式算完也要等它下載完才結束；模型下載好之後一律設 `HF_HUB_OFFLINE=1`。

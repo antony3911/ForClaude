@@ -131,11 +131,16 @@ CONCLUSIONS = f"""
 </ul></div>
 
 <div class="c"><h3>結論 3　TriAttn：受記憶體頻寬限制，已貼近天花板</h3>
+<p class="sub">現象</p>
 <ul>
 <li>tri_att_start（L = 1024）：<code>add_</code> 31% ＋ <code>softmax</code> 28% = 59% 在讀寫 logits；矩陣乘法只佔 27%。</li>
 <li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）→ 已用滿頻寬。roofline 達成率 58～88%。</li>
 <li>L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits（一份 17 GB）。</li>
 <li>tri_att_end 在 L = 1024 時比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。</li>
+</ul>
+<p class="sub">原因</p>
+<ul>
+<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式。</li>
 </ul>
 </div>
 
@@ -146,6 +151,11 @@ CONCLUSIONS = f"""
 <li>roofline 達成率只有 16～24%，三種運算中最低。</li>
 <li>permute 複製只有 9 GB/s，連續複製 76～82 GB/s，慢約 9 倍。</li>
 <li><b>對照實驗</b>：同形狀（128 個 1024×1024×1024）、資料已排好的矩陣乘法只要 <b>63 ms</b>（等於機器上限）；HF 的寫法是 einsum 149 ms ＋ copy 436 ms = <b>585 ms</b>，差 <b>9.3 倍</b>。形狀本身沒有問題，損失全在排列。</li>
+</ul>
+<p class="sub">原因</p>
+<ul>
+<li>bmm 要求 <code>[c][i][k]</code>，資料原本是 <code>[i][k][c]</code>。a、b 各轉一次、結果轉回一次，共 3 次。</li>
+<li>同一 channel 的相鄰元素相隔 512 bytes，每抓一條 64 bytes 的 cache line 只用到 4 bytes。</li>
 </ul>
 <p class="sub">效益估算（只修好排列）</p>
 <ul>

@@ -118,58 +118,56 @@ M, D, A = tag("實測"), tag("推導"), tag("假設")
 CONCLUSIONS = f"""
 <div class="c"><h3>結論 1　整條流程的瓶頸是 pair 表示上的三角運算</h3>
 <ul>
-<li>L ≥ 256 時，TriMul ＋ TriAttn 佔整條流程 <b>82～90%</b>；48 個 block 合計 97～99%。{M}</li>
-<li>ESM-2 ＋ structure module：L ≥ 256 時不到 3%。ESM-2 佔全部參數的 80%，卻只佔不到 1% 的時間：參數量決定權重佔多少記憶體，時間則由中間資料（pair 表示 L²、三角運算 L³）決定。{M}</li>
-<li>筆電 GPU 的端到端量測一致（L = 512 時 block 佔 98.3%）；與 LightNobel 只加速 trunk 的選擇一致。{M}</li>
+<li>L ≥ 256 時，TriMul ＋ TriAttn 佔整條流程 <b>82～90%</b>；48 個 block 合計 97～99%。</li>
+<li>ESM-2 ＋ structure module：L ≥ 256 時不到 3%。ESM-2 佔全部參數的 80%，卻只佔不到 1% 的時間：參數量決定權重佔多少記憶體，時間則由中間資料（pair 表示 L²、三角運算 L³）決定。</li>
+<li>與 LightNobel 只加速 trunk、不加速 ESM-2 與 structure module 的選擇一致。</li>
 </ul></div>
 
-<div class="c"><h3>結論 2　瓶頸隨長度轉移；趨勢跨平台一致，交叉點與硬體有關</h3>
+<div class="c"><h3>結論 2　瓶頸隨長度轉移：短序列 TriMul 最大，長序列 TriAttn 最大</h3>
 <ul>
-<li>TriMul 佔比 57% → 52% → 35% → 22%；TriAttn 11% → 31% → 53% → 69%（L = 76 → 1024）。{M}</li>
-<li>交叉點：server CPU 在 L = 256～512 之間；筆電 GPU 在 L &lt; 256；論文 H100 的趨勢相同（TriAttn 29% → 76%）。{M}</li>
-<li>原因：兩者都有 L³ 運算，但 TriMul 的資料只有 L²（每筆資料被重複使用 L 次），TriAttn 會產生 L³ 大小的 logits（L = 1024 時 17 GB），搬運量跟著 L³ 成長。{D}</li>
-<li>跨平台成立的是<b>趨勢</b>，不是比例。{D}</li>
+<li>TriMul 佔比 57% → 52% → 35% → 22%；TriAttn 11% → 31% → 53% → 69%（L = 76 → 1024）。</li>
+<li>兩者在 L = 256～512 之間交叉。</li>
+<li>原因：兩者都有 L³ 運算，但 TriMul 的資料只有 L²（每筆資料被重複使用 L 次），TriAttn 會產生 L³ 大小的 logits（L = 1024 時 17 GB），搬運量跟著 L³ 成長。</li>
 </ul></div>
 
 <div class="c"><h3>結論 3　TriAttn：受記憶體頻寬限制，已貼近天花板 → 要減少搬運量</h3>
 <p class="sub">現象</p>
 <ul>
-<li>tri_att_start（L = 1024）：<code>add_</code> 31% ＋ <code>softmax</code> 28% = 59% 在讀寫 logits；矩陣乘法只佔 27%。{M}</li>
-<li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）→ 已用滿頻寬。roofline 達成率 58～88%。{D}</li>
-<li>L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits（一份 17 GB）。{M}{D}</li>
-<li>tri_att_end 在 L = 1024 時比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。{M}</li>
+<li>tri_att_start（L = 1024）：<code>add_</code> 31% ＋ <code>softmax</code> 28% = 59% 在讀寫 logits；矩陣乘法只佔 27%。</li>
+<li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）→ 已用滿頻寬。roofline 達成率 58～88%。</li>
+<li>L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits（一份 17 GB）。</li>
+<li>tri_att_end 在 L = 1024 時比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。</li>
 </ul>
 <p class="sub">原因</p>
 <ul>
-<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式。分塊只降容量、不降搬運量（GPU 實測時間不變）。{D}</li>
-<li>end 先把 pair 張量轉置，算出的 bias 也是轉置後的排列，加到 logits 時跳著讀取。{D}</li>
+<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式。</li>
+<li>end 先把 pair 張量轉置，算出的 bias 也是轉置後的排列，加到 logits 時跳著讀取。</li>
 </ul>
 <p class="sub">方向</p>
 <ul>
-<li>一列一列算、logits 不寫回記憶體（FlashAttention 式、LightNobel 的 token-wise attention），把搬運量從 L³ 降到 L²。{D}</li>
+<li>一列一列算、logits 不寫回記憶體（FlashAttention 式、LightNobel 的 token-wise attention），把搬運量從 L³ 降到 L²。</li>
 </ul></div>
 
 <div class="c"><h3>結論 4　TriMul：時間大半浪費在資料排列，不在計算；只修好排列，整體可省約 10～13%（L = 1024）、19～24%（L = 512）</h3>
 <p class="sub">現象</p>
 <ul>
-<li><code>copy_</code>（permute 後的複製）佔 TriMul 的 <b>50～58%</b>（CPU），GPU 上 57%；einsum 本身只佔 14～17%（CPU）、6%（GPU）。{M}</li>
-<li>roofline 達成率只有 16～24%，三種運算中最低。{D}</li>
-<li>permute 複製只有 9 GB/s，連續複製 76～82 GB/s，慢約 9 倍。{M}</li>
-<li><b>對照實驗</b>：同形狀（128 個 1024×1024×1024）、資料已排好的矩陣乘法只要 <b>63 ms</b>（等於機器上限）；HF 的寫法是 einsum 149 ms ＋ copy 436 ms = <b>585 ms</b>，差 <b>9.3 倍</b>。形狀本身沒有問題，損失全在排列。{M}</li>
+<li><code>copy_</code>（permute 後的複製）佔 TriMul 的 <b>50～58%</b>；einsum 本身只佔 14～17%。</li>
+<li>roofline 達成率只有 16～24%，三種運算中最低。</li>
+<li>permute 複製只有 9 GB/s，連續複製 76～82 GB/s，慢約 9 倍。</li>
+<li><b>對照實驗</b>：同形狀（128 個 1024×1024×1024）、資料已排好的矩陣乘法只要 <b>63 ms</b>（等於機器上限）；HF 的寫法是 einsum 149 ms ＋ copy 436 ms = <b>585 ms</b>，差 <b>9.3 倍</b>。形狀本身沒有問題，損失全在排列。</li>
 </ul>
 <p class="sub">原因</p>
 <ul>
-<li>bmm 要求 <code>[c][i][k]</code>，資料原本是 <code>[i][k][c]</code>。a、b 各轉一次、結果轉回一次，共 3 次（GPU 上也是 3 個 copy kernel）。{D}</li>
-<li>同一 channel 的相鄰元素相隔 512 bytes，每抓一條 64 bytes 的 cache line 只用到 4 bytes。{D}</li>
+<li>bmm 要求 <code>[c][i][k]</code>，資料原本是 <code>[i][k][c]</code>。a、b 各轉一次、結果轉回一次，共 3 次。</li>
+<li>同一 channel 的相鄰元素相隔 512 bytes，每抓一條 64 bytes 的 cache line 只用到 4 bytes。</li>
 </ul>
 <p class="sub">效益估算（只修好排列）</p>
 <ul>
-<li>一次 tri_mul_out（L = 1024，881 ms）＝ A 組（einsum ＋ copy）585 ms ＋ B 組（linear、gate、LayerNorm）296 ms。{M}</li>
-<li>保守情境（省掉進入前的 2 次 copy，結果仍要轉回 1 次）：A 組 63 ＋ 124 = 187 ms → TriMul 快 1.82 倍 → 整體省 <b>9.7%</b>。{D}{A}</li>
-<li>理想情境（3 次 copy 全省）：A 組 63 ms → TriMul 快 2.45 倍 → 整體省 <b>12.8%</b>。{D}{A}</li>
-<li>L = 512：理想 einsum 未實測，以效率範圍估算，整體省 19～24%。{D}{A}</li>
-<li>GPU 數據獨立估算：TriMul 26.1% × copy 57.2% ≈ 整體省 15%，與 CPU 一致。{D}</li>
-<li>假設 B 組不變；若再把 B 組融合（中間結果不寫回），還能更省 → 以上為保守估計。只優化 TriMul 的上限：L = 512 最多 1.54 倍、L = 1024 最多 1.28 倍。{D}</li>
+<li>一次 tri_mul_out（L = 1024，881 ms）＝ A 組（einsum ＋ copy）585 ms ＋ B 組（linear、gate、LayerNorm）296 ms。</li>
+<li>保守情境（省掉進入前的 2 次 copy，結果仍要轉回 1 次）：A 組 63 ＋ 124 = 187 ms → TriMul 快 1.82 倍 → 整體省 <b>9.7%</b>。</li>
+<li>理想情境（3 次 copy 全省）：A 組 63 ms → TriMul 快 2.45 倍 → 整體省 <b>12.8%</b>。</li>
+<li>L = 512：理想 einsum 未實測，以效率範圍估算，整體省 19～24%。</li>
+<li>假設 B 組不變；若再把 B 組融合（中間結果不寫回），還能更省 → 以上為保守估計。只優化 TriMul 的上限：L = 512 最多 1.54 倍、L = 1024 最多 1.28 倍。</li>
 </ul></div>
 """
 
@@ -177,7 +175,7 @@ METHOD = """
 <ul class="small">
 <li><b>平台</b>：學校 server，2 × Intel Xeon Gold 6526Y（共 32 實體核），125 GB RAM，無 GPU；Python 3.9、torch 2.8.0+cpu、transformers 4.57.6。量測時負載為 0。</li>
 <li><b>完整流程</b>（run_cpu.py）：HF ESMFold 全部 FP32 放 CPU、不分塊、32 執行緒，每個模組前後掐碼錶；類別互不重疊，加總等於總時間。48 個 block × 4 輪 recycling = 192 次呼叫（探針實測）。</li>
-<li><b>正確性</b>：泛素預測結構與 PDB 1UBQ 的 CA RMSD = 0.83 Å（筆電 GPU 版 0.84 Å）。</li>
+<li><b>正確性</b>：泛素預測結構與 PDB 1UBQ 的 CA RMSD = 0.83 Å。</li>
 <li><b>拆解</b>（diagnose_cpu.py）：單一 block 的子模組，暖機後以 profiler 量 3 次；與完整流程的每次時間差 1.6%（TriMul）。</li>
 <li><b>天花板</b>（ceilings_cpu.py）：矩陣乘法約 4,300 GFLOP/s（n = 16384，±5%）；頻寬約 100 GB/s（原地加法，記憶體分散在兩顆 CPU，與 ESMFold 的大張量相同；集中在一顆時只有一半）。</li>
 <li><b>運算量、搬運量</b>：count_ops.py 以 meta tensor 計數；搬運量是「每個運算讀所有輸入、寫所有輸出」的名目值，不含快取效應，也不含 CPU 內部的逐 channel 複製。</li>
@@ -186,7 +184,7 @@ METHOD = """
 LIMITS = """
 <ul class="small">
 <li>每個長度只跑一次；天花板同一點重複量測約 ±5%。</li>
-<li>L = 512 的理想 einsum 未實測（以範圍估算）；「9.3 倍」對照實驗只在 CPU 上做過。</li>
+<li>L = 512 的理想 einsum 未實測（以範圍估算）。</li>
 <li>L &gt; 1024 只能依趨勢外推。只量推論、batch = 1。</li>
 <li>單獨量的 TriAttn 比完整流程裡快 22～39%，原因只解釋一部分（新配置記憶體慢約 22%）；佔比以完整流程為準。</li>
 <li>峰值記憶體是整個程式的最大值（含載入模型），短序列的數字主要反映載入時的用量。</li>

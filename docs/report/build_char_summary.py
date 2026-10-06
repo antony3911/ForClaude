@@ -227,8 +227,6 @@ def build():
     html = f"""<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8">
 <title>ESMFold 時間分布與結論</title><style>{CSS}</style></head><body>
 <h1>ESMFold 時間分布與結論（workload characterization）</h1>
-<div class="meta">2026-10-06　·　學校 server CPU（無 GPU），完整推論流程，FP32、不分塊　·
-標示：{M} 量到的　{D} 由實測數字計算　{A} 加上的前提、尚未驗證</div>
 
 <h2>1. 整條流程的時間佔比隨 L 的變化</h2>
 {legend()}

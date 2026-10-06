@@ -313,10 +313,6 @@ def build(tx):
 {table(tx)}
 <h2 class="page">{tx['h2']}</h2>
 {tx['conclusions']}
-<h2 class="page">{tx['h3']}</h2>
-{tx['method']}
-<h2>{tx['h4']}</h2>
-{tx['limits']}
 </body></html>"""
     out_pdf = HERE / tx["out"]
     with tempfile.TemporaryDirectory() as tmp:

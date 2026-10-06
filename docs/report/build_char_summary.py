@@ -128,27 +128,41 @@ CONCLUSIONS = f"""
 <li>TriMul 佔比 57% → 52% → 35% → 22%；TriAttn 11% → 31% → 53% → 69%（L = 76 → 1024）。{M}</li>
 <li>交叉點：server CPU 在 L = 256～512 之間；筆電 GPU 在 L &lt; 256；論文 H100 的趨勢相同（TriAttn 29% → 76%）。{M}</li>
 <li>原因：兩者都有 L³ 運算，但 TriMul 的資料只有 L²（每筆資料被重複使用 L 次），TriAttn 會產生 L³ 大小的 logits（L = 1024 時 17 GB），搬運量跟著 L³ 成長。{D}</li>
-<li>跨平台成立的是<b>趨勢</b>，不是比例；FPGA 上的比例由自己的設計決定。{D}</li>
+<li>跨平台成立的是<b>趨勢</b>，不是比例。{D}</li>
 </ul></div>
 
-<div class="c"><h3>結論 3　TriAttn 受記憶體頻寬限制，已貼近天花板 → 要減少搬運量</h3>
+<div class="c"><h3>結論 3　TriAttn：受記憶體頻寬限制，已貼近天花板 → 要減少搬運量</h3>
+<p class="sub">現象</p>
 <ul>
 <li>tri_att_start（L = 1024）：<code>add_</code> 31% ＋ <code>softmax</code> 28% = 59% 在讀寫 logits；矩陣乘法只佔 27%。{M}</li>
-<li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）。{D}</li>
-<li>roofline 達成率 58～88%。L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits。{D}</li>
-<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式 → 一列一列算、logits 不寫回記憶體（FlashAttention 式、LightNobel 的 token-wise attention）。分塊只降容量、不降搬運量（GPU 實測時間不變）。{D}</li>
+<li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）→ 已用滿頻寬。roofline 達成率 58～88%。{D}</li>
+<li>L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits（一份 17 GB）。{M}{D}</li>
+<li>tri_att_end 在 L = 1024 時比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。{M}</li>
+</ul>
+<p class="sub">原因</p>
+<ul>
+<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式。分塊只降容量、不降搬運量（GPU 實測時間不變）。{D}</li>
+<li>end 先把 pair 張量轉置，算出的 bias 也是轉置後的排列，加到 logits 時跳著讀取。{D}</li>
+</ul>
+<p class="sub">方向</p>
+<ul>
+<li>一列一列算、logits 不寫回記憶體（FlashAttention 式、LightNobel 的 token-wise attention），把搬運量從 L³ 降到 L²。{D}</li>
 </ul></div>
 
-<div class="c"><h3>結論 4　TriMul 的時間大半浪費在資料排列，不在計算</h3>
+<div class="c"><h3>結論 4　TriMul：時間大半浪費在資料排列，不在計算；只修好排列，整體可省約 10～13%（L = 1024）、19～24%（L = 512）</h3>
+<p class="sub">現象</p>
 <ul>
 <li><code>copy_</code>（permute 後的複製）佔 TriMul 的 <b>50～58%</b>（CPU），GPU 上 57%；einsum 本身只佔 14～17%（CPU）、6%（GPU）。{M}</li>
 <li>roofline 達成率只有 16～24%，三種運算中最低。{D}</li>
-<li>permute 複製只有 9 GB/s，連續複製 76～82 GB/s，慢約 9 倍：同一 channel 的相鄰元素相隔 512 bytes，每抓一條 64 bytes 的 cache line 只用到 4 bytes。{M}</li>
+<li>permute 複製只有 9 GB/s，連續複製 76～82 GB/s，慢約 9 倍。{M}</li>
 <li><b>對照實驗</b>：同形狀（128 個 1024×1024×1024）、資料已排好的矩陣乘法只要 <b>63 ms</b>（等於機器上限）；HF 的寫法是 einsum 149 ms ＋ copy 436 ms = <b>585 ms</b>，差 <b>9.3 倍</b>。形狀本身沒有問題，損失全在排列。{M}</li>
-<li>根源：bmm 要求 <code>[c][i][k]</code>，資料原本是 <code>[i][k][c]</code>。a、b 各轉一次、結果轉回一次，共 3 次（GPU 上也是 3 個 copy kernel）。{D}</li>
-</ul></div>
-
-<div class="c"><h3>結論 5　只修好 TriMul 的排列，整條流程可省約 10～13%（L = 1024）、19～24%（L = 512）</h3>
+</ul>
+<p class="sub">原因</p>
+<ul>
+<li>bmm 要求 <code>[c][i][k]</code>，資料原本是 <code>[i][k][c]</code>。a、b 各轉一次、結果轉回一次，共 3 次（GPU 上也是 3 個 copy kernel）。{D}</li>
+<li>同一 channel 的相鄰元素相隔 512 bytes，每抓一條 64 bytes 的 cache line 只用到 4 bytes。{D}</li>
+</ul>
+<p class="sub">效益估算（只修好排列）</p>
 <ul>
 <li>一次 tri_mul_out（L = 1024，881 ms）＝ A 組（einsum ＋ copy）585 ms ＋ B 組（linear、gate、LayerNorm）296 ms。{M}</li>
 <li>保守情境（省掉進入前的 2 次 copy，結果仍要轉回 1 次）：A 組 63 ＋ 124 = 187 ms → TriMul 快 1.82 倍 → 整體省 <b>9.7%</b>。{D}{A}</li>
@@ -156,19 +170,6 @@ CONCLUSIONS = f"""
 <li>L = 512：理想 einsum 未實測，以效率範圍估算，整體省 19～24%。{D}{A}</li>
 <li>GPU 數據獨立估算：TriMul 26.1% × copy 57.2% ≈ 整體省 15%，與 CPU 一致。{D}</li>
 <li>假設 B 組不變；若再把 B 組融合（中間結果不寫回），還能更省 → 以上為保守估計。只優化 TriMul 的上限：L = 512 最多 1.54 倍、L = 1024 最多 1.28 倍。{D}</li>
-</ul></div>
-
-<div class="c"><h3>結論 6　資料排列的問題不只出現在 TriMul</h3>
-<ul>
-<li>L = 1024 時 tri_att_end 比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。{M}</li>
-<li>end 先把 pair 張量轉置，算出的 bias 也是轉置後的排列，加到 logits 時跳著讀取。{D}</li>
-</ul></div>
-
-<div class="c key"><h3>對 FPGA 設計的意義</h3>
-<ul>
-<li>本專題的 kernel 保留原始的 <code>[i][k][c]</code>、直接寫出 <code>z[i][j][c]</code>，<b>3 次 copy 全部不需要</b>（相當於結論 5 的理想情境；CPU／GPU 受函式庫格式限制，通常只能做到保守情境）。512-bit 讀取 = 16 個連續 channel，直接對應 16 條 lane。{D}</li>
-<li>下一步：融合 LayerNorm、linear、gate 與 einsum，消除 B 組的搬運；同樣的策略可推廣到 TriAttn（一列一列算、logits 留在晶片上）。{D}</li>
-<li>以上只說明 FPGA 上不需要 copy，<b>不代表</b> FPGA 版一定比 CPU 快；實際速度取決於乘法器數量與記憶體頻寬，需另外評估。</li>
 </ul></div>
 """
 
@@ -216,6 +217,8 @@ tr.tot td { border-top: 1.5px solid #0b0b0b; font-weight: 600; }
 code { font-family: Consolas, monospace; font-size: 8.8pt; }
 .small { font-size: 8.8pt; }
 .page { break-before: page; }
+.sub { font-size: 9pt; font-weight: 600; color: #52514e; margin: 5px 0 0; }
+.box ol { margin: 0; padding-left: 20px; }
 .box { background: #f4f4f1; border-radius: 6px; padding: 8px 12px; margin: 8px 0; font-size: 9.5pt; }
 """
 
@@ -232,8 +235,11 @@ def build():
 {chart()}
 <p class="note">一條橫條 = 一次完整推論（從胺基酸序列到 3D 結構）的總時間，切成互不重疊的 7 組；長度依序為 76（泛素）、256、512、1024。
 各組包含的細項與秒數見表 1。</p>
-<div class="box"><b>一眼看出的三件事</b>：（1）三角運算（藍＋橘）隨 L 越佔越多，L = 1024 達 90%；
-（2）TriMul（藍）越來越小、TriAttn（橘）越來越大，在 L = 256～512 之間交叉；（3）ESM-2 與 structure module（紫）在 L ≥ 256 時幾乎看不到。</div>
+<div class="box"><ol>
+<li>三角運算（藍＋橘）隨 L 越佔越多，L = 1024 達 90%。</li>
+<li>TriMul（藍）越來越小、TriAttn（橘）越來越大，在 L = 256～512 之間交叉。</li>
+<li>ESM-2 與 structure module（紫）在 L ≥ 256 時幾乎看不到。</li>
+</ol></div>
 
 <h3 style="margin-top:12px">表 1　全部類別的時間與佔比（192 次 block 呼叫的總和）</h3>
 {table()}

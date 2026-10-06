@@ -131,22 +131,13 @@ CONCLUSIONS = f"""
 </ul></div>
 
 <div class="c"><h3>結論 3　TriAttn：受記憶體頻寬限制，已貼近天花板 → 要減少搬運量</h3>
-<p class="sub">現象</p>
 <ul>
 <li>tri_att_start（L = 1024）：<code>add_</code> 31% ＋ <code>softmax</code> 28% = 59% 在讀寫 logits；矩陣乘法只佔 27%。</li>
 <li><code>add_</code> 的名目頻寬約 112 GB/s（計數的 68.7 GB ÷ 實測 0.616 s），機器上限約 100 GB/s（同種運算、同樣的記憶體擺放實測）→ 已用滿頻寬。roofline 達成率 58～88%。</li>
 <li>L = 1024 峰值記憶體 60.7 GB，主要是不分塊的 logits（一份 17 GB）。</li>
 <li>tri_att_end 在 L = 1024 時比 start 慢 583 ms，其中 578 ms（99%）來自 <code>add_</code>（1,194 vs 616 ms）；L = 512 時兩者相同。</li>
 </ul>
-<p class="sub">原因</p>
-<ul>
-<li>softmax 的依賴只需要「一列」（L = 1024 時 4 KB），17 GB 的搬運來自「一個運算處理完整個張量」的執行方式。</li>
-<li>end 先把 pair 張量轉置，算出的 bias 也是轉置後的排列，加到 logits 時跳著讀取。</li>
-</ul>
-<p class="sub">方向</p>
-<ul>
-<li>一列一列算、logits 不寫回記憶體（FlashAttention 式、LightNobel 的 token-wise attention），把搬運量從 L³ 降到 L²。</li>
-</ul></div>
+</div>
 
 <div class="c"><h3>結論 4　TriMul：時間大半浪費在資料排列，不在計算；只修好排列，整體可省約 10～13%（L = 1024）、19～24%（L = 512）</h3>
 <p class="sub">現象</p>

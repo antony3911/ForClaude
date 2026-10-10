@@ -56,6 +56,7 @@
 | 07 | [人生劇本](07-life-scripts.md) | **十二種五年劇本**（依國家權重排列）與比較表、劇本怎麼串接、怎麼選 |
 | 08 | [美國的其他入口](08-us-paths.md) | **PhD 再評估（2026 年的環境）、MS → PhD、一年制 MEng、工程管理碩士（MEM）、美國的 MiM、線上碩士** |
 | 11 | [獎學金](11-prestige-scholarships.md) | **美國優先**：Knight-Hennessy、Fulbright（J-1 兩年返國）、教育部留學獎學金、學校資助、博士才適用的（公費留考、世界百大、NVIDIA）；其他：交流協會、Chevening、Gates、Clarendon |
+| 12 | [財務模擬](12-financial-comparison.md) | 各劇本 5 年的存款粗估（含所有假設）：台灣基準 +600 萬、美國 MS +90 萬但第 6 年起每年多存、外商轉調 +790 萬、一年制 MEng +380 萬等 |
 | — | [工作紀錄](WORKLOG.md) | 探索進度、篩選條件、待探索清單、排程（給之後的對話接手用） |
 | — | [archive](archive/) | 已排除的選項（僅供參考） |
 

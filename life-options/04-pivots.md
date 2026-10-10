@@ -147,6 +147,18 @@
 | **車用晶片** | 功能安全（ISO 26262）、自駕晶片 |
 | **生物資訊硬體加速** | 基因體、蛋白質的硬體加速，**你的研究題目就在這裡** |
 
+### 🏛️ 台灣的公職與公部門（2026-10 補充，佇列 D8）
+
+| 路徑 | 資格與方式 | 起薪（多為補習班或網站整理，以官方簡章為準） | 和你的關係 |
+|---|---|---|---|
+| **智慧財產局：約聘專利審查委員** | 電子、電機相關碩士即可應徵（或學士加 2 年相關經驗）；常見的是「職務代理人」職缺，試用 3 個月 | 未查到官方數字；面試網站統計的平均月薪約 4.96 萬（非官方） | **每天在讀技術、寫判斷**，是「工程 × 寫作」的公職版本；但多半是約聘或代理 |
+| **智慧財產局：專利助理審查官** | 要**高考三級**及格並具電機工程職系資格；薦任 6–8 職等 | 依公務人員俸表 | 穩定的正式公務員；專利審查官過去有專利師考試部分科目免試的討論 |
+| **國營聯招**（台電、中油、台水、台糖） | 2026 年 6–7 月報名、10/18 筆試；電機是名額最多的類組之一（例如台電電機 129 名） | 約 **4.6 萬／月** | 穩定、福利好；**和數位 IC 設計距離遠** |
+| **中華電信** | 獨立招考 | 技術類簡章月薪約 5.0 萬（含津貼約 5.3–5.5 萬） | 通訊與網路，和 HFT 的網路知識有一點交集 |
+| **國研院 TSRI** | 碩士可以應徵研究人員、工程師；新竹、台南都有職缺（含矽光子佈局設計等） | 平台統計平均月薪約 6.6 萬（樣本很少） | 碰得到全國學界的晶片下線與 EDA 服務；見 [03](03-phd-and-research.md) |
+
+> **我的看法**：這些路的共同點是**穩定，但薪資明顯低於 IC 設計大廠**（大廠碩士年薪約 200–250 萬），而且和「到美國做 AI 晶片」的主線距離很遠。比較值得放在心上的是**專利審查委員**（如果你想把技術和寫作結合）和 **TSRI**（如果你想留在晶片研究圈）。其他比較像是「不想出國、也不想進業界」時的備案。
+
 ### 📚 教育
 - 大學教職（見 [03](03-phd-and-research.md)）
 - 業界內訓講師、TSRI 的教育訓練
@@ -178,6 +190,7 @@
 - HFT 薪資與簽證：[Indeed：HRT FPGA Engineer Salaries](https://www.indeed.com/cmp/Hudson-River-Trading/salaries/FPGA-Engineer)、[Indeed：Jump Trading FPGA Engineer Salaries](https://www.indeed.com/cmp/Jump-Trading/salaries/FPGA-Engineer)、[techinterview.org：Visa Sponsorship at Wall Street Firms in 2026](https://www.techinterview.org/post/3233474736/visa-sponsorship-wall-street-firms/)、[f1jobs：Quant Researcher H-1B Sponsorship at Prop Trading Firms](https://www.f1jobs.io/resources/blog/quant-researcher-prop-trading-firm-visa-sponsorship)、[Citadel Securities：FPGA Engineer](https://www.citadelsecurities.com/careers/details/fpga-engineer/)、[Hodgson Russ：FY27 H-1B Registration](https://www.hodgsonruss.com/immigration-insights/fy27-h-1b-registration-what-employers-need-to-know)、[Visa Pros：H-1B Weighted Lottery odds](https://visa-pros.com/h-1b-weighted-lottery/)、[Ogletree：USCIS Completes FY2027 H-1B Lottery](https://ogletree.com/insights-resources/blog-posts/uscis-completes-fiscal-year-2027-h-1b-lottery/)
 - AI 晶片雇主：[Hashrate Index：Independent AI Chip Companies 2026](https://hashrateindex.com/blog/independent-ai-chip-companies-ai-asic-market-part-3/)、[Tom's Hardware：Custom AI ASIC state of play（2026/05）](https://www.tomshardware.com/tech-industry/semiconductors/custom-ai-asics-examined-from-broadcom-to-mtia)、[TechRepublic：Anthropic custom AI chip team](https://www.techrepublic.com/article/news-anthropic-custom-ai-chip-team-confirmed/)、[ZipRecruiter：Etched Jobs](https://www.ziprecruiter.com/co/etched/Jobs/--in-California)、[Glassdoor：RTL Verification Engineer Salary](https://www.glassdoor.com/Salaries/rtl-verification-engineer-salary-SRCH_KO0,25.htm)、[ZipRecruiter：RTL Verification Engineer Salary](https://www.ziprecruiter.com/Salaries/Rtl-Verification-Engineer-Salary)、[HeroHunt：Hardware Talent Recruiting 2026](https://www.herohunt.ai/blog/hardware-talent-recruiting-in-the-ai-age-2026/)
 - HFT（第一版）：[Optiver：FPGA Engineer](https://optiver.com/working-at-optiver/career-opportunities/7887188002/)、[Built In：Graduate FPGA Engineer](https://builtin.com/job/graduate-fpga-engineer/7142593)、[Quantt：Jump Trading Salary 2026](https://www.quantt.co.uk/resources/jump-trading-salary)、[Glassdoor：IMC FPGA Engineer](https://www.glassdoor.com/Salary/IMC-Trading-FPGA-Engineer-Salaries-E278100_D_KO12,25.htm)、[KORE1：How to Hire FPGA Engineers in 2026](https://www.kore1.com/hire-fpga-engineers-2026/)
+- 台灣公部門（2026-10 補充）：[經濟部：智慧局約聘專利審查委員（職務代理人）徵才](https://www.moea.gov.tw/MNS/populace/news/News.aspx?kind=5&menu_id=44&news_id=120125)、[經濟部：智慧局電機工程職系專利助理審查官](https://www.moea.gov.tw/Mns/populace/news/News.aspx?kind=5&menu_id=44&news_id=122041)、[經濟部智慧財產局聘用專業人員資格辦法](https://law.moea.gov.tw/LawContent.aspx?id=FL010950)、[面試趣：經濟部智慧財產局](https://interview.tw/c/lcht)、[北美智權報：專利審查官與專利師考試](https://www.naipo.com/portals/1/web_tw/Knowledge_Center/Expert_Column/PE-121.htm)、[三民輔考：2026 國營聯招](https://www.3people.com.tw/%E7%B6%B2%E9%A0%81/%E8%80%83%E8%A9%A6%E8%B3%87%E8%A8%8A/%E5%9C%8B%E7%87%9F%E4%BA%8B%E6%A5%AD-%E7%B6%93%E6%BF%9F%E9%83%A8%E6%89%80%E5%B1%AC%E5%9C%8B%E7%87%9F%E4%BA%8B%E6%A5%AD/5/ddbcc18a-7500-4047-b94b-5173bd93eef9)、[TKB：2026 國營聯招指南](https://www.tkblearning.com.tw/newExam/inside?str=6092C0C441F48301D55A6CCC0877094F)、[三民輔考：中華電信薪資福利](https://www.3people.com.tw/%E7%B6%B2%E9%A0%81/%E8%96%AA%E8%B3%87%E7%A6%8F%E5%88%A9/%E5%9C%8B%E7%87%9F%E4%BA%8B%E6%A5%AD-%E4%B8%AD%E8%8F%AF%E9%9B%BB%E4%BF%A1/93/debd4a16-4e59-4ba3-a4a0-30683aa981fc)、[比薪水：TSRI](https://salary.tw/c/vPNg)、[陽明交大校園徵才：台灣半導體研究中心](https://openhouse.osa.nycu.edu.tw/company/detail/80778283/)
 - 政策：[CSET：Research Analysts](https://cset.georgetown.edu/job/research-analysts/)
 - 專利：[104 薪資情報：專利工程師](https://guide.104.com.tw/salary/job/2002002009?analyze=workexp&salary=annual)、[北美智權報：全球專利人才荒](https://naipnews.naipo.com/37363/)、[Cake：專利師與專利工程師](https://www.cake.me/resources/industry-job-overview/patent-attorney-salary-jobs-interview?locale=en)
 - 產業：[聯合新聞網：台灣半導體業今年最缺哪些人才](https://udn.com/news/story/6839/9305554)、[INSIDE：專訪創鑫智慧](https://www.inside.com.tw/feature/ai-new-chip-war/34813-neuchips-interview)、[行政院：晶創臺灣方案](https://www.ey.gov.tw/Page/5A8A0CB5B41DA11E/6dd41826-ed84-4b92-9f51-e6ebeb8621f8)
